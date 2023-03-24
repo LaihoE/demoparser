@@ -5,6 +5,10 @@ Development of source 2 demos are moved here. Not sure yet where code for source
 
 Project moves fast so no guarantees anything will stay the same.
 
+Following mostly this: https://github.com/dotabuff/manta formats seems similar.
+
+
+
 maybe you can get the project to run if you edit main.rs path to your own demo and run this: 
 ```rust
 cargo run --release

@@ -1,6 +1,7 @@
 pub mod class;
 pub mod consts;
 pub mod entities;
+pub mod field_paths;
 pub mod game_events;
 pub mod parser;
 pub mod read_bits;

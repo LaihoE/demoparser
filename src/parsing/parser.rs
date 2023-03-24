@@ -66,9 +66,9 @@ impl Parser {
 
             match msg_type {
                 1 => self.parse_header(&bytes),
-                7 => self.parse_packet(&bytes),
                 4 => self.parse_classes(&bytes),
                 5 => self.parse_class_info(&bytes),
+                7 => self.parse_packet(&bytes),
                 8 => self.parse_packet(&bytes),
                 _ => {}
             }
@@ -79,10 +79,8 @@ impl Parser {
         self.parse_sendtable(tables);
     }
     pub fn parse_header(&self, bytes: &[u8]) {
-        let packet: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
-        //println!("{:?}", packet);
+        let header: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
     }
-
     pub fn parse_packet(&mut self, bytes: &[u8]) {
         let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
         let packet_data = packet.data.unwrap();
