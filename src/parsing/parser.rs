@@ -1,26 +1,15 @@
 use crate::parsing::read_bits::Bitreader;
-use crate::parsing::read_bytes;
 use ahash::HashMap;
 use bitter::BitReader;
-use bitter::LittleEndianReader;
 use csgoproto::demo::CDemoFileHeader;
 use csgoproto::demo::CDemoPacket;
-use csgoproto::demo::EDemoCommands;
-use csgoproto::demo::EDemoCommands::DEM_IsCompressed;
+use csgoproto::demo::CDemoSendTables;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use csgoproto::netmessages::CSVCMsg_ClassInfo;
-use csgoproto::netmessages::CSVCMsg_GameEventList;
-use csgoproto::netmessages::CSVCMsg_PacketEntities;
-use csgoproto::netmessages::CSVCMsg_SendTable;
-use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
-use csgoproto::networkbasetypes::NET_Messages;
-use protobuf::descriptor;
+use csgoproto::netmessages::*;
+use csgoproto::networkbasetypes::*;
 use protobuf::Message;
-use snap::read::FrameDecoder;
 use snappy;
 use std::fs;
-use std::io;
-use std::io::Write;
 
 pub struct Parser {
     pub ptr: usize,
@@ -40,6 +29,7 @@ impl Parser {
     pub fn start(&mut self) {
         // Header
         self.skip_n_bytes(16);
+        // Outer loop
         loop {
             let cmd = self.read_varint();
             let tick = self.read_varint();
@@ -69,10 +59,9 @@ impl Parser {
             }
         }
     }
-    pub fn parse_classes(&self, bytes: &[u8]) {
-        let cls: CSVCMsg_SendTable = Message::parse_from_bytes(bytes).unwrap();
-        // let packet: CSVCMsg_ClassInfo = Message::parse_from_bytes(bytes).unwrap();
-        // println!("{:?}", cls);
+    pub fn parse_classes(&mut self, bytes: &[u8]) {
+        let tables: CDemoSendTables = Message::parse_from_bytes(bytes).unwrap();
+        self.parse_sendtable(tables);
     }
     pub fn parse_header(&self, bytes: &[u8]) {
         let packet: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
@@ -84,6 +73,7 @@ impl Parser {
         let packet_data = packet.data.unwrap();
         let mut bitreader = Bitreader::new(&packet_data);
 
+        // Inner loop
         while bitreader.reader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var().unwrap();
             let size = bitreader.read_varint().unwrap();
@@ -94,10 +84,13 @@ impl Parser {
                     let packet_ents: CSVCMsg_PacketEntities =
                         Message::parse_from_bytes(&bytes).unwrap();
                 }
-                4 => {}
+                4 => {
+                    let user_msg: CSVCMsg_UserMessage = Message::parse_from_bytes(&bytes).unwrap();
+                    //println!("{:?}", user_msg);
+                }
                 207 => {
                     let ge: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
-                    self.parse_event(ge);
+                    //self.parse_event(ge);
                 }
                 205 => {
                     let ge_list_msg: CSVCMsg_GameEventList =
