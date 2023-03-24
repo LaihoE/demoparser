@@ -14,6 +14,7 @@ use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use csgoproto::netmessages::CSVCMsg_SendTable;
 use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
 use csgoproto::networkbasetypes::NET_Messages;
+use protobuf::descriptor;
 use protobuf::Message;
 use snap::read::FrameDecoder;
 use snappy;
@@ -30,78 +31,54 @@ pub struct Parser {
 impl Parser {
     pub fn new() -> Self {
         let bytes = fs::read("/home/laiho/Documents/demos/cs2/dem.dem").unwrap();
-        let mut parser = Parser {
+        Parser {
             ptr: 0,
             bytes: bytes,
             ge_list: None,
-        };
-        parser
+        }
     }
     pub fn start(&mut self) {
-        //self.skip_n_bytes((self.bytes.len() - 847471) as u32);
-
+        // Header
         self.skip_n_bytes(16);
-        'outer: loop {
-            if self.ptr > 1000000 {
-                break 'outer;
-            }
+        loop {
             let cmd = self.read_varint();
             let tick = self.read_varint();
             let size = self.read_varint();
+
             if tick == 1000 {
                 break;
             }
 
             let msg_type = if cmd > 64 { cmd as u32 ^ 64 } else { cmd };
-
-            if (size as usize + self.ptr) > self.bytes.len() {
-                break;
-            };
-
-            //println!("{}")
-
             let is_compressed = (cmd & 64) == 64;
-            if msg_type != 7 {
-                //println!("{} {} {} {}", cmd, msg_type, is_compressed, size);
-            }
-
-            //println!("{}", self.bytes.len());
 
             let bytes = match is_compressed {
                 true => {
-                    let mut bytes = self.read_n_bytes(size);
-                    let bl = bytes.len();
-                    let b = snappy::uncompress(bytes).unwrap();
-                    b
+                    let bytes = self.read_n_bytes(size);
+                    snappy::uncompress(bytes).unwrap()
                 }
                 false => self.read_n_bytes(size).to_vec(),
             };
 
             match msg_type {
-                1 => Parser::parse_header(&bytes),
+                1 => self.parse_header(&bytes),
                 7 => self.parse_packet(&bytes),
-                4 => Parser::parse_classes(&bytes),
-                8 => {
-                    //println!("OUTER CMD: {} {:?} {:?} {:?}", cmd, msg_type, tick, size,);
-                    self.parse_packet(&bytes)
-                }
+                4 => self.parse_classes(&bytes),
+                8 => self.parse_packet(&bytes),
                 _ => {}
             }
         }
     }
-    pub fn parse_classes(bytes: &[u8]) {
+    pub fn parse_classes(&self, bytes: &[u8]) {
         let cls: CSVCMsg_SendTable = Message::parse_from_bytes(bytes).unwrap();
-        //let packet: CSVCMsg_ClassInfo = Message::parse_from_bytes(bytes).unwrap();
-        //println!("{:?}", cls);
+        // let packet: CSVCMsg_ClassInfo = Message::parse_from_bytes(bytes).unwrap();
+        // println!("{:?}", cls);
     }
-    pub fn parse_header(bytes: &[u8]) {
+    pub fn parse_header(&self, bytes: &[u8]) {
         let packet: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
         //println!("{:?}", packet);
     }
-    pub fn parse_signon_packet(bytes: &[u8]) {
-        let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
-        println!("{:?}", packet);
-    }
+
     pub fn parse_packet(&mut self, bytes: &[u8]) {
         let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
         let packet_data = packet.data.unwrap();
@@ -134,49 +111,11 @@ impl Parser {
             //
         }
     }
-    //pub fn parse_packet_ents()
     pub fn parse_game_event_map(event_list: CSVCMsg_GameEventList) -> HashMap<i32, Descriptor_t> {
         let mut hm: HashMap<i32, Descriptor_t> = HashMap::default();
-
         for event_desc in event_list.descriptors {
             hm.insert(event_desc.eventid(), event_desc);
         }
         hm
     }
 }
-
-static MASKS: [u32; 32 + 1] = [
-    0,
-    u32::MAX >> 31,
-    u32::MAX >> 30,
-    u32::MAX >> 29,
-    u32::MAX >> 28,
-    u32::MAX >> 27,
-    u32::MAX >> 26,
-    u32::MAX >> 25,
-    u32::MAX >> 24,
-    u32::MAX >> 23,
-    u32::MAX >> 22,
-    u32::MAX >> 21,
-    u32::MAX >> 20,
-    u32::MAX >> 19,
-    u32::MAX >> 18,
-    u32::MAX >> 17,
-    u32::MAX >> 16,
-    u32::MAX >> 15,
-    u32::MAX >> 14,
-    u32::MAX >> 13,
-    u32::MAX >> 12,
-    u32::MAX >> 11,
-    u32::MAX >> 10,
-    u32::MAX >> 9,
-    u32::MAX >> 8,
-    u32::MAX >> 7,
-    u32::MAX >> 6,
-    u32::MAX >> 5,
-    u32::MAX >> 4,
-    u32::MAX >> 3,
-    u32::MAX >> 2,
-    u32::MAX >> 1,
-    u32::MAX,
-];
