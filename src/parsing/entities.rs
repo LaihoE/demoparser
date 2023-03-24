@@ -9,6 +9,7 @@ use csgoproto::demo::EDemoCommands;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use csgoproto::networkbasetypes::NET_Messages;
 use protobuf::Message;
+use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::fs;
 
@@ -69,29 +70,61 @@ impl Parser {
 
         let mut heap = BinaryHeap::new();
         for tree in trees {
-            heap.push(tree)
+            heap.push(Reverse(tree));
         }
+
         for idx in 0..heap.len() - 1 {
             let a = heap.pop().unwrap();
             let b = heap.pop().unwrap();
-
-            heap.push(HuffmanNode {
-                weight: a.weight + b.weight,
+            /*
+            println!(
+                "A:{} B:{}({} {})",
+                a.0.value,
+                b.0.value,
+                a.0.weight + b.0.weight,
+                idx + 40
+            );
+            */
+            heap.push(Reverse(HuffmanNode {
+                weight: a.0.weight + b.0.weight,
                 value: (idx + 40) as i32,
-                left: Some(Box::new(a)),
-                right: Some(Box::new(b)),
-            })
+                left: Some(Box::new(a.0)),
+                right: Some(Box::new(b.0)),
+            }))
         }
-        heap.pop()
+        let x = heap.pop();
+        let y = x.unwrap();
+        Some(y.0)
+    }
+    pub fn print_tree(&self, tree: Option<&HuffmanNode>, prefix: Vec<i32>) {
+        match tree {
+            None => return,
+            Some(t) => {
+                if t.is_leaf() {
+                    //println!("{} {} {:?}", t.value, t.weight, prefix)
+                } else {
+                    let mut l = prefix.clone();
+                    let mut r = prefix.clone();
+                    l.push(0);
+                    r.push(1);
+                    self.print_tree(Some(&t.left.as_ref().unwrap()), l);
+                    self.print_tree(Some(&t.right.as_ref().unwrap()), r);
+                }
+            }
+        }
     }
 
     pub fn parse_props(&self, bitreader: &mut Bitreader) {
         let huffman = self.generate_huffman_tree().unwrap();
+        //self.print_tree(Some(&huffman), vec![]);
+        //println!("{:?}", huffman);
+        //panic!("p");
         let mut fp = FieldPath {
             done: false,
             path: vec![0; 1000],
             last: 0,
         };
+        fp.path[0] = -1;
         let mut cur_node = &huffman;
         let mut next_node = &huffman;
         // Read bits one at a time while traversing a tree (1 = go right, 0 = go left)
@@ -99,9 +132,10 @@ impl Parser {
         // that that leaf point to. if the operation was not "FieldPathEncodeFinish" then
         // start again from top of tree.
         let mut rounds = 0;
+        let mut paths = vec![];
         while !fp.done {
             rounds += 1;
-            println!("{}", rounds);
+            //println!("{}", rounds);
             match bitreader.read_boolie().unwrap() {
                 true => {
                     next_node = &mut cur_node.right.as_ref().unwrap();
@@ -116,15 +150,20 @@ impl Parser {
                 let done = do_op(next_node.value, bitreader, &mut fp);
                 if done {
                     break;
+                } else {
+                    //println!("{:?}", fp.path);
+                    paths.push(fp.clone());
+                    //panic!("d");
                 }
             } else {
                 cur_node = next_node
             }
         }
+        //println!("{:?}", paths);
     }
 }
 pub fn do_op(opcode: i32, bitreader: &mut Bitreader, field_path: &mut FieldPath) -> bool {
-    println!("OP {}", opcode);
+    //println!("OP {}", opcode);
     match opcode {
         0 => PlusOne(bitreader, field_path),
         1 => PlusTwo(bitreader, field_path),
@@ -203,10 +242,19 @@ impl PartialEq for HuffmanNode {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct FieldPath {
     pub path: Vec<i32>,
     pub last: usize,
     pub done: bool,
+}
+impl FieldPath {
+    pub fn pop_special(&mut self, n: usize) {
+        for i in 0..n {
+            self.path[self.last] = 0;
+            self.last -= 1;
+        }
+    }
 }
 
 fn PlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
@@ -363,64 +411,58 @@ fn PushN(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     }
 }
 fn PushNAndNonTopological(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    for i in 0..(field_path.last - 1) {
+    for i in 0..field_path.last {
         if bitreader.read_boolie().unwrap() {
             field_path.path[i] += bitreader.read_varint32().unwrap() + 1;
         }
     }
     let count = bitreader.read_u_bit_var().unwrap();
-    for i in 0..field_path.last - 1 {
+    for i in 0..field_path.last {
         field_path.last += 1;
         field_path.path[field_path.last] = bitreader.read_ubit_var_fp() as i32;
     }
 }
 fn PopOnePlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    field_path.path.remove(1);
+    field_path.pop_special(1);
     field_path.path[field_path.last] += 1
 }
 fn PopOnePlusN(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     field_path.path[field_path.last] += bitreader.read_ubit_var_fp() as i32 + 1;
 }
 fn PopAllButOnePlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    field_path.path.remove(field_path.last);
+    field_path.pop_special(field_path.last);
     field_path.path[0] += 1
 }
 fn PopAllButOnePlusN(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    field_path.path.remove(field_path.last);
+    field_path.pop_special(field_path.last);
     field_path.path[0] += bitreader.read_ubit_var_fp() as i32 + 1;
 }
 fn PopAllButOnePlusNPack3Bits(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    field_path.path.remove(field_path.last);
+    field_path.pop_special(field_path.last);
     field_path.path[0] += bitreader.read_nbits(3).unwrap() as i32 + 1;
 }
 fn PopAllButOnePlusNPack6Bits(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    field_path.path.remove(field_path.last);
+    field_path.pop_special(field_path.last);
     field_path.path[0] += bitreader.read_nbits(6).unwrap() as i32 + 1
 }
 fn PopNPlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    field_path
-        .path
-        .remove(bitreader.read_ubit_var_fp() as usize);
+    field_path.pop_special(bitreader.read_ubit_var_fp() as usize);
     field_path.path[field_path.last] += 1
 }
 fn PopNPlusN(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    field_path
-        .path
-        .remove(bitreader.read_ubit_var_fp() as usize);
+    field_path.pop_special(bitreader.read_ubit_var_fp() as usize);
     field_path.path[field_path.last] += bitreader.read_varint32().unwrap();
 }
 fn PopNAndNonTopographical(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    field_path
-        .path
-        .remove(bitreader.read_ubit_var_fp() as usize);
-    for i in 0..field_path.last - 1 {
+    field_path.pop_special(bitreader.read_ubit_var_fp() as usize);
+    for i in 0..field_path.last + 1 {
         if bitreader.read_boolie().unwrap() {
             field_path.path[i] += bitreader.read_varint32().unwrap();
         }
     }
 }
 fn NonTopoComplex(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    for i in 0..field_path.last - 1 {
+    for i in 0..field_path.last + 1 {
         if bitreader.read_boolie().unwrap() {
             field_path.path[i] += bitreader.read_varint32().unwrap();
         }
@@ -430,7 +472,7 @@ fn NonTopoPenultimatePlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPa
     field_path.path[field_path.last - 1] += 1
 }
 fn NonTopoComplexPack4Bits(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    for i in 0..field_path.last - 1 {
+    for i in 0..field_path.last + 1 {
         if bitreader.read_boolie().unwrap() {
             field_path.path[i] += bitreader.read_nbits(4).unwrap() as i32 - 7;
         }
