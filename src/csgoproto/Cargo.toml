@@ -1,0 +1,8 @@
+
+[package]
+name = "csgoproto"
+version = "0.1.0"
+authors = ["Laiho"]
+
+[dependencies]
+protobuf = "3.1.0"
