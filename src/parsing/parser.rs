@@ -49,7 +49,7 @@ impl Parser {
             let size = self.read_varint();
 
             // Think my demo is shit
-            if tick > 1000 {
+            if tick == 1000 {
                 break;
             }
 
@@ -114,7 +114,7 @@ impl Parser {
                     self.ge_list = Some(Parser::parse_game_event_map(ge_list_msg));
                 }
                 _ => {
-                    println!("MSGTYPE: {}", msg_type);
+                    //println!("MSGTYPE: {}", msg_type);
                 }
             }
         }

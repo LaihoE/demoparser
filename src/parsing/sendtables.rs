@@ -47,6 +47,7 @@ impl Parser {
             for idx in serializer.fields_index {
                 let field_msg = &serializer_msg.fields[idx as usize];
                 let field = self.field_from_msg(field_msg);
+
                 my_serializer.fields.push(field);
             }
             self.serializers
