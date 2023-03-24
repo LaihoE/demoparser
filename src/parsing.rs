@@ -1,3 +1,4 @@
+pub mod class;
 pub mod consts;
 pub mod entities;
 pub mod game_events;

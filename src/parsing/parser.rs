@@ -11,10 +11,16 @@ use protobuf::Message;
 use snappy;
 use std::fs;
 
+use super::class::Class;
+use super::sendtables::Serializer;
+
 pub struct Parser {
     pub ptr: usize,
     pub bytes: Vec<u8>,
     pub ge_list: Option<HashMap<i32, Descriptor_t>>,
+    pub serializers: HashMap<String, Serializer>,
+    pub cls_by_id: HashMap<i32, Class>,
+    pub cls_by_name: HashMap<String, Class>,
 }
 
 impl Parser {
@@ -24,6 +30,9 @@ impl Parser {
             ptr: 0,
             bytes: bytes,
             ge_list: None,
+            serializers: HashMap::default(),
+            cls_by_id: HashMap::default(),
+            cls_by_name: HashMap::default(),
         }
     }
     pub fn start(&mut self) {
@@ -54,6 +63,7 @@ impl Parser {
                 1 => self.parse_header(&bytes),
                 7 => self.parse_packet(&bytes),
                 4 => self.parse_classes(&bytes),
+                5 => self.parse_class_info(&bytes),
                 8 => self.parse_packet(&bytes),
                 _ => {}
             }

@@ -7,22 +7,26 @@ use super::read_bits::Bitreader;
 use crate::Parser;
 use protobuf::Message;
 
-struct Field {
-    var_name: i32,
-    var_type: i32,
-    send_node: i32,
-    serializer_name: i32,
-    serializer_version: i32,
-    encoder: i32,
-    encode_flags: i32,
-    bitcount: i32,
-    low_value: f32,
-    high_value: f32,
+#[derive(Debug, Clone)]
+
+pub struct Field {
+    pub var_name: i32,
+    pub var_type: i32,
+    pub send_node: i32,
+    pub serializer_name: i32,
+    pub serializer_version: i32,
+    pub encoder: i32,
+    pub encode_flags: i32,
+    pub bitcount: i32,
+    pub low_value: f32,
+    pub high_value: f32,
 }
 
-struct Serializer {
-    name: String,
-    fields: Vec<Field>,
+#[derive(Debug, Clone)]
+pub struct Serializer {
+    pub name: String,
+    // Maybe hm?
+    pub fields: Vec<Field>,
 }
 
 impl Parser {
@@ -46,6 +50,8 @@ impl Parser {
                 let field = self.field_from_msg(field_msg);
                 my_serializer.fields.push(field);
             }
+            self.serializers
+                .insert(my_serializer.name.clone(), my_serializer);
         }
     }
     fn field_from_msg(&self, field: &ProtoFlattenedSerializerField_t) -> Field {
