@@ -21,6 +21,7 @@ pub struct Parser {
     pub serializers: HashMap<String, Serializer>,
     pub cls_by_id: HashMap<i32, Class>,
     pub cls_by_name: HashMap<String, Class>,
+    pub cls_bits: u32,
 }
 
 impl Parser {
@@ -33,6 +34,7 @@ impl Parser {
             serializers: HashMap::default(),
             cls_by_id: HashMap::default(),
             cls_by_name: HashMap::default(),
+            cls_bits: 0,
         }
     }
     pub fn start(&mut self) {
@@ -94,6 +96,11 @@ impl Parser {
                     let packet_ents: CSVCMsg_PacketEntities =
                         Message::parse_from_bytes(&bytes).unwrap();
                 }
+                40 => {
+                    let server_info: CSVCMsg_ServerInfo =
+                        Message::parse_from_bytes(&bytes).unwrap();
+                    self.parse_server_info(server_info);
+                }
                 4 => {
                     let user_msg: CSVCMsg_UserMessage = Message::parse_from_bytes(&bytes).unwrap();
                     //println!("{:?}", user_msg);
@@ -114,6 +121,11 @@ impl Parser {
             //
         }
     }
+    pub fn parse_server_info(&mut self, server_info: CSVCMsg_ServerInfo) {
+        let class_count = server_info.max_classes();
+        self.cls_bits = (class_count as f32 + 1.).log2().ceil() as u32;
+    }
+
     pub fn parse_game_event_map(event_list: CSVCMsg_GameEventList) -> HashMap<i32, Descriptor_t> {
         let mut hm: HashMap<i32, Descriptor_t> = HashMap::default();
         for event_desc in event_list.descriptors {

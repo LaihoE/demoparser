@@ -43,7 +43,6 @@ impl Parser {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
                 fields: vec![],
             };
-            println!("{:?}", my_serializer.name);
 
             for idx in serializer.fields_index {
                 let field_msg = &serializer_msg.fields[idx as usize];

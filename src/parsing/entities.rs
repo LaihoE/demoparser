@@ -10,6 +10,8 @@ use csgoproto::networkbasetypes::NET_Messages;
 use protobuf::Message;
 use std::fs;
 
+const NSERIALBITS: u32 = 17;
+
 impl Parser {
     pub fn parse_packet_ents(packet_ents: CSVCMsg_PacketEntities) {
         let n_updates = packet_ents.updated_entries();
@@ -22,6 +24,8 @@ impl Parser {
             if bitreader.read_boolie().unwrap() {
                 bitreader.read_boolie();
             } else if bitreader.read_boolie().unwrap() {
+                let cls_id = bitreader.read_nbits(NSERIALBITS).unwrap();
+                let serial = bitreader.read_nbits(NSERIALBITS).unwrap();
             } else {
             }
         }
