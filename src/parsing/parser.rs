@@ -48,7 +48,8 @@ impl Parser {
             let tick = self.read_varint();
             let size = self.read_varint();
 
-            if tick == 1000 {
+            // Think my demo is shit
+            if tick > 1000 {
                 break;
             }
 
