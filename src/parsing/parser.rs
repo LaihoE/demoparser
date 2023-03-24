@@ -1,3 +1,6 @@
+use super::class::Class;
+use super::sendtables::Serializer;
+use crate::parsing::entities::Entity;
 use crate::parsing::read_bits::Bitreader;
 use ahash::HashMap;
 use bitter::BitReader;
@@ -11,9 +14,6 @@ use protobuf::Message;
 use snappy;
 use std::fs;
 
-use super::class::Class;
-use super::sendtables::Serializer;
-
 pub struct Parser {
     pub ptr: usize,
     pub bytes: Vec<u8>,
@@ -22,11 +22,12 @@ pub struct Parser {
     pub cls_by_id: HashMap<i32, Class>,
     pub cls_by_name: HashMap<String, Class>,
     pub cls_bits: u32,
+    pub entities: HashMap<i32, Entity>,
 }
 
 impl Parser {
-    pub fn new() -> Self {
-        let bytes = fs::read("/home/laiho/Documents/demos/cs2/dem.dem").unwrap();
+    pub fn new(path: &str) -> Self {
+        let bytes = fs::read(path).unwrap();
         Parser {
             ptr: 0,
             bytes: bytes,
@@ -34,6 +35,7 @@ impl Parser {
             serializers: HashMap::default(),
             cls_by_id: HashMap::default(),
             cls_by_name: HashMap::default(),
+            entities: HashMap::default(),
             cls_bits: 0,
         }
     }
@@ -95,16 +97,14 @@ impl Parser {
                 55 => {
                     let packet_ents: CSVCMsg_PacketEntities =
                         Message::parse_from_bytes(&bytes).unwrap();
+                    self.parse_packet_ents(packet_ents);
                 }
                 40 => {
                     let server_info: CSVCMsg_ServerInfo =
                         Message::parse_from_bytes(&bytes).unwrap();
                     self.parse_server_info(server_info);
                 }
-                4 => {
-                    let user_msg: CSVCMsg_UserMessage = Message::parse_from_bytes(&bytes).unwrap();
-                    //println!("{:?}", user_msg);
-                }
+
                 207 => {
                     let ge: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
                     //self.parse_event(ge);
@@ -118,7 +118,6 @@ impl Parser {
                     println!("MSGTYPE: {}", msg_type);
                 }
             }
-            //
         }
     }
     pub fn parse_server_info(&mut self, server_info: CSVCMsg_ServerInfo) {

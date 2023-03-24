@@ -12,7 +12,7 @@ fn parse_key(key: &Key_t) -> Option<KeyData> {
         6 => Some(KeyData::Bool(key.val_bool())),
         7 => Some(KeyData::Uint64(key.val_uint64())),
         _ => {
-            //println!("Unknown key type for game event key: {}", key.type_());
+            println!("Unknown key type for game event key: {}", key.type_());
             return None;
         }
     }
