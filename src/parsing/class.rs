@@ -24,6 +24,7 @@ impl Parser {
                 name: network_name.to_string(),
                 serializer: self.serializers[network_name].clone(),
             };
+            //println!("{}", class.name);
             let cls_name = class.name.clone();
             self.cls_by_id.insert(class.class_id, class.clone());
             self.cls_by_name.insert(cls_name, class.clone());

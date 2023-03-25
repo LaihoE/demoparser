@@ -40,14 +40,76 @@ impl Parser {
                     entity_id: entity_id,
                     cls_id: cls_id,
                 };
+
+                let cls = &self.cls_by_id[&(cls_id as i32)];
                 self.entities.insert(entity_id, entity);
-                self.parse_props(&mut bitreader);
+                let paths = self.parse_paths(&mut bitreader);
+                self.decode_paths(&mut bitreader, paths, &cls.serializer);
                 return;
             } else {
             }
         }
     }
+    pub fn decode_paths(
+        &self,
+        bitreader: &mut Bitreader,
+        paths: Vec<FieldPath>,
+        serializer: &Serializer,
+    ) {
+        for path in paths {
+            let decoder = serializer.find_decoder(&path, 0);
+            println!("{:?}", decoder);
+        }
+    }
+    //pub fn new_field_type(&self) {}
+
     pub fn generate_huffman_tree(&self) -> Option<HuffmanNode> {
+        /*
+        Should result in this tree (same as Dotabuffs tree):
+
+        value, weight, len(prefix), prefix
+        0	36271	2	0
+        39	25474	3	10
+        8	2942	6	11000
+        2	1375	7	110010
+        29	1837	7	110011
+        4	4128	6	11010
+        30	149	    10	110110000
+        38	99	    11	1101100010
+        35	1	    17	1101100011000000
+        34	1	    17	1101100011000001
+        27	2	    16	110110001100001
+        25	1	    17	1101100011000100
+        24	1	    17	1101100011000101
+        33	1	    17	1101100011000110
+        28	1	    17	1101100011000111
+        13	1	    17	1101100011001000
+        15	1	    18	11011000110010010
+        14	1	    18	11011000110010011
+        6	3	    16	110110001100101
+        21	1	    18	11011000110011000
+        20	1	    18	11011000110011001
+        23	1	    18	11011000110011010
+        22	1	    18	11011000110011011
+        17	1	    18	11011000110011100
+        16	1	    18	11011000110011101
+        19	1	    18	11011000110011110
+        18	1	    18	11011000110011111
+        5	35	    13	110110001101
+        36	76	    12	11011000111
+        10	471	    9	11011001
+        7	521	    9	11011010
+        12	251	    10	110110110
+        37	271	    10	110110111
+        9	560	    9	11011100
+        31	300	    10	110111010
+        26	310	    10	110111011
+        32	634	    9	11011110
+        3	646	    9	11011111
+        1	10334	5	1110
+        11	10530	5	1111
+        */
+
         let mut trees = vec![];
         for (idx, (_, weight)) in PAIRS.iter().enumerate() {
             let node = if *weight == 0 {
@@ -76,15 +138,6 @@ impl Parser {
         for idx in 0..heap.len() - 1 {
             let a = heap.pop().unwrap();
             let b = heap.pop().unwrap();
-            /*
-            println!(
-                "A:{} B:{}({} {})",
-                a.0.value,
-                b.0.value,
-                a.0.weight + b.0.weight,
-                idx + 40
-            );
-            */
             heap.push(Reverse(HuffmanNode {
                 weight: a.0.weight + b.0.weight,
                 value: (idx + 40) as i32,
@@ -92,9 +145,49 @@ impl Parser {
                 right: Some(Box::new(b.0)),
             }))
         }
-        let x = heap.pop();
-        let y = x.unwrap();
-        Some(y.0)
+        Some(heap.pop().unwrap().0)
+    }
+
+    pub fn parse_paths(&self, bitreader: &mut Bitreader) -> Vec<FieldPath> {
+        let huffman = self.generate_huffman_tree().unwrap();
+        let mut fp = FieldPath {
+            done: false,
+            path: vec![0; 12],
+            last: 0,
+        };
+        fp.path[0] = -1;
+        let mut cur_node = &huffman;
+        let mut next_node = &huffman;
+        // Read bits one at a time while traversing a tree (1 = go right, 0 = go left)
+        // until you reach a leaf node. When we reach a leaf node we do the operation
+        // that that leaf point to. if the operation was not "FieldPathEncodeFinish" then
+        // start again from top of tree.
+        let mut rounds = 0;
+        let mut paths = vec![];
+        while !fp.done {
+            rounds += 1;
+            match bitreader.read_boolie().unwrap() {
+                true => {
+                    next_node = &mut cur_node.right.as_ref().unwrap();
+                }
+                false => {
+                    next_node = &mut cur_node.left.as_ref().unwrap();
+                }
+            }
+            if next_node.is_leaf() {
+                // Reset back to top of tree
+                cur_node = &huffman;
+                let done = do_op(next_node.value, bitreader, &mut fp);
+                if done {
+                    break;
+                } else {
+                    paths.push(fp.clone());
+                }
+            } else {
+                cur_node = next_node
+            }
+        }
+        paths
     }
     pub fn print_tree(&self, tree: Option<&HuffmanNode>, prefix: Vec<i32>) {
         match tree {
@@ -112,54 +205,6 @@ impl Parser {
                 }
             }
         }
-    }
-
-    pub fn parse_props(&self, bitreader: &mut Bitreader) {
-        let huffman = self.generate_huffman_tree().unwrap();
-        //self.print_tree(Some(&huffman), vec![]);
-        //println!("{:?}", huffman);
-        //panic!("p");
-        let mut fp = FieldPath {
-            done: false,
-            path: vec![0; 1000],
-            last: 0,
-        };
-        fp.path[0] = -1;
-        let mut cur_node = &huffman;
-        let mut next_node = &huffman;
-        // Read bits one at a time while traversing a tree (1 = go right, 0 = go left)
-        // until you reach a leaf node. When we reach a leaf node we do the operation
-        // that that leaf point to. if the operation was not "FieldPathEncodeFinish" then
-        // start again from top of tree.
-        let mut rounds = 0;
-        let mut paths = vec![];
-        while !fp.done {
-            rounds += 1;
-            //println!("{}", rounds);
-            match bitreader.read_boolie().unwrap() {
-                true => {
-                    next_node = &mut cur_node.right.as_ref().unwrap();
-                }
-                false => {
-                    next_node = &mut cur_node.left.as_ref().unwrap();
-                }
-            }
-            if next_node.is_leaf() {
-                // Reset back to top of tree
-                cur_node = &huffman;
-                let done = do_op(next_node.value, bitreader, &mut fp);
-                if done {
-                    break;
-                } else {
-                    //println!("{:?}", fp.path);
-                    paths.push(fp.clone());
-                    //panic!("d");
-                }
-            } else {
-                cur_node = next_node
-            }
-        }
-        //println!("{:?}", paths);
     }
 }
 pub fn do_op(opcode: i32, bitreader: &mut Bitreader, field_path: &mut FieldPath) -> bool {
@@ -228,6 +273,8 @@ impl HuffmanNode {
 }
 
 use std::cmp::Ordering;
+
+use super::sendtables::Serializer;
 
 impl Ord for HuffmanNode {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -417,7 +464,7 @@ fn PushNAndNonTopological(bitreader: &mut Bitreader, field_path: &mut FieldPath)
         }
     }
     let count = bitreader.read_u_bit_var().unwrap();
-    for i in 0..field_path.last {
+    for i in 0..count {
         field_path.last += 1;
         field_path.path[field_path.last] = bitreader.read_ubit_var_fp() as i32;
     }
@@ -469,7 +516,13 @@ fn NonTopoComplex(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     }
 }
 fn NonTopoPenultimatePlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    field_path.path[field_path.last - 1] += 1
+    // WARNING WARNING
+    // NOT SURE WHY this is 0 sometimes
+    // MAYBE BUG ELSEWHERE? works if skip when <= 0
+    //println!("{:?}", field_path.last);
+    if field_path.last > 0 {
+        field_path.path[field_path.last - 1] += 1
+    }
 }
 fn NonTopoComplexPack4Bits(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     for i in 0..field_path.last + 1 {
