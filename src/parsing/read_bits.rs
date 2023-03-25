@@ -58,6 +58,30 @@ impl<'a> Bitreader<'a> {
         Some(result)
     }
     #[inline(always)]
+    pub fn read_varint_u_64(&mut self) -> Option<u32> {
+        let mut result: u32 = 0;
+        let mut count: i32 = 0;
+        let mut b: u32;
+        let mut s = 0;
+        loop {
+            b = self.read_nbits(8)?;
+
+            if b < 0x80 {
+                if count > 9 || count == 9 && b > 1 {
+                    panic!("overflow!");
+                }
+                return Some(result | b << s);
+            }
+            result |= (b & 127) << s;
+            count += 1;
+            if b & 0x80 == 0 {
+                break;
+            }
+            s += 7;
+        }
+        Some(result)
+    }
+    #[inline(always)]
     pub fn read_boolie(&mut self) -> Option<bool> {
         self.reader.read_bit()
     }

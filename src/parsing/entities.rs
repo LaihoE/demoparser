@@ -47,6 +47,7 @@ impl Parser {
                 self.decode_paths(&mut bitreader, paths, &cls.serializer);
                 return;
             } else {
+                //return;
             }
         }
     }
@@ -56,9 +57,18 @@ impl Parser {
         paths: Vec<FieldPath>,
         serializer: &Serializer,
     ) {
+        println!("here");
         for path in paths {
-            let decoder = serializer.find_decoder(&path, 0);
-            println!("{:?}", decoder);
+            println!("{:?}", path);
+            match serializer.find_decoder(&path, 0) {
+                Some(decoder) => {
+                    println!("ENC {:?}", decoder.encoder);
+                    if decoder.var_name == "m_flAnimTime" {
+                        //bitreader.deco
+                    }
+                }
+                None => return,
+            }
         }
     }
     //pub fn new_field_type(&self) {}
