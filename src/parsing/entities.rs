@@ -29,6 +29,7 @@ impl Parser {
 
         for upd in 0..n_updates {
             entity_id += 1 + (bitreader.read_u_bit_var().unwrap() as i32);
+            println!("ENTID {}", entity_id);
             if bitreader.read_boolie().unwrap() {
                 bitreader.read_boolie();
             } else if bitreader.read_boolie().unwrap() {
@@ -45,8 +46,12 @@ impl Parser {
                 self.entities.insert(entity_id, entity);
                 let paths = self.parse_paths(&mut bitreader);
                 self.decode_paths(&mut bitreader, paths, &cls.serializer);
-                return;
             } else {
+                let ent = &self.entities[&entity_id];
+                let cls = &self.cls_by_id[&(ent.cls_id as i32)];
+
+                let paths = self.parse_paths(&mut bitreader);
+                self.decode_paths(&mut bitreader, paths, &cls.serializer);
                 //return;
             }
         }
@@ -57,14 +62,22 @@ impl Parser {
         paths: Vec<FieldPath>,
         serializer: &Serializer,
     ) {
-        println!("here");
+        let mut rounds = 0;
         for path in paths {
-            println!("{:?}", path);
             match serializer.find_decoder(&path, 0) {
                 Some(decoder) => {
-                    println!("ENC {:?}", decoder.encoder);
-                    if decoder.var_name == "m_flAnimTime" {
-                        //bitreader.deco
+                    rounds += 1;
+
+                    let res = bitreader.read_varint();
+
+                    println!("{:?} {:?} {:?}", decoder.var_name, decoder.var_type, res);
+
+                    //let res = bitreader.decode_float(&decoder);
+                    //let is_ptr = decoder.is_ptr();
+                    //println!("ISPTR {}", is_ptr);
+
+                    if rounds == 3 {
+                        //panic!("x");
                     }
                 }
                 None => return,
@@ -162,9 +175,12 @@ impl Parser {
         let huffman = self.generate_huffman_tree().unwrap();
         let mut fp = FieldPath {
             done: false,
-            path: vec![0; 12],
+            path: vec![0; 7],
             last: 0,
         };
+
+        println!("***********");
+        self.print_tree(Some(&huffman), vec![]);
         fp.path[0] = -1;
         let mut cur_node = &huffman;
         let mut next_node = &huffman;
@@ -172,11 +188,10 @@ impl Parser {
         // until you reach a leaf node. When we reach a leaf node we do the operation
         // that that leaf point to. if the operation was not "FieldPathEncodeFinish" then
         // start again from top of tree.
-        let mut rounds = 0;
         let mut paths = vec![];
         while !fp.done {
-            rounds += 1;
-            match bitreader.read_boolie().unwrap() {
+            let b = bitreader.read_boolie().unwrap();
+            match b {
                 true => {
                     next_node = &mut cur_node.right.as_ref().unwrap();
                 }
@@ -184,6 +199,14 @@ impl Parser {
                     next_node = &mut cur_node.left.as_ref().unwrap();
                 }
             }
+            println!(
+                "{} {} {} LEFT: {} RIGHT: {}",
+                b,
+                cur_node.value,
+                next_node.value,
+                cur_node.right.as_ref().unwrap().value,
+                cur_node.left.as_ref().unwrap().value
+            );
             if next_node.is_leaf() {
                 // Reset back to top of tree
                 cur_node = &huffman;
@@ -191,6 +214,7 @@ impl Parser {
                 if done {
                     break;
                 } else {
+                    println!("{:?}", fp);
                     paths.push(fp.clone());
                 }
             } else {
@@ -204,7 +228,13 @@ impl Parser {
             None => return,
             Some(t) => {
                 if t.is_leaf() {
-                    //println!("{} {} {:?}", t.value, t.weight, prefix)
+                    println!(" ");
+
+                    print!("{} {} ", t.value, t.weight);
+                    for i in prefix {
+                        print!("{}", i);
+                    }
+                    //println!(" ")
                 } else {
                     let mut l = prefix.clone();
                     let mut r = prefix.clone();
@@ -218,7 +248,7 @@ impl Parser {
     }
 }
 pub fn do_op(opcode: i32, bitreader: &mut Bitreader, field_path: &mut FieldPath) -> bool {
-    //println!("OP {}", opcode);
+    println!("OP {}", opcode);
     match opcode {
         0 => PlusOne(bitreader, field_path),
         1 => PlusTwo(bitreader, field_path),
@@ -268,7 +298,7 @@ pub fn do_op(opcode: i32, bitreader: &mut Bitreader, field_path: &mut FieldPath)
     false
 }
 
-#[derive(PartialOrd, Debug)]
+#[derive(Eq, Debug)]
 pub struct HuffmanNode {
     pub weight: i32,
     pub value: i32,
@@ -282,16 +312,28 @@ impl HuffmanNode {
     }
 }
 
-use std::cmp::Ordering;
-
 use super::sendtables::Serializer;
+use std::cmp::Ordering;
 
 impl Ord for HuffmanNode {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.weight.cmp(&other.weight)
+        if self.weight == other.weight {
+            if self.value >= other.value {
+                Ordering::Less
+            } else {
+                Ordering::Greater
+            }
+        } else {
+            self.weight.cmp(&other.weight)
+        }
     }
 }
-impl Eq for HuffmanNode {}
+
+impl PartialOrd for HuffmanNode {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 impl PartialEq for HuffmanNode {
     fn eq(&self, other: &Self) -> bool {
@@ -345,7 +387,9 @@ fn PushOneLeftDeltaOneRightZero(bitreader: &mut Bitreader, field_path: &mut Fiel
 fn PushOneLeftDeltaOneRightNonZero(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     field_path.path[field_path.last] += 1;
     field_path.last += 1;
-    field_path.path[field_path.last] = bitreader.read_ubit_var_fp() as i32;
+    let x = bitreader.read_ubit_var_fp() as i32;
+    println!("SSSSSSSSSSs {}", x);
+    field_path.path[field_path.last] = x;
 }
 fn PushOneLeftDeltaNRightZero(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     field_path.path[field_path.last] += bitreader.read_ubit_var_fp() as i32;
@@ -529,7 +573,7 @@ fn NonTopoPenultimatePlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPa
     // WARNING WARNING
     // NOT SURE WHY this is 0 sometimes
     // MAYBE BUG ELSEWHERE? works if skip when <= 0
-    //println!("{:?}", field_path.last);
+    println!("WARN {:?}", field_path.last);
     if field_path.last > 0 {
         field_path.path[field_path.last - 1] += 1
     }

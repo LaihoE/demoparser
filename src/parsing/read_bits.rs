@@ -105,6 +105,32 @@ impl<'a> Bitreader<'a> {
         }
         return self.read_nbits(31).unwrap();
     }
+    #[inline(always)]
+    pub fn read_bit_coord(&mut self) -> Option<f32> {
+        let mut int_val = 0;
+        let mut frac_val = 0;
+
+        let i2 = self.reader.read_bit().unwrap();
+        let f2 = self.reader.read_bit().unwrap();
+
+        if !i2 && !f2 {
+            return Some(0.0);
+        }
+        let sign = self.reader.read_bit().unwrap();
+        if i2 {
+            int_val = self.read_nbits(14)? + 1;
+        }
+        if f2 {
+            frac_val = self.read_nbits(5)?;
+        }
+        let resol: f64 = 1.0 / (1 << 5) as f64;
+        let result: f32 = (int_val as f64 + (frac_val as f64 * resol) as f64) as f32;
+        if sign {
+            Some(-result)
+        } else {
+            Some(result)
+        }
+    }
 }
 
 static MASKS: [u32; 32 + 1] = [

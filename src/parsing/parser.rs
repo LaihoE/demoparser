@@ -24,6 +24,10 @@ pub struct Parser {
     pub cls_bits: u32,
     pub entities: HashMap<i32, Entity>,
 }
+pub struct PacketMsg {
+    msg_type: i32,
+    data: Vec<u8>,
+}
 
 impl Parser {
     pub fn new(path: &str) -> Self {
@@ -47,7 +51,7 @@ impl Parser {
             let cmd = self.read_varint();
             let tick = self.read_varint();
             let size = self.read_varint();
-            //println!("Tick: {}", tick);
+
             // Think my demo is shit
             if tick == 1000 {
                 break;
@@ -55,6 +59,8 @@ impl Parser {
 
             let msg_type = if cmd > 64 { cmd as u32 ^ 64 } else { cmd };
             let is_compressed = (cmd & 64) == 64;
+
+            println!("CMD {:?}", msg_type);
 
             let bytes = match is_compressed {
                 true => {
@@ -103,7 +109,6 @@ impl Parser {
                         Message::parse_from_bytes(&bytes).unwrap();
                     self.parse_server_info(server_info);
                 }
-
                 207 => {
                     let ge: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
                     //self.parse_event(ge);

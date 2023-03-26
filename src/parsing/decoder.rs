@@ -11,10 +11,11 @@ impl<'a> Bitreader<'a> {
         };
         vec![]
     }
-    pub fn decode_float(&mut self, field: Field, bitreader: &mut Bitreader) -> f32 {
-        match field.encoder.as_str() {
+    pub fn decode_float(&mut self, field: &Field) -> f32 {
+        //println!("{:?}", field);
+        match field.var_name.as_str() {
             "coord" => return self.decode_float_coord(),
-            "simtime" => return self.decode_simul_time(),
+            "m_flSimulationTime" => return self.decode_simul_time(),
             "runetime" => return self.decode_run_time(),
             _ => {}
         }
@@ -25,16 +26,17 @@ impl<'a> Bitreader<'a> {
             Some(field.low_value),
             Some(field.high_value),
         );
-        qf.decode(bitreader)
+        qf.decode(self)
     }
     pub fn decode_float_coord(&mut self) -> f32 {
-        0.0
+        self.read_bit_coord().unwrap()
     }
     pub fn decode_simul_time(&mut self) -> f32 {
-        0.0
+        self.read_varint().unwrap() as f32 * (1.0 / 30.0)
     }
     pub fn decode_run_time(&mut self) -> f32 {
-        0.0
+        // SUSSSSSSSSSS
+        self.read_nbits(4).unwrap() as f32
     }
 
     pub fn decode_normal(&mut self) -> f64 {
