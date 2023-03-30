@@ -23,6 +23,7 @@ pub struct Parser {
     pub cls_by_name: HashMap<String, Class>,
     pub cls_bits: u32,
     pub entities: HashMap<i32, Entity>,
+    pub tick: i32,
 }
 pub struct PacketMsg {
     msg_type: i32,
@@ -41,6 +42,7 @@ impl Parser {
             cls_by_name: HashMap::default(),
             entities: HashMap::default(),
             cls_bits: 0,
+            tick: -99999,
         }
     }
     pub fn start(&mut self) {
@@ -52,15 +54,15 @@ impl Parser {
             let tick = self.read_varint();
             let size = self.read_varint();
 
+            //println!("TICK {:?}", tick);
             // Think my demo is shit
-            if tick == 1000 {
+            self.tick = tick as i32;
+            if tick == 557 {
                 break;
             }
 
             let msg_type = if cmd > 64 { cmd as u32 ^ 64 } else { cmd };
             let is_compressed = (cmd & 64) == 64;
-
-            println!("CMD {:?}", msg_type);
 
             let bytes = match is_compressed {
                 true => {
@@ -69,6 +71,8 @@ impl Parser {
                 }
                 false => self.read_n_bytes(size).to_vec(),
             };
+
+            //println!("MSGT {:?}", msg_type);
 
             match msg_type {
                 1 => self.parse_header(&bytes),
@@ -98,12 +102,15 @@ impl Parser {
             let size = bitreader.read_varint().unwrap();
             let bytes = bitreader.read_n_bytes(size as usize);
 
+            println!("{}", msg_type);
+
             match msg_type {
                 55 => {
                     let packet_ents: CSVCMsg_PacketEntities =
                         Message::parse_from_bytes(&bytes).unwrap();
                     self.parse_packet_ents(packet_ents);
                 }
+
                 40 => {
                     let server_info: CSVCMsg_ServerInfo =
                         Message::parse_from_bytes(&bytes).unwrap();
@@ -111,7 +118,7 @@ impl Parser {
                 }
                 207 => {
                     let ge: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
-                    //self.parse_event(ge);
+                    self.parse_event(ge);
                 }
                 205 => {
                     let ge_list_msg: CSVCMsg_GameEventList =

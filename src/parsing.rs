@@ -9,3 +9,4 @@ pub mod q_float;
 pub mod read_bits;
 pub mod read_bytes;
 pub mod sendtables;
+pub mod variants;

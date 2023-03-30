@@ -32,11 +32,12 @@ impl<'a> Bitreader<'a> {
     pub fn read_varint32(&mut self) -> Option<i32> {
         // IDK BOUT THIS FUNC
         let x = self.read_varint().unwrap() as i32;
+
         let mut y = x >> 1;
-        if y & 1 != 0 {
-            y ^= y;
+        if x & 1 != 0 {
+            y = !y;
         }
-        Some(y)
+        Some(y as i32)
     }
     #[inline(always)]
     pub fn read_varint(&mut self) -> Option<u32> {
@@ -58,13 +59,13 @@ impl<'a> Bitreader<'a> {
         Some(result)
     }
     #[inline(always)]
-    pub fn read_varint_u_64(&mut self) -> Option<u32> {
-        let mut result: u32 = 0;
+    pub fn read_varint_u_64(&mut self) -> Option<u64> {
+        let mut result: u64 = 0;
         let mut count: i32 = 0;
-        let mut b: u32;
+        let mut b: u64;
         let mut s = 0;
         loop {
-            b = self.read_nbits(8)?;
+            b = self.read_nbits(8)? as u64;
 
             if b < 0x80 {
                 if count > 9 || count == 9 && b > 1 {

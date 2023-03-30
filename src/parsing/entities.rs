@@ -1,8 +1,9 @@
 use crate::parsing::read_bits;
 use crate::parsing::read_bits::Bitreader;
 use crate::parsing::read_bytes;
-
+use crate::parsing::variants::PropData;
 use crate::Parser;
+use bitter::BitReader;
 use bitter::LittleEndianReader;
 use csgoproto::demo::CDemoPacket;
 use csgoproto::demo::EDemoCommands;
@@ -24,66 +25,69 @@ impl Parser {
     pub fn parse_packet_ents(&mut self, packet_ents: CSVCMsg_PacketEntities) {
         let n_updates = packet_ents.updated_entries();
         let entity_data = packet_ents.entity_data.unwrap();
-        let mut bitreader = Bitreader::new(&entity_data);
-        let mut entity_id: i32 = -1;
+        for skip in 0..1 {
+            //print!("{}", bitreader.read_boolie().unwrap() as i32);
+            let mut bitreader = Bitreader::new(&entity_data);
+            let mut entity_id: i32 = -1;
+            //println!("BITS: {:?}", bitreader.reader.bits_remaining());
+            for upd in 0..n_updates {
+                entity_id += 1 + (bitreader.read_u_bit_var().unwrap() as i32);
+                //println!("ENTID {}", entity_id);
+                if bitreader.reader.bits_remaining().unwrap() < 100 {
+                    break;
+                }
+                if bitreader.read_boolie().unwrap() {
+                    bitreader.read_boolie();
+                } else if bitreader.read_boolie().unwrap() {
+                    let cls_id = bitreader.read_nbits(self.cls_bits).unwrap();
+                    //println!("CLSB {}", self.cls_bits);
+                    let serial = bitreader.read_nbits(NSERIALBITS).unwrap();
+                    let unknown = bitreader.read_varint();
 
-        for upd in 0..n_updates {
-            entity_id += 1 + (bitreader.read_u_bit_var().unwrap() as i32);
-            println!("ENTID {}", entity_id);
-            if bitreader.read_boolie().unwrap() {
-                bitreader.read_boolie();
-            } else if bitreader.read_boolie().unwrap() {
-                let cls_id = bitreader.read_nbits(self.cls_bits).unwrap();
-                let serial = bitreader.read_nbits(NSERIALBITS).unwrap();
-                let unknown = bitreader.read_varint();
+                    let entity = Entity {
+                        entity_id: entity_id,
+                        cls_id: cls_id,
+                    };
 
-                let entity = Entity {
-                    entity_id: entity_id,
-                    cls_id: cls_id,
-                };
+                    if !self.cls_by_id.contains_key(&(cls_id as i32)) {
+                        break;
+                    }
 
-                let cls = &self.cls_by_id[&(cls_id as i32)];
-                self.entities.insert(entity_id, entity);
-                let paths = self.parse_paths(&mut bitreader);
-                self.decode_paths(&mut bitreader, paths, &cls.serializer);
-            } else {
-                let ent = &self.entities[&entity_id];
-                let cls = &self.cls_by_id[&(ent.cls_id as i32)];
-
-                let paths = self.parse_paths(&mut bitreader);
-                self.decode_paths(&mut bitreader, paths, &cls.serializer);
-                //return;
+                    let cls = &self.cls_by_id[&(cls_id as i32)];
+                    self.entities.insert(entity_id, entity);
+                    let paths = self.parse_paths(&mut bitreader);
+                    self.decode_paths(&mut bitreader, paths, &cls.serializer, skip);
+                } else {
+                    if !self.entities.contains_key(&entity_id) {
+                        break;
+                    }
+                    let ent = &self.entities[&entity_id];
+                    let cls = &self.cls_by_id[&(ent.cls_id as i32)];
+                    //println!("{}", cls.name);
+                    let paths = self.parse_paths(&mut bitreader);
+                    self.decode_paths(&mut bitreader, paths, &cls.serializer, skip);
+                    //return;
+                }
             }
         }
+        //println!("done");
+        //panic!("done");
     }
     pub fn decode_paths(
         &self,
         bitreader: &mut Bitreader,
         paths: Vec<FieldPath>,
         serializer: &Serializer,
+        skip: i32,
     ) {
-        let mut rounds = 0;
         for path in paths {
-            match serializer.find_decoder(&path, 0) {
-                Some(decoder) => {
-                    rounds += 1;
-
-                    let res = bitreader.read_varint();
-
-                    println!("{:?} {:?} {:?}", decoder.var_name, decoder.var_type, res);
-
-                    //let res = bitreader.decode_float(&decoder);
-                    //let is_ptr = decoder.is_ptr();
-                    //println!("ISPTR {}", is_ptr);
-
-                    if rounds == 3 {
-                        //panic!("x");
-                    }
-                }
-                None => return,
-            }
+            let decoder = serializer.find_decoder(&path, 0);
+            bitreader.decode(decoder);
+            println!("{:?}", decoder);
+            panic!("hre");
         }
     }
+
     //pub fn new_field_type(&self) {}
 
     pub fn generate_huffman_tree(&self) -> Option<HuffmanNode> {
@@ -179,8 +183,7 @@ impl Parser {
             last: 0,
         };
 
-        println!("***********");
-        self.print_tree(Some(&huffman), vec![]);
+        //self.print_tree(Some(&huffman), vec![]);
         fp.path[0] = -1;
         let mut cur_node = &huffman;
         let mut next_node = &huffman;
@@ -199,28 +202,22 @@ impl Parser {
                     next_node = &mut cur_node.left.as_ref().unwrap();
                 }
             }
-            println!(
-                "{} {} {} LEFT: {} RIGHT: {}",
-                b,
-                cur_node.value,
-                next_node.value,
-                cur_node.right.as_ref().unwrap().value,
-                cur_node.left.as_ref().unwrap().value
-            );
             if next_node.is_leaf() {
                 // Reset back to top of tree
                 cur_node = &huffman;
+                //println!("NODE {}", next_node.value);
+
                 let done = do_op(next_node.value, bitreader, &mut fp);
                 if done {
                     break;
                 } else {
-                    println!("{:?}", fp);
                     paths.push(fp.clone());
                 }
             } else {
                 cur_node = next_node
             }
         }
+        //println!("{:?}", paths);
         paths
     }
     pub fn print_tree(&self, tree: Option<&HuffmanNode>, prefix: Vec<i32>) {
@@ -229,7 +226,6 @@ impl Parser {
             Some(t) => {
                 if t.is_leaf() {
                     println!(" ");
-
                     print!("{} {} ", t.value, t.weight);
                     for i in prefix {
                         print!("{}", i);
@@ -248,7 +244,7 @@ impl Parser {
     }
 }
 pub fn do_op(opcode: i32, bitreader: &mut Bitreader, field_path: &mut FieldPath) -> bool {
-    println!("OP {}", opcode);
+    //println!("OP {}", opcode);
     match opcode {
         0 => PlusOne(bitreader, field_path),
         1 => PlusTwo(bitreader, field_path),
@@ -387,9 +383,7 @@ fn PushOneLeftDeltaOneRightZero(bitreader: &mut Bitreader, field_path: &mut Fiel
 fn PushOneLeftDeltaOneRightNonZero(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     field_path.path[field_path.last] += 1;
     field_path.last += 1;
-    let x = bitreader.read_ubit_var_fp() as i32;
-    println!("SSSSSSSSSSs {}", x);
-    field_path.path[field_path.last] = x;
+    field_path.path[field_path.last] = bitreader.read_ubit_var_fp() as i32;
 }
 fn PushOneLeftDeltaNRightZero(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     field_path.path[field_path.last] += bitreader.read_ubit_var_fp() as i32;
