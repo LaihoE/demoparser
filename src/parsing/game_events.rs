@@ -37,7 +37,7 @@ impl Parser {
         };
         let event_desc = &ge_list[&event.eventid()];
 
-        println!("{}", event_desc.name());
+        //println!("{}", event_desc.name());
 
         for i in 0..event.keys.len() {
             let ge = &event.keys[i];

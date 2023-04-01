@@ -11,4 +11,5 @@ pub enum PropData {
     VecXYZ([f32; 3]),
     Vec(Vec<i32>),
     FloatVec(Vec<f64>),
+    FloatVec32(Vec<f32>),
 }

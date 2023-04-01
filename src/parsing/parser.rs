@@ -54,12 +54,12 @@ impl Parser {
             let tick = self.read_varint();
             let size = self.read_varint();
 
-            //println!("TICK {:?}", tick);
+            println!(
+                "TICK {:?} ***********************************************************",
+                tick
+            );
             // Think my demo is shit
             self.tick = tick as i32;
-            if tick == 557 {
-                break;
-            }
 
             let msg_type = if cmd > 64 { cmd as u32 ^ 64 } else { cmd };
             let is_compressed = (cmd & 64) == 64;
@@ -102,15 +102,12 @@ impl Parser {
             let size = bitreader.read_varint().unwrap();
             let bytes = bitreader.read_n_bytes(size as usize);
 
-            println!("{}", msg_type);
-
             match msg_type {
                 55 => {
                     let packet_ents: CSVCMsg_PacketEntities =
                         Message::parse_from_bytes(&bytes).unwrap();
                     self.parse_packet_ents(packet_ents);
                 }
-
                 40 => {
                     let server_info: CSVCMsg_ServerInfo =
                         Message::parse_from_bytes(&bytes).unwrap();

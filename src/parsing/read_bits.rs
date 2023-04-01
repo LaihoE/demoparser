@@ -62,18 +62,18 @@ impl<'a> Bitreader<'a> {
     pub fn read_varint_u_64(&mut self) -> Option<u64> {
         let mut result: u64 = 0;
         let mut count: i32 = 0;
-        let mut b: u64;
+        let mut b: u32;
         let mut s = 0;
         loop {
-            b = self.read_nbits(8)? as u64;
-
+            b = self.read_nbits(8)?;
+            println!("{:?}", b);
             if b < 0x80 {
                 if count > 9 || count == 9 && b > 1 {
                     panic!("overflow!");
                 }
-                return Some(result | b << s);
+                return Some(result | (b as u64) << s);
             }
-            result |= (b & 127) << s;
+            result |= ((b as u64) & 127) << s;
             count += 1;
             if b & 0x80 == 0 {
                 break;

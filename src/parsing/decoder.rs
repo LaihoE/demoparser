@@ -26,6 +26,7 @@ use crate::parsing::q_float::QuantalizedFloat;
 //"CUtlString":           stringDecoder,
 //"CUtlStringToken":      unsignedDecoder,
 //"CUtlSymbolLarge":      stringDecoder,
+
 use crate::parsing::sendtables::Decoder::*;
 use crate::parsing::sendtables::FieldModel::*;
 
@@ -38,35 +39,65 @@ impl<'a> Bitreader<'a> {
             CentityHandleDecoder => PropData::U32(self.read_varint().unwrap()),
             ChangleDecoder => PropData::U32(self.read_varint().unwrap()),
             ComponentDecoder => PropData::Bool(self.read_boolie().unwrap()),
-            //CstrongHandleDecoder => self.read,
             FloatCoordDecoder => PropData::F32(self.read_bit_coord().unwrap()),
-            FloatDecoder => PropData::F32(self.decode_float(field).unwrap()),
-            FloatRuneTimeDecoder => PropData::F32(self.decode_float(field).unwrap()),
-            FloatSimulationTimeDecoder => PropData::F32(self.decode_float(field).unwrap()),
-            NoscaleDecoder => PropData::F32(self.read_nbits(32).unwrap() as f32),
+            FloatDecoder => PropData::F32(self.decode_float(field, field.bitcount).unwrap()),
+            FloatRuneTimeDecoder => {
+                PropData::F32(self.decode_float(field, field.bitcount).unwrap())
+            }
+            FloatSimulationTimeDecoder => PropData::F32(self.decode_simul_time()),
+            NoscaleDecoder => PropData::F32(f32::from_le_bytes(
+                self.read_nbits(32).unwrap().to_le_bytes(),
+            )),
             UnsignedDecoder => PropData::U32(self.read_varint().unwrap()),
             StringDecoder => PropData::String(self.read_string().unwrap()),
-            Qangle3Decoder => PropData::F32(self.decode_float(field).unwrap()),
-            QangleDecoder => PropData::F32(self.decode_float(field).unwrap()),
-            QanglePitchYawDecoder => PropData::F32(self.decode_float(field).unwrap()),
-            QangleVarDecoder => PropData::F32(self.decode_float(field).unwrap()),
-            QuantalizedFloatDecoder => PropData::F32(self.decode_float(field).unwrap()),
+            Qangle3Decoder(bits) => PropData::FloatVec32(self.decode_qangle_all_3(*bits)),
+            QangleDecoder => PropData::F32(self.decode_float(field, field.bitcount).unwrap()),
+            QanglePitchYawDecoder(bits) => {
+                PropData::FloatVec32(self.decode_qangle_pitch_yaw(*bits))
+            }
+            QangleVarDecoder(bits) => PropData::FloatVec32(self.decode_qangle_variant(*bits)),
+            QuantalizedFloatDecoder(qf) => PropData::F32(qf.clone().decode(self)),
             Vector2DDecoder => PropData::FloatVec(self.decode_vector(2, field, decoder)),
             Vector4DDecoder => PropData::FloatVec(self.decode_vector(4, field, decoder)),
             VectorDecoder => PropData::FloatVec(self.decode_vector(3, field, decoder)),
-            BaseDecoder => PropData::U32(self.read_varint().unwrap()),
             VectorNormalDecoder => PropData::FloatVec(self.decode_normal_vec()),
             Unsigned64Decoder => PropData::U64(self.decode_fixed64(field).unwrap()),
             CstrongHandleDecoder => PropData::U64(self.decode_fixed64(field).unwrap()),
             Fixed64Decoder => PropData::U64(self.decode_fixed64(field).unwrap()),
+            NO => PropData::U32(self.read_varint().unwrap()),
+            VectorSpecialDecoder(float_type) => {
+                PropData::FloatVec32(self.decode_vector_special(float_type.clone().unwrap()))
+            }
         }
     }
+    pub fn decode_vector_special(&mut self, float_type: Box<Decoder>) -> Vec<f32> {
+        let mut v = vec![];
+        println!("DECODING :{:?}", float_type);
+        let float_type = *float_type;
+
+        match float_type {
+            FloatCoordDecoder => {
+                for _ in 0..3 {
+                    v.push(self.decode_float_coord())
+                }
+                return v;
+            }
+            _ => {
+                for _ in 0..3 {
+                    v.push(self.decode_noscale().unwrap())
+                }
+                return v;
+            }
+        }
+    }
+
     pub fn decode_uint64(&mut self) -> Option<u64> {
         Some(u64::from_le_bytes(self.read_n_bytes(8).try_into().unwrap()))
     }
+
     pub fn decode_fixed64(&mut self, field: &Field) -> Option<u64> {
         match field.encoder.as_str() {
-            "fixed64" => self.decode_fixed64(field),
+            "fixed64" => self.decode_uint64(),
             _ => self.read_varint_u_64(),
         }
     }
@@ -86,7 +117,9 @@ impl<'a> Bitreader<'a> {
     }
 
     pub fn decode_noscale(&mut self) -> Option<f32> {
-        Some(self.read_nbits(32).unwrap() as f32)
+        Some(f32::from_le_bytes(
+            self.read_nbits(32).unwrap().to_le_bytes(),
+        ))
     }
 
     #[inline(always)]
@@ -107,18 +140,27 @@ impl<'a> Bitreader<'a> {
         self.read_boolie().unwrap()
     }
     pub fn decode_vector(&mut self, vec_len: i32, field: &Field, decoder: &Decoder) -> Vec<f64> {
+        if field.var_name == "origin" || field.var_name == "dirPrimary" {
+            let mut v = vec![];
+            for _ in 0..3 {
+                v.push(self.decode_float_coord() as f64);
+            }
+            return v;
+        }
+
         if vec_len == 3 && field.encoder == "normal" {
             return self.decode_normal_vec();
         };
+
         let mut v = vec![];
-        for _ in 0..vec_len {
-            v.push(self.decode(decoder, &field))
+        for idx in 0..vec_len {
+            //v.push(self.decode_float(field, 0).unwrap() as f64)
+            v.push(self.decode_noscale().unwrap() as f64);
         }
-        vec![]
+        v
     }
 
-    pub fn decode_float(&mut self, field: &Field) -> Option<f32> {
-        //println!("{:?}", field);
+    pub fn decode_float(&mut self, field: &Field, bits: i32) -> Option<f32> {
         match field.var_name.as_str() {
             "m_flAnimTime" => return Some(self.decode_simul_time()),
             "coord" => return Some(self.decode_float_coord()),
@@ -129,18 +171,21 @@ impl<'a> Bitreader<'a> {
         //let x = self.read_u_bit_var();
         //return Some(x.unwrap() as f32);
 
-        if field.bitcount <= 0 || field.bitcount >= 32 {
+        if field.bitcount >= 32 {
             return Some(self.decode_noscale().unwrap());
         }
-
+        Some(69.0)
+        // println!("QQ {:?} {}", bits, field.bitcount);
         // TODO NOSCALERDECODER
+        /*
         let mut qf = QuantalizedFloat::new(
-            field.bitcount.try_into().unwrap(),
+            bits.try_into().unwrap(),
             Some(field.encode_flags),
             Some(field.low_value),
             Some(field.high_value),
         );
         Some(qf.decode(self))
+        */
     }
     pub fn decode_float_coord(&mut self) -> f32 {
         self.read_bit_coord().unwrap()
@@ -186,5 +231,44 @@ impl<'a> Bitreader<'a> {
             v[2] = -v[2];
         }
         v
+    }
+    pub fn decode_qangle_pitch_yaw(&mut self, bits: i32) -> Vec<f32> {
+        let mut v = vec![];
+        v.push(self.read_angle(bits.try_into().unwrap()));
+        v.push(self.read_angle(bits.try_into().unwrap()));
+        v.push(0.0);
+        v
+    }
+    pub fn decode_qangle_all_3(&mut self, bits: i32) -> Vec<f32> {
+        let mut v = vec![];
+        v.push(self.read_angle(bits.try_into().unwrap()));
+        v.push(self.read_angle(bits.try_into().unwrap()));
+        v.push(self.read_angle(bits.try_into().unwrap()));
+        v
+    }
+    pub fn decode_qangle_variant(&mut self, bits: i32) -> Vec<f32> {
+        let mut v = vec![];
+        let has_x = self.read_boolie().unwrap();
+        let has_y = self.read_boolie().unwrap();
+        let has_z = self.read_boolie().unwrap();
+        if has_x {
+            v.push(self.read_bit_coord().unwrap());
+        }
+        if has_y {
+            v.push(self.read_bit_coord().unwrap());
+        }
+        if has_z {
+            v.push(self.read_bit_coord().unwrap());
+        }
+        v
+    }
+    #[allow(arithmetic_overflow)]
+    pub fn read_angle(&mut self, n: usize) -> f32 {
+        let x = f32::from_le_bytes(
+            self.read_nbits(n.try_into().unwrap())
+                .unwrap()
+                .to_le_bytes(),
+        );
+        x * 360.0 / ((1 << n) as f32)
     }
 }

@@ -19,3 +19,6 @@ phf_macros = "0.11.1"
 [dependencies.csgoproto]
 path = "src/csgoproto"
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
+
+[profile.dev]
+overflow-checks = false

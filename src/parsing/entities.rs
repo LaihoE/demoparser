@@ -32,10 +32,9 @@ impl Parser {
             //println!("BITS: {:?}", bitreader.reader.bits_remaining());
             for upd in 0..n_updates {
                 entity_id += 1 + (bitreader.read_u_bit_var().unwrap() as i32);
-                //println!("ENTID {}", entity_id);
-                if bitreader.reader.bits_remaining().unwrap() < 100 {
-                    break;
-                }
+
+                println!("ENTID: {}", entity_id);
+
                 if bitreader.read_boolie().unwrap() {
                     bitreader.read_boolie();
                 } else if bitreader.read_boolie().unwrap() {
@@ -50,19 +49,28 @@ impl Parser {
                     };
 
                     if !self.cls_by_id.contains_key(&(cls_id as i32)) {
-                        break;
+                        //break;
                     }
 
                     let cls = &self.cls_by_id[&(cls_id as i32)];
+
+                    let c = &self.cls_by_id[&86];
+                    for i in &c.serializer.fields {
+                        //println!(">> {} {}", i.var_name, i.var_type);
+                    }
+                    //let c = self.cls_b("CBodyComponent");
+
                     self.entities.insert(entity_id, entity);
                     let paths = self.parse_paths(&mut bitreader);
                     self.decode_paths(&mut bitreader, paths, &cls.serializer, skip);
                 } else {
                     if !self.entities.contains_key(&entity_id) {
-                        break;
+                        //break;
                     }
                     let ent = &self.entities[&entity_id];
                     let cls = &self.cls_by_id[&(ent.cls_id as i32)];
+                    //println!("CLSID{:?}", cls.class_id);
+
                     //println!("{}", cls.name);
                     let paths = self.parse_paths(&mut bitreader);
                     self.decode_paths(&mut bitreader, paths, &cls.serializer, skip);
@@ -81,14 +89,25 @@ impl Parser {
         skip: i32,
     ) {
         for path in paths {
-            let decoder = serializer.find_decoder(&path, 0);
-            bitreader.decode(decoder);
-            println!("{:?}", decoder);
-            panic!("hre");
+            println!("{:?}", path.path);
+            let (field, decoder) = serializer.find_decoder(&path, 0);
+            let result = bitreader.decode(&decoder, &field);
+            /*
+            match &result {
+                PropData::FloatVec32(f) => {
+                    if f[0] == 177.46875 {
+                        println!("a")
+                    }
+                }
+                _ => {}
+            }
+            */
+            println!(
+                "{:?} {:?} {:?} {:?} {:?}",
+                decoder, result, field.var_name, field.var_type, field.decoder
+            );
         }
     }
-
-    //pub fn new_field_type(&self) {}
 
     pub fn generate_huffman_tree(&self) -> Option<HuffmanNode> {
         /*
@@ -205,8 +224,8 @@ impl Parser {
             if next_node.is_leaf() {
                 // Reset back to top of tree
                 cur_node = &huffman;
-                //println!("NODE {}", next_node.value);
-
+                println!("NODE {} {:?}", next_node.value, fp.path);
+                //println!("{:?}", );
                 let done = do_op(next_node.value, bitreader, &mut fp);
                 if done {
                     break;
@@ -365,6 +384,7 @@ fn PlusFour(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     field_path.path[field_path.last] += 4;
 }
 fn PlusN(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
+    println!("Q {:?}", field_path.path);
     field_path.path[field_path.last] += bitreader.read_ubit_var_fp() as i32 + 5;
 }
 fn PushOneLeftDeltaZeroRightZero(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
@@ -506,7 +526,7 @@ fn PushN(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     }
 }
 fn PushNAndNonTopological(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    for i in 0..field_path.last {
+    for i in 0..field_path.last + 1 {
         if bitreader.read_boolie().unwrap() {
             field_path.path[i] += bitreader.read_varint32().unwrap() + 1;
         }
@@ -522,6 +542,7 @@ fn PopOnePlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     field_path.path[field_path.last] += 1
 }
 fn PopOnePlusN(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
+    field_path.pop_special(1);
     field_path.path[field_path.last] += bitreader.read_ubit_var_fp() as i32 + 1;
 }
 fn PopAllButOnePlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
@@ -567,10 +588,10 @@ fn NonTopoPenultimatePlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPa
     // WARNING WARNING
     // NOT SURE WHY this is 0 sometimes
     // MAYBE BUG ELSEWHERE? works if skip when <= 0
-    println!("WARN {:?}", field_path.last);
-    if field_path.last > 0 {
-        field_path.path[field_path.last - 1] += 1
-    }
+    //println!("WARN {:?}", field_path.last);
+    //if field_path.last > 0 {
+    field_path.path[field_path.last - 1] += 1
+    //}
 }
 fn NonTopoComplexPack4Bits(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     for i in 0..field_path.last + 1 {
