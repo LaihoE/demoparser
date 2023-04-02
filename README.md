@@ -3,6 +3,9 @@
 
 Work in progress so expect some bugs here and there!
 
+## Install
+comming soon!
+
 ### Useage:
 Game events
 ```python
