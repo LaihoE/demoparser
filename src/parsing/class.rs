@@ -1,7 +1,8 @@
 use csgoproto::demo::CDemoClassInfo;
 
 use super::sendtables::Serializer;
-use crate::Parser;
+use crate::parsing::parser::Parser;
+
 use protobuf::Message;
 
 #[derive(Debug, Clone)]
@@ -13,6 +14,9 @@ pub struct Class {
 
 impl Parser {
     pub fn parse_class_info(&mut self, bytes: &Vec<u8>) {
+        if !self.parse_entities {
+            return;
+        }
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
 
         for class_t in msg.classes {

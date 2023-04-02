@@ -103,7 +103,6 @@ impl QuantalizedFloat {
         if self.flags & qff_encode_zero != 0 && bitreader.read_boolie().unwrap() {
             return 0.0;
         }
-        println!("PASSED {:?}", self.bit_count);
         if self.bit_count == 11 {
             self.bit_count = 10;
         }
@@ -118,8 +117,6 @@ impl QuantalizedFloat {
         low_value: Option<f32>,
         high_value: Option<f32>,
     ) -> Self {
-        println!("qBITCOUNT: {}", bitcount);
-
         let mut qf = QuantalizedFloat {
             no_scale: false,
             bit_count: 0,
@@ -134,7 +131,6 @@ impl QuantalizedFloat {
         if bitcount == 0 || bitcount >= 32 {
             qf.no_scale = true;
             qf.bit_count = 32;
-            println!("early");
             return qf;
         } else {
             qf.no_scale = false;
@@ -180,7 +176,6 @@ impl QuantalizedFloat {
             let delta_log2 = delta.log2().ceil();
             let range_2: u32 = 1 << delta_log2 as u32;
             let mut bit_count = qf.bit_count;
-            let pre_b = bit_count;
             loop {
                 if (1 << bit_count) > range_2 {
                     break;
@@ -192,14 +187,6 @@ impl QuantalizedFloat {
                 qf.bit_count = bit_count;
                 steps = 1 << qf.bit_count;
             }
-            /*
-            println!("{}", qf.bit_count);
-
-            println!(
-                "{} {} {} {} {} {}",
-                qf.high, qf.low, delta_log2, range_2, pre_b, qf.bit_count
-            );
-            */
             qf.offset = range_2 as f32 / steps as f32;
             qf.high = qf.low + (range_2 as f32 - qf.offset) as f32;
         }

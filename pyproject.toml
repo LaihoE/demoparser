@@ -1,0 +1,23 @@
+[build-system]
+requires = ["maturin>=0.13,<0.14"]
+build-backend = "maturin"
+
+[project]
+name = "demoparser"
+requires-python = ">=3.7"
+dependencies = ["pandas", "numpy", "polars", "pyarrow", "tqdm"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+[dependencies]
+bitreader = "0.3.6"
+protobuf = "3.1.0"
+
+[dependencies.csgoproto]
+path = "./csgoproto"
+
+[profile.dev]
+overflow-checks = false

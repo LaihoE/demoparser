@@ -23,5 +23,19 @@ Progress:
 - [x] Sendtables
 - [x] Serverclasses
 - [x] Header
-- [ ] Packet entites (This is the most interesting and hardest)
-- [ ] User messages
+- [x] Packet entites
+- [ ] String tables
+
+
+Values to try:
+
+m_vecX
+m_vecY
+m_vecZ
+m_iHealth
+m_iTeamNum
+m_bInBuyZone
+m_szLastPlaceName
+m_iWeaponPurchasesThisRound
+m_szRagdollDamageWeaponName
+m_unTotalRoundDamageDealt

@@ -1,7 +1,12 @@
 [package]
-name = "cs2"
-version = "0.1.0"
+name = "demoparser"
+version = "0.8.0"
 edition = "2021"
+
+
+[lib]
+name = "demoparser"
+crate-type = ["cdylib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,6 +20,17 @@ ahash = "0.8.3"
 regex = "1.7.3"
 phf = "0.11.1"
 phf_macros = "0.11.1"
+pyo3 = { version = "0.17", features = ["extension-module"] }
+polars = "0.24.3"
+polars-arrow = "0.24.3"
+ndarray = "0.15.6"
+derive_more = "0.99.17"
+itertools = "0.10.5"
+smallvec = "1.10.0"
+
+
+
+
 
 [dependencies.csgoproto]
 path = "src/csgoproto"
@@ -22,3 +38,11 @@ path = "src/csgoproto"
 
 [profile.dev]
 overflow-checks = false
+
+[profile.release]
+#debug = true
+
+#opt-level = 3
+#lto = "fat"
+#codegen-units = 1
+panic = "abort"

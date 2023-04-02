@@ -66,7 +66,6 @@ impl<'a> Bitreader<'a> {
         let mut s = 0;
         loop {
             b = self.read_nbits(8)?;
-            println!("{:?}", b);
             if b < 0x80 {
                 if count > 9 || count == 9 && b > 1 {
                     panic!("overflow!");
@@ -81,6 +80,15 @@ impl<'a> Bitreader<'a> {
             s += 7;
         }
         Some(result)
+    }
+    #[inline(always)]
+    pub fn read_bits_st(&mut self, n: u32) -> Option<Vec<u8>> {
+        let eight = 8.try_into().unwrap();
+        let mut bytarr: Vec<u8> = vec![];
+        for i in 0..n {
+            bytarr.push(self.read_nbits(eight)?.try_into().unwrap());
+        }
+        Some(bytarr)
     }
     #[inline(always)]
     pub fn read_boolie(&mut self) -> Option<bool> {

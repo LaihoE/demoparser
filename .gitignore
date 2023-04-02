@@ -2,3 +2,8 @@
 /target
 *.dem
 .vscode/
+venv
+main.py
+flamegraph.svg
+perf.data
+perf.data.old

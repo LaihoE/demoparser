@@ -1,211 +1,138 @@
-use crate::parsing::read_bits;
+use crate::parsing::parser::Parser;
 use crate::parsing::read_bits::Bitreader;
-use crate::parsing::read_bytes;
 use crate::parsing::variants::PropData;
-use crate::Parser;
-use bitter::BitReader;
-use bitter::LittleEndianReader;
-use csgoproto::demo::CDemoPacket;
-use csgoproto::demo::EDemoCommands;
+
+use ahash::HashMap;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
-use csgoproto::networkbasetypes::NET_Messages;
-use protobuf::Message;
+use smallvec::{smallvec, SmallVec};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use std::fs;
 
 const NSERIALBITS: u32 = 17;
 
 pub struct Entity {
     pub cls_id: u32,
     pub entity_id: i32,
+    pub props: HashMap<String, PropData>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PlayerMetaData {
+    pub entity_id: i32,
+    pub steamid: u64,
+    pub name: String,
 }
 
 impl Parser {
     pub fn parse_packet_ents(&mut self, packet_ents: CSVCMsg_PacketEntities) {
         let n_updates = packet_ents.updated_entries();
         let entity_data = packet_ents.entity_data.unwrap();
-        for skip in 0..1 {
-            //print!("{}", bitreader.read_boolie().unwrap() as i32);
-            let mut bitreader = Bitreader::new(&entity_data);
-            let mut entity_id: i32 = -1;
-            //println!("BITS: {:?}", bitreader.reader.bits_remaining());
-            for upd in 0..n_updates {
-                entity_id += 1 + (bitreader.read_u_bit_var().unwrap() as i32);
+        let mut bitreader = Bitreader::new(&entity_data);
+        let mut entity_id: i32 = -1;
+        for _ in 0..n_updates {
+            entity_id += 1 + (bitreader.read_u_bit_var().unwrap() as i32);
 
-                println!("ENTID: {}", entity_id);
+            if bitreader.read_boolie().unwrap() {
+                bitreader.read_boolie();
+            } else if bitreader.read_boolie().unwrap() {
+                let cls_id = bitreader.read_nbits(self.cls_bits).unwrap();
+                let _serial = bitreader.read_nbits(NSERIALBITS).unwrap();
+                let _unknown = bitreader.read_varint();
 
-                if bitreader.read_boolie().unwrap() {
-                    bitreader.read_boolie();
-                } else if bitreader.read_boolie().unwrap() {
-                    let cls_id = bitreader.read_nbits(self.cls_bits).unwrap();
-                    //println!("CLSB {}", self.cls_bits);
-                    let serial = bitreader.read_nbits(NSERIALBITS).unwrap();
-                    let unknown = bitreader.read_varint();
-
-                    let entity = Entity {
-                        entity_id: entity_id,
-                        cls_id: cls_id,
-                    };
-
-                    if !self.cls_by_id.contains_key(&(cls_id as i32)) {
-                        //break;
-                    }
-
-                    let cls = &self.cls_by_id[&(cls_id as i32)];
-
-                    let c = &self.cls_by_id[&86];
-                    for i in &c.serializer.fields {
-                        //println!(">> {} {}", i.var_name, i.var_type);
-                    }
-                    //let c = self.cls_b("CBodyComponent");
-
-                    self.entities.insert(entity_id, entity);
-                    let paths = self.parse_paths(&mut bitreader);
-                    self.decode_paths(&mut bitreader, paths, &cls.serializer, skip);
-                } else {
-                    if !self.entities.contains_key(&entity_id) {
-                        //break;
-                    }
-                    let ent = &self.entities[&entity_id];
-                    let cls = &self.cls_by_id[&(ent.cls_id as i32)];
-                    //println!("CLSID{:?}", cls.class_id);
-
-                    //println!("{}", cls.name);
-                    let paths = self.parse_paths(&mut bitreader);
-                    self.decode_paths(&mut bitreader, paths, &cls.serializer, skip);
-                    //return;
-                }
+                let entity = Entity {
+                    entity_id: entity_id,
+                    cls_id: cls_id,
+                    props: HashMap::default(),
+                };
+                self.entities.insert(entity_id, entity);
+                self.decode_paths(&mut bitreader, entity_id);
+            } else {
+                self.decode_paths(&mut bitreader, entity_id);
             }
         }
-        //println!("done");
-        //panic!("done");
     }
-    pub fn decode_paths(
-        &self,
-        bitreader: &mut Bitreader,
+    pub fn decode_paths(&mut self, bitreader: &mut Bitreader, entity_id: i32) {
+        let paths = self.parse_paths(bitreader);
+        let entity = self.entities.get_mut(&entity_id).unwrap();
+        let cls = &self.cls_by_id[&(entity.cls_id as i32)];
+
+        if cls.name == "CCSPlayerController" {
+            // hacky solution for now
+            let player_md = Parser::fill_player_data(paths, bitreader, cls);
+            if player_md.entity_id != -1 {
+                self.players.insert(player_md.entity_id, player_md);
+            }
+        } else {
+            let cls = &self.cls_by_id[&(entity.cls_id as i32)];
+
+            for path in paths {
+                let (var_name, field, decoder) = cls.serializer.find_decoder(&path, 0);
+                let result = bitreader.decode(&decoder, &field);
+                /*
+                println!(
+                    "{} {} {:?} {:?} {:?} {:?} {:?}",
+                    var_name,
+                    cls.serializer.name,
+                    decoder,
+                    result,
+                    field.var_name,
+                    field.var_type,
+                    field.decoder
+                );
+                */
+                entity.props.insert(var_name, result);
+            }
+        }
+    }
+    pub fn fill_player_data(
         paths: Vec<FieldPath>,
-        serializer: &Serializer,
-        skip: i32,
-    ) {
+        bitreader: &mut Bitreader,
+        cls: &Class,
+    ) -> PlayerMetaData {
+        let mut player = PlayerMetaData {
+            entity_id: -1,
+            name: "".to_string(),
+            steamid: 0,
+        };
         for path in paths {
-            println!("{:?}", path.path);
-            let (field, decoder) = serializer.find_decoder(&path, 0);
+            let (var_name, field, decoder) = cls.serializer.find_decoder(&path, 0);
             let result = bitreader.decode(&decoder, &field);
-            /*
-            match &result {
-                PropData::FloatVec32(f) => {
-                    if f[0] == 177.46875 {
-                        println!("a")
-                    }
+
+            match var_name.as_str() {
+                "m_iszPlayerName" => {
+                    player.name = match result {
+                        PropData::String(n) => n,
+                        _ => "Broken name!".to_owned(),
+                    };
+                }
+                "m_steamID" => {
+                    player.steamid = match result {
+                        PropData::U64(xuid) => xuid,
+                        _ => 99999999,
+                    };
+                }
+                "m_hPlayerPawn" => {
+                    player.entity_id = match result {
+                        PropData::U32(handle) => (handle & 0x7FF) as i32,
+                        _ => -1,
+                    };
                 }
                 _ => {}
             }
-            */
-            println!(
-                "{:?} {:?} {:?} {:?} {:?}",
-                decoder, result, field.var_name, field.var_type, field.decoder
-            );
         }
-    }
-
-    pub fn generate_huffman_tree(&self) -> Option<HuffmanNode> {
-        /*
-        Should result in this tree (same as Dotabuffs tree):
-
-        value, weight, len(prefix), prefix
-        0	36271	2	0
-        39	25474	3	10
-        8	2942	6	11000
-        2	1375	7	110010
-        29	1837	7	110011
-        4	4128	6	11010
-        30	149	    10	110110000
-        38	99	    11	1101100010
-        35	1	    17	1101100011000000
-        34	1	    17	1101100011000001
-        27	2	    16	110110001100001
-        25	1	    17	1101100011000100
-        24	1	    17	1101100011000101
-        33	1	    17	1101100011000110
-        28	1	    17	1101100011000111
-        13	1	    17	1101100011001000
-        15	1	    18	11011000110010010
-        14	1	    18	11011000110010011
-        6	3	    16	110110001100101
-        21	1	    18	11011000110011000
-        20	1	    18	11011000110011001
-        23	1	    18	11011000110011010
-        22	1	    18	11011000110011011
-        17	1	    18	11011000110011100
-        16	1	    18	11011000110011101
-        19	1	    18	11011000110011110
-        18	1	    18	11011000110011111
-        5	35	    13	110110001101
-        36	76	    12	11011000111
-        10	471	    9	11011001
-        7	521	    9	11011010
-        12	251	    10	110110110
-        37	271	    10	110110111
-        9	560	    9	11011100
-        31	300	    10	110111010
-        26	310	    10	110111011
-        32	634	    9	11011110
-        3	646	    9	11011111
-        1	10334	5	1110
-        11	10530	5	1111
-        */
-
-        let mut trees = vec![];
-        for (idx, (_, weight)) in PAIRS.iter().enumerate() {
-            let node = if *weight == 0 {
-                HuffmanNode {
-                    weight: 1,
-                    value: idx as i32,
-                    left: None,
-                    right: None,
-                }
-            } else {
-                HuffmanNode {
-                    weight: *weight,
-                    value: idx as i32,
-                    left: None,
-                    right: None,
-                }
-            };
-            trees.push(node);
-        }
-
-        let mut heap = BinaryHeap::new();
-        for tree in trees {
-            heap.push(Reverse(tree));
-        }
-
-        for idx in 0..heap.len() - 1 {
-            let a = heap.pop().unwrap();
-            let b = heap.pop().unwrap();
-            heap.push(Reverse(HuffmanNode {
-                weight: a.0.weight + b.0.weight,
-                value: (idx + 40) as i32,
-                left: Some(Box::new(a.0)),
-                right: Some(Box::new(b.0)),
-            }))
-        }
-        Some(heap.pop().unwrap().0)
+        player
     }
 
     pub fn parse_paths(&self, bitreader: &mut Bitreader) -> Vec<FieldPath> {
-        let huffman = self.generate_huffman_tree().unwrap();
         let mut fp = FieldPath {
             done: false,
-            path: vec![0; 7],
+            path: smallvec![-1, 0, 0, 0, 0, 0, 0],
             last: 0,
         };
-
-        //self.print_tree(Some(&huffman), vec![]);
-        fp.path[0] = -1;
-        let mut cur_node = &huffman;
-        let mut next_node = &huffman;
+        // The trees are static and created one time in parser constructor.
+        // see generate_huffman_tree()
+        let mut cur_node = &self.huffman_tree;
+        let mut next_node = &self.huffman_tree;
         // Read bits one at a time while traversing a tree (1 = go right, 0 = go left)
         // until you reach a leaf node. When we reach a leaf node we do the operation
         // that that leaf point to. if the operation was not "FieldPathEncodeFinish" then
@@ -223,9 +150,7 @@ impl Parser {
             }
             if next_node.is_leaf() {
                 // Reset back to top of tree
-                cur_node = &huffman;
-                println!("NODE {} {:?}", next_node.value, fp.path);
-                //println!("{:?}", );
+                cur_node = &self.huffman_tree;
                 let done = do_op(next_node.value, bitreader, &mut fp);
                 if done {
                     break;
@@ -236,34 +161,11 @@ impl Parser {
                 cur_node = next_node
             }
         }
-        //println!("{:?}", paths);
         paths
     }
-    pub fn print_tree(&self, tree: Option<&HuffmanNode>, prefix: Vec<i32>) {
-        match tree {
-            None => return,
-            Some(t) => {
-                if t.is_leaf() {
-                    println!(" ");
-                    print!("{} {} ", t.value, t.weight);
-                    for i in prefix {
-                        print!("{}", i);
-                    }
-                    //println!(" ")
-                } else {
-                    let mut l = prefix.clone();
-                    let mut r = prefix.clone();
-                    l.push(0);
-                    r.push(1);
-                    self.print_tree(Some(&t.left.as_ref().unwrap()), l);
-                    self.print_tree(Some(&t.right.as_ref().unwrap()), r);
-                }
-            }
-        }
-    }
 }
+
 pub fn do_op(opcode: i32, bitreader: &mut Bitreader, field_path: &mut FieldPath) -> bool {
-    //println!("OP {}", opcode);
     match opcode {
         0 => PlusOne(bitreader, field_path),
         1 => PlusTwo(bitreader, field_path),
@@ -327,7 +229,7 @@ impl HuffmanNode {
     }
 }
 
-use super::sendtables::Serializer;
+use super::class::Class;
 use std::cmp::Ordering;
 
 impl Ord for HuffmanNode {
@@ -358,7 +260,7 @@ impl PartialEq for HuffmanNode {
 
 #[derive(Clone, Debug)]
 pub struct FieldPath {
-    pub path: Vec<i32>,
+    pub path: SmallVec<[i32; 7]>,
     pub last: usize,
     pub done: bool,
 }
@@ -384,7 +286,6 @@ fn PlusFour(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     field_path.path[field_path.last] += 4;
 }
 fn PlusN(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    println!("Q {:?}", field_path.path);
     field_path.path[field_path.last] += bitreader.read_ubit_var_fp() as i32 + 5;
 }
 fn PushOneLeftDeltaZeroRightZero(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
@@ -585,13 +486,7 @@ fn NonTopoComplex(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     }
 }
 fn NonTopoPenultimatePlusOne(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
-    // WARNING WARNING
-    // NOT SURE WHY this is 0 sometimes
-    // MAYBE BUG ELSEWHERE? works if skip when <= 0
-    //println!("WARN {:?}", field_path.last);
-    //if field_path.last > 0 {
     field_path.path[field_path.last - 1] += 1
-    //}
 }
 fn NonTopoComplexPack4Bits(bitreader: &mut Bitreader, field_path: &mut FieldPath) {
     for i in 0..field_path.last + 1 {
@@ -646,3 +541,113 @@ const PAIRS: [(&str, i32); 40] = [
     ("NonTopoComplexPack4Bits", 99),
     ("FieldPathEncodeFinish", 25474),
 ];
+
+pub fn generate_huffman_tree() -> Option<HuffmanNode> {
+    /*
+    Should result in this tree (same as Dotabuffs tree):
+
+    value, weight, len(prefix), prefix
+    0	36271	2	0
+    39	25474	3	10
+    8	2942	6	11000
+    2	1375	7	110010
+    29	1837	7	110011
+    4	4128	6	11010
+    30	149	    10	110110000
+    38	99	    11	1101100010
+    35	1	    17	1101100011000000
+    34	1	    17	1101100011000001
+    27	2	    16	110110001100001
+    25	1	    17	1101100011000100
+    24	1	    17	1101100011000101
+    33	1	    17	1101100011000110
+    28	1	    17	1101100011000111
+    13	1	    17	1101100011001000
+    15	1	    18	11011000110010010
+    14	1	    18	11011000110010011
+    6	3	    16	110110001100101
+    21	1	    18	11011000110011000
+    20	1	    18	11011000110011001
+    23	1	    18	11011000110011010
+    22	1	    18	11011000110011011
+    17	1	    18	11011000110011100
+    16	1	    18	11011000110011101
+    19	1	    18	11011000110011110
+    18	1	    18	11011000110011111
+    5	35	    13	110110001101
+    36	76	    12	11011000111
+    10	471	    9	11011001
+    7	521	    9	11011010
+    12	251	    10	110110110
+    37	271	    10	110110111
+    9	560	    9	11011100
+    31	300	    10	110111010
+    26	310	    10	110111011
+    32	634	    9	11011110
+    3	646	    9	11011111
+    1	10334	5	1110
+    11	10530	5	1111
+    */
+
+    let mut trees = vec![];
+    for (idx, (_, weight)) in PAIRS.iter().enumerate() {
+        let node = if *weight == 0 {
+            HuffmanNode {
+                weight: 1,
+                value: idx as i32,
+                left: None,
+                right: None,
+            }
+        } else {
+            HuffmanNode {
+                weight: *weight,
+                value: idx as i32,
+                left: None,
+                right: None,
+            }
+        };
+        trees.push(node);
+    }
+
+    let mut heap = BinaryHeap::new();
+    for tree in trees {
+        heap.push(Reverse(tree));
+    }
+
+    for idx in 0..heap.len() - 1 {
+        let a = heap.pop().unwrap();
+        let b = heap.pop().unwrap();
+        heap.push(Reverse(HuffmanNode {
+            weight: a.0.weight + b.0.weight,
+            value: (idx + 40) as i32,
+            left: Some(Box::new(a.0)),
+            right: Some(Box::new(b.0)),
+        }))
+    }
+    Some(heap.pop().unwrap().0)
+}
+
+impl Parser {
+    pub fn print_tree(&self, tree: Option<&HuffmanNode>, prefix: Vec<i32>) {
+        match tree {
+            None => return,
+            Some(t) => {
+                if t.is_leaf() {
+                    println!(" ");
+                    print!("{} {} ", t.value, t.weight);
+                    for i in prefix {
+                        print!("{}", i);
+                    }
+                    //println!(" ")
+                } else {
+                    let mut l = prefix.clone();
+                    let mut r = prefix.clone();
+                    l.push(0);
+                    r.push(1);
+                    self.print_tree(Some(&t.left.as_ref().unwrap()), l);
+                    self.print_tree(Some(&t.right.as_ref().unwrap()), r);
+                }
+            }
+        }
+    }
+}
