@@ -41,9 +41,14 @@ Example output:
 ```
 (steamids and names are made up in this example)
 
+You can also filter ticks:
+```python
+df = parser.parse_ticks(wanted_props, ticks=[x for x in range(29000, 30000)])
+```
 
 
-Progress:
+
+### Progress:
 
 - [x] Game events
 - [x] Server info
@@ -54,7 +59,7 @@ Progress:
 - [ ] String tables
 
 
-Values to try:
+### Values to try for tick data (more on the way):
 
 m_vecX  
 m_vecY  
