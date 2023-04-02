@@ -30,14 +30,6 @@ impl Parser {
             for prop in &self.wanted_props {
                 match self.entities.get(&ent_id) {
                     Some(ent) => {
-                        for x in &ent.props {
-                            /*
-                            if x.0.contains("Damage") {
-                                println!("{:?}", x);
-                            }
-                            */
-                        }
-
                         match ent.props.get(prop) {
                             Some(p) => self
                                 .output
@@ -75,6 +67,7 @@ impl Parser {
     }
 
     pub fn find_val_for_entity(&self, entity_id: i32, val: &String) -> Option<PropData> {
+        // used for game events
         match self.entities.get(&entity_id) {
             Some(entity) => match entity.props.get(val) {
                 Some(prop) => Some(prop.clone()),

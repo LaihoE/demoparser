@@ -323,7 +323,6 @@ dependencies = [
  "regex",
  "smallvec",
  "snap",
- "snappy",
 ]
 
 [[package]]
@@ -412,12 +411,6 @@ name = "foreign_vec"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee1b05cbd864bcaecbd3455d6d967862d446e4ebfc3c2e5e5b9841e53cba6673"
-
-[[package]]
-name = "gcc"
-version = "0.3.55"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
 
 [[package]]
 name = "getrandom"
@@ -918,12 +911,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pkg-config"
-version = "0.3.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ac9a59f73473f1b8d852421e59e64809f025994837ef743615c6d0c5b305160"
-
-[[package]]
 name = "polars"
 version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1389,27 +1376,6 @@ name = "snap"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e9f0ab6ef7eb7353d9119c170a436d1bf248eea575ac42d19d12f4e34130831"
-
-[[package]]
-name = "snappy"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b570b1d39e2fcb136a07e46d15a1fe962ba71c151e4d8d6888f59f1fcd185bb1"
-dependencies = [
- "libc",
- "snappy-sys",
-]
-
-[[package]]
-name = "snappy-sys"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f873053ef085548b0b924db3aa2ce38d9389fb3be353bf7fcec4ababc99a307"
-dependencies = [
- "gcc",
- "libc",
- "pkg-config",
-]
 
 [[package]]
 name = "static_assertions"

@@ -18,7 +18,6 @@ use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use csgoproto::netmessages::*;
 use csgoproto::networkbasetypes::*;
 use protobuf::Message;
-use snappy;
 use std::fs;
 
 pub struct Parser {
@@ -92,9 +91,12 @@ impl Parser {
             //println!("{:?}", self.tick);
             let msg_type = if cmd > 64 { cmd as u32 ^ 64 } else { cmd };
             let is_compressed = (cmd & 64) == 64;
+            use snap::raw::Decoder;
 
             let bytes = match is_compressed {
-                true => snappy::uncompress(self.read_n_bytes(size)).unwrap(),
+                true => Decoder::new()
+                    .decompress_vec(self.read_n_bytes(size))
+                    .unwrap(),
                 false => self.read_n_bytes(size).to_vec(),
             };
 

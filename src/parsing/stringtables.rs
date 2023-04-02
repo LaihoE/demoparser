@@ -22,7 +22,9 @@ impl Parser {
         let bytes = table.string_data();
 
         let bytes = match table.data_compressed() {
-            true => snappy::uncompress(table.string_data()).unwrap(),
+            true => snap::raw::Decoder::new()
+                .decompress_vec(table.string_data())
+                .unwrap(),
             // slow
             false => table.string_data().to_vec(),
         };
