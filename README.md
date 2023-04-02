@@ -4,9 +4,9 @@
 Work in progress so expect some bugs here and there!
 
 ## Install
-comming soon!
+```pip install demoparser2```
 
-### Useage:
+### Usage:
 Game events
 ```python
 from demoparser2 import DemoParser
@@ -25,7 +25,7 @@ parser = DemoParser("path_to_demo.dem")
 df = parser.parse_ticks(wanted_props)
 ```
 
-Both events return a Pandas Dataframe.
+Both functions return a Pandas Dataframe.
 
 Example output:
 ```
