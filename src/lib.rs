@@ -197,7 +197,7 @@ pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (bool, Vec<String>) {
 }
 
 #[pymodule]
-fn demoparser(_py: Python, m: &PyModule) -> PyResult<()> {
+fn demoparser2(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<DemoParser>()?;
     Ok(())
 }

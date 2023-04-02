@@ -1,11 +1,11 @@
 [package]
-name = "demoparser"
+name = "demoparser2"
 version = "0.8.0"
 edition = "2021"
 
 
 [lib]
-name = "demoparser"
+name = "demoparser2"
 crate-type = ["cdylib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

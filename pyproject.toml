@@ -3,7 +3,7 @@ requires = ["maturin>=0.13,<0.14"]
 build-backend = "maturin"
 
 [project]
-name = "demoparser"
+name = "demoparser2"
 requires-python = ">=3.7"
 dependencies = ["pandas", "numpy", "polars", "pyarrow", "tqdm"]
 classifiers = [
