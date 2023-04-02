@@ -1,4 +1,4 @@
-## Demo parser for Counter-Strike 2
+# Demo parser for Counter-Strike 2
 
 
 Work in progress so expect some bugs here and there!
