@@ -237,6 +237,19 @@ fn to_bool_series(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
     }
     Series::new(name, v)
 }
+fn to_u8_series(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(k) => match k {
+                KeyData::Byte(val) => v.push(Some(*val as u32)),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    Series::new(name, v)
+}
 
 pub fn series_from_pairs(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
     let only_data: Vec<Option<KeyData>> = pairs.iter().map(|x| x.data.clone()).collect();
@@ -246,6 +259,7 @@ pub fn series_from_pairs(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
         2 => to_f32_series(pairs, name),
         3 => to_i32_series(pairs, name),
         4 => to_i32_series(pairs, name),
+        5 => to_u8_series(pairs, name),
         6 => to_bool_series(pairs, name),
         7 => to_u64_series(pairs, name),
         8 => to_i32_series(pairs, name),

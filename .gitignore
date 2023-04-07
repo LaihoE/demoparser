@@ -3,7 +3,7 @@
 *.dem
 .vscode/
 venv
-main.py
+*.py
 flamegraph.svg
 perf.data
 perf.data.old

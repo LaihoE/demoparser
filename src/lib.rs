@@ -2,6 +2,7 @@ mod parsing;
 use arrow::ffi;
 use parsing::parser::Parser;
 use parsing::variants::VarVec;
+use polars::export::arrow::array::PrimitiveArray;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -33,6 +34,7 @@ pub(crate) fn to_py_array(py: Python, pyarrow: &PyModule, array: ArrayRef) -> Py
 /// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
 pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
     let series = series.rechunk();
+    println!("{:?}", series);
     let array = series.to_arrow(0);
     let gil = Python::acquire_gil();
     let py = gil.python();
@@ -42,7 +44,19 @@ pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
     let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
     Ok(out.to_object(py))
 }
-
+/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
+    //let series = series.rechunk();
+    //let array = series.to_arrow(0);
+    let gil = Python::acquire_gil();
+    let py = gil.python();
+    let pyarrow = py.import("pyarrow")?;
+    let pyarrow_array = to_py_array(py, pyarrow, array)?;
+    let polars = py.import("polars")?;
+    let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
+    Ok(out.to_object(py))
+}
+use crate::arrow::array::*;
 #[pyclass]
 struct DemoParser {
     path: String,
@@ -53,6 +67,37 @@ impl DemoParser {
     #[new]
     pub fn py_new(demo_path: String) -> PyResult<Self> {
         Ok(DemoParser { path: demo_path })
+    }
+
+    pub fn parse_grenades(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let mut parser = Parser::new(&self.path, vec![], vec![], None, true);
+        parser.start();
+
+        // Projectile records are in SoA form
+        let xs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.x))).unwrap();
+        let ys = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.y))).unwrap();
+        let zs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.z))).unwrap();
+        let ticks = arr_to_py(Box::new(Int32Array::from(parser.projectile_records.tick))).unwrap();
+
+        let grenade_type = arr_to_py(Box::new(Utf8Array::<i32>::from(
+            parser.projectile_records.grenade_type,
+        )))
+        .unwrap();
+
+        let steamids = arr_to_py(Box::new(UInt64Array::from(
+            parser.projectile_records.steamid,
+        )))
+        .unwrap();
+
+        let polars = py.import("polars")?;
+        let all_series_py = [xs, ys, zs, ticks, steamids, grenade_type].to_object(py);
+        let df = polars.call_method1("DataFrame", (all_series_py,))?;
+        df.setattr(
+            "columns",
+            ["X", "Y", "Z", "tick", "thrower_steamid", "grenade_type"].to_object(py),
+        )
+        .unwrap();
+        Ok(df.to_object(py))
     }
 
     #[args(py_kwargs = "**")]

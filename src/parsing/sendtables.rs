@@ -1,8 +1,8 @@
 use super::read_bits::Bitreader;
+use crate::parsing::entities::path_to_key;
 use crate::parsing::entities::FieldPath;
 use crate::parsing::parser::Parser;
 use crate::parsing::q_float::QuantalizedFloat;
-
 use ahash::HashMap;
 use csgoproto::{
     demo::CDemoSendTables,
@@ -34,7 +34,7 @@ pub struct Field {
     pub base_decoder: Option<Decoder>,
     pub child_decoder: Option<Decoder>,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FieldModel {
     FieldModelSimple,
     FieldModelFixedArray,
@@ -44,7 +44,7 @@ pub enum FieldModel {
     FieldModelNOTSET,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Decoder {
     FloatDecoder,
     QuantalizedFloatDecoder(QuantalizedFloat),
@@ -67,9 +67,9 @@ pub enum Decoder {
     FloatSimulationTimeDecoder,
     FloatRuneTimeDecoder,
     Fixed64Decoder,
-    QanglePitchYawDecoder(i32),
-    Qangle3Decoder(i32),
-    QangleVarDecoder(i32),
+    QanglePitchYawDecoder,
+    Qangle3Decoder,
+    QangleVarDecoder,
     VectorDecoder,
     BaseDecoder,
     NO,
@@ -112,7 +112,8 @@ impl Field {
                 } else {
                     match &self.serializer {
                         Some(ser) => {
-                            let (name, f, decoder) = ser.find_decoder(path, pos);
+                            let (_name, f, decoder) = ser.find_decoder(path, pos);
+                            //println!("{}", f.send_node);
                             return (Some(f.var_name.to_owned()), decoder);
                         }
                         None => panic!("no serializer for path"),
@@ -130,7 +131,9 @@ impl Field {
                 if path.last >= pos + 1 {
                     match &self.serializer {
                         Some(ser) => {
-                            let (name, f, decoder) = ser.find_decoder(path, pos + 1);
+                            let (_name, f, decoder) = ser.find_decoder(path, pos + 1);
+                            //println!("{}", f.send_node);
+
                             return (Some(f.var_name.to_owned()), decoder);
                         }
                         None => panic!("no serializer for path"),
@@ -148,7 +151,6 @@ impl Field {
 
     pub fn find_decoder(&mut self, model: FieldModel) {
         self.model = model.clone();
-        //println!("MODEL {:?}", model);
         match model {
             FieldModelFixedArray => self.decoder = self.match_decoder(),
             FieldModelSimple => self.decoder = self.match_decoder(),
@@ -156,8 +158,6 @@ impl Field {
             FieldModelVariableTable => self.base_decoder = Some(Decoder::UnsignedDecoder),
             FieldModelVariableArray => {
                 self.base_decoder = Some(Decoder::UnsignedDecoder);
-                //println!("BASE: {:?}", self.base_decoder);
-
                 self.child_decoder = match BASETYPE_DECODERS
                     .get(&self.field_type.generic_type.clone().unwrap().base_type)
                 {
@@ -191,12 +191,12 @@ impl Field {
     }
     pub fn find_qangle_type(&self) -> Decoder {
         match self.encoder.as_str() {
-            "qangle_pitch_yaw" => Decoder::QanglePitchYawDecoder(self.bitcount),
+            "qangle_pitch_yaw" => Decoder::QanglePitchYawDecoder,
             _ => {
                 if self.bitcount != 0 {
-                    Decoder::Qangle3Decoder(self.bitcount)
+                    Decoder::Qangle3Decoder
                 } else {
-                    Decoder::QangleVarDecoder(self.bitcount)
+                    Decoder::QangleVarDecoder
                 }
             }
         }
@@ -318,31 +318,34 @@ impl Field {
 
 impl Serializer {
     pub fn find_decoder(&self, path: &FieldPath, pos: usize) -> (String, &Field, Decoder) {
-        let idx = path.path[pos];
+        let idx = path.path.get(pos);
         let f = &self.fields[idx as usize];
-        //println!(">>>> {:?} {:?} last {}", f.var_name, f.var_type, path.last);
-        if f.var_name == "m_PredFloatVariables" && path.last != 1 {
-            return (f.var_name.to_owned(), f, NoscaleDecoder);
-        }
-        if f.var_name == "m_OwnerOnlyPredNetFloatVariables" && path.last != 1 {
-            return (f.var_name.to_owned(), f, NoscaleDecoder);
-        }
-        if f.var_name == "m_OwnerOnlyPredNetVectorVariables" && path.last != 1 {
-            return (
-                f.var_name.to_owned(),
-                f,
-                VectorSpecialDecoder(Some(Box::new(NoscaleDecoder))),
-            );
-        }
-        if f.var_name == "m_PredVectorVariables" && path.last != 1 {
-            return (
-                f.var_name.to_owned(),
-                f,
-                VectorSpecialDecoder(Some(Box::new(NoscaleDecoder))),
-            );
+
+        if path.last != 1 {
+            match f.var_name.as_str() {
+                "m_PredFloatVariables" => return (f.var_name.to_owned(), f, NoscaleDecoder),
+                "m_OwnerOnlyPredNetFloatVariables" => {
+                    return (f.var_name.to_owned(), f, NoscaleDecoder)
+                }
+                "m_OwnerOnlyPredNetVectorVariables" => {
+                    return (
+                        f.var_name.to_owned(),
+                        f,
+                        VectorSpecialDecoder(Some(Box::new(NoscaleDecoder))),
+                    )
+                }
+                "m_PredVectorVariables" => {
+                    return (
+                        f.var_name.to_owned(),
+                        f,
+                        VectorSpecialDecoder(Some(Box::new(NoscaleDecoder))),
+                    )
+                }
+
+                _ => {}
+            }
         }
         let (name, decoder) = f.decoder_from_path(path, pos + 1);
-        //println!("@@@@ {:?} {:?} last {}", f.var_name, f.var_type, path.last);
         let real_name = match name {
             Some(s) => s,
             None => f.var_name.to_owned(),
@@ -378,7 +381,7 @@ impl Parser {
 
         let mut fields: HashMap<i32, Field> = HashMap::default();
 
-        for (idx, serializer) in serializer_msg.serializers.iter().enumerate() {
+        for (_idx, serializer) in serializer_msg.serializers.iter().enumerate() {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
                 fields: vec![],
@@ -428,14 +431,14 @@ impl Parser {
                                 }
                             }
                         }
+                        // println!("{} {} {:#?}", my_serializer.name, *idx, field);
+
                         fields.insert(*idx, field.clone());
                         my_serializer.fields.push(field);
                     }
                 }
             }
-            if idx > 30 {
-                //panic!("s")
-            }
+
             self.serializers
                 .insert(my_serializer.name.clone(), my_serializer);
         }

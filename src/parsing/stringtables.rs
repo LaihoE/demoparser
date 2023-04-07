@@ -1,26 +1,43 @@
-use crate::Parser;
-use csgoproto::netmessages::CSVCMsg_CreateStringTable;
-
 use super::read_bits::Bitreader;
+use crate::Parser;
+use csgoproto::netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable};
+use snap::raw::Decoder;
 
 #[derive(Clone, Debug)]
 pub struct StringTable {
     name: String,
-    uds: i32,
-    udfs: bool,
-    data: Vec<StField>,
+    user_data_size: i32,
+    user_data_fixed: bool,
+    data: Vec<StringTableEntry>,
+    flags: i32,
 }
 #[derive(Clone, Debug)]
 pub struct StField {
     entry: String,
 }
+#[derive(Clone, Debug)]
+pub struct StringTableEntry {
+    pub idx: i32,
+    pub key: String,
+    pub value: Vec<u8>,
+}
 
 impl Parser {
-    pub fn parse_create_stringtable(&mut self, table: CSVCMsg_CreateStringTable) {
-        // TODO
-        return;
-        let bytes = table.string_data();
+    pub fn update_string_table(&mut self, table: CSVCMsg_UpdateStringTable) {
+        match self.string_tables.get(table.table_id() as usize) {
+            Some(st) => self.parse_string_table(
+                table.string_data().to_vec(),
+                table.num_changed_entries(),
+                st.name.clone(),
+                st.user_data_fixed,
+                st.user_data_size,
+                st.flags,
+            ),
+            None => panic!("Could not find stringtable for update"),
+        }
+    }
 
+    pub fn parse_create_stringtable(&mut self, table: CSVCMsg_CreateStringTable) {
         let bytes = match table.data_compressed() {
             true => snap::raw::Decoder::new()
                 .decompress_vec(table.string_data())
@@ -28,17 +45,124 @@ impl Parser {
             // slow
             false => table.string_data().to_vec(),
         };
-        let mut st = StringTable {
-            name: table.name().to_string(),
-            udfs: table.user_data_fixed_size(),
-            uds: table.user_data_size(),
-            data: vec![],
-        };
-        for _ in 1..50000 {
-            st.data.push(StField {
-                entry: "".to_string(),
-            })
+
+        self.parse_string_table(
+            bytes,
+            table.num_entries(),
+            table.name().to_string(),
+            table.user_data_fixed_size(),
+            table.user_data_size(),
+            table.flags(),
+        );
+    }
+    pub fn parse_string_table(
+        &mut self,
+        bytes: Vec<u8>,
+        n_updates: i32,
+        name: String,
+        udf: bool,
+        user_data_size: i32,
+        flags: i32,
+    ) {
+        let mut bitreader = Bitreader::new(&bytes);
+        let mut idx = -1;
+        let mut keys: Vec<String> = vec![];
+        let mut items = vec![];
+
+        for _upd in 0..n_updates {
+            let mut key = "".to_owned();
+            let mut value = vec![];
+
+            // Increment index
+            match bitreader.read_boolie().unwrap() {
+                true => idx += 1,
+                false => idx += (bitreader.read_varint().unwrap() + 1) as i32,
+            };
+            // Does the value have a key
+            if bitreader.read_boolie().unwrap() {
+                // Should we refer back to history (similar to LZ77)
+                match bitreader.read_boolie().unwrap() {
+                    // If no history then just read the data as one string
+                    false => key = key.to_owned() + &bitreader.read_string().unwrap(),
+                    // Refer to history
+                    true => {
+                        // How far into history we should look
+                        let position = bitreader.read_nbits(5).unwrap();
+                        // How many bytes in a row, starting from distance ago, should be copied
+                        let length = bitreader.read_nbits(5).unwrap();
+
+                        if position >= keys.len() as u32 {
+                            key = key.to_owned() + &bitreader.read_string().unwrap();
+                        } else {
+                            let s = &keys[position as usize];
+                            if length > s.len() as u32 {
+                                key = key.to_owned() + &s + &bitreader.read_string().unwrap();
+                            } else {
+                                key = key.to_owned()
+                                    + &s[0..length as usize]
+                                    + &bitreader.read_string().unwrap();
+                            }
+                        }
+                    }
+                }
+                if keys.len() >= 32 {
+                    keys.remove(0);
+                }
+                keys.push(key.clone());
+                // Does the entry have a value
+                if bitreader.read_boolie().unwrap() {
+                    let mut bits = 0;
+                    let mut is_compressed = false;
+
+                    match udf {
+                        true => bits = user_data_size,
+                        false => {
+                            if (flags & 0x1) != 0 {
+                                is_compressed = bitreader.read_boolie().unwrap();
+                            }
+                            bits = (bitreader.read_nbits(17).unwrap() * 8) as i32;
+                        }
+                    }
+
+                    value = bitreader.read_n_bytes((bits / 8) as usize);
+                    //value = bitreader.read_bits_to_arr((bits as u32));
+                    value = if is_compressed {
+                        Decoder::new().decompress_vec(&value).unwrap()
+                    } else {
+                        value
+                    };
+                    //value
+                }
+                //println!("{:?} {:?} {:?}", idx, key, value.clone());
+
+                if name == "instancebaseline" {
+                    let k = key.parse::<u32>().unwrap_or(999999);
+                    self.baselines.insert(k, value.clone());
+                    //println!("{} {:?} {:?} {:?}", name, idx, key, value);
+                }
+
+                items.push(StringTableEntry {
+                    idx: idx,
+                    key: key,
+                    value: value,
+                });
+            }
+        }
+        self.string_tables.push(StringTable {
+            data: items,
+            name: name,
+            user_data_size: user_data_size,
+            user_data_fixed: udf,
+            flags: flags,
+        });
+    }
+    pub fn parse_user_info(bytes: &[u8]) {
+        // TODO SEEMS SHORT AND BORING INFO ~ 30 bytes
+        let unk = &bytes[..3];
+        //let name = &bytes[3..20];
+        for i in 0..bytes.len() - 8 {
+            let xuid = u64::from_le_bytes(bytes[i..i + 8].try_into().unwrap());
+            println!("{:?}", xuid);
         }
     }
-    pub fn parse_string_table(&mut self) {}
 }

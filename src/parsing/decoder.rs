@@ -6,7 +6,7 @@ use super::{
 use crate::parsing::sendtables::Decoder::*;
 
 impl<'a> Bitreader<'a> {
-    pub fn decode(&mut self, decoder: &Decoder, field: &Field) -> PropData {
+    pub fn decode(&mut self, decoder: &Decoder) -> PropData {
         match decoder {
             SignedDecoder => PropData::I32(self.read_varint32().unwrap()),
             BooleanDecoder => PropData::Bool(self.read_boolie().unwrap()),
@@ -15,34 +15,24 @@ impl<'a> Bitreader<'a> {
             ChangleDecoder => PropData::U32(self.read_varint().unwrap()),
             ComponentDecoder => PropData::Bool(self.read_boolie().unwrap()),
             FloatCoordDecoder => PropData::F32(self.read_bit_coord().unwrap()),
-            FloatDecoder => PropData::F32(self.decode_float(field, field.bitcount).unwrap()),
-            FloatRuneTimeDecoder => {
-                PropData::F32(self.decode_float(field, field.bitcount).unwrap())
-            }
             FloatSimulationTimeDecoder => PropData::F32(self.decode_simul_time()),
             NoscaleDecoder => PropData::F32(f32::from_le_bytes(
                 self.read_nbits(32).unwrap().to_le_bytes(),
             )),
             UnsignedDecoder => PropData::U32(self.read_varint().unwrap()),
             StringDecoder => PropData::String(self.read_string().unwrap()),
-            Qangle3Decoder(bits) => PropData::FloatVec32(self.decode_qangle_all_3(*bits)),
-            QangleDecoder => PropData::F32(self.decode_float(field, field.bitcount).unwrap()),
-            QanglePitchYawDecoder(bits) => {
-                PropData::FloatVec32(self.decode_qangle_pitch_yaw(*bits))
-            }
-            QangleVarDecoder(bits) => PropData::FloatVec32(self.decode_qangle_variant(*bits)),
+            Qangle3Decoder => PropData::FloatVec32(self.decode_qangle_all_3()),
+            QanglePitchYawDecoder => PropData::FloatVec32(self.decode_qangle_pitch_yaw()),
+            QangleVarDecoder => PropData::FloatVec32(self.decode_qangle_variant()),
             QuantalizedFloatDecoder(qf) => PropData::F32(qf.clone().decode(self)),
-            Vector2DDecoder => PropData::FloatVec(self.decode_vector(2, field, decoder)),
-            Vector4DDecoder => PropData::FloatVec(self.decode_vector(4, field, decoder)),
-            VectorDecoder => PropData::FloatVec(self.decode_vector(3, field, decoder)),
             VectorNormalDecoder => PropData::FloatVec(self.decode_normal_vec()),
-            Unsigned64Decoder => PropData::U64(self.decode_fixed64(field).unwrap()),
-            CstrongHandleDecoder => PropData::U64(self.decode_fixed64(field).unwrap()),
-            Fixed64Decoder => PropData::U64(self.decode_fixed64(field).unwrap()),
+            Unsigned64Decoder => PropData::U64(self.read_varint_u_64().unwrap()),
+            Fixed64Decoder => PropData::U64(self.decode_uint64().unwrap()),
             NO => PropData::U32(self.read_varint().unwrap()),
             VectorSpecialDecoder(float_type) => {
                 PropData::FloatVec32(self.decode_vector_special(float_type.clone().unwrap()))
             }
+            _ => panic!("huh"),
         }
     }
     pub fn decode_vector_special(&mut self, float_type: Box<Decoder>) -> Vec<f32> {
@@ -67,6 +57,7 @@ impl<'a> Bitreader<'a> {
         Some(u64::from_le_bytes(self.read_n_bytes(8).try_into().unwrap()))
     }
     pub fn decode_fixed64(&mut self, field: &Field) -> Option<u64> {
+        println!("{:?}", field.encoder.as_str());
         match field.encoder.as_str() {
             "fixed64" => self.decode_uint64(),
             _ => self.read_varint_u_64(),
@@ -90,7 +81,11 @@ impl<'a> Bitreader<'a> {
         Some(String::from_utf8_lossy(&s).to_string())
     }
     pub fn decode_vector(&mut self, vec_len: i32, field: &Field, _decoder: &Decoder) -> Vec<f64> {
-        if field.var_name == "origin" || field.var_name == "dirPrimary" {
+        println!("{:?}", field.var_name);
+        if field.var_name == "origin"
+            || field.var_name == "dirPrimary"
+            || field.var_name == "m_vSmokeDetonationPos"
+        {
             let mut v = vec![];
             for _ in 0..3 {
                 v.push(self.decode_float_coord() as f64);
@@ -107,6 +102,7 @@ impl<'a> Bitreader<'a> {
         v
     }
     pub fn decode_float(&mut self, field: &Field, _bits: i32) -> Option<f32> {
+        println!("Start");
         match field.var_name.as_str() {
             "m_flAnimTime" => return Some(self.decode_simul_time()),
             "coord" => return Some(self.decode_float_coord()),
@@ -114,6 +110,7 @@ impl<'a> Bitreader<'a> {
             "runetime" => return Some(self.decode_run_time()),
             _ => {}
         }
+        println!("End");
         if field.bitcount >= 32 {
             return Some(self.decode_noscale().unwrap());
         }
@@ -159,21 +156,21 @@ impl<'a> Bitreader<'a> {
         }
         v
     }
-    pub fn decode_qangle_pitch_yaw(&mut self, bits: i32) -> Vec<f32> {
+    pub fn decode_qangle_pitch_yaw(&mut self) -> Vec<f32> {
         let mut v = vec![];
-        v.push(self.read_angle(bits.try_into().unwrap()));
-        v.push(self.read_angle(bits.try_into().unwrap()));
+        v.push(self.read_angle(32));
+        v.push(self.read_angle(32));
         v.push(0.0);
         v
     }
-    pub fn decode_qangle_all_3(&mut self, bits: i32) -> Vec<f32> {
+    pub fn decode_qangle_all_3(&mut self) -> Vec<f32> {
         let mut v = vec![];
-        v.push(self.read_angle(bits.try_into().unwrap()));
-        v.push(self.read_angle(bits.try_into().unwrap()));
-        v.push(self.read_angle(bits.try_into().unwrap()));
+        v.push(self.read_angle(32));
+        v.push(self.read_angle(32));
+        v.push(self.read_angle(32));
         v
     }
-    pub fn decode_qangle_variant(&mut self, bits: i32) -> Vec<f32> {
+    pub fn decode_qangle_variant(&mut self) -> Vec<f32> {
         let mut v = vec![];
         let has_x = self.read_boolie().unwrap();
         let has_y = self.read_boolie().unwrap();

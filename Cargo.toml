@@ -26,6 +26,9 @@ ndarray = "0.15.6"
 derive_more = "0.99.17"
 itertools = "0.10.5"
 smallvec = "1.10.0"
+soa_derive = "0.12.0"
+arrow-string = "36.0.0"
+fxhash = "0.2.1"
 
 
 

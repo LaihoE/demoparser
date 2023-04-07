@@ -1,3 +1,0 @@
-const PACKETENTSID: u32 = 55;
-const GAMEEVENTID: u32 = 207;
-const GAMEEVENTLISTID: u32 = 205;

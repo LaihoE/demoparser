@@ -71,14 +71,25 @@ impl Parser {
             None => panic!("Game event before descriptor list was parsed."),
         };
         let event_desc = &ge_list[&event.eventid()];
+        //println!("{:?}", event_desc.name);
+
         if event_desc.name != self.wanted_event {
             return;
         }
+        if event_desc.name().contains("deto") {
+            //println!("{:?}", event_desc.name);
+        }
+
         let mut kv_pairs: Vec<NameDataPair> = vec![];
         for i in 0..event.keys.len() {
             let ge = &event.keys[i];
             let desc = &event_desc.keys[i];
             let val = parse_key(ge);
+
+            if event_desc.name().contains("player_sound") {
+                //println!("{:?} {:?}", desc.name(), val);
+            }
+            //println!("{:?} {:?}", desc.name(), val);
 
             if !(desc.name().contains("userid")
                 || desc.name().contains("attacker")

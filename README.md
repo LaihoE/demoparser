@@ -75,6 +75,89 @@ m_iWeaponPurchasesThisRound
 m_szRagdollDamageWeaponName  
 m_unTotalRoundDamageDealt  
 
+m_hPlayerPing
+m_nSurvivalTeamNumber
+m_unCurrentEquipmentValue
+m_flFlashDuration
+m_nWhichBombZone
+m_iMoveState
+m_bInNoDefuseArea
+m_bHasMovedSinceSpawn
+m_bIsDefusing
+m_bIsScoped
+m_bSpottedByMask
+m_iMaxHealth
+m_angEyeAngles
+m_bombsiteCenterA
+m_bombsiteCenterB
+m_iMVPs
+
+
+m_iPlayerState
+m_pActionTrackingServices
+CPlayer_MovementServices
+CPlayer_ItemServices
+CCSPlayer_ItemServices
+m_iAmmo
+m_hActiveWeapon
+m_iScore
+
+
+CCSPlayerController_InGameMoneyServices
+m_iTotalCashSpent
+m_iTotalCashSpent
+m_iStartAccount
+m_iAccount
+
+
+m_steamID
+m_iszPlayerName
+
+m_iNumConsecutiveTerroristLoses
+m_iMatchStats_RoundResults
+m_iMatchStats_PlayersAlive_T
+m_bBombPlanted
+m_bBombDropped
+m_szMatchStatTxt
+m_bIsQueuedMatchmaking
+m_nOvertimePlaying
+m_totalRoundsPlayed
+m_gamePhase
+m_flGameStartTime
+m_fRoundStartTime
+m_flRestartRoundTime
+m_fMatchStartTime
+m_iRoundTime
+m_bTechnicalTimeOut
+m_bWarmupPeriod
+
+m_iCompetitiveRankType
+m_iCompetitiveWins
+m_iCompetitiveRanking
+m_iCompTeammateColor
+m_szCrosshairCodes
+m_bHasCommunicationAbuseMute
+m_iPing
+
+m_nPersonaDataPublicCommendsFriendly
+m_nPersonaDataPublicCommendsTeacher
+m_nPersonaDataPublicCommendsLeader
+m_unMusicID
+
+CSPerRoundStats_t
+
+var_name: "m_vecKills",
+var_type: "CNetworkUtlVectorBase< EKillTypes_t >",
+
+var_name: "m_DamageList",
+var_type: "CUtlVectorEmbeddedNetworkVar< CDamageRecord >",
+
+var_name: "m_perRoundStats",
+var_type: "CUtlVectorEmbeddedNetworkVar< CSPerRoundStats_t >",
+
+
+
+
 
 
 ## Acknowledgements
