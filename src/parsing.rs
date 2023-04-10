@@ -2,6 +2,7 @@ pub mod class;
 pub mod collect_data;
 pub mod decoder;
 pub mod entities;
+pub mod entities_utils;
 pub mod game_events;
 pub mod parser;
 pub mod q_float;

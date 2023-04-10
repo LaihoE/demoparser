@@ -80,7 +80,6 @@ impl QuantalizedFloat {
                 break;
             }
         }
-
         self.high_low_mul = high_mul;
         self.dec_mul = 1.0 / (steps - 1) as f32;
 

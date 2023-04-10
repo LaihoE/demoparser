@@ -1,6 +1,6 @@
 use super::read_bits::Bitreader;
-use crate::parsing::entities::path_to_key;
-use crate::parsing::entities::FieldPath;
+use crate::parsing::entities_utils::path_to_key;
+use crate::parsing::entities_utils::FieldPath;
 use crate::parsing::parser::Parser;
 use crate::parsing::q_float::QuantalizedFloat;
 use ahash::HashMap;
@@ -113,7 +113,6 @@ impl Field {
                     match &self.serializer {
                         Some(ser) => {
                             let (_name, f, decoder) = ser.find_decoder(path, pos);
-                            //println!("{}", f.send_node);
                             return (Some(f.var_name.to_owned()), decoder);
                         }
                         None => panic!("no serializer for path"),
@@ -132,8 +131,6 @@ impl Field {
                     match &self.serializer {
                         Some(ser) => {
                             let (_name, f, decoder) = ser.find_decoder(path, pos + 1);
-                            //println!("{}", f.send_node);
-
                             return (Some(f.var_name.to_owned()), decoder);
                         }
                         None => panic!("no serializer for path"),

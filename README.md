@@ -61,6 +61,79 @@ df = parser.parse_ticks(wanted_props, ticks=[x for x in range(29000, 30000)])
 - [x] Packet entites
 - [ ] String tables
 
+### Player stats values
+m_szCrosshairCodes
+m_nPersonaDataPublicCommendsTeacher
+m_nPersonaDataPublicCommendsLeader
+m_nPersonaDataPublicCommendsFriendly
+m_unMusicID
+m_hObserverPawn
+m_iConnected
+m_steamID
+m_hOriginalControllerOfCurrentPawn
+m_nNextThinkTick
+m_iEnemiesFlashed
+m_iTotalCashSpent
+m_iPawnArmor
+m_iCompTeammateColor
+m_nPersonaDataPublicLevel
+m_vecTerroristLoadoutCache
+m_rank
+m_iAccount
+m_iKillReward
+m_iUtilityDamage
+m_iszPlayerName
+m_iDamage
+m_iEquipmentValue
+m_iTeamNum
+m_iCompetitiveRankType
+m_bPawnIsAlive
+m_iPawnHealth
+m_DamageList
+m_flGravityScale
+m_iStartAccount
+m_iPawnLifetimeStart
+m_hPlayerPawn
+m_iPawnLifetimeEnd
+m_flTimeScale
+m_iCashEarned
+m_nQuestProgressReason
+m_nTickBase
+m_perRoundStats
+m_iMoneySaved
+m_bPawnHasHelmet
+m_iCashSpentThisRound
+m_iPendingTeamNum
+m_iObjective
+m_iPing
+
+PER ROUND STATS!
+```
+
+### RULES PROPS
+m_iRoundWinStatus
+m_eRoundWinReason
+m_iMatchStats_RoundResults
+m_iMatchStats_PlayersAlive_CT
+m_iMatchStats_PlayersAlive_T
+m_iNumConsecutiveCTLoses
+m_iNumConsecutiveTLoses
+m_flRestartRoundTime
+m_totalRoundsPlayed
+m_nRoundsPlayedThisPhase
+m_bBombPlanted
+m_bFreezePeriod
+
+### TEAM
+m_scoreOvertime
+m_szClanTeamname
+m_iClanID
+m_numMapVictories
+m_iTeamNum
+
+m_scoreSecondHalf
+m_scoreFirstHalf
+m_iScore
 
 ### Values to try for tick data (more on the way):
 

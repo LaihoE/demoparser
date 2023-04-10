@@ -1,15 +1,15 @@
 use super::class::Class;
-use super::entities::FieldPath;
-use super::entities::HuffmanNode;
+use super::entities_utils::FieldPath;
+use super::entities_utils::HuffmanNode;
 use super::game_events::GameEvent;
 use super::sendtables::Field;
 use super::sendtables::Serializer;
 use super::stringtables::StringTable;
 use super::u128arr::U128Arr;
 use super::variants::PropColumn;
-use crate::parsing::entities::generate_huffman_tree;
 use crate::parsing::entities::Entity;
 use crate::parsing::entities::PlayerMetaData;
+use crate::parsing::entities_utils::generate_huffman_tree;
 use crate::parsing::read_bits::Bitreader;
 use crate::parsing::sendtables::Decoder;
 use ahash::HashMap;
@@ -55,7 +55,24 @@ pub struct Parser {
     pub cache: HashMap<u128, (String, Decoder)>,
 
     pub paths: Vec<FieldPath>,
+    pub teams: Teams,
 }
+#[derive(Debug, Clone)]
+pub struct Teams {
+    pub team1_entid: Option<i32>,
+    pub team2_entid: Option<i32>,
+    pub team3_entid: Option<i32>,
+}
+impl Teams {
+    pub fn new() -> Self {
+        Teams {
+            team1_entid: None,
+            team2_entid: None,
+            team3_entid: None,
+        }
+    }
+}
+
 pub struct PacketMsg {
     msg_type: i32,
     data: Vec<u8>,
@@ -111,6 +128,7 @@ impl Parser {
             string_tables: vec![],
             cache: HashMap::default(),
             paths: vec![fp_filler; 10000],
+            teams: Teams::new(),
         }
     }
     pub fn start(&mut self) {
@@ -144,7 +162,7 @@ impl Parser {
                 8 => self.parse_packet(&bytes),
                 _ => {}
             }
-            self.collect();
+            // self.collect();
         }
         // Collects wanted data from entities
     }
@@ -167,7 +185,6 @@ impl Parser {
                         self.parse_packet_ents(packet_ents);
                     }
                 }
-
                 44 => {
                     let st: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
                     self.parse_create_stringtable(st);
@@ -176,26 +193,22 @@ impl Parser {
                     let st: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
                     self.update_string_table(st);
                 }
-
                 40 => {
                     let server_info: CSVCMsg_ServerInfo =
                         Message::parse_from_bytes(&bytes).unwrap();
                     self.parse_server_info(server_info);
                 }
-
                 207 => {
                     if self.wanted_event.is_some() {
                         let ge: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
                         self.parse_event(ge);
                     }
                 }
-
                 205 => {
                     let ge_list_msg: CSVCMsg_GameEventList =
                         Message::parse_from_bytes(&bytes).unwrap();
                     self.ge_list = Some(Parser::parse_game_event_map(ge_list_msg));
                 }
-
                 _ => {
                     //println!("MSGTYPE: {}", msg_type);
                 }

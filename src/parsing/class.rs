@@ -31,8 +31,7 @@ impl Parser {
                 serializer: self.serializers[network_name].clone(),
                 history: HashSet::default(),
             };
-
-            // self.print_struct(cls_id, &class.serializer, 0, vec![]);
+            self.print_struct(cls_id, &class.serializer, 0, vec![]);
 
             let cls_name = class.name.clone();
             self.cls_by_id
@@ -60,7 +59,7 @@ impl Parser {
                     use crate::parsing::sendtables::FieldModel;
 
                     if f.model == FieldModel::FieldModelVariableArray && tmp.last().unwrap() != &0 {
-                        println!("{:?}", tmp);
+                        // println!("{:?}", tmp);
                         /*
                         for i in 0..512 {
                             let mut x = tmp.clone();
@@ -103,6 +102,10 @@ impl Parser {
                             }
                         }
                     } else {
+                        if f.var_name.contains("Win") || f.send_node.contains("Win") {
+                            //println!("a {:#?} {}", f, f.send_node);
+                        }
+
                         let key = path_to_key_no_fp(tmp, cls_id as u32);
                         self.cache
                             .insert(key, (f.var_name.clone(), f.decoder.clone()));
