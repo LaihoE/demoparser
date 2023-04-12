@@ -1,18 +1,11 @@
-use crate::parsing::parser::Parser;
+use crate::parsing::parser_settings::Parser;
 use crate::parsing::variants::keydata_type_from_propdata;
+use crate::parsing::variants::*;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
 use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
-use polars::series::Series;
-
-use crate::parsing::parser::*;
-use crate::parsing::variants::*;
-use ahash::RandomState;
 use derive_more::TryInto;
 use itertools::Itertools;
-use polars::prelude::NamedFrom;
-use protobuf::Message;
-use pyo3::prelude::*;
-use std::collections::HashMap;
+use polars::series::Series;
 
 use super::entities::PlayerMetaData;
 
@@ -71,13 +64,14 @@ impl Parser {
             None => panic!("Game event before descriptor list was parsed."),
         };
         let event_desc = &ge_list[&event.eventid()];
-        //println!("{:?}", event_desc.name);
+
+        self.game_events_counter
+            .entry(event_desc.name.as_ref().unwrap().clone())
+            .and_modify(|counter| *counter += 1)
+            .or_insert(1);
 
         if event_desc.name != self.wanted_event {
             return;
-        }
-        if event_desc.name().contains("deto") {
-            //println!("{:?}", event_desc.name);
         }
 
         let mut kv_pairs: Vec<NameDataPair> = vec![];
@@ -85,11 +79,6 @@ impl Parser {
             let ge = &event.keys[i];
             let desc = &event_desc.keys[i];
             let val = parse_key(ge);
-
-            if event_desc.name().contains("player_sound") {
-                //println!("{:?} {:?}", desc.name(), val);
-            }
-            //println!("{:?} {:?}", desc.name(), val);
 
             if !(desc.name().contains("userid")
                 || desc.name().contains("attacker")
@@ -150,7 +139,7 @@ impl Parser {
             tick: self.tick,
         });
     }
-
+    #[allow(dead_code)]
     pub fn series_from_events(&self, events: &Vec<GameEvent>) -> Vec<Series> {
         let pairs: Vec<NameDataPair> = events.iter().map(|x| x.fields.clone()).flatten().collect();
         let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);

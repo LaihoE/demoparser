@@ -1,5 +1,5 @@
 use super::read_bits::Bitreader;
-use crate::Parser;
+use crate::parsing::parser_settings::Parser;
 use csgoproto::netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable};
 use snap::raw::Decoder;
 
@@ -8,12 +8,9 @@ pub struct StringTable {
     name: String,
     user_data_size: i32,
     user_data_fixed: bool,
+    #[allow(dead_code)]
     data: Vec<StringTableEntry>,
     flags: i32,
-}
-#[derive(Clone, Debug)]
-pub struct StField {
-    entry: String,
 }
 #[derive(Clone, Debug)]
 pub struct StringTableEntry {
@@ -111,7 +108,7 @@ impl Parser {
                 keys.push(key.clone());
                 // Does the entry have a value
                 if bitreader.read_boolie().unwrap() {
-                    let mut bits = 0;
+                    let bits: i32;
                     let mut is_compressed = false;
 
                     match udf {
@@ -125,20 +122,17 @@ impl Parser {
                     }
 
                     value = bitreader.read_n_bytes((bits / 8) as usize);
-                    //value = bitreader.read_bits_to_arr((bits as u32));
                     value = if is_compressed {
                         Decoder::new().decompress_vec(&value).unwrap()
                     } else {
                         value
                     };
-                    //value
                 }
-                //println!("{:?} {:?} {:?}", idx, key, value.clone());
 
                 if name == "instancebaseline" {
+                    // Watch out for keys like 42:15 <-- seem to be props that are not used atm
                     let k = key.parse::<u32>().unwrap_or(999999);
                     self.baselines.insert(k, value.clone());
-                    //println!("{} {:?} {:?} {:?}", name, idx, key, value);
                 }
 
                 items.push(StringTableEntry {
@@ -155,14 +149,5 @@ impl Parser {
             user_data_fixed: udf,
             flags: flags,
         });
-    }
-    pub fn parse_user_info(bytes: &[u8]) {
-        // TODO SEEMS SHORT AND BORING INFO ~ 30 bytes
-        let unk = &bytes[..3];
-        //let name = &bytes[3..20];
-        for i in 0..bytes.len() - 8 {
-            let xuid = u64::from_le_bytes(bytes[i..i + 8].try_into().unwrap());
-            println!("{:?}", xuid);
-        }
     }
 }

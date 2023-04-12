@@ -3,7 +3,7 @@
 pub struct U128Arr {
     pub v: u128,
 }
-
+#[allow(dead_code)]
 impl U128Arr {
     #[inline(always)]
     pub fn get(&self, index: usize) -> i32 {

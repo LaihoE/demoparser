@@ -1,7 +1,6 @@
 use super::read_bits::Bitreader;
-use crate::parsing::entities_utils::path_to_key;
 use crate::parsing::entities_utils::FieldPath;
-use crate::parsing::parser::Parser;
+use crate::parsing::parser_settings::Parser;
 use crate::parsing::q_float::QuantalizedFloat;
 use ahash::HashMap;
 use csgoproto::{
@@ -45,6 +44,7 @@ pub enum FieldModel {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum Decoder {
     FloatDecoder,
     QuantalizedFloatDecoder(QuantalizedFloat),
@@ -73,6 +73,7 @@ pub enum Decoder {
     VectorDecoder,
     BaseDecoder,
     NO,
+    X,
 }
 
 use crate::parsing::sendtables::Decoder::*;
@@ -100,19 +101,40 @@ pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
     "CUtlString" =>           StringDecoder,
     "CUtlStringToken" =>      UnsignedDecoder,
     "CUtlSymbolLarge" =>      StringDecoder,
+
+
 };
 
 impl Field {
-    pub fn decoder_from_path(&self, path: &FieldPath, pos: usize) -> (Option<String>, Decoder) {
+    pub fn decoder_from_path(
+        &self,
+        path: &FieldPath,
+        pos: usize,
+        is_baseline: bool,
+    ) -> (Option<String>, Decoder) {
         match self.model {
             FieldModelFixedArray => (None, self.decoder.clone()),
             FieldModelFixedTable => {
                 if path.last == pos - 1 {
+                    // println!("{:#?}", self);
+                    if is_baseline {
+                        if self.serializer.as_ref().unwrap().fields.len() == 0 {
+                            return (None, BooleanDecoder);
+                        } else {
+                            return (
+                                None,
+                                self.serializer.as_ref().unwrap().fields[pos - 1]
+                                    .decoder
+                                    .clone(),
+                            );
+                        }
+                    }
+
                     return (None, self.base_decoder.clone().unwrap());
                 } else {
                     match &self.serializer {
                         Some(ser) => {
-                            let (_name, f, decoder) = ser.find_decoder(path, pos);
+                            let (_name, f, decoder) = ser.find_decoder(path, pos, is_baseline);
                             return (Some(f.var_name.to_owned()), decoder);
                         }
                         None => panic!("no serializer for path"),
@@ -130,7 +152,7 @@ impl Field {
                 if path.last >= pos + 1 {
                     match &self.serializer {
                         Some(ser) => {
-                            let (_name, f, decoder) = ser.find_decoder(path, pos + 1);
+                            let (_name, f, decoder) = ser.find_decoder(path, pos + 1, is_baseline);
                             return (Some(f.var_name.to_owned()), decoder);
                         }
                         None => panic!("no serializer for path"),
@@ -155,12 +177,15 @@ impl Field {
             FieldModelVariableTable => self.base_decoder = Some(Decoder::UnsignedDecoder),
             FieldModelVariableArray => {
                 self.base_decoder = Some(Decoder::UnsignedDecoder);
+                //self.child_decoder = Some(self.decoder.clone());
+
                 self.child_decoder = match BASETYPE_DECODERS
                     .get(&self.field_type.generic_type.clone().unwrap().base_type)
                 {
                     Some(decoder) => Some(decoder.clone()),
                     None => Some(Decoder::BaseDecoder),
                 };
+
                 //println!("childdecoder: {:?}", self.child_decoder);
             }
             FieldModelNOTSET => panic!("wtf"),
@@ -209,13 +234,13 @@ impl Field {
             "coord" => Decoder::FloatCoordDecoder,
             "m_flSimulationTime" => Decoder::FloatSimulationTimeDecoder,
             // Maybe dota only?
-            "runetime" => Decoder::FloatRuneTimeDecoder,
+            // "runetime" => Decoder::FloatRuneTimeDecoder,
             _ => {
                 // IF NIL?
                 if self.bitcount <= 0 || self.bitcount >= 32 {
                     return Decoder::NoscaleDecoder;
                 } else {
-                    let mut qf = QuantalizedFloat::new(
+                    let qf = QuantalizedFloat::new(
                         self.bitcount.try_into().unwrap(),
                         Some(self.encode_flags),
                         Some(self.low_value),
@@ -255,8 +280,24 @@ fn find_field_type(name: &str) -> FieldType {
 
     let base_type = captures.get(1).unwrap().as_str().to_owned();
     let pointer = match captures.get(4) {
-        Some(s) => s.as_str() == "*",
-        None => false,
+        Some(s) => {
+            if s.as_str() == "*" {
+                true
+            } else {
+                if POINTER_TYPES.contains(&name) {
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+        None => {
+            if POINTER_TYPES.contains(&name) {
+                true
+            } else {
+                false
+            }
+        }
     };
 
     let mut ft = FieldType {
@@ -282,41 +323,21 @@ pub struct Serializer {
     pub fields: Vec<Field>,
 }
 
-impl Field {
-    pub fn is_vector(&self) -> bool {
-        // Serializer id ?!?
-        match self.var_type.as_str() {
-            "CUtlVector" => return true,
-            "CNetworkUtlVectorBase" => return true,
-            _ => false,
-        }
-    }
-    pub fn is_ptr(&self) -> bool {
-        match self.var_type.as_str() {
-            "CBodyComponent" => true,
-            "CLightComponent" => true,
-            "CPhysicsComponent" => true,
-            "CRenderComponent" => true,
-            "CPlayerLocalData" => true,
-            _ => false,
-        }
-    }
-    pub fn is_array(&self) -> bool {
-        match self.var_type.as_str() {
-            "CBodyComponent" => true,
-            "CLightComponent" => true,
-            "CPhysicsComponent" => true,
-            "CRenderComponent" => true,
-            "CPlayerLocalData" => true,
-            _ => false,
-        }
-    }
-}
-
 impl Serializer {
-    pub fn find_decoder(&self, path: &FieldPath, pos: usize) -> (String, &Field, Decoder) {
-        let idx = path.path.get(pos);
-        let f = &self.fields[idx as usize];
+    pub fn find_decoder(
+        &self,
+        path: &FieldPath,
+        pos: usize,
+        is_baseline: bool,
+    ) -> (String, &Field, Decoder) {
+        let idx = path.path.get(pos).unwrap();
+        let f = &self.fields[*idx as usize];
+
+        if is_baseline {
+            if f.var_name == "CBodyComponent" && path.last == 0 {
+                return (f.var_name.to_owned(), f, X);
+            }
+        }
 
         if path.last != 1 {
             match f.var_name.as_str() {
@@ -342,7 +363,7 @@ impl Serializer {
                 _ => {}
             }
         }
-        let (name, decoder) = f.decoder_from_path(path, pos + 1);
+        let (name, decoder) = f.decoder_from_path(path, pos + 1, is_baseline);
         let real_name = match name {
             Some(s) => s,
             None => f.var_name.to_owned(),
@@ -351,7 +372,7 @@ impl Serializer {
     }
 }
 
-const PointerTypes: &'static [&'static str] = &[
+const POINTER_TYPES: &'static [&'static str] = &[
     // TODO CS ONES
     "PhysicsRagdollPose_t",
     "CBodyComponent",
@@ -365,6 +386,15 @@ const PointerTypes: &'static [&'static str] = &[
     "CPlayer_CameraServices",
     "CDOTAGameRules",
     "CPostProcessingVolume",
+    "CBodyComponentDCGBaseAnimating",
+    "CBodyComponentBaseAnimating",
+    "CBodyComponentBaseAnimatingOverlay",
+    "CBodyComponentBaseModelEntity",
+    "CBodyComponentSkeletonInstance",
+    "CBodyComponentPoint",
+    "CLightComponent",
+    "CRenderComponent",
+    "CPhysicsComponent",
 ];
 
 impl Parser {
@@ -402,9 +432,9 @@ impl Parser {
                         }
 
                         match &field.serializer {
-                            Some(ser) => {
+                            Some(_) => {
                                 if field.field_type.pointer
-                                    || PointerTypes.contains(&field.field_type.base_type.as_str())
+                                    || POINTER_TYPES.contains(&field.field_type.base_type.as_str())
                                 {
                                     field.find_decoder(FieldModelFixedTable)
                                 } else {
@@ -415,20 +445,16 @@ impl Parser {
                                 if field.field_type.count > 0
                                     && field.field_type.base_type != "char"
                                 {
-                                    //println!("3");
                                     field.find_decoder(FieldModelFixedArray)
                                 } else if field.field_type.base_type == "CUtlVector"
                                     || field.field_type.base_type == "CNetworkUtlVectorBase"
                                 {
-                                    //println!("4");
                                     field.find_decoder(FieldModelVariableArray)
                                 } else {
-                                    //println!("5");
                                     field.find_decoder(FieldModelSimple)
                                 }
                             }
                         }
-                        // println!("{} {} {:#?}", my_serializer.name, *idx, field);
 
                         fields.insert(*idx, field.clone());
                         my_serializer.fields.push(field);
@@ -456,7 +482,7 @@ fn field_from_msg(
         true => serializer_msg.symbols[field.var_encoder_sym() as usize].clone(),
         false => "".to_string(),
     };
-    Field {
+    let f = Field {
         bitcount: field.bit_count(),
         var_name: serializer_msg.symbols[field.var_name_sym() as usize].clone(),
         var_type: serializer_msg.symbols[field.var_type_sym() as usize].clone(),
@@ -473,5 +499,7 @@ fn field_from_msg(
         decoder: BaseDecoder,
         base_decoder: None,
         child_decoder: None,
-    }
+    };
+
+    f
 }

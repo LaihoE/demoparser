@@ -1,9 +1,9 @@
 use super::read_bits::Bitreader;
 
-const qff_rounddown: u32 = (1 << 0);
-const qff_roundup: u32 = (1 << 1);
-const qff_encode_zero: u32 = (1 << 2);
-const qff_encode_integers: u32 = (1 << 3);
+const QFF_ROUNDDOWN: u32 = 1 << 0;
+const QFF_ROUNDUP: u32 = 1 << 1;
+const QFF_ENCODE_ZERO: u32 = 1 << 2;
+const QFF_ENCODE_INTEGERS: u32 = 1 << 3;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct QuantalizedFloat {
@@ -24,26 +24,26 @@ impl QuantalizedFloat {
         if self.flags == 0 {
             return;
         }
-        if (self.low == 0.0 && (self.flags & qff_rounddown) != 0)
-            || (self.high == 0.0 && (self.flags & qff_roundup) != 0)
+        if (self.low == 0.0 && (self.flags & QFF_ROUNDDOWN) != 0)
+            || (self.high == 0.0 && (self.flags & QFF_ROUNDUP) != 0)
         {
-            self.flags &= !qff_encode_zero;
+            self.flags &= !QFF_ENCODE_ZERO;
         }
-        if self.low == 0.0 && (self.flags & qff_encode_zero) != 0 {
-            self.flags |= qff_rounddown;
-            self.flags &= !qff_encode_zero;
+        if self.low == 0.0 && (self.flags & QFF_ENCODE_ZERO) != 0 {
+            self.flags |= QFF_ROUNDDOWN;
+            self.flags &= !QFF_ENCODE_ZERO;
         }
-        if self.high == 0.0 && (self.flags & qff_encode_zero) != 0 {
-            self.flags |= qff_roundup;
-            self.flags &= !qff_encode_zero;
+        if self.high == 0.0 && (self.flags & QFF_ENCODE_ZERO) != 0 {
+            self.flags |= QFF_ROUNDUP;
+            self.flags &= !QFF_ENCODE_ZERO;
         }
         if self.low > 0.0 || self.high < 0.0 {
-            self.flags &= !qff_encode_zero;
+            self.flags &= !QFF_ENCODE_ZERO;
         }
-        if (self.flags & qff_encode_integers) != 0 {
-            self.flags &= !(qff_roundup | qff_rounddown | qff_encode_zero);
+        if (self.flags & QFF_ENCODE_INTEGERS) != 0 {
+            self.flags &= !(QFF_ROUNDUP | QFF_ROUNDDOWN | QFF_ENCODE_ZERO);
         }
-        if self.flags & (qff_rounddown | qff_roundup) == (qff_rounddown | qff_roundup) {
+        if self.flags & (QFF_ROUNDDOWN | QFF_ROUNDUP) == (QFF_ROUNDDOWN | QFF_ROUNDUP) {
             panic!("Roundup / Rounddown are mutually exclusive")
         }
     }
@@ -58,7 +58,7 @@ impl QuantalizedFloat {
             high = (1 << self.bit_count) - 1;
         }
 
-        let mut high_mul = 0.0;
+        let mut high_mul: f32;
         // Xd?
         if range.abs() <= 0.0 {
             high_mul = high as f32;
@@ -97,20 +97,20 @@ impl QuantalizedFloat {
         self.low + (self.high - self.low) * ((i as f32) * self.dec_mul)
     }
     pub fn decode(&mut self, bitreader: &mut Bitreader) -> f32 {
-        if self.flags & qff_rounddown != 0 && bitreader.read_boolie().unwrap() {
+        if self.flags & QFF_ROUNDDOWN != 0 && bitreader.read_boolie().unwrap() {
             return self.low;
         }
-        if self.flags & qff_roundup != 0 && bitreader.read_boolie().unwrap() {
+        if self.flags & QFF_ROUNDUP != 0 && bitreader.read_boolie().unwrap() {
             return self.high;
         }
-        if self.flags & qff_encode_zero != 0 && bitreader.read_boolie().unwrap() {
+        if self.flags & QFF_ENCODE_ZERO != 0 && bitreader.read_boolie().unwrap() {
             return 0.0;
         }
         let bits = bitreader.read_nbits(self.bit_count).unwrap();
         self.low + (self.high - self.low) * bits as f32 * self.dec_mul
     }
     pub fn new(
-        mut bitcount: u32,
+        bitcount: u32,
         flags: Option<i32>,
         low_value: Option<f32>,
         high_value: Option<f32>,
@@ -156,16 +156,16 @@ impl QuantalizedFloat {
         qf.validate_flags();
         let mut steps = 1 << qf.bit_count;
 
-        if (qf.flags & qff_rounddown) != 0 {
+        if (qf.flags & QFF_ROUNDDOWN) != 0 {
             let range = qf.high - qf.low;
             qf.offset = range / (steps as f32);
             qf.high -= qf.offset;
-        } else if (qf.flags & qff_roundup) != 0 {
+        } else if (qf.flags & QFF_ROUNDUP) != 0 {
             let range = qf.high - qf.low;
             qf.offset = range / (steps as f32);
             qf.low += qf.offset;
         }
-        if (qf.flags & qff_encode_integers) != 0 {
+        if (qf.flags & QFF_ENCODE_INTEGERS) != 0 {
             let mut delta = qf.high - qf.low;
             if delta < 1.0 {
                 delta = 1.0;
@@ -190,19 +190,19 @@ impl QuantalizedFloat {
 
         qf.assign_multipliers(steps);
 
-        if (qf.flags & qff_rounddown) != 0 {
+        if (qf.flags & QFF_ROUNDDOWN) != 0 {
             if qf.quantize(qf.low) == qf.low {
-                qf.flags &= !qff_rounddown;
+                qf.flags &= !QFF_ROUNDDOWN;
             }
         }
-        if (qf.flags & qff_roundup) != 0 {
+        if (qf.flags & QFF_ROUNDUP) != 0 {
             if qf.quantize(qf.high) == qf.high {
-                qf.flags &= !qff_roundup
+                qf.flags &= !QFF_ROUNDUP
             }
         }
-        if (qf.flags & qff_encode_zero) != 0 {
+        if (qf.flags & QFF_ENCODE_ZERO) != 0 {
             if qf.quantize(0.0) == 0.0 {
-                qf.flags &= !qff_encode_zero;
+                qf.flags &= !QFF_ENCODE_ZERO;
             }
         }
 

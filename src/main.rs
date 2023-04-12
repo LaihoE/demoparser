@@ -1,41 +1,27 @@
+use parsing::parser_settings::Parser;
 use std::time::Instant;
 
-use ahash::HashSet;
-use parsing::parser::Parser;
+use crate::parsing::parser_settings::ParserInputs;
 mod parsing;
 
 fn main() {
     //let mut parser = Parser::new("/home/laiho/Documents/demos/cs2/s2-gotv.dem");
-    let mut wanted_props = vec!["m_szTeamname".to_owned()];
-    let mut wanted_ticks: Vec<i32> = (0..300000).collect();
-    let wanted_event = Some("smokegrenade_detonate".to_string());
+    let wanted_props = vec!["round".to_owned()];
+    let wanted_ticks: Vec<i32> = (0..300000).collect();
     //let demo_path = "/home/laiho/Documents/demos/cs2/003606754679372906816_1689787990.dem";
-    let demo_path = "/home/laiho/Documents/demos/cs2/fulls2demo.dem";
+    let demo_path = "/home/laiho/Documents/demos/cs2/s2.dem";
 
     let before = Instant::now();
-    let mut parser = Parser::new(demo_path, wanted_props, wanted_ticks, wanted_event, true);
-    parser.start();
-    println!("{:?}", parser.teams);
-    //let mut uniq = HashSet::default();
-    /*
-    for (idx, e) in parser.entities {
-        uniq.insert(parser.cls_by_id[&(e.cls_id as i32)].name.clone());
-        for p in e.props {
-            if parser.cls_by_id[&(e.cls_id as i32)].name == "CSmokeGrenadeProjectile" {
-                println!(
-                    "{} {} {:?}",
-                    parser.cls_by_id[&(e.cls_id as i32)].name,
-                    p.0,
-                    p.1
-                )
-            }
-        }
-    }
-    for x in uniq {
-        println!("{:?}", x);
-    }
 
-    */
-    //println!("{:#?}", parser.game_events)
+    let settings = ParserInputs {
+        path: demo_path.to_string(),
+        wanted_props: wanted_props.clone(),
+        wanted_event: None,
+        parse_ents: true,
+        wanted_ticks: wanted_ticks,
+        parse_projectiles: false,
+    };
+    let mut parser = Parser::new(settings);
+    parser.start();
     println!("{:2?}", before.elapsed());
 }

@@ -1,8 +1,4 @@
-use super::{
-    read_bits::Bitreader,
-    sendtables::{Decoder, Field},
-    variants::PropData,
-};
+use super::{read_bits::Bitreader, sendtables::Decoder, variants::PropData};
 use crate::parsing::sendtables::Decoder::*;
 
 impl<'a> Bitreader<'a> {
@@ -25,13 +21,14 @@ impl<'a> Bitreader<'a> {
             QanglePitchYawDecoder => PropData::FloatVec32(self.decode_qangle_pitch_yaw()),
             QangleVarDecoder => PropData::FloatVec32(self.decode_qangle_variant()),
             QuantalizedFloatDecoder(qf) => PropData::F32(qf.clone().decode(self)),
-            VectorNormalDecoder => PropData::FloatVec(self.decode_normal_vec()),
+            VectorNormalDecoder => PropData::FloatVec32(self.decode_normal_vec()),
             Unsigned64Decoder => PropData::U64(self.read_varint_u_64().unwrap()),
             Fixed64Decoder => PropData::U64(self.decode_uint64().unwrap()),
             NO => PropData::U32(self.read_varint().unwrap()),
             VectorSpecialDecoder(float_type) => {
                 PropData::FloatVec32(self.decode_vector_special(float_type.clone().unwrap()))
             }
+            X => PropData::U32(self.read_nbits(1).unwrap()),
             _ => panic!("huh"),
         }
     }
@@ -56,13 +53,7 @@ impl<'a> Bitreader<'a> {
     pub fn decode_uint64(&mut self) -> Option<u64> {
         Some(u64::from_le_bytes(self.read_n_bytes(8).try_into().unwrap()))
     }
-    pub fn decode_fixed64(&mut self, field: &Field) -> Option<u64> {
-        println!("{:?}", field.encoder.as_str());
-        match field.encoder.as_str() {
-            "fixed64" => self.decode_uint64(),
-            _ => self.read_varint_u_64(),
-        }
-    }
+
     pub fn decode_noscale(&mut self) -> Option<f32> {
         Some(f32::from_le_bytes(
             self.read_nbits(32).unwrap().to_le_bytes(),
@@ -80,61 +71,22 @@ impl<'a> Bitreader<'a> {
         }
         Some(String::from_utf8_lossy(&s).to_string())
     }
-    pub fn decode_vector(&mut self, vec_len: i32, field: &Field, _decoder: &Decoder) -> Vec<f64> {
-        println!("{:?}", field.var_name);
-        if field.var_name == "origin"
-            || field.var_name == "dirPrimary"
-            || field.var_name == "m_vSmokeDetonationPos"
-        {
-            let mut v = vec![];
-            for _ in 0..3 {
-                v.push(self.decode_float_coord() as f64);
-            }
-            return v;
-        }
-        if vec_len == 3 && field.encoder == "normal" {
-            return self.decode_normal_vec();
-        };
-        let mut v = vec![];
-        for _ in 0..vec_len {
-            v.push(self.decode_noscale().unwrap() as f64);
-        }
-        v
-    }
-    pub fn decode_float(&mut self, field: &Field, _bits: i32) -> Option<f32> {
-        println!("Start");
-        match field.var_name.as_str() {
-            "m_flAnimTime" => return Some(self.decode_simul_time()),
-            "coord" => return Some(self.decode_float_coord()),
-            "m_flSimulationTime" => return Some(self.decode_simul_time()),
-            "runetime" => return Some(self.decode_run_time()),
-            _ => {}
-        }
-        println!("End");
-        if field.bitcount >= 32 {
-            return Some(self.decode_noscale().unwrap());
-        }
-        Some(69.0)
-    }
     pub fn decode_float_coord(&mut self) -> f32 {
         self.read_bit_coord().unwrap()
     }
     pub fn decode_simul_time(&mut self) -> f32 {
         self.read_varint().unwrap() as f32 * (1.0 / 30.0)
     }
-    pub fn decode_run_time(&mut self) -> f32 {
-        self.read_nbits(4).unwrap() as f32
-    }
-    pub fn decode_normal(&mut self) -> f64 {
+    pub fn decode_normal(&mut self) -> f32 {
         let is_neg = self.read_boolie().unwrap();
         let len = self.read_nbits(11).unwrap();
-        let result = len as f64 * (1.0 / ((1 << 11) as f64) - 1.0);
+        let result = (len as f64 * (1.0 / ((1 << 11) as f64) - 1.0)) as f32;
         match is_neg {
             true => -result,
             false => result,
         }
     }
-    pub fn decode_normal_vec(&mut self) -> Vec<f64> {
+    pub fn decode_normal_vec(&mut self) -> Vec<f32> {
         let mut v = vec![0.0; 3];
         let has_x = self.read_boolie().unwrap();
         let has_y = self.read_boolie().unwrap();
@@ -147,7 +99,7 @@ impl<'a> Bitreader<'a> {
         let neg_z = self.read_boolie().unwrap();
         let prod_sum = v[0] * v[0] + v[1] * v[1];
         if prod_sum < 1.0 {
-            v[2] = (1.0 - prod_sum).sqrt();
+            v[2] = (1.0 - prod_sum).sqrt() as f32;
         } else {
             v[2] = 0.0;
         }

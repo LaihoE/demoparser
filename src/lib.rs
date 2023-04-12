@@ -1,8 +1,9 @@
 mod parsing;
+use crate::parsing::parser_settings::ParserInputs;
+use ahash::HashMap;
 use arrow::ffi;
-use parsing::parser::Parser;
+use parsing::parser_settings::Parser;
 use parsing::variants::VarVec;
-use polars::export::arrow::array::PrimitiveArray;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -11,6 +12,7 @@ use polars_arrow::prelude::ArrayRef;
 use pyo3::exceptions::PyIndexError;
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::prelude::*;
+use pyo3::types::IntoPyDict;
 use pyo3::types::PyDict;
 use pyo3::Python;
 use pyo3::{PyAny, PyObject, PyResult};
@@ -34,7 +36,6 @@ pub(crate) fn to_py_array(py: Python, pyarrow: &PyModule, array: ArrayRef) -> Py
 /// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
 pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
     let series = series.rechunk();
-    println!("{:?}", series);
     let array = series.to_arrow(0);
     let gil = Python::acquire_gil();
     let py = gil.python();
@@ -68,9 +69,64 @@ impl DemoParser {
     pub fn py_new(demo_path: String) -> PyResult<Self> {
         Ok(DemoParser { path: demo_path })
     }
-
+    /// Returns the names and frequencies of game events during the game.
+    ///
+    /// Example: {"player_death": 43, "bomb_planted": 4 ...}
+    pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let settings = ParserInputs {
+            path: self.path.to_owned(),
+            wanted_props: vec![],
+            wanted_event: Some("-".to_owned()),
+            parse_ents: false,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+        };
+        let mut parser = Parser::new(settings);
+        parser.start();
+        // Sort by freq
+        let mut v: Vec<_> = parser.game_events_counter.iter().collect();
+        v.sort_by(|x, y| x.1.cmp(&y.1));
+        let h = HashMap::from_iter(v);
+        let dict = pyo3::Python::with_gil(|py| h.to_object(py));
+        Ok(dict)
+    }
+    /// Returns the names and frequencies of values set to entities during the game.
+    ///
+    /// Example: {"m_vecX": 87741, "m_iAmmo": 98521 ...}
+    pub fn list_entity_values(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let settings = ParserInputs {
+            path: self.path.to_owned(),
+            wanted_props: vec![],
+            wanted_event: None,
+            parse_ents: true,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+        };
+        let mut parser = Parser::new(settings);
+        parser.start();
+        // Sort by freq
+        let mut v: Vec<_> = parser.props_counter.iter().collect();
+        v.sort_by(|x, y| x.1.cmp(&y.1));
+        let h = HashMap::from_iter(v);
+        Ok(h.to_object(py))
+    }
+    /// Returns all coordinates of all grenades along with info about thrower.
+    ///
+    /// Example:
+    ///          X           Y       Z  tick  thrower_steamid grenade_type
+    /// 0 -388.875  1295.46875 -5120.0   982              NaN    HeGrenade
+    /// 1 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
+    /// 2 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
     pub fn parse_grenades(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mut parser = Parser::new(&self.path, vec![], vec![], None, true);
+        let settings = ParserInputs {
+            path: self.path.to_owned(),
+            wanted_props: vec![],
+            wanted_event: None,
+            parse_ents: true,
+            wanted_ticks: vec![],
+            parse_projectiles: true,
+        };
+        let mut parser = Parser::new(settings);
         parser.start();
 
         // Projectile records are in SoA form
@@ -91,24 +147,35 @@ impl DemoParser {
 
         let polars = py.import("polars")?;
         let all_series_py = [xs, ys, zs, ticks, steamids, grenade_type].to_object(py);
-        let df = polars.call_method1("DataFrame", (all_series_py,))?;
-        df.setattr(
-            "columns",
-            ["X", "Y", "Z", "tick", "thrower_steamid", "grenade_type"].to_object(py),
-        )
-        .unwrap();
-        Ok(df.to_object(py))
+        Python::with_gil(|py| {
+            let df = polars.call_method1("DataFrame", (all_series_py,))?;
+            // Set column names
+            let column_names = ["X", "Y", "Z", "tick", "thrower_steamid", "grenade_type"];
+            df.setattr("columns", column_names.to_object(py)).unwrap();
+            // Call to_pandas with use_pyarrow_extension_array = true
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            Ok(pandas_df.to_object(py))
+        })
     }
 
     #[args(py_kwargs = "**")]
     pub fn parse_events(
         &self,
-        py: Python<'_>,
+        _py: Python<'_>,
         event_name: Option<String>,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<Py<PyAny>> {
         let (_, wanted_props) = parse_kwargs_event(py_kwargs);
-        let mut parser = Parser::new(&self.path, wanted_props, vec![], event_name.clone(), true);
+        let settings = ParserInputs {
+            path: self.path.to_owned(),
+            wanted_props: wanted_props.clone(),
+            wanted_event: event_name.clone(),
+            parse_ents: wanted_props.len() > 0,
+            wanted_ticks: vec![],
+            parse_projectiles: true,
+        };
+        let mut parser = Parser::new(settings);
         parser.start();
 
         let event_series = parser.series_from_events(&parser.game_events);
@@ -116,33 +183,43 @@ impl DemoParser {
         let mut rows = 0;
 
         let mut all_series = vec![];
-        for s in &event_series {
-            rows = s.len().max(rows);
-            let py_series = rust_series_to_py_series(&s).unwrap();
+        for ser in &event_series {
+            rows = ser.len().max(rows);
+            let py_series = rust_series_to_py_series(&ser).unwrap();
             all_series.push(py_series);
         }
         if rows == 0 {
             return Err(PyIndexError::new_err(format!(
                 "No {:?} events found!",
-                event_name
+                event_name.unwrap()
             )));
         }
-        let polars = py.import("polars").unwrap();
-        let df = polars.call_method1("DataFrame", (all_series,)).unwrap();
-        df.setattr("columns", column_names.to_object(py)).unwrap();
-        let pandas_df = df.call_method0("to_pandas").unwrap();
-        Ok(pandas_df.to_object(py))
+        Python::with_gil(|py| {
+            let polars = py.import("polars").unwrap();
+            let df = polars.call_method1("DataFrame", (all_series,)).unwrap();
+            df.setattr("columns", column_names.to_object(py)).unwrap();
+            let pandas_df = df.call_method0("to_pandas").unwrap();
+            Ok(pandas_df.to_object(py))
+        })
     }
 
     #[args(py_kwargs = "**")]
     pub fn parse_ticks(
         &self,
-        py: Python,
+        _py: Python,
         mut wanted_props: Vec<String>,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<PyObject> {
         let (_, wanted_ticks) = parse_kwargs_ticks(py_kwargs);
-        let mut parser = Parser::new(&self.path, wanted_props.clone(), wanted_ticks, None, true);
+        let settings = ParserInputs {
+            path: self.path.clone(),
+            wanted_props: wanted_props.clone(),
+            wanted_event: None,
+            parse_ents: true,
+            wanted_ticks: wanted_ticks,
+            parse_projectiles: false,
+        };
+        let mut parser = Parser::new(settings);
         parser.start();
 
         let mut all_series = vec![];
@@ -154,45 +231,38 @@ impl DemoParser {
         for prop_name in &wanted_props {
             if parser.output.contains_key(prop_name) {
                 match &parser.output[prop_name].data {
-                    VarVec::F32(data) => {
+                    Some(VarVec::F32(data)) => {
+                        all_series.push(arr_to_py(Box::new(Float32Array::from(data))).unwrap());
+                    }
+                    Some(VarVec::I32(data)) => {
+                        all_series.push(arr_to_py(Box::new(Int32Array::from(data))).unwrap());
+                    }
+                    Some(VarVec::U64(data)) => {
+                        all_series.push(arr_to_py(Box::new(UInt64Array::from(data))).unwrap());
+                    }
+                    Some(VarVec::U32(data)) => {
+                        all_series.push(arr_to_py(Box::new(UInt32Array::from(data))).unwrap());
+                    }
+                    Some(VarVec::Bool(data)) => {
+                        all_series.push(arr_to_py(Box::new(BooleanArray::from(data))).unwrap());
+                    }
+                    Some(VarVec::String(data)) => {
                         let s = Series::new(prop_name, data);
                         let py_series = rust_series_to_py_series(&s).unwrap();
                         all_series.push(py_series);
                     }
-                    VarVec::I32(data) => {
-                        let s = Series::new(prop_name, data);
-                        let py_series = rust_series_to_py_series(&s).unwrap();
-                        all_series.push(py_series);
-                    }
-                    VarVec::String(data) => {
-                        let s = Series::new(prop_name, data);
-                        let py_series = rust_series_to_py_series(&s).unwrap();
-                        all_series.push(py_series);
-                    }
-                    VarVec::U64(data) => {
-                        let s = Series::new(prop_name, data);
-                        let py_series = rust_series_to_py_series(&s).unwrap();
-                        all_series.push(py_series);
-                    }
-                    VarVec::U32(data) => {
-                        let s = Series::new(prop_name, data);
-                        let py_series = rust_series_to_py_series(&s).unwrap();
-                        all_series.push(py_series);
-                    }
-                    VarVec::Bool(data) => {
-                        let s = Series::new(prop_name, data);
-                        let py_series = rust_series_to_py_series(&s).unwrap();
-                        all_series.push(py_series);
-                    }
+                    _ => {}
                 }
             }
         }
-        let polars = py.import("polars")?;
-        let all_series_py = all_series.to_object(py);
-        let df = polars.call_method1("DataFrame", (all_series_py,))?;
-        df.setattr("columns", wanted_props.to_object(py)).unwrap();
-        let pandas_df = df.call_method0("to_pandas").unwrap();
-        Ok(pandas_df.to_object(py))
+        Python::with_gil(|py| {
+            let polars = py.import("polars")?;
+            let all_series_py = all_series.to_object(py);
+            let df = polars.call_method1("DataFrame", (all_series_py,))?;
+            df.setattr("columns", wanted_props.to_object(py)).unwrap();
+            let pandas_df = df.call_method0("to_pandas").unwrap();
+            Ok(pandas_df.to_object(py))
+        })
     }
 }
 

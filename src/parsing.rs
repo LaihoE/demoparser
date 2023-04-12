@@ -5,6 +5,7 @@ pub mod entities;
 pub mod entities_utils;
 pub mod game_events;
 pub mod parser;
+pub mod parser_settings;
 pub mod q_float;
 pub mod read_bits;
 pub mod read_bytes;

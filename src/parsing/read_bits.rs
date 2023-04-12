@@ -81,55 +81,11 @@ impl<'a> Bitreader<'a> {
         }
         Some(result)
     }
-    #[inline(always)]
-    pub fn read_inx(&mut self, last: i32, new_way: bool) -> Option<i32> {
-        if new_way && self.read_boolie()? {
-            return Some(last + 1);
-        }
-        if new_way && self.read_boolie()? {
-            let index = self.read_nbits(3)?;
-            if index == 0xfff {
-                return Some(-1);
-            }
-            Some(last + 1 + index as i32)
-        } else {
-            let mut index = self.read_nbits(7)?;
-            let val = index & (32 | 64);
-            match val {
-                32 => {
-                    index = (index & !96) | (self.read_nbits(2)? << 5);
-                }
-                64 => {
-                    index = (index & !96) | (self.read_nbits(4)? << 5);
-                }
-                96 => {
-                    let t = self.read_nbits(7)? << 5;
-                    index = (index & !96) | (t);
-                }
-                _ => {}
-            }
-            if index == 0xfff {
-                return Some(-1);
-            }
-            Some(last + 1 + index as i32)
-        }
-    }
 
     #[inline(always)]
     pub fn read_boolie(&mut self) -> Option<bool> {
         self.reader.read_bit()
     }
-    pub fn read_bits_to_arr(&mut self, n: u32) -> Vec<u8> {
-        let mut out = vec![];
-        let mut bits_left = n;
-        while bits_left >= 8 {
-            out.push(self.read_nbits(8).unwrap() as u8);
-            bits_left -= 8;
-        }
-        out.push(self.read_nbits(bits_left).unwrap() as u8);
-        out
-    }
-
     pub fn read_n_bytes(&mut self, n: usize) -> Vec<u8> {
         let mut bytes = vec![0; n];
         self.reader.read_bytes(&mut bytes);

@@ -3,8 +3,6 @@ use crate::parsing::game_events::NameDataPair;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
 
-// Absolute mess of a file :D. Some sunny day make these the "proper" way.
-
 #[derive(Debug, Clone)]
 pub enum PropData {
     Bool(bool),
@@ -16,7 +14,6 @@ pub enum PropData {
     VecXY([f32; 2]),
     VecXYZ([f32; 3]),
     Vec(Vec<i32>),
-    FloatVec(Vec<f64>),
     FloatVec32(Vec<f32>),
 }
 
@@ -29,13 +26,10 @@ pub enum VarVec {
     I32(Vec<Option<i32>>),
     String(Vec<Option<String>>),
 }
-#[derive(Debug, Clone)]
-pub struct PropColumn {
-    pub data: VarVec,
-}
-impl PropColumn {
+
+impl VarVec {
     pub fn new(item: &PropData) -> Self {
-        let typ = match item {
+        match item {
             PropData::Bool(_) => VarVec::Bool(vec![]),
             PropData::I32(_) => VarVec::I32(vec![]),
             PropData::F32(_) => VarVec::F32(vec![]),
@@ -43,11 +37,42 @@ impl PropColumn {
             PropData::U64(_) => VarVec::U64(vec![]),
             PropData::U32(_) => VarVec::U32(vec![]),
             _ => panic!("Tried to create propcolumns from: {:?}", item),
-        };
-        PropColumn { data: typ }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PropColumn {
+    pub data: Option<VarVec>,
+    num_nones: usize,
+}
+impl PropColumn {
+    pub fn new() -> Self {
+        PropColumn {
+            data: None,
+            num_nones: 0,
+        }
     }
     pub fn push(&mut self, item: Option<PropData>) {
-        self.data.push_propdata(item.clone());
+        match &item {
+            // If we dont know what type the column is (prop has not been parsed yet)
+            None => self.num_nones += 1,
+            Some(p) => match &self.data {
+                Some(_) => {}
+                None => {
+                    // First time a new prop is pushed we get the type for the vec and
+                    // push the leading Nones we may have gotten before prop type was known.
+                    let mut var_vec = VarVec::new(&p);
+                    for _ in 0..self.num_nones {
+                        var_vec.push_propdata(None);
+                    }
+                    self.data = Some(var_vec);
+                }
+            },
+        }
+        if let Some(v) = &mut self.data {
+            v.push_propdata(item.clone());
+        }
     }
 }
 
@@ -95,26 +120,6 @@ impl VarVec {
             _ => panic!("bad type for prop: {:?}", item),
         }
     }
-    pub fn push_string(&mut self, data: String) {
-        if let VarVec::String(f) = self {
-            f.push(Some(data))
-        }
-    }
-    pub fn push_string_none(&mut self) {
-        if let VarVec::String(f) = self {
-            f.push(None)
-        }
-    }
-    pub fn push_float_none(&mut self) {
-        if let VarVec::F32(f) = self {
-            f.push(None)
-        }
-    }
-    pub fn push_i32_none(&mut self) {
-        if let VarVec::I32(f) = self {
-            f.push(None)
-        }
-    }
     pub fn push_none(&mut self) {
         match self {
             VarVec::I32(f) => f.push(None),
@@ -123,31 +128,10 @@ impl VarVec {
             VarVec::U32(f) => f.push(None),
             VarVec::U64(f) => f.push(None),
             VarVec::Bool(f) => f.push(None),
-            _ => panic!("unk col while pushing none"),
-        }
-    }
-    pub fn push_u64(&mut self, data: u64) {
-        match self {
-            VarVec::U64(f) => f.push(Some(data)),
-            _ => panic!("TRIED TO PUSH SMALLER TYPE TO U64"),
-        }
-    }
-    pub fn push_i32(&mut self, data: i32) {
-        match self {
-            VarVec::I32(f) => f.push(Some(data)),
-            _ => panic!("i32 push panic"),
-        }
-    }
-    pub fn get_len(&self) -> usize {
-        match self {
-            VarVec::I32(v) => v.len(),
-            VarVec::F32(v) => v.len(),
-            VarVec::String(v) => v.len(),
-            _ => panic!("bad len type"),
         }
     }
 }
-
+#[allow(dead_code)]
 pub fn filter_to_vec<Wanted>(v: impl IntoIterator<Item = impl TryInto<Wanted>>) -> Vec<Wanted> {
     v.into_iter().filter_map(|x| x.try_into().ok()).collect()
 }
@@ -252,7 +236,6 @@ fn to_u8_series(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
 }
 
 pub fn series_from_pairs(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
-    let only_data: Vec<Option<KeyData>> = pairs.iter().map(|x| x.data.clone()).collect();
     let field_type = find_type_of_vals(&pairs);
     let s = match field_type {
         1 => to_string_series(pairs, name),
