@@ -238,7 +238,6 @@ fn to_null_series(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
     // All series are null can pick any type
     let mut v: Vec<Option<i32>> = vec![];
     for pair in pairs {
-        println!("{:?}", pair);
         v.push(None);
     }
     Series::new(name, v)

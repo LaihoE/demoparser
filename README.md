@@ -15,19 +15,42 @@ parser = DemoParser("path_to_demo.dem")
 df = parser.parse_events("player_death")
 ```
 
-Tick data (entities)
+
+# Documentation
+This will have to do for now 😂
+
+### Utility functions
+```python
+parser = DemoParser("path_to_demo.dem")
+
+df = parser.parse_grenades()
+df = parser.parse_item_drops()
+df = parser.parse_skins()
+df = parser.parse_player_info()
+dict_output = parser.parse_convars()
+
+```
+All of these take no arguments and return the same shape data. Probably easiest to understand by just trying these out.
+
+### Game events
 ```python
 from demoparser2 import DemoParser
 
-wanted_props = ["m_vecX", "m_vecY"]
-
 parser = DemoParser("path_to_demo.dem")
-df = parser.parse_ticks(wanted_props)
+df = parser.parse_events("player_death")
 ```
 
-Both functions return a Pandas Dataframe.
 
-Example output:
+### Tick data (entities)
+```python
+from demoparser2 import DemoParser
+
+wanted_fields = ["X", "Y"]
+
+parser = DemoParser("path_to_demo.dem")
+df = parser.parse_ticks(wanted_fields)
+```
+#####  Example output of parse_ticks():
 ```
              m_vecX       m_vecY   tick            steamid        name
 0        649.795044   633.648438      0  76512345678912345      person1
@@ -42,15 +65,27 @@ Example output:
 913218   526.207642    81.611084  30452  76512345678912345      person9
 913219    36.691650   308.887451  30452  76512345678912345      person10
 ```
-(steamids and names are made up in this example)
 
-You can also filter ticks:
-```python
-df = parser.parse_ticks(wanted_props, ticks=[x for x in range(29000, 30000)])
-```
+
+##### List of possible fields for parse_ticks() I've tried and output seems reasonable (more comming soon):
+X
+Y
+round
+m_iHealth
+m_szLastPlaceName
+m_bInBuyZone
+m_bIsScoped
+m_iAccount
+m_iCashSpentThisRound
+m_iPing
+m_bWarmupPeriod
+m_bFreezePeriod
+
+
+
 
 
 ## Acknowledgements
-Without Dotabuff's dota 2 parser manta this would not have been possible. Check it out: https://github.com/dotabuff/manta
+Without Dotabuff's dota 2 parser "manta" this would not have been possible. Check it out: https://github.com/dotabuff/manta
 
 The dota 2 demo format is very similar to CS2 demo format with only a few minor changes.
