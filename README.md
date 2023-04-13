@@ -23,6 +23,13 @@ This will have to do for now 😂
 ```python
 parser = DemoParser("path_to_demo.dem")
 
+# returns list like: ["player_death", "weapon_fire"...]
+name_list = parser.list_game_events()
+# returns dict like: {"m_iHealth": 41487, "m_iPing": 4871} where 
+# key is field name and val is how many times it was updated.
+freq_dict = parser.list_entity_values()
+
+
 df = parser.parse_grenades()
 df = parser.parse_item_drops()
 df = parser.parse_skins()
