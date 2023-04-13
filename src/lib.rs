@@ -1,4 +1,5 @@
 mod parsing;
+use crate::arrow::array::*;
 use crate::parsing::parser_settings::ParserInputs;
 use ahash::HashMap;
 use arrow::ffi;
@@ -17,57 +18,46 @@ use pyo3::types::PyDict;
 use pyo3::Python;
 use pyo3::{PyAny, PyObject, PyResult};
 
-/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
-pub(crate) fn to_py_array(py: Python, pyarrow: &PyModule, array: ArrayRef) -> PyResult<PyObject> {
-    let schema = Box::new(ffi::export_field_to_c(&ArrowField::new(
-        "",
-        array.data_type().clone(),
-        true,
-    )));
-    let array = Box::new(ffi::export_array_to_c(array));
-    let schema_ptr: *const ffi::ArrowSchema = &*schema;
-    let array_ptr: *const ffi::ArrowArray = &*array;
-    let array = pyarrow.getattr("Array")?.call_method1(
-        "_import_from_c",
-        (array_ptr as Py_uintptr_t, schema_ptr as Py_uintptr_t),
-    )?;
-    Ok(array.to_object(py))
-}
-/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
-pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
-    let series = series.rechunk();
-    let array = series.to_arrow(0);
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let pyarrow = py.import("pyarrow")?;
-    let pyarrow_array = to_py_array(py, pyarrow, array)?;
-    let polars = py.import("polars")?;
-    let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
-    Ok(out.to_object(py))
-}
-/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
-pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
-    //let series = series.rechunk();
-    //let array = series.to_arrow(0);
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let pyarrow = py.import("pyarrow")?;
-    let pyarrow_array = to_py_array(py, pyarrow, array)?;
-    let polars = py.import("polars")?;
-    let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
-    Ok(out.to_object(py))
-}
-use crate::arrow::array::*;
-#[pyclass]
-struct DemoParser {
-    path: String,
-}
-
 #[pymethods]
 impl DemoParser {
     #[new]
     pub fn py_new(demo_path: String) -> PyResult<Self> {
         Ok(DemoParser { path: demo_path })
+    }
+    pub fn parse_header(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        //TODO
+        let settings = ParserInputs {
+            path: self.path.to_owned(),
+            wanted_props: vec![],
+            wanted_event: Some("-".to_owned()),
+            parse_ents: false,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: true,
+            count_props: false,
+            only_convars: false,
+        };
+        let mut parser = Parser::new(settings);
+        parser.start();
+        Ok(0.to_object(py))
+    }
+    /// Returns a dictionary with console vars set. This includes data
+    /// like this: "mp_roundtime": "1.92", "mp_buytime": "20" ...
+    pub fn parse_convars(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let settings = ParserInputs {
+            path: self.path.to_owned(),
+            wanted_props: vec![],
+            wanted_event: None,
+            parse_ents: false,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: false,
+            count_props: false,
+            only_convars: true,
+        };
+        let mut parser = Parser::new(settings);
+        parser.start();
+        Ok(parser.convars.to_object(py))
     }
     /// Returns the names and frequencies of game events during the game.
     ///
@@ -80,6 +70,9 @@ impl DemoParser {
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
         };
         let mut parser = Parser::new(settings);
         parser.start();
@@ -101,6 +94,9 @@ impl DemoParser {
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
+            only_header: false,
+            count_props: true,
+            only_convars: false,
         };
         let mut parser = Parser::new(settings);
         parser.start();
@@ -125,18 +121,26 @@ impl DemoParser {
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: true,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
         };
         let mut parser = Parser::new(settings);
         parser.start();
 
-        // Projectile records are in SoA form
+        // SoA form
         let xs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.x))).unwrap();
         let ys = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.y))).unwrap();
-        let zs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.z))).unwrap();
+        // Actually not sure about Z coordinate. Leave out for now.
+        //let zs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.z))).unwrap();
         let ticks = arr_to_py(Box::new(Int32Array::from(parser.projectile_records.tick))).unwrap();
 
         let grenade_type = arr_to_py(Box::new(Utf8Array::<i32>::from(
             parser.projectile_records.grenade_type,
+        )))
+        .unwrap();
+        let name = arr_to_py(Box::new(Utf8Array::<i32>::from(
+            parser.projectile_records.name,
         )))
         .unwrap();
 
@@ -146,11 +150,231 @@ impl DemoParser {
         .unwrap();
 
         let polars = py.import("polars")?;
-        let all_series_py = [xs, ys, zs, ticks, steamids, grenade_type].to_object(py);
+        let all_series_py = [xs, ys, ticks, steamids, name, grenade_type].to_object(py);
         Python::with_gil(|py| {
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
             // Set column names
-            let column_names = ["X", "Y", "Z", "tick", "thrower_steamid", "grenade_type"];
+            let column_names = ["X", "Y", "tick", "thrower_steamid", "name", "grenade_type"];
+            df.setattr("columns", column_names.to_object(py)).unwrap();
+            // Call to_pandas with use_pyarrow_extension_array = true
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            Ok(pandas_df.to_object(py))
+        })
+    }
+    /// returns a DF with chat messages
+    ///
+    /// Example output:
+    ///   entid           name     message  param3 param4
+    /// 0     8        person1       asdfa               
+    /// 1     8        person2        asdf  TSpawn       
+    pub fn parse_chat_messages(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let settings = ParserInputs {
+            path: self.path.to_owned(),
+            wanted_props: vec![],
+            wanted_event: None,
+            parse_ents: false,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
+        };
+        let mut parser = Parser::new(settings);
+        parser.start();
+
+        // SoA form
+        let entids =
+            arr_to_py(Box::new(Int32Array::from(parser.chat_messages.entity_idx))).unwrap();
+        let param1 =
+            rust_series_to_py_series(&Series::new("param1", parser.chat_messages.param1)).unwrap();
+        let param2 =
+            rust_series_to_py_series(&Series::new("param2", parser.chat_messages.param2)).unwrap();
+        let param3 =
+            rust_series_to_py_series(&Series::new("param3", parser.chat_messages.param3)).unwrap();
+        let param4 =
+            rust_series_to_py_series(&Series::new("param4", parser.chat_messages.param4)).unwrap();
+
+        let polars = py.import("polars")?;
+        let all_series_py = [entids, param1, param2, param3, param4].to_object(py);
+        Python::with_gil(|py| {
+            let df = polars.call_method1("DataFrame", (all_series_py,))?;
+            // Set column names
+            let column_names = ["entid", "name", "message", "param3", "param4"];
+            df.setattr("columns", column_names.to_object(py)).unwrap();
+            // Call to_pandas with use_pyarrow_extension_array = true
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            Ok(pandas_df.to_object(py))
+        })
+    }
+    pub fn parse_player_info(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let settings = ParserInputs {
+            path: self.path.to_owned(),
+            wanted_props: vec![],
+            wanted_event: None,
+            parse_ents: false,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
+        };
+        let mut parser = Parser::new(settings);
+        parser.start();
+
+        // SoA form
+        let steamid =
+            rust_series_to_py_series(&Series::new("param1", parser.player_end_data.steamid))
+                .unwrap();
+        let team_number = arr_to_py(Box::new(Int32Array::from(
+            parser.player_end_data.team_number,
+        )))
+        .unwrap();
+        let name =
+            rust_series_to_py_series(&Series::new("param2", parser.player_end_data.name)).unwrap();
+
+        let polars = py.import("polars")?;
+        let all_series_py = [steamid, name, team_number].to_object(py);
+        Python::with_gil(|py| {
+            let df = polars.call_method1("DataFrame", (all_series_py,))?;
+            // Set column names
+            let column_names = ["steamid", "name", "team_number"];
+            df.setattr("columns", column_names.to_object(py)).unwrap();
+            // Call to_pandas with use_pyarrow_extension_array = true
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            Ok(pandas_df.to_object(py))
+        })
+    }
+    pub fn parse_item_drops(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let settings = ParserInputs {
+            path: self.path.to_owned(),
+            wanted_props: vec![],
+            wanted_event: None,
+            parse_ents: false,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
+        };
+        let mut parser = Parser::new(settings);
+        parser.start();
+
+        // SoA form
+        let account_id =
+            arr_to_py(Box::new(UInt32Array::from(parser.item_drops.account_id))).unwrap();
+        let def_index =
+            arr_to_py(Box::new(UInt32Array::from(parser.item_drops.def_index))).unwrap();
+        let dropreason =
+            arr_to_py(Box::new(UInt32Array::from(parser.item_drops.dropreason))).unwrap();
+        let inventory =
+            arr_to_py(Box::new(UInt32Array::from(parser.item_drops.inventory))).unwrap();
+        let item_id = arr_to_py(Box::new(UInt64Array::from(parser.item_drops.item_id))).unwrap();
+        let paint_index =
+            arr_to_py(Box::new(UInt32Array::from(parser.item_drops.paint_index))).unwrap();
+        let paint_seed =
+            arr_to_py(Box::new(UInt32Array::from(parser.item_drops.paint_seed))).unwrap();
+        let paint_wear =
+            arr_to_py(Box::new(UInt32Array::from(parser.item_drops.paint_wear))).unwrap();
+        let custom_name =
+            rust_series_to_py_series(&Series::new("custom_name", parser.item_drops.custom_name))
+                .unwrap();
+
+        let polars = py.import("polars")?;
+        let all_series_py = [
+            account_id,
+            def_index,
+            dropreason,
+            inventory,
+            item_id,
+            paint_index,
+            paint_seed,
+            paint_wear,
+            custom_name,
+        ]
+        .to_object(py);
+        Python::with_gil(|py| {
+            let df = polars.call_method1("DataFrame", (all_series_py,))?;
+            // Set column names
+            let column_names = [
+                "account_id",
+                "def_index",
+                "dropreason",
+                "inventory",
+                "item_id",
+                "paint_index",
+                "paint_seed",
+                "paint_wear",
+                "custom_name",
+            ];
+            df.setattr("columns", column_names.to_object(py)).unwrap();
+            // Call to_pandas with use_pyarrow_extension_array = true
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            Ok(pandas_df.to_object(py))
+        })
+    }
+    pub fn parse_skins(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let settings = ParserInputs {
+            path: self.path.to_owned(),
+            wanted_props: vec![],
+            wanted_event: None,
+            parse_ents: false,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
+        };
+        let mut parser = Parser::new(settings);
+        parser.start();
+
+        // Projectile records are in SoA form
+        let account_id = arr_to_py(Box::new(UInt32Array::from(parser.skins.account_id))).unwrap();
+        let def_index = arr_to_py(Box::new(UInt32Array::from(parser.skins.def_index))).unwrap();
+        let dropreason = arr_to_py(Box::new(UInt32Array::from(parser.skins.dropreason))).unwrap();
+        let inventory = arr_to_py(Box::new(UInt32Array::from(parser.skins.inventory))).unwrap();
+        let item_id = arr_to_py(Box::new(UInt64Array::from(parser.skins.item_id))).unwrap();
+        let paint_index = arr_to_py(Box::new(UInt32Array::from(parser.skins.paint_index))).unwrap();
+        let paint_seed = arr_to_py(Box::new(UInt32Array::from(parser.skins.paint_seed))).unwrap();
+        let paint_wear = arr_to_py(Box::new(UInt32Array::from(parser.skins.paint_wear))).unwrap();
+        let steamid = arr_to_py(Box::new(UInt64Array::from(parser.skins.steamid))).unwrap();
+
+        let custom_name =
+            rust_series_to_py_series(&Series::new("custom_name", parser.skins.custom_name))
+                .unwrap();
+
+        let polars = py.import("polars")?;
+        let all_series_py = [
+            account_id,
+            def_index,
+            dropreason,
+            inventory,
+            item_id,
+            paint_index,
+            paint_seed,
+            paint_wear,
+            custom_name,
+            steamid,
+        ]
+        .to_object(py);
+        Python::with_gil(|py| {
+            let df = polars.call_method1("DataFrame", (all_series_py,))?;
+            // Set column names
+            let column_names = [
+                "account_id",
+                "def_index",
+                "dropreason",
+                "inventory",
+                "item_id",
+                "paint_index",
+                "paint_seed",
+                "paint_wear",
+                "custom_name",
+                "steamid",
+            ];
             df.setattr("columns", column_names.to_object(py)).unwrap();
             // Call to_pandas with use_pyarrow_extension_array = true
             let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
@@ -173,7 +397,10 @@ impl DemoParser {
             wanted_event: event_name.clone(),
             parse_ents: wanted_props.len() > 0,
             wanted_ticks: vec![],
-            parse_projectiles: true,
+            parse_projectiles: false,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
         };
         let mut parser = Parser::new(settings);
         parser.start();
@@ -218,6 +445,9 @@ impl DemoParser {
             parse_ents: true,
             wanted_ticks: wanted_ticks,
             parse_projectiles: false,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
         };
         let mut parser = Parser::new(settings);
         parser.start();
@@ -264,6 +494,50 @@ impl DemoParser {
             Ok(pandas_df.to_object(py))
         })
     }
+}
+/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+pub(crate) fn to_py_array(py: Python, pyarrow: &PyModule, array: ArrayRef) -> PyResult<PyObject> {
+    let schema = Box::new(ffi::export_field_to_c(&ArrowField::new(
+        "",
+        array.data_type().clone(),
+        true,
+    )));
+    let array = Box::new(ffi::export_array_to_c(array));
+    let schema_ptr: *const ffi::ArrowSchema = &*schema;
+    let array_ptr: *const ffi::ArrowArray = &*array;
+    let array = pyarrow.getattr("Array")?.call_method1(
+        "_import_from_c",
+        (array_ptr as Py_uintptr_t, schema_ptr as Py_uintptr_t),
+    )?;
+    Ok(array.to_object(py))
+}
+/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
+    let series = series.rechunk();
+    let array = series.to_arrow(0);
+    let gil = Python::acquire_gil();
+    let py = gil.python();
+    let pyarrow = py.import("pyarrow")?;
+    let pyarrow_array = to_py_array(py, pyarrow, array)?;
+    let polars = py.import("polars")?;
+    let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
+    Ok(out.to_object(py))
+}
+/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
+    //let series = series.rechunk();
+    //let array = series.to_arrow(0);
+    let gil = Python::acquire_gil();
+    let py = gil.python();
+    let pyarrow = py.import("pyarrow")?;
+    let pyarrow_array = to_py_array(py, pyarrow, array)?;
+    let polars = py.import("polars")?;
+    let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
+    Ok(out.to_object(py))
+}
+#[pyclass]
+struct DemoParser {
+    path: String,
 }
 
 pub fn parse_kwargs_ticks(kwargs: Option<&PyDict>) -> (Vec<u64>, Vec<i32>) {

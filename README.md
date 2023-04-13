@@ -50,21 +50,6 @@ df = parser.parse_ticks(wanted_props, ticks=[x for x in range(29000, 30000)])
 ```
 
 
-
-### Progress:
-
-- [x] Game events
-- [x] Server info
-- [x] Sendtables
-- [x] Serverclasses
-- [x] Header
-- [x] Packet entites
-- [ ] String tables
-
-
-
-
-
 ## Acknowledgements
 Without Dotabuff's dota 2 parser manta this would not have been possible. Check it out: https://github.com/dotabuff/manta
 

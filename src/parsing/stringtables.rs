@@ -1,8 +1,8 @@
 use super::read_bits::Bitreader;
 use crate::parsing::parser_settings::Parser;
 use csgoproto::netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable};
+use protobuf::Message;
 use snap::raw::Decoder;
-
 #[derive(Clone, Debug)]
 pub struct StringTable {
     name: String,
@@ -20,7 +20,9 @@ pub struct StringTableEntry {
 }
 
 impl Parser {
-    pub fn update_string_table(&mut self, table: CSVCMsg_UpdateStringTable) {
+    pub fn update_string_table(&mut self, bytes: &[u8]) {
+        let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
+
         match self.string_tables.get(table.table_id() as usize) {
             Some(st) => self.parse_string_table(
                 table.string_data().to_vec(),
@@ -34,7 +36,8 @@ impl Parser {
         }
     }
 
-    pub fn parse_create_stringtable(&mut self, table: CSVCMsg_CreateStringTable) {
+    pub fn parse_create_stringtable(&mut self, bytes: &[u8]) {
+        let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
         let bytes = match table.data_compressed() {
             true => snap::raw::Decoder::new()
                 .decompress_vec(table.string_data())

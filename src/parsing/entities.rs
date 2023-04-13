@@ -6,6 +6,7 @@ use crate::parsing::variants::PropData;
 use ahash::HashMap;
 use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
+use protobuf::Message;
 use smallvec::smallvec;
 
 const NSERIALBITS: u32 = 17;
@@ -35,15 +36,17 @@ impl Parser {
         None
     }
 
-    pub fn parse_packet_ents(&mut self, packet_ents: CSVCMsg_PacketEntities) {
+    pub fn parse_packet_ents(&mut self, bytes: &[u8]) {
+        if !self.parse_entities {
+            return;
+        }
+        let packet_ents: CSVCMsg_PacketEntities = Message::parse_from_bytes(&bytes).unwrap();
         let n_updates = packet_ents.updated_entries();
-        let entity_data = packet_ents.entity_data.clone().unwrap();
-        let mut bitreader = Bitreader::new(&entity_data);
+        let mut bitreader = Bitreader::new(&packet_ents.entity_data.as_ref().unwrap());
         let mut entity_id: i32 = -1;
 
         for _ in 0..n_updates {
             entity_id += 1 + (bitreader.read_u_bit_var().unwrap() as i32);
-
             // If the enitity should just be deleted
             if bitreader.read_boolie().unwrap() {
                 // Entity should be "deleted"
@@ -53,10 +56,9 @@ impl Parser {
                 continue;
             }
             let is_new_entity = bitreader.read_boolie().unwrap();
-
             // Should we create the entity, or refer to an old one
             if is_new_entity {
-                let cls_id = bitreader.read_nbits(self.cls_bits).unwrap();
+                let cls_id = bitreader.read_nbits(self.cls_bits.unwrap()).unwrap();
                 // Both of these are not used. Don't think they are interesting for the parser
                 let _serial = bitreader.read_nbits(NSERIALBITS).unwrap();
                 let _unknown = bitreader.read_varint();
@@ -73,6 +75,11 @@ impl Parser {
                     let mut br = Bitreader::new(&b);
                     self.decode_paths(&mut br, entity_id, true);
                 };
+
+                if self.cls_by_id[&cls_id].name == "CCSGameRulesProxy" {
+                    self.rules_entity_id = Some(entity_id);
+                }
+
                 if self.cls_by_id[&cls_id].name.contains("Projectile") {
                     self.projectiles.insert(entity_id);
                 }
@@ -116,10 +123,12 @@ impl Parser {
                         }
                     }
                 }
-                self.props_counter
-                    .entry(name.clone())
-                    .and_modify(|counter| *counter += 1)
-                    .or_insert(1);
+                if self.count_props {
+                    self.props_counter
+                        .entry(name.clone())
+                        .and_modify(|counter| *counter += 1)
+                        .or_insert(1);
+                }
 
                 if (name == "m_vecX" && f.var_name != "CBodyComponent")
                     || (name == "m_vecY" && f.var_name != "CBodyComponent")

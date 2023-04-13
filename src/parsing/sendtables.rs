@@ -116,7 +116,6 @@ impl Field {
             FieldModelFixedArray => (None, self.decoder.clone()),
             FieldModelFixedTable => {
                 if path.last == pos - 1 {
-                    // println!("{:#?}", self);
                     if is_baseline {
                         if self.serializer.as_ref().unwrap().fields.len() == 0 {
                             return (None, BooleanDecoder);

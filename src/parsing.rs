@@ -4,6 +4,8 @@ pub mod decoder;
 pub mod entities;
 pub mod entities_utils;
 pub mod game_events;
+pub mod netmessage_types;
+pub mod other_netmessages;
 pub mod parser;
 pub mod parser_settings;
 pub mod q_float;

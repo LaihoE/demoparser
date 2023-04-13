@@ -1,13 +1,16 @@
+use super::entities::PlayerMetaData;
 use crate::parsing::parser_settings::Parser;
 use crate::parsing::variants::keydata_type_from_propdata;
 use crate::parsing::variants::*;
+use ahash::HashMap;
+use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
+use csgoproto::netmessages::CSVCMsg_GameEventList;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
 use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
 use derive_more::TryInto;
 use itertools::Itertools;
 use polars::series::Series;
-
-use super::entities::PlayerMetaData;
+use protobuf::Message;
 
 impl TryFrom<Option<PropData>> for KeyData {
     type Error = ();
@@ -28,37 +31,21 @@ impl TryFrom<Option<PropData>> for KeyData {
 }
 
 impl Parser {
-    pub fn player_metadata_from_entid(&self, entity_id: i32) -> Option<&PlayerMetaData> {
-        self.players.get(&entity_id)
-    }
-
-    pub fn find_extra_props(&self, entity_id: i32, prefix: &str) -> Vec<NameDataPair> {
-        let mut extra_pairs = vec![];
-        for prop_name in &self.wanted_props {
-            let prop = self.find_val_for_entity(entity_id, prop_name);
-            let keydata_type = keydata_type_from_propdata(&prop);
-            let keydata = KeyData::try_from(prop);
-            match keydata {
-                Ok(kd) => {
-                    extra_pairs.push(NameDataPair {
-                        name: prefix.to_owned() + "_" + prop_name,
-                        data: Some(kd),
-                        data_type: keydata_type,
-                    });
-                }
-                Err(_e) => {
-                    extra_pairs.push(NameDataPair {
-                        name: prefix.to_owned() + "_" + prop_name,
-                        data: None,
-                        data_type: keydata_type,
-                    });
-                }
-            }
+    pub fn parse_game_event_map(&mut self, bytes: &[u8]) {
+        let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
+        let mut hm: HashMap<i32, Descriptor_t> = HashMap::default();
+        for event_desc in event_list.descriptors {
+            hm.insert(event_desc.eventid(), event_desc);
         }
-        extra_pairs
+        self.ge_list = Some(hm);
     }
 
-    pub fn parse_event(&mut self, event: CSVCMsg_GameEvent) {
+    pub fn parse_event(&mut self, bytes: &[u8]) {
+        if self.wanted_event.is_none() {
+            return;
+        }
+        let event: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
+
         let ge_list = match &self.ge_list {
             Some(gel) => gel,
             None => panic!("Game event before descriptor list was parsed."),
@@ -124,8 +111,8 @@ impl Parser {
                         });
                     }
                 }
-                let extra_props = self.find_extra_props(entity_id, prefix);
-                kv_pairs.extend(extra_props);
+                //let extra_props = self.find_extra_props(entity_id, prefix);
+                //kv_pairs.extend(extra_props);
             }
         }
         kv_pairs.push(NameDataPair {
@@ -139,11 +126,42 @@ impl Parser {
             tick: self.tick,
         });
     }
+    pub fn player_metadata_from_entid(&self, entity_id: i32) -> Option<&PlayerMetaData> {
+        self.players.get(&entity_id)
+    }
+
+    pub fn find_extra_props(&self, entity_id: i32, prefix: &str) -> Vec<NameDataPair> {
+        let mut extra_pairs = vec![];
+        for prop_name in &self.wanted_props {
+            let prop = self.find_val_for_entity(entity_id, prop_name);
+            let keydata_type = keydata_type_from_propdata(&prop);
+            let keydata = KeyData::try_from(prop);
+            match keydata {
+                Ok(kd) => {
+                    extra_pairs.push(NameDataPair {
+                        name: prefix.to_owned() + "_" + prop_name,
+                        data: Some(kd),
+                        data_type: keydata_type,
+                    });
+                }
+                Err(_e) => {
+                    extra_pairs.push(NameDataPair {
+                        name: prefix.to_owned() + "_" + prop_name,
+                        data: None,
+                        data_type: keydata_type,
+                    });
+                }
+            }
+        }
+        extra_pairs
+    }
+
     #[allow(dead_code)]
     pub fn series_from_events(&self, events: &Vec<GameEvent>) -> Vec<Series> {
         let pairs: Vec<NameDataPair> = events.iter().map(|x| x.fields.clone()).flatten().collect();
         let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
         let mut series = vec![];
+
         for (name, vals) in per_key_name {
             let s = series_from_pairs(&vals, name);
             series.push(s);

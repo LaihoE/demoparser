@@ -1,48 +1,94 @@
+use super::netmessage_types;
+use crate::parsing::netmessage_types::netmessage_type_from_int;
 use crate::parsing::parser_settings::Parser;
 use crate::parsing::read_bits::Bitreader;
-use ahash::HashMap;
 use bitter::BitReader;
 use csgoproto::demo::CDemoFileHeader;
+use csgoproto::demo::CDemoFullPacket;
 use csgoproto::demo::CDemoPacket;
 use csgoproto::demo::CDemoSendTables;
-use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
+use csgoproto::demo::CDemoStringTables;
+use csgoproto::demo::EDemoCommands;
 use csgoproto::netmessages::*;
-use csgoproto::networkbasetypes::*;
+use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
+use EDemoCommands::*;
 
 // The parser struct is defined in parser_settings.rs
 impl Parser {
     pub fn start(&mut self) {
         // Header
-        self.skip_n_bytes(16);
-        // Outer loop
+        let header = self.read_n_bytes(16);
+        Parser::handle_header(header);
+        // Outer loop that continues until "DEM_Stop" msg
         loop {
             let cmd = self.read_varint();
             let tick = self.read_varint();
             let size = self.read_varint();
             self.tick = tick as i32;
 
-            let msg_type = cmd & !64; //if cmd > 64 { cmd as u32 ^ 64 } else { cmd };
+            let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
-
+            // Uncompress if needed
             let bytes = match is_compressed {
                 true => SnapDecoder::new()
                     .decompress_vec(self.read_n_bytes(size))
                     .unwrap(),
                 false => self.read_n_bytes(size).to_vec(),
             };
-            match msg_type {
-                // 0 = End of demo
-                0 => break,
-                1 => self.parse_header(&bytes),
-                4 => self.parse_classes(&bytes),
-                5 => self.parse_class_info(&bytes),
-                7 => self.parse_packet(&bytes),
-                8 => self.parse_packet(&bytes),
+            match demo_cmd_type_from_int(msg_type as i32).unwrap() {
+                DEM_FileInfo => self.parse_file_info(&bytes),
+                DEM_FileHeader => self.parse_header(&bytes),
+                DEM_SendTables => self.parse_classes(&bytes),
+                DEM_ClassInfo => self.parse_class_info(&bytes),
+                DEM_Packet => self.parse_packet(&bytes),
+                DEM_SignonPacket => self.parse_packet(&bytes),
+                DEM_FullPacket => self.parse_full_packet(&bytes),
+                DEM_UserCmd => self.parse_user_command_cmd(&bytes),
+                DEM_StringTables => self.parse_stringtable_cmd(&bytes),
+                DEM_Stop => break,
                 _ => {}
             }
             self.collect();
+        }
+    }
+    pub fn parse_full_packet(&mut self, bytes: &[u8]) {
+        return;
+        // A full state dump that happens every ~3000? ticks
+        // dumps all info needed to continue stringtables and entities from this tick forward. For
+        // example you could jump into middle of demo and start from here (assuming you find this).
+        // Leaves the door open for multithreading/one off stats in end of demo
+        let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
+        for item in &full_packet.string_table.tables {
+            if item.table_name.as_ref().unwrap() == "instancebaseline" {
+                for i in &item.items {
+                    let k = i.str().parse::<u32>().unwrap_or(999999);
+                    self.baselines.insert(k, i.data.as_ref().unwrap().clone());
+                }
+            }
+        }
+        let p = full_packet.packet.0.clone().unwrap();
+        let mut bitreader = Bitreader::new(p.data());
+        // Inner loop
+        while bitreader.reader.bits_remaining().unwrap() > 8 {
+            let msg_type = bitreader.read_u_bit_var().unwrap();
+            let size = bitreader.read_varint().unwrap();
+            let msg_bytes = bitreader.read_n_bytes(size as usize);
+            match netmessage_type_from_int(msg_type as i32) {
+                svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
+                svc_ServerInfo => self.parse_class_info(&msg_bytes),
+                svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
+                svc_UpdateStringTable => self.update_string_table(&msg_bytes),
+                GE_Source1LegacyGameEventList => self.parse_game_event_map(&msg_bytes),
+                GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
+                CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
+                CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
+                UM_SayText2 => self.parse_chat_messages(&msg_bytes),
+                net_SetConVar => self.parse_convars(&msg_bytes),
+                CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
+                _ => {}
+            }
         }
     }
 
@@ -50,53 +96,47 @@ impl Parser {
         let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
         let packet_data = packet.data.unwrap();
         let mut bitreader = Bitreader::new(&packet_data);
-
         // Inner loop
         while bitreader.reader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var().unwrap();
             let size = bitreader.read_varint().unwrap();
-            let bytes = bitreader.read_n_bytes(size as usize);
-            match msg_type {
-                55 => {
-                    if self.parse_entities {
-                        let packet_ents: CSVCMsg_PacketEntities =
-                            Message::parse_from_bytes(&bytes).unwrap();
-                        self.parse_packet_ents(packet_ents);
-                    }
-                }
-                44 => {
-                    let st: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
-                    self.parse_create_stringtable(st);
-                }
-                45 => {
-                    let st: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
-                    self.update_string_table(st);
-                }
-                40 => {
-                    let server_info: CSVCMsg_ServerInfo =
-                        Message::parse_from_bytes(&bytes).unwrap();
-                    self.parse_server_info(server_info);
-                }
-                207 => {
-                    if self.wanted_event.is_some() {
-                        let ge: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
-                        self.parse_event(ge);
-                    }
-                }
-                205 => {
-                    let ge_list_msg: CSVCMsg_GameEventList =
-                        Message::parse_from_bytes(&bytes).unwrap();
-                    self.ge_list = Some(Parser::parse_game_event_map(ge_list_msg));
-                }
-                _ => {
-                    //println!("MSGTYPE: {}", msg_type);
+            let msg_bytes = bitreader.read_n_bytes(size as usize);
+            match netmessage_type_from_int(msg_type as i32) {
+                svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
+                svc_ServerInfo => self.parse_server_info(&msg_bytes),
+                svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
+                svc_UpdateStringTable => self.update_string_table(&msg_bytes),
+                GE_Source1LegacyGameEventList => self.parse_game_event_map(&msg_bytes),
+                GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
+                CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
+                CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
+                UM_SayText2 => self.parse_chat_messages(&msg_bytes),
+                net_SetConVar => self.parse_convars(&msg_bytes),
+                CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
+                _ => {}
+            }
+        }
+    }
+    pub fn parse_user_command_cmd(&mut self, data: &[u8]) {
+        // Only in pov demos. Maybe implement sometime. Includes buttons etc.
+        // let usr_cmd: CDemoUserCmd = Message::parse_from_bytes(data).unwrap();
+    }
+    pub fn parse_stringtable_cmd(&mut self, data: &[u8]) {
+        // Why do we use this and not just create/update stringtables??
+        let tables: CDemoStringTables = Message::parse_from_bytes(data).unwrap();
+        for item in &tables.tables {
+            if item.table_name.as_ref().unwrap() == "instancebaseline" {
+                for i in &item.items {
+                    let k = i.str().parse::<u32>().unwrap_or(999999);
+                    self.baselines.insert(k, i.data.as_ref().unwrap().clone());
                 }
             }
         }
     }
-    pub fn parse_server_info(&mut self, server_info: CSVCMsg_ServerInfo) {
+    pub fn parse_server_info(&mut self, bytes: &[u8]) {
+        let server_info: CSVCMsg_ServerInfo = Message::parse_from_bytes(bytes).unwrap();
         let class_count = server_info.max_classes();
-        self.cls_bits = (class_count as f32 + 1.).log2().ceil() as u32;
+        self.cls_bits = Some((class_count as f32 + 1.).log2().ceil() as u32);
     }
     pub fn parse_header(&self, bytes: &[u8]) {
         let _header: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
@@ -107,11 +147,47 @@ impl Parser {
             self.parse_sendtable(tables);
         }
     }
-    pub fn parse_game_event_map(event_list: CSVCMsg_GameEventList) -> HashMap<i32, Descriptor_t> {
-        let mut hm: HashMap<i32, Descriptor_t> = HashMap::default();
-        for event_desc in event_list.descriptors {
-            hm.insert(event_desc.eventid(), event_desc);
-        }
-        hm
+    fn handle_header(bytes: &[u8]) {
+        match std::str::from_utf8(&bytes[..8]) {
+            Ok(magic) => match magic {
+                "PBDEMS2\0" => {}
+                "HL2DEMO\0" => {
+                    panic!("Provided demo is a source 1 demo. These are not supported")
+                }
+                _ => {
+                    panic!("Unknown file header: {}. Is the file a CS2 Demo?", magic)
+                }
+            },
+            Err(_) => {}
+        };
+        // hmmmm not sure where the 18 comes from if the header is only 16?
+        // can be used to check that file does not end early
+        let _file_length_expected = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) + 18;
+        // seems to be byte offset to where DEM_END command happens. After that comes Spawngroups and fileinfo. odd...
+        let _no_clue_what_this_is = i32::from_le_bytes(bytes[12..].try_into().unwrap());
+    }
+}
+pub fn demo_cmd_type_from_int(value: i32) -> ::std::option::Option<EDemoCommands> {
+    match value {
+        -1 => ::std::option::Option::Some(EDemoCommands::DEM_Error),
+        0 => ::std::option::Option::Some(EDemoCommands::DEM_Stop),
+        1 => ::std::option::Option::Some(EDemoCommands::DEM_FileHeader),
+        2 => ::std::option::Option::Some(EDemoCommands::DEM_FileInfo),
+        3 => ::std::option::Option::Some(EDemoCommands::DEM_SyncTick),
+        4 => ::std::option::Option::Some(EDemoCommands::DEM_SendTables),
+        5 => ::std::option::Option::Some(EDemoCommands::DEM_ClassInfo),
+        6 => ::std::option::Option::Some(EDemoCommands::DEM_StringTables),
+        7 => ::std::option::Option::Some(EDemoCommands::DEM_Packet),
+        8 => ::std::option::Option::Some(EDemoCommands::DEM_SignonPacket),
+        9 => ::std::option::Option::Some(EDemoCommands::DEM_ConsoleCmd),
+        10 => ::std::option::Option::Some(EDemoCommands::DEM_CustomData),
+        11 => ::std::option::Option::Some(EDemoCommands::DEM_CustomDataCallbacks),
+        12 => ::std::option::Option::Some(EDemoCommands::DEM_UserCmd),
+        13 => ::std::option::Option::Some(EDemoCommands::DEM_FullPacket),
+        14 => ::std::option::Option::Some(EDemoCommands::DEM_SaveGame),
+        15 => ::std::option::Option::Some(EDemoCommands::DEM_SpawnGroups),
+        16 => ::std::option::Option::Some(EDemoCommands::DEM_Max),
+        64 => ::std::option::Option::Some(EDemoCommands::DEM_IsCompressed),
+        _ => ::std::option::Option::None,
     }
 }

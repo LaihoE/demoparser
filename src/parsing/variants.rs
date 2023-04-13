@@ -150,7 +150,7 @@ fn find_type_of_vals(pairs: &Vec<&NameDataPair>) -> i32 {
             return pair.data_type;
         }
     }
-    return 0;
+    0
 }
 
 fn to_f32_series(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
@@ -234,10 +234,20 @@ fn to_u8_series(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
     }
     Series::new(name, v)
 }
+fn to_null_series(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
+    // All series are null can pick any type
+    let mut v: Vec<Option<i32>> = vec![];
+    for pair in pairs {
+        println!("{:?}", pair);
+        v.push(None);
+    }
+    Series::new(name, v)
+}
 
 pub fn series_from_pairs(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
     let field_type = find_type_of_vals(&pairs);
     let s = match field_type {
+        0 => to_null_series(pairs, name),
         1 => to_string_series(pairs, name),
         2 => to_f32_series(pairs, name),
         3 => to_i32_series(pairs, name),
@@ -263,8 +273,6 @@ pub fn keydata_type_from_propdata(value: &Option<PropData>) -> i32 {
         _ => panic!("Could not convert: {:?} into type", value),
     }
 }
-// 8 => Some(KeyData::Uint64(key.val_long().try_into().unwrap())),
-// 9 => Some(KeyData::I32(key.val_short().try_into().unwrap())),
 
 impl TryInto<i64> for KeyData {
     type Error = ();

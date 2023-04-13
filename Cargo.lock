@@ -462,7 +462,7 @@ dependencies = [
 
 [[package]]
 name = "demoparser2"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "ahash 0.8.3",
  "arrow-array 37.0.0",

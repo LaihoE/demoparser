@@ -1,6 +1,6 @@
 [package]
 name = "demoparser2"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 
 
@@ -44,7 +44,7 @@ path = "src/csgoproto"
 overflow-checks = false
 
 [profile.release]
-debug = true
+#debug = true
 
 #opt-level = 3
 #lto = "fat"

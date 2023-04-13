@@ -8,6 +8,7 @@ use soa_derive::StructOfArray;
 #[derive(Debug, StructOfArray)]
 pub struct ProjectileRecord {
     pub steamid: Option<u64>,
+    pub name: Option<String>,
     pub x: Option<f32>,
     pub y: Option<f32>,
     pub z: Option<f32>,
@@ -58,6 +59,12 @@ impl Parser {
         if TEAMPROPS.contains(prop_name) {
             return self.find_team_prop(entity_id, prop_name);
         }
+        if RULESPROPS.contains(prop_name) {
+            match self.rules_entity_id {
+                Some(entity_id) => return self.find_pointer_prop(&entity_id, prop_name),
+                None => return None,
+            }
+        }
         return self.get_prop_for_ent(&prop_name, &entity_id);
     }
 
@@ -69,7 +76,6 @@ impl Parser {
         }
         None
     }
-
     pub fn find_thrower_steamid(&self, entity_id: &i32) -> Option<u64> {
         let owner_entid = match self.get_prop_for_ent("m_nOwnerId", entity_id) {
             Some(PropData::U32(prop)) => Some(prop & 0x7FF),
@@ -83,6 +89,20 @@ impl Parser {
             None => None,
         };
         steamid
+    }
+    pub fn find_thrower_name(&self, entity_id: &i32) -> Option<String> {
+        let owner_entid = match self.get_prop_for_ent("m_nOwnerId", entity_id) {
+            Some(PropData::U32(prop)) => Some(prop & 0x7FF),
+            _ => None,
+        };
+        let name = match owner_entid {
+            Some(entid) => match self.players.get(&(entid as i32)) {
+                Some(metadata) => Some(metadata.name.clone()),
+                None => None,
+            },
+            None => None,
+        };
+        name
     }
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
         if let Some(ent) = self.entities.get(&entity_id) {
@@ -104,6 +124,7 @@ impl Parser {
         for projectile_entid in &self.projectiles {
             let grenade_type = self.find_grenade_type(projectile_entid);
             let steamid = self.find_thrower_steamid(projectile_entid);
+            let name = self.find_thrower_name(projectile_entid);
             let x = self.collect_cell_coordinate("X", projectile_entid);
             let y = self.collect_cell_coordinate("Y", projectile_entid);
             let z = self.collect_cell_coordinate("Z", projectile_entid);
@@ -123,6 +144,7 @@ impl Parser {
 
             self.projectile_records.push(ProjectileRecord {
                 steamid: steamid,
+                name: name,
                 x: float_x,
                 y: float_y,
                 z: float_z,
@@ -160,6 +182,7 @@ impl Parser {
         None
     }
     fn find_round(&self) -> Option<PropData> {
+        // Rules entity seems to also have: m_totalRoundsPlayed. Maybe that one would be better
         let mut total_rounds = 0;
         if let Some(team) = self.teams.team2_entid {
             if let Some(PropData::I32(ct_rounds)) = self.get_prop_for_ent("m_iScore", &team) {
@@ -223,6 +246,21 @@ pub static TEAMPROPS: phf::Set<&'static str> = phf_set! {
     // WILL PROBABLY BREAK PARSER
     "m_szTeamFlagImage",
 };
+pub static RULESPROPS: phf::Set<&'static str> = phf_set! {
+    "m_iRoundWinStatus",
+    "m_eRoundWinReason",
+    "m_iMatchStats_PlayersAlive_CT",
+    "m_iMatchStats_PlayersAlive_T",
+    "m_iNumConsecutiveCTLoses",
+    "m_iNumConsecutiveTLoses",
+    "m_flRestartRoundTime",
+    "m_totalRoundsPlayed",
+    "m_nRoundsPlayedThisPhase",
+    "m_bBombPlanted",
+    "m_bFreezePeriod",
+    "m_bWarmupPeriod",
+};
+
 // Props that dont really exist (we create them manually)
 pub static CUSTOMPROPS: phf::Set<&'static str> = phf_set! {
     "round",
@@ -232,47 +270,47 @@ pub static CUSTOMPROPS: phf::Set<&'static str> = phf_set! {
 };
 
 pub static CONTROLLERPROPS: phf::Set<&'static str> = phf_set! {
-   "m_unMusicID",
-   "m_iConnected",
-   "m_steamID",
-   "m_nNextThinkTick",
-   "m_iEnemiesFlashed",
-   "m_iTotalCashSpent",
-   "m_iPawnArmor",
-   "m_nPersonaDataPublicCommendsTeacher",
-   "m_nPersonaDataPublicCommendsLeader",
-   "m_nPersonaDataPublicCommendsFriendly",
-   "m_szCrosshairCodes",
-   "m_iCompetitiveRankType",
-   "m_iCompTeammateColor",
-   "m_nPersonaDataPublicLevel",
-   "m_rank",
-   "m_iAccount",
-   "m_iKillReward",
-   "m_iUtilityDamage",
-   "m_iszPlayerName",
-   "m_iDamage",
-   "m_iEquipmentValue",
-   "m_bPawnIsAlive",
-   "m_iPawnHealth",
-   "m_nPawnCharacterDefIndex",
-   "m_DamageList",
-   "m_flGravityScale",
-   "m_iStartAccount",
-   "m_iPawnLifetimeStart",
-   "m_hPlayerPawn",
-   "m_iPawnLifetimeEnd",
-   "m_flTimeScale",
-   "m_iCashEarned",
-   "m_nQuestProgressReason",
-   "m_nTickBase",
-   "m_perRoundStats",
-   "m_nSendUpdate",
-   "m_iMoneySaved",
-   "m_bPawnHasHelmet",
-   "m_iCashSpentThisRound",
-   "m_iPendingTeamNum",
-   "m_iObjective",
-   "m_vecBaseVelocity",
-   "m_iPing",
+    "m_nPersonaDataPublicCommendsTeacher",
+    "m_nPersonaDataPublicCommendsLeader",
+    "m_nPersonaDataPublicCommendsFriendly",
+    "m_szCrosshairCodes",
+    "m_iCompetitiveRankType",
+    "m_iCompTeammateColor",
+    "m_nPersonaDataPublicLevel",
+    "m_unMusicID",
+    "m_iConnected",
+    "m_steamID",
+    "m_nNextThinkTick",
+    "m_iEnemiesFlashed",
+    "m_iTotalCashSpent",
+    "m_iPawnArmor",
+    "m_rank",
+    "m_iAccount",
+    "m_iKillReward",
+    "m_iUtilityDamage",
+    "m_iszPlayerName",
+    "m_iDamage",
+    "m_iEquipmentValue",
+    "m_bPawnIsAlive",
+    "m_iPawnHealth",
+    "m_nPawnCharacterDefIndex",
+    "m_DamageList",
+    "m_flGravityScale",
+    "m_iStartAccount",
+    "m_iPawnLifetimeStart",
+    "m_hPlayerPawn",
+    "m_iPawnLifetimeEnd",
+    "m_flTimeScale",
+    "m_iCashEarned",
+    "m_nQuestProgressReason",
+    "m_nTickBase",
+    "m_perRoundStats",
+    "m_nSendUpdate",
+    "m_iMoneySaved",
+    "m_bPawnHasHelmet",
+    "m_iCashSpentThisRound",
+    "m_iPendingTeamNum",
+    "m_iObjective",
+    "m_vecBaseVelocity",
+    "m_iPing",
 };
