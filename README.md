@@ -6,15 +6,6 @@ Work in progress so expect some bugs here and there!
 ## Install
 ```pip install demoparser2```
 
-### Usage:
-Game events
-```python
-from demoparser2 import DemoParser
-
-parser = DemoParser("path_to_demo.dem")
-df = parser.parse_events("player_death")
-```
-
 
 # Documentation
 This will have to do for now 😂
@@ -82,18 +73,18 @@ df = parser.parse_ticks(wanted_fields)
 
 
 ##### List of possible fields for parse_ticks() I've tried and output seems reasonable (more comming soon):
-X
-Y
-round
-m_iHealth
-m_szLastPlaceName
-m_bInBuyZone
-m_bIsScoped
-m_iAccount
-m_iCashSpentThisRound
-m_iPing
-m_bWarmupPeriod
-m_bFreezePeriod
+X  
+Y  
+round  
+m_iHealth  
+m_szLastPlaceName  
+m_bInBuyZone  
+m_bIsScoped  
+m_iAccount  
+m_iCashSpentThisRound  
+m_iPing  
+m_bWarmupPeriod  
+m_bFreezePeriod  
 
 
 
