@@ -46,6 +46,13 @@ from demoparser2 import DemoParser
 parser = DemoParser("path_to_demo.dem")
 df = parser.parse_events("player_death")
 ```
+You can find out what events your demo had with:
+```event_names = parser.list_game_events()```
+
+
+
+This can be helpful: https://wiki.alliedmods.net/Counter-Strike:_Global_Offensive_Events  
+List is for CSGO events seem similar to CS2.
 
 
 ### Tick data (entities)
