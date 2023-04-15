@@ -7,12 +7,12 @@ use csgoproto::{
     demo::CDemoSendTables,
     netmessages::{CSVCMsg_FlattenedSerializer, ProtoFlattenedSerializerField_t},
 };
+use lazy_static::lazy_static;
 use phf_macros::phf_map;
 use protobuf::Message;
 use regex::Regex;
 
 #[derive(Debug, Clone)]
-
 pub struct Field {
     //pub parent_name: String,
     pub var_name: String,
@@ -27,7 +27,6 @@ pub struct Field {
     pub high_value: f32,
     pub model: FieldModel,
     pub field_type: FieldType,
-
     pub serializer: Option<Serializer>,
     pub decoder: Decoder,
     pub base_decoder: Option<Decoder>,
@@ -80,7 +79,6 @@ use crate::parsing::sendtables::Decoder::*;
 use crate::parsing::sendtables::FieldModel::*;
 
 pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
-    //"float32" => FloatDecoder,
     "bool" =>   BooleanDecoder,
     "char" =>    StringDecoder,
     "int16" =>   SignedDecoder,
@@ -91,7 +89,10 @@ pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
     "uint32" =>  UnsignedDecoder,
     "uint8" =>   UnsignedDecoder,
     "color32" => UnsignedDecoder,
-    //"Vector" => VectorDecoder,
+
+    // "float32" => NoscaleDecoder,
+    // "Vector" => VectorDecoder,
+
     "GameTime_t" => NoscaleDecoder,
     "CBodyComponent" =>       ComponentDecoder,
     "CGameSceneNodeHandle" => UnsignedDecoder,
@@ -101,6 +102,41 @@ pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
     "CUtlString" =>           StringDecoder,
     "CUtlStringToken" =>      UnsignedDecoder,
     "CUtlSymbolLarge" =>      StringDecoder,
+
+    "Quaternion" => NoscaleDecoder,
+    "CTransform" => NoscaleDecoder,
+    "HSequence" => Unsigned64Decoder,
+    "AttachmentHandle_t"=> Unsigned64Decoder,
+    "CEntityIndex"=> Unsigned64Decoder,
+
+    "MoveCollide_t"=> Unsigned64Decoder,
+    "MoveType_t"=> Unsigned64Decoder,
+    "RenderMode_t"=> Unsigned64Decoder,
+    "RenderFx_t"=> Unsigned64Decoder,
+    "SolidType_t"=> Unsigned64Decoder,
+    "SurroundingBoundsType_t"=> Unsigned64Decoder,
+    "ModelConfigHandle_t"=> Unsigned64Decoder,
+    "NPC_STATE"=> Unsigned64Decoder,
+    "StanceType_t"=> Unsigned64Decoder,
+    "AbilityPathType_t"=> Unsigned64Decoder,
+    "WeaponState_t"=> Unsigned64Decoder,
+    "DoorState_t"=> Unsigned64Decoder,
+    "RagdollBlendDirection"=> Unsigned64Decoder,
+    "BeamType_t"=> Unsigned64Decoder,
+    "BeamClipStyle_t"=> Unsigned64Decoder,
+    "EntityDisolveType_t"=> Unsigned64Decoder,
+    "tablet_skin_state_t" => Unsigned64Decoder,
+    "CStrongHandle" => Unsigned64Decoder,
+    "CSWeaponMode" => Unsigned64Decoder,
+    "ESurvivalSpawnTileState"=> Unsigned64Decoder,
+    "SpawnStage_t"=> Unsigned64Decoder,
+    "ESurvivalGameRuleDecision_t"=> Unsigned64Decoder,
+    "RelativeDamagedDirection_t"=> Unsigned64Decoder,
+    "CSPlayerState"=> Unsigned64Decoder,
+    "MedalRank_t"=> Unsigned64Decoder,
+    "CSPlayerBlockingUseAction_t"=> Unsigned64Decoder,
+    "MoveMountingAmount_t"=> Unsigned64Decoder,
+    "QuestProgress::Reason"=> Unsigned64Decoder,
 
 
 };
@@ -128,7 +164,6 @@ impl Field {
                             );
                         }
                     }
-
                     return (None, self.base_decoder.clone().unwrap());
                 } else {
                     match &self.serializer {
@@ -176,22 +211,36 @@ impl Field {
             FieldModelVariableTable => self.base_decoder = Some(Decoder::UnsignedDecoder),
             FieldModelVariableArray => {
                 self.base_decoder = Some(Decoder::UnsignedDecoder);
-                //self.child_decoder = Some(self.decoder.clone());
-
-                self.child_decoder = match BASETYPE_DECODERS
-                    .get(&self.field_type.generic_type.clone().unwrap().base_type)
-                {
-                    Some(decoder) => Some(decoder.clone()),
-                    None => Some(Decoder::BaseDecoder),
-                };
-
-                //println!("childdecoder: {:?}", self.child_decoder);
+                match self.var_name.as_str() {
+                    // Dont know why these 4 break the parsing
+                    "m_PredFloatVariables" => self.child_decoder = Some(NoscaleDecoder),
+                    "m_OwnerOnlyPredNetFloatVariables" => self.child_decoder = Some(NoscaleDecoder),
+                    "m_OwnerOnlyPredNetVectorVariables" => {
+                        self.child_decoder =
+                            Some(VectorSpecialDecoder(Some(Box::new(NoscaleDecoder))))
+                    }
+                    "m_PredVectorVariables" => {
+                        self.child_decoder =
+                            Some(VectorSpecialDecoder(Some(Box::new(NoscaleDecoder))))
+                    }
+                    _ => {
+                        self.child_decoder = match BASETYPE_DECODERS
+                            .get(&self.field_type.generic_type.clone().unwrap().base_type)
+                        {
+                            Some(decoder) => Some(decoder.clone()),
+                            None => Some(Decoder::BaseDecoder),
+                        };
+                    }
+                }
             }
             FieldModelNOTSET => panic!("wtf"),
         }
     }
     pub fn match_decoder(&self) -> Decoder {
-        //println!("BT {}", self.field_type.base_type);
+        if !BASETYPE_DECODERS.contains_key(&self.field_type.base_type) {
+            // println!("BT {}", self.field_type.base_type);
+        }
+
         let dec = match BASETYPE_DECODERS.get(&self.field_type.base_type) {
             Some(decoder) => decoder.clone(),
             None => match self.field_type.base_type.as_str() {
@@ -223,6 +272,7 @@ impl Field {
         }
     }
     pub fn find_float_type(&self) -> Decoder {
+        // println!("{}", self.var_name);
         match self.var_name.as_str() {
             "m_flSimulationTime" => return Decoder::FloatSimulationTimeDecoder,
             "m_flAnimTime" => return Decoder::FloatSimulationTimeDecoder,
@@ -274,9 +324,10 @@ pub struct FieldType {
 }
 
 fn find_field_type(name: &str) -> FieldType {
-    let re = Regex::new(r"([^<\[\*]+)(<\s(.*)\s>)?(\*)?(\[(.*)\])?").unwrap();
-    let captures = re.captures(name).unwrap();
-
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"([^<\[\*]+)(<\s(.*)\s>)?(\*)?(\[(.*)\])?").unwrap();
+    }
+    let captures = RE.captures(name).unwrap();
     let base_type = captures.get(1).unwrap().as_str().to_owned();
     let pointer = match captures.get(4) {
         Some(s) => {
@@ -320,6 +371,7 @@ pub struct Serializer {
     pub name: String,
     // Maybe hm?
     pub fields: Vec<Field>,
+    pub history: Vec<Vec<i32>>,
 }
 
 impl Serializer {
@@ -338,30 +390,6 @@ impl Serializer {
             }
         }
 
-        if path.last != 1 {
-            match f.var_name.as_str() {
-                "m_PredFloatVariables" => return (f.var_name.to_owned(), f, NoscaleDecoder),
-                "m_OwnerOnlyPredNetFloatVariables" => {
-                    return (f.var_name.to_owned(), f, NoscaleDecoder)
-                }
-                "m_OwnerOnlyPredNetVectorVariables" => {
-                    return (
-                        f.var_name.to_owned(),
-                        f,
-                        VectorSpecialDecoder(Some(Box::new(NoscaleDecoder))),
-                    )
-                }
-                "m_PredVectorVariables" => {
-                    return (
-                        f.var_name.to_owned(),
-                        f,
-                        VectorSpecialDecoder(Some(Box::new(NoscaleDecoder))),
-                    )
-                }
-
-                _ => {}
-            }
-        }
         let (name, decoder) = f.decoder_from_path(path, pos + 1, is_baseline);
         let real_name = match name {
             Some(s) => s,
@@ -401,16 +429,17 @@ impl Parser {
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint().unwrap();
 
-        let bytes = bitreader.read_n_bytes(n_bytes as usize);
+        let bytes = bitreader.read_n_bytes(n_bytes as usize).unwrap();
         let serializer_msg: CSVCMsg_FlattenedSerializer =
             Message::parse_from_bytes(&bytes).unwrap();
 
         let mut fields: HashMap<i32, Field> = HashMap::default();
 
-        for (_idx, serializer) in serializer_msg.serializers.iter().enumerate() {
+        for (ser_idx, serializer) in serializer_msg.serializers.iter().enumerate() {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
                 fields: vec![],
+                history: vec![],
             };
 
             for idx in &serializer.fields_index {
@@ -419,6 +448,8 @@ impl Parser {
                     None => {
                         let field_msg = &serializer_msg.fields[*idx as usize];
                         let mut field = field_from_msg(field_msg, &serializer_msg);
+
+                        // println!("{} {} {:#?}", ser_idx, idx, my_serializer.name);
 
                         match &field.serializer_name {
                             Some(name) => match self.serializers.get(name) {
@@ -454,7 +485,7 @@ impl Parser {
                                 }
                             }
                         }
-
+                        // serializer_print(&my_serializer, &[0, 0, 0, 0, 0, 0, 0]);
                         fields.insert(*idx, field.clone());
                         my_serializer.fields.push(field);
                     }
@@ -467,12 +498,34 @@ impl Parser {
     }
 }
 
+pub fn serializer_print(ser: &Serializer, wanted_path: &[i32; 7]) {
+    traverse_fields(&ser.fields, vec![], &wanted_path)
+}
+pub fn traverse_fields(fileds: &Vec<Field>, path: Vec<usize>, wanted_path: &[i32; 7]) {
+    for (idx, f) in fileds.iter().enumerate() {
+        if let Some(ser) = &f.serializer {
+            let mut tmp = path.clone();
+            tmp.push(idx);
+            traverse_fields(&ser.fields, tmp, wanted_path)
+        } else {
+            let mut tmp = path.clone();
+            tmp.push(idx);
+            if tmp.len() > 1 {
+                if tmp[0] == 4 && tmp[1] == 42 {
+                    println!("{:#?}", f);
+                }
+            }
+
+            println!("{} {:?} {:?} {:?}", idx, tmp, f.var_name, wanted_path);
+        }
+    }
+}
+
 fn field_from_msg(
     field: &ProtoFlattenedSerializerField_t,
     serializer_msg: &CSVCMsg_FlattenedSerializer,
 ) -> Field {
     let field_type = find_field_type(&serializer_msg.symbols[field.var_type_sym() as usize]);
-
     let ser_name = match field.has_field_serializer_name_sym() {
         true => Some(serializer_msg.symbols[field.field_serializer_name_sym() as usize].clone()),
         false => None,
@@ -499,6 +552,12 @@ fn field_from_msg(
         base_decoder: None,
         child_decoder: None,
     };
-
+    /*
+    println!(
+        "{:?} {:#?}",
+        &serializer_msg.symbols[field.var_type_sym() as usize],
+        f
+    );
+    */
     f
 }

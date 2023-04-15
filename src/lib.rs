@@ -11,6 +11,7 @@ use polars::series::Series;
 use polars_arrow::export::arrow;
 use polars_arrow::prelude::ArrayRef;
 use pyo3::exceptions::PyIndexError;
+use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
@@ -38,7 +39,7 @@ impl DemoParser {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
+        parser.start()?;
         Ok(0.to_object(py))
     }
     /// Returns a dictionary with console vars set. This includes data
@@ -56,7 +57,10 @@ impl DemoParser {
             only_convars: true,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         Ok(parser.convars.to_object(py))
     }
     /// Returns the names and frequencies of game events during the game.
@@ -75,7 +79,7 @@ impl DemoParser {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
+        parser.start()?;
         // Sort by freq
         let mut v: Vec<_> = parser.game_events_counter.iter().collect();
         v.sort_by(|x, y| x.1.cmp(&y.1));
@@ -99,7 +103,10 @@ impl DemoParser {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         // Sort by freq
         let mut v: Vec<_> = parser.props_counter.iter().collect();
         v.sort_by(|x, y| x.1.cmp(&y.1));
@@ -126,8 +133,10 @@ impl DemoParser {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
-
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         // SoA form
         let xs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.x))).unwrap();
         let ys = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.y))).unwrap();
@@ -181,7 +190,10 @@ impl DemoParser {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
 
         // SoA form
         let entids =
@@ -221,7 +233,10 @@ impl DemoParser {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
 
         // SoA form
         let steamid =
@@ -260,7 +275,10 @@ impl DemoParser {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
 
         // SoA form
         let account_id =
@@ -329,7 +347,10 @@ impl DemoParser {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
 
         // Projectile records are in SoA form
         let account_id = arr_to_py(Box::new(UInt32Array::from(parser.skins.account_id))).unwrap();
@@ -403,7 +424,10 @@ impl DemoParser {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
 
         let event_series = parser.series_from_events(&parser.game_events);
         let column_names: Vec<&str> = event_series.iter().map(|x| x.name().clone()).collect();
@@ -450,7 +474,10 @@ impl DemoParser {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-        parser.start();
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
 
         let mut all_series = vec![];
 

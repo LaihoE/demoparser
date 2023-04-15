@@ -1,8 +1,10 @@
 use super::entities::PlayerMetaData;
 use crate::parsing::parser_settings::Parser;
+use crate::parsing::read_bits::BitReaderError;
 use crate::parsing::variants::keydata_type_from_propdata;
 use crate::parsing::variants::*;
-use ahash::HashMap;
+use ahash::AHashMap;
+use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use csgoproto::netmessages::CSVCMsg_GameEventList;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
@@ -31,18 +33,19 @@ impl TryFrom<Option<PropData>> for KeyData {
 }
 
 impl Parser {
-    pub fn parse_game_event_map(&mut self, bytes: &[u8]) {
+    pub fn parse_game_event_map(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
         let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
-        let mut hm: HashMap<i32, Descriptor_t> = HashMap::default();
+        let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
         for event_desc in event_list.descriptors {
             hm.insert(event_desc.eventid(), event_desc);
         }
         self.ge_list = Some(hm);
+        Ok(())
     }
 
-    pub fn parse_event(&mut self, bytes: &[u8]) {
+    pub fn parse_event(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
         if self.wanted_event.is_none() {
-            return;
+            return Ok(());
         }
         let event: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
 
@@ -58,7 +61,7 @@ impl Parser {
             .or_insert(1);
 
         if event_desc.name != self.wanted_event {
-            return;
+            return Ok(());
         }
 
         let mut kv_pairs: Vec<NameDataPair> = vec![];
@@ -125,6 +128,7 @@ impl Parser {
             name: event_desc.name().to_string(),
             tick: self.tick,
         });
+        Ok(())
     }
     pub fn player_metadata_from_entid(&self, entity_id: i32) -> Option<&PlayerMetaData> {
         self.players.get(&entity_id)

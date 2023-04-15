@@ -1,4 +1,5 @@
 use super::class::Class;
+use super::entities::PathVariant;
 use super::entities_utils::FieldPath;
 use super::entities_utils::HuffmanNode;
 use super::game_events::GameEvent;
@@ -10,9 +11,11 @@ use crate::parsing::entities::Entity;
 use crate::parsing::entities::PlayerMetaData;
 use crate::parsing::entities_utils::generate_huffman_tree;
 use crate::parsing::sendtables::Decoder;
-use ahash::HashMap;
-use ahash::HashSet;
+use ahash::AHashMap;
+use ahash::AHashSet;
+use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
+use nohash_hasher::*;
 use smallvec::smallvec;
 use soa_derive::StructOfArray;
 use std::fs;
@@ -21,41 +24,45 @@ pub struct Parser {
     // todo split into smaller parts
     pub ptr: usize,
     pub bytes: Vec<u8>,
-    pub ge_list: Option<HashMap<i32, Descriptor_t>>,
-    pub serializers: HashMap<String, Serializer>,
-    pub cls_by_id: HashMap<u32, Class>,
-    pub cls_by_name: HashMap<String, Class>,
+    pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
+    pub serializers: AHashMap<String, Serializer, RandomState>,
+    pub cls_by_id: AHashMap<u32, Class, RandomState>,
+    pub cls_by_name: AHashMap<String, Class, RandomState>,
     pub cls_bits: Option<u32>,
-    pub entities: HashMap<i32, Entity>,
+    pub entities: AHashMap<i32, Entity, RandomState>,
     pub tick: i32,
-    pub huffman_tree: HuffmanNode,
-    pub wanted_ticks: HashSet<i32>,
+    pub wanted_ticks: AHashSet<i32, RandomState>,
     pub wanted_props: Vec<String>,
     pub wanted_event: Option<String>,
-    pub players: HashMap<i32, PlayerMetaData>,
-    pub output: HashMap<String, PropColumn>,
+    pub players: AHashMap<i32, PlayerMetaData, RandomState>,
+    pub output: AHashMap<String, PropColumn, RandomState>,
     pub game_events: Vec<GameEvent>,
     pub parse_entities: bool,
-    pub projectiles: HashSet<i32>,
+    pub projectiles: AHashSet<i32, RandomState>,
     pub projectile_records: ProjectileRecordVec,
-    pub pattern_cache: HashMap<u64, Decoder>,
-    pub baselines: HashMap<u32, Vec<u8>>,
+
+    pub pattern_cache: AHashMap<u64, Decoder, RandomState>,
+    pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub string_tables: Vec<StringTable>,
-    pub cache: HashMap<u128, (String, Decoder)>,
-    pub paths: Vec<FieldPath>,
+    pub cache: AHashMap<u128, (String, Decoder)>,
+    pub paths: Vec<PathVariant>,
     pub teams: Teams,
-    pub game_events_counter: HashMap<String, i32>,
-    pub props_counter: HashMap<String, i32>,
+    pub game_events_counter: AHashMap<String, i32>,
+    pub props_counter: AHashMap<String, i32>,
     pub parse_projectiles: bool,
     pub count_props: bool,
     pub rules_entity_id: Option<i32>,
-    pub uniq_message_ids: HashSet<u32>,
-    pub convars: HashMap<String, String>,
+    pub uniq_message_ids: AHashSet<u32>,
+    pub convars: AHashMap<String, String>,
     pub only_convars: bool,
     pub chat_messages: ChatMessageRecordVec,
     pub item_drops: EconItemVec,
     pub player_end_data: PlayerEndDataVec,
     pub skins: EconItemVec,
+
+    pub history: AHashMap<u64, (u64, Decoder), RandomState>,
+
+    pub huffman_codes: [i32; 120000],
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -121,55 +128,102 @@ pub struct ParserInputs {
 impl Parser {
     pub fn new(mut settings: ParserInputs) -> Self {
         let bytes = fs::read(settings.path).unwrap();
-        let tree = generate_huffman_tree().unwrap();
+        // let tree = generate_huffman_tree().unwrap();
         let fp_filler = FieldPath {
             last: 0,
-            path: smallvec![],
+            path: [-1, 0, 0, 0, 0, 0, 0],
             done: false,
+            decoder: None,
         };
         settings.wanted_props.extend(vec![
             "tick".to_owned(),
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
+        let mut a: [i32; 120000] = [-1; 120000];
+        a[0] = 0;
+        a[5] = 39;
+        a[2] = 39;
+        a[24] = 8;
+        a[50] = 2;
+        a[51] = 29;
+        a[100] = 2;
+        a[101] = 29;
+        a[26] = 4;
+        a[432] = 30;
+        a[866] = 38;
+        a[55488] = 35;
+        a[55489] = 34;
+        a[27745] = 27;
+        a[55492] = 25;
+        a[55493] = 24;
+        a[55494] = 33;
+        a[55495] = 28;
+        a[55496] = 13;
+        a[110994] = 15;
+        a[110995] = 14;
+        a[27749] = 6;
+        a[111000] = 21;
+        a[111001] = 20;
+        a[111002] = 23;
+        a[111003] = 22;
+        a[111004] = 17;
+        a[111005] = 16;
+        a[111006] = 19;
+        a[111007] = 18;
+        a[3469] = 5;
+        a[1735] = 36;
+        a[217] = 10;
+        a[218] = 7;
+        a[438] = 12;
+        a[439] = 37;
+        a[220] = 9;
+        a[442] = 31;
+        a[443] = 26;
+        a[222] = 32;
+        a[223] = 3;
+        a[14] = 1;
+        a[15] = 11;
+
         Parser {
-            serializers: HashMap::default(),
+            serializers: AHashMap::default(),
             ptr: 0,
             ge_list: None,
             bytes: bytes,
-            cls_by_id: HashMap::default(),
-            cls_by_name: HashMap::default(),
-            entities: HashMap::default(),
+            cls_by_id: AHashMap::default(),
+            cls_by_name: AHashMap::default(),
+            entities: AHashMap::default(),
             cls_bits: None,
             tick: -99999,
-            huffman_tree: tree,
             wanted_props: settings.wanted_props,
-            players: HashMap::default(),
-            output: HashMap::default(),
-            wanted_ticks: HashSet::from_iter(settings.wanted_ticks),
+            players: AHashMap::default(),
+            output: AHashMap::default(),
+            wanted_ticks: AHashSet::from_iter(settings.wanted_ticks),
             game_events: vec![],
             wanted_event: settings.wanted_event,
             parse_entities: settings.parse_ents,
-            projectiles: HashSet::default(),
+            projectiles: AHashSet::default(),
             projectile_records: ProjectileRecordVec::new(),
-            pattern_cache: HashMap::default(),
-            baselines: HashMap::default(),
+            pattern_cache: AHashMap::default(),
+            baselines: AHashMap::default(),
             string_tables: vec![],
-            cache: HashMap::default(),
-            paths: vec![fp_filler; 10000],
+            cache: AHashMap::default(),
+            paths: vec![PathVariant::Normal(fp_filler); 10000],
             teams: Teams::new(),
-            game_events_counter: HashMap::default(),
-            props_counter: HashMap::default(),
+            game_events_counter: AHashMap::default(),
+            props_counter: AHashMap::default(),
             parse_projectiles: settings.parse_projectiles,
             count_props: settings.count_props,
             rules_entity_id: None,
-            uniq_message_ids: HashSet::default(),
-            convars: HashMap::default(),
+            uniq_message_ids: AHashSet::default(),
+            convars: AHashMap::default(),
             only_convars: settings.only_convars,
             chat_messages: ChatMessageRecordVec::new(),
             item_drops: EconItemVec::new(),
             skins: EconItemVec::new(),
             player_end_data: PlayerEndDataVec::new(),
+            huffman_codes: a,
+            history: AHashMap::default(),
         }
     }
 }

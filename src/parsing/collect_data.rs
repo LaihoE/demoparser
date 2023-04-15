@@ -17,7 +17,7 @@ pub struct ProjectileRecord {
 }
 
 impl Parser {
-    pub fn collect(&mut self) {
+    pub fn collect_entities(&mut self) {
         if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 {
             return;
         }
