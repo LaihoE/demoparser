@@ -8,6 +8,7 @@ use super::{
 use crate::parsing::sendtables::Decoder::*;
 
 impl<'a> Bitreader<'a> {
+    #[inline(always)]
     pub fn decode(&mut self, decoder: &Decoder) -> Result<PropData, BitReaderError> {
         match decoder {
             SignedDecoder => Ok(PropData::I32(self.read_varint32()?)),
@@ -28,14 +29,28 @@ impl<'a> Bitreader<'a> {
             VectorNormalDecoder => Ok(PropData::FloatVec32(self.decode_normal_vec()?)),
             Unsigned64Decoder => Ok(PropData::U64(self.read_varint_u_64()?)),
             Fixed64Decoder => Ok(PropData::U64(self.decode_uint64()?)),
+            VectorFloatCoordDecoder => Ok(PropData::FloatVec32(self.decode_vector_float_coord()?)),
+            VectorNoscaleDecoder => Ok(PropData::FloatVec32(self.decode_vector_noscale()?)),
             NO => Ok(PropData::U32(self.read_varint()?)),
-            VectorSpecialDecoder(float_type) => Ok(PropData::FloatVec32(
-                self.decode_vector_special(float_type.clone().unwrap())?,
-            )),
             X => Ok(PropData::U32(self.read_nbits(1)?)),
-            _ => panic!("huh"),
+            _ => panic!("huh {:?}", decoder),
         }
     }
+    pub fn decode_vector_float_coord(&mut self) -> Result<Vec<f32>, BitReaderError> {
+        let mut v = vec![];
+        for _ in 0..3 {
+            v.push(self.decode_float_coord()?)
+        }
+        Ok(v)
+    }
+    pub fn decode_vector_noscale(&mut self) -> Result<Vec<f32>, BitReaderError> {
+        let mut v = vec![];
+        for _ in 0..3 {
+            v.push(self.decode_noscale()?)
+        }
+        Ok(v)
+    }
+
     pub fn decode_vector_special(
         &mut self,
         float_type: Box<Decoder>,

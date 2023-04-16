@@ -244,7 +244,7 @@ fn to_null_series(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
 }
 
 pub fn series_from_pairs(pairs: &Vec<&NameDataPair>, name: &String) -> Series {
-    let field_type = find_type_of_vals(&pairs);
+    let field_type = find_type_of_vals(pairs);
     let s = match field_type {
         0 => to_null_series(pairs, name),
         1 => to_string_series(pairs, name),

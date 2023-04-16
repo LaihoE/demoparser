@@ -79,12 +79,13 @@ impl Parser {
                 };
 
                 self.entities.insert(entity_id, entity);
-
+                /*
                 if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
                     let b = &baseline_bytes.clone();
                     let mut br = Bitreader::new(&b);
                     self.decode_entity_update(&mut br, entity_id, true)?;
                 };
+                */
                 if self.cls_by_id[&cls_id].name == "CCSGameRulesProxy" {
                     self.rules_entity_id = Some(entity_id);
                 }
@@ -99,12 +100,7 @@ impl Parser {
         }
         Ok(())
     }
-
-    pub fn parse_paths(
-        &mut self,
-        bitreader: &mut Bitreader,
-        cls_id: i32,
-    ) -> Result<usize, BitReaderError> {
+    pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, BitReaderError> {
         let mut fp = generate_fp();
         // This is does decoding of huffman tree. If this is too confusing then
         // look up huffman tree decoding. It's very common and bunch of material is vailable.
@@ -120,21 +116,61 @@ impl Parser {
         // symbol 39 signals that we should stop
         let mut idx = 0;
         let mut val = 0;
+        let mut pred_sym = 0;
+        let mut brem = 0;
         loop {
+            let mut b = 0;
+
+            // 0b000000000000001011000110011011
+            // 0b000000000000011011000110011011
+
+            let x = bitreader.reader.refill_lookahead();
+            //let mut pre = bitreader.reader.peek(1);
+            let mut p = bitreader.reader.peek(17);
+
+            let og = p;
+
+            let mut peekbits = 0;
+            for i in 0..17 {
+                peekbits |= (p & 1 != 0) as u32;
+                peekbits <<= 1;
+                p >>= 1;
+            }
+            //println!("og {:#032b}", og);
+            if val == 0 {
+                pred_sym = self.huffman_codes2[peekbits as usize];
+                /*
+                println!(
+                    "-> {} PB {:#032b} ",
+                    self.huffman_codes2[peekbits as usize], peekbits,
+                );
+                */
+            }
+            let mut bbb = bitreader.reader.peek(1);
+            if val == 0 {
+                brem = bitreader.reader.bits_remaining().unwrap();
+            }
             val <<= 1;
-            val |= bitreader.read_boolie()? as usize;
-            let symbol = self.huffman_codes[val];
-            if symbol != -1 {
+            val |= bitreader.read_boolie()? as u32;
+            if val == 0 {
+                pred_sym = 0;
+            }
+            let mut skip_bits = self.symbol_bits[pred_sym as usize];
+            if pred_sym == 2 {
+                skip_bits = 6;
+            }
+            // println!("{}", skip_bits);
+            bitreader.reader.read_bits((skip_bits - 1) as u32).unwrap();
+            // println!("VAL {} {}", val, bbb != 0);
+
+            //let symbol = self.huffman_codes[val as usize];
+            if pred_sym != 999999 {
                 // Stop reading
-                if symbol == 39 {
+                if pred_sym == 39 {
                     break;
                 }
-                do_op(symbol, bitreader, &mut fp)?;
-                let key = path_to_key(&fp, cls_id);
-                match self.pattern_cache.get(&key) {
-                    Some(decorder) => self.paths[idx] = PathVariant::Cache(decorder.clone()),
-                    None => self.paths[idx] = PathVariant::Normal(fp.clone()),
-                };
+                do_op(pred_sym, bitreader, &mut fp)?;
+                self.paths[idx] = fp.clone();
                 idx += 1;
                 val = 0;
             }
@@ -147,11 +183,7 @@ impl Parser {
         entity_id: i32,
         is_baseline: bool,
     ) -> Result<(), BitReaderError> {
-        let cls_id = match self.entities.get(&entity_id) {
-            Some(e) => e.cls_id,
-            None => return Err(BitReaderError::EntityNotFound),
-        };
-        let n_paths = self.parse_paths(bitreader, cls_id as i32)?;
+        let n_paths = self.parse_paths(bitreader)?;
         let entity = match self.entities.get_mut(&(entity_id)) {
             Some(ent) => ent,
             None => return Err(BitReaderError::EntityNotFound),
@@ -170,24 +202,14 @@ impl Parser {
             */
         } else {
             for path in &self.paths[..n_paths] {
-                if let PathVariant::Normal(p) = path {
-                    //serializer_print(&class.serializer, &p.path);
-                }
-
                 // probably problem with baseline, this seems to fix
                 if is_baseline && bitreader.reader.bits_remaining().unwrap() < 32 {
                     break;
                 }
-                let decoder = match path {
-                    PathVariant::Cache(dec) => dec.clone(),
-                    PathVariant::Normal(n) => {
-                        let (name, f, decoder) = class.serializer.find_decoder(&n, 0, is_baseline);
-                        let key = path_to_key(&n, class.class_id);
-                        // self.pattern_cache.insert(key, decoder.clone());
-                        decoder
-                    }
-                };
+
+                let decoder = class.serializer.find_decoder(&path, 0, is_baseline);
                 let result = bitreader.decode(&decoder);
+                // println!("{:?}", result);
                 /*
                 let key = path_to_key(&path, cls.class_id);
                 match self.pattern_cache.get(&key) {
@@ -253,6 +275,7 @@ impl Parser {
         if is_baseline {
             return Ok(player);
         }
+        /*
         for path in paths {
             let (var_name, _field, decoder) = cls.serializer.find_decoder(&path, 0, is_baseline);
             let result = bitreader.decode(&decoder)?;
@@ -288,13 +311,25 @@ impl Parser {
                 _ => {}
             }
         }
+         */
         Ok(player)
     }
 }
 use crate::parsing::sendtables::Decoder;
 
+use super::decoder;
 use super::read_bits::BitReaderError;
 use super::sendtables::serializer_print;
+
+fn reverseBits(mut n: u32) -> u32 {
+    n = ((n & 0xffff0000) >> 16) | ((n & 0x0000ffff) << 16);
+    n = ((n & 0xff00ff00) >> 8) | ((n & 0x00ff00ff) << 8);
+    n = ((n & 0xf0f0f0f0) >> 4) | ((n & 0x0f0f0f0f) << 4);
+    n = ((n & 0xcccccccc) >> 2) | ((n & 0x33333333) << 2);
+    n = ((n & 0xaaaaaaaa) >> 1) | ((n & 0x55555555) << 1);
+    return n;
+}
+
 #[derive(Clone, Debug)]
 pub enum PathVariant {
     Normal(FieldPath),
@@ -303,10 +338,8 @@ pub enum PathVariant {
 
 fn generate_fp() -> FieldPath {
     FieldPath {
-        done: false,
         path: [-1, 0, 0, 0, 0, 0, 0],
         last: 0,
-        decoder: None,
     }
 }
 

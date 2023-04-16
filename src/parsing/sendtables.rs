@@ -42,13 +42,14 @@ pub enum FieldModel {
     FieldModelNOTSET,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[allow(dead_code)]
 pub enum Decoder {
     FloatDecoder,
     QuantalizedFloatDecoder(QuantalizedFloat),
     VectorNormalDecoder,
-    VectorSpecialDecoder(Option<Box<Decoder>>),
+    VectorNoscaleDecoder,
+    VectorFloatCoordDecoder,
     Vector2DDecoder,
     Vector4DDecoder,
     Unsigned64Decoder,
@@ -142,34 +143,23 @@ pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
 };
 
 impl Field {
-    pub fn decoder_from_path(
-        &self,
-        path: &FieldPath,
-        pos: usize,
-        is_baseline: bool,
-    ) -> (Option<String>, Decoder) {
+    pub fn decoder_from_path(&self, path: &FieldPath, pos: usize, is_baseline: bool) -> Decoder {
         match self.model {
-            FieldModelFixedArray => (None, self.decoder.clone()),
+            FieldModelFixedArray => self.decoder,
             FieldModelFixedTable => {
                 if path.last == pos - 1 {
                     if is_baseline {
                         if self.serializer.as_ref().unwrap().fields.len() == 0 {
-                            return (None, BooleanDecoder);
+                            return BooleanDecoder;
                         } else {
-                            return (
-                                None,
-                                self.serializer.as_ref().unwrap().fields[pos - 1]
-                                    .decoder
-                                    .clone(),
-                            );
+                            return self.serializer.as_ref().unwrap().fields[pos - 1].decoder;
                         }
                     }
-                    return (None, self.base_decoder.clone().unwrap());
+                    return self.base_decoder.unwrap();
                 } else {
                     match &self.serializer {
                         Some(ser) => {
-                            let (_name, f, decoder) = ser.find_decoder(path, pos, is_baseline);
-                            return (Some(f.var_name.to_owned()), decoder);
+                            return ser.find_decoder(path, pos, is_baseline);
                         }
                         None => panic!("no serializer for path"),
                     }
@@ -177,26 +167,25 @@ impl Field {
             }
             FieldModelVariableArray => {
                 if path.last == pos {
-                    return (None, self.child_decoder.clone().unwrap());
+                    return self.child_decoder.unwrap();
                 } else {
-                    return (None, self.base_decoder.clone().unwrap());
+                    return self.base_decoder.unwrap();
                 }
             }
             FieldModelVariableTable => {
                 if path.last >= pos + 1 {
                     match &self.serializer {
                         Some(ser) => {
-                            let (_name, f, decoder) = ser.find_decoder(path, pos + 1, is_baseline);
-                            return (Some(f.var_name.to_owned()), decoder);
+                            return ser.find_decoder(path, pos + 1, is_baseline);
                         }
                         None => panic!("no serializer for path"),
                     }
                 } else {
-                    return (None, self.base_decoder.clone().unwrap());
+                    return self.base_decoder.unwrap();
                 }
             }
             FieldModelSimple => {
-                return (None, self.decoder.clone());
+                return self.decoder;
             }
             _ => panic!("HUH"),
         }
@@ -216,13 +205,9 @@ impl Field {
                     "m_PredFloatVariables" => self.child_decoder = Some(NoscaleDecoder),
                     "m_OwnerOnlyPredNetFloatVariables" => self.child_decoder = Some(NoscaleDecoder),
                     "m_OwnerOnlyPredNetVectorVariables" => {
-                        self.child_decoder =
-                            Some(VectorSpecialDecoder(Some(Box::new(NoscaleDecoder))))
+                        self.child_decoder = Some(VectorNoscaleDecoder)
                     }
-                    "m_PredVectorVariables" => {
-                        self.child_decoder =
-                            Some(VectorSpecialDecoder(Some(Box::new(NoscaleDecoder))))
-                    }
+                    "m_PredVectorVariables" => self.child_decoder = Some(VectorNoscaleDecoder),
                     _ => {
                         self.child_decoder = match BASETYPE_DECODERS
                             .get(&self.field_type.generic_type.clone().unwrap().base_type)
@@ -311,7 +296,11 @@ impl Field {
             return Decoder::VectorNormalDecoder;
         }
         let float_type = self.find_float_type();
-        return Decoder::VectorSpecialDecoder(Some(Box::new(float_type)));
+        match float_type {
+            NoscaleDecoder => return VectorNoscaleDecoder,
+            FloatCoordDecoder => return VectorFloatCoordDecoder,
+            _ => panic!("e"),
+        }
     }
 }
 
@@ -375,27 +364,15 @@ pub struct Serializer {
 }
 
 impl Serializer {
-    pub fn find_decoder(
-        &self,
-        path: &FieldPath,
-        pos: usize,
-        is_baseline: bool,
-    ) -> (String, &Field, Decoder) {
-        let idx = path.path.get(pos).unwrap();
-        let f = &self.fields[*idx as usize];
-
+    pub fn find_decoder(&self, path: &FieldPath, pos: usize, is_baseline: bool) -> Decoder {
+        let idx = path.path[pos];
+        let f = &self.fields[idx as usize];
         if is_baseline {
             if f.var_name == "CBodyComponent" && path.last == 0 {
-                return (f.var_name.to_owned(), f, X);
+                return X;
             }
         }
-
-        let (name, decoder) = f.decoder_from_path(path, pos + 1, is_baseline);
-        let real_name = match name {
-            Some(s) => s,
-            None => f.var_name.to_owned(),
-        };
-        (real_name, f, decoder)
+        f.decoder_from_path(path, pos + 1, is_baseline)
     }
 }
 

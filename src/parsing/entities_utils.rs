@@ -9,7 +9,7 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
 pub fn do_op(
-    opcode: i32,
+    opcode: u32,
     bitreader: &mut Bitreader,
     field_path: &mut FieldPath,
 ) -> Result<(), BitReaderError> {
@@ -101,12 +101,10 @@ impl PartialEq for HuffmanNode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct FieldPath {
     pub path: [i32; 7],
     pub last: usize,
-    pub done: bool,
-    pub decoder: Option<Decoder>,
 }
 impl FieldPath {
     pub fn pop_special(&mut self, n: usize) {

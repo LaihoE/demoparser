@@ -175,7 +175,7 @@ impl Parser {
             // Get prop from team entity
             if let Some(entid) = team_entid {
                 if let Some(p) = self.get_prop_for_ent(prop, &entid) {
-                    return Some(p.clone());
+                    return Some(p);
                 }
             }
         }

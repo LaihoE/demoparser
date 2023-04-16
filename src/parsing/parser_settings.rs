@@ -41,11 +41,12 @@ pub struct Parser {
     pub projectiles: AHashSet<i32, RandomState>,
     pub projectile_records: ProjectileRecordVec,
 
+    pub paths: Vec<FieldPath>,
+
     pub pattern_cache: AHashMap<u64, Decoder, RandomState>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub string_tables: Vec<StringTable>,
     pub cache: AHashMap<u128, (String, Decoder)>,
-    pub paths: Vec<PathVariant>,
     pub teams: Teams,
     pub game_events_counter: AHashMap<String, i32>,
     pub props_counter: AHashMap<String, i32>,
@@ -62,7 +63,9 @@ pub struct Parser {
 
     pub history: AHashMap<u64, (u64, Decoder), RandomState>,
 
-    pub huffman_codes: [i32; 120000],
+    pub huffman_codes: [u32; 300_000],
+    pub huffman_codes2: [u32; 300_000],
+    pub symbol_bits: [u8; 1024],
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -132,17 +135,14 @@ impl Parser {
         let fp_filler = FieldPath {
             last: 0,
             path: [-1, 0, 0, 0, 0, 0, 0],
-            done: false,
-            decoder: None,
         };
         settings.wanted_props.extend(vec![
             "tick".to_owned(),
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
-        let mut a: [i32; 120000] = [-1; 120000];
+        let mut a: [u32; 300_000] = [999999; 300_000];
         a[0] = 0;
-        a[5] = 39;
         a[2] = 39;
         a[24] = 8;
         a[50] = 2;
@@ -185,6 +185,47 @@ impl Parser {
         a[14] = 1;
         a[15] = 11;
 
+        let mut b = a.clone();
+        b[0] = 999999;
+
+        let mut v: Vec<u32> = vec![];
+        for (idx, x) in b.iter().enumerate() {
+            if x != &999999 {
+                v.push(idx as u32);
+            }
+        }
+
+        let mut ans = [0_u8; 1024];
+
+        for x in v {
+            let shifta = MSB(x);
+            let sym = b[x as usize];
+            ans[sym as usize] = shifta as u8;
+            for i in 0..300_000 {
+                let shiftb = MSB(i);
+
+                if x == i >> shiftb - shifta {
+                    b[i as usize] = b[x as usize];
+                    // println!("{:#032b} {:#032b} {} {}", x, i, x, i);
+                    // println!("{:#032b} {:#032b} {} ", x, i >> shifta, shifta);
+                }
+            }
+        }
+        ans[0] = 1;
+        println!("{}", ans[0]);
+        /*
+        for x in v {
+            let n = 32 - x.leading_zeros();
+            for i in 0..140_000 {
+                if (i << (32 - n)) == x << (32 - n) {
+                    println!("{}", a[i as usize]);
+                    a[i as usize] = a[x as usize];
+                    // println!("{:#032b} {:#032b} {} {}", x, i, x, i);
+                }
+            }
+        }
+        */
+
         Parser {
             serializers: AHashMap::default(),
             ptr: 0,
@@ -208,7 +249,7 @@ impl Parser {
             baselines: AHashMap::default(),
             string_tables: vec![],
             cache: AHashMap::default(),
-            paths: vec![PathVariant::Normal(fp_filler); 10000],
+            paths: vec![fp_filler; 10000],
             teams: Teams::new(),
             game_events_counter: AHashMap::default(),
             props_counter: AHashMap::default(),
@@ -224,6 +265,17 @@ impl Parser {
             player_end_data: PlayerEndDataVec::new(),
             huffman_codes: a,
             history: AHashMap::default(),
+            huffman_codes2: b,
+            symbol_bits: ans,
         }
     }
+}
+
+fn MSB(mut val: u32) -> u32 {
+    let mut cnt = 0;
+    while val > 0 {
+        cnt = cnt + 1;
+        val = val >> 1;
+    }
+    cnt
 }

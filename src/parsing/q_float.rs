@@ -5,7 +5,7 @@ const QFF_ROUNDUP: u32 = 1 << 1;
 const QFF_ENCODE_ZERO: u32 = 1 << 2;
 const QFF_ENCODE_INTEGERS: u32 = 1 << 3;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct QuantalizedFloat {
     low: f32,
     high: f32,

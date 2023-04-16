@@ -8,7 +8,7 @@ use crate::parsing::sendtables::Decoder;
 
 fn main() {
     let wanted_props = vec!["m_iMatchStats_PlayersAlive_T".to_owned()];
-    let demo_path = "/home/laiho/Documents/demos/cs2/s2.dem";
+    let demo_path = "/home/laiho/Documents/demos/cs2/fulls2demo.dem";
 
     let before = Instant::now();
 
