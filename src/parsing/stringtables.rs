@@ -54,7 +54,8 @@ impl Parser {
             table.user_data_fixed_size(),
             table.user_data_size(),
             table.flags(),
-        );
+        )
+        .unwrap();
         Ok(())
     }
     pub fn parse_string_table(

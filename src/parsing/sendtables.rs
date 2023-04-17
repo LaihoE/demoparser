@@ -462,7 +462,7 @@ impl Parser {
                                 }
                             }
                         }
-                        // serializer_print(&my_serializer, &[0, 0, 0, 0, 0, 0, 0]);
+                        self.serializer_print(&my_serializer, &[0, 0, 0, 0, 0, 0, 0]);
                         fields.insert(*idx, field.clone());
                         my_serializer.fields.push(field);
                     }
@@ -473,27 +473,59 @@ impl Parser {
                 .insert(my_serializer.name.clone(), my_serializer);
         }
     }
-}
+    pub fn serializer_print(&mut self, ser: &Serializer, wanted_path: &[i32; 7]) {
+        self.traverse_fields(&ser.fields, vec![], &wanted_path, ser.name.clone())
+    }
+    pub fn traverse_fields(
+        &mut self,
+        fileds: &Vec<Field>,
+        path: Vec<i32>,
+        wanted_path: &[i32; 7],
+        ser_name: String,
+    ) {
+        for (idx, f) in fileds.iter().enumerate() {
+            if let Some(ser) = &f.serializer {
+                let mut tmp = path.clone();
+                tmp.push(idx as i32);
+                self.traverse_fields(&ser.fields, tmp, wanted_path, ser_name.clone())
+            } else {
+                let mut tmp = path.clone();
+                tmp.push(idx as i32);
 
-pub fn serializer_print(ser: &Serializer, wanted_path: &[i32; 7]) {
-    traverse_fields(&ser.fields, vec![], &wanted_path)
-}
-pub fn traverse_fields(fileds: &Vec<Field>, path: Vec<usize>, wanted_path: &[i32; 7]) {
-    for (idx, f) in fileds.iter().enumerate() {
-        if let Some(ser) = &f.serializer {
-            let mut tmp = path.clone();
-            tmp.push(idx);
-            traverse_fields(&ser.fields, tmp, wanted_path)
-        } else {
-            let mut tmp = path.clone();
-            tmp.push(idx);
-            if tmp.len() > 1 {
-                if tmp[0] == 4 && tmp[1] == 42 {
-                    println!("{:#?}", f);
+                if self.wanted_props.contains(&f.var_name.to_owned()) && ser_name == "CCSPlayerPawn"
+                {
+                    let mut arr = [0, 0, 0, 0, 0, 0, 0];
+                    for (idx, val) in tmp.iter().enumerate() {
+                        arr[idx] = *val;
+                    }
+                    // m_iTeamNum 5
+                    // m_iszPlayerName 9
+                    // m_steamID 10
+                    // m_hPlayerPawn 38
+
+                    /*
+                    "m_iTeamNum" => {}
+                    "m_iszPlayerName" => {
+                        player.name = match result {
+                            PropData::String(n) => n,
+                            _ => "Broken name!".to_owned(),
+                        };
+                    }
+                    "m_steamID" => {
+                        player.steamid = match result {
+                            PropData::U64(xuid) => xuid,
+                            _ => 99999999,
+                        };
+                    }
+                    "m_hPlayerPawn" => {
+                    */
+
+                    self.prop_name_to_path
+                        .entry(f.var_name.clone())
+                        .or_insert(vec![])
+                        .push(arr);
                 }
             }
-
-            println!("{} {:?} {:?} {:?}", idx, tmp, f.var_name, wanted_path);
         }
     }
 }

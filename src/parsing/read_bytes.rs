@@ -19,6 +19,17 @@ impl Parser {
         Ok(s)
     }
     #[inline]
+    pub fn read_n_bytes_into_buffer(&mut self, n: u32) -> Result<&[u8], BitReaderError> {
+        // This will likely fail when demo download was cut off and demo
+        // ends early
+        if self.ptr + n as usize >= self.bytes.len() {
+            return Err(BitReaderError::OutOfBytesError);
+        }
+        let s = &self.bytes[self.ptr..self.ptr + n as usize];
+        self.ptr += n as usize;
+        Ok(s)
+    }
+    #[inline]
     pub fn read_varint(&mut self) -> Result<u32, BitReaderError> {
         let mut result: u32 = 0;
         let mut count: u8 = 0;

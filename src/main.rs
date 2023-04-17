@@ -7,7 +7,7 @@ mod parsing;
 use crate::parsing::sendtables::Decoder;
 
 fn main() {
-    let wanted_props = vec!["m_iMatchStats_PlayersAlive_T".to_owned()];
+    let wanted_props = vec!["m_iHealth".to_owned()];
     let demo_path = "/home/laiho/Documents/demos/cs2/fulls2demo.dem";
 
     let before = Instant::now();
@@ -25,9 +25,7 @@ fn main() {
             only_convars: false,
         };
         let mut parser = Parser::new(settings);
-
         parser.start().unwrap();
-
         println!(
             "{} {} {:.2}% into the demo file.",
             parser.ptr,
@@ -35,6 +33,7 @@ fn main() {
             parser.ptr as f32 / parser.bytes.len() as f32 * 100.0
         );
 
+        println!("{:?}", parser.prop_name_to_path);
         /*
         let mut t: Vec<(u64, u64, Decoder)> = parser
             .history

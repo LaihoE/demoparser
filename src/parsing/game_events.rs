@@ -137,7 +137,7 @@ impl Parser {
     pub fn find_extra_props(&self, entity_id: i32, prefix: &str) -> Vec<NameDataPair> {
         let mut extra_pairs = vec![];
         for prop_name in &self.wanted_props {
-            let prop = self.find_val_for_entity(entity_id, prop_name);
+            let prop = self.get_prop_for_ent(prop_name, &entity_id);
             let keydata_type = keydata_type_from_propdata(&prop);
             let keydata = KeyData::try_from(prop);
             match keydata {

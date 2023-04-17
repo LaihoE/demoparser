@@ -51,7 +51,7 @@ impl Parser {
             _ => {}
         }
         if CONTROLLERPROPS.contains(prop_name) {
-            return self.find_pointer_prop(&player.controller_entid, prop_name);
+            return self.get_prop_for_ent(prop_name, &player.controller_entid);
         }
         if CUSTOMPROPS.contains(&prop_name) {
             return self.create_custom_prop(&prop_name, entity_id);
@@ -61,7 +61,7 @@ impl Parser {
         }
         if RULESPROPS.contains(prop_name) {
             match self.rules_entity_id {
-                Some(entity_id) => return self.find_pointer_prop(&entity_id, prop_name),
+                Some(entity_id) => return self.get_prop_for_ent(prop_name, &entity_id),
                 None => return None,
             }
         }
@@ -106,7 +106,7 @@ impl Parser {
     }
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
         if let Some(ent) = self.entities.get(&entity_id) {
-            if let Some(cls) = self.cls_by_id.get(&ent.cls_id) {
+            if let Some(cls) = self.cls_by_id[ent.cls_id as usize].as_ref() {
                 // remove extra from name: CSmokeGrenadeProjectile --> SmokeGrenade
                 // Todo maybe make names like this: smoke_grenade or just "smoke"
                 let mut clean_name = cls.name[1..].split_at(cls.name.len() - 11).0;
@@ -154,14 +154,6 @@ impl Parser {
         }
     }
 
-    pub fn find_pointer_prop(&self, entity_id: &i32, name: &str) -> Option<PropData> {
-        if let Some(e) = self.entities.get(&entity_id) {
-            if let Some(prop) = e.props.get(name) {
-                return Some(prop.clone());
-            }
-        }
-        None
-    }
     pub fn find_team_prop(&self, player_entid: &i32, prop: &str) -> Option<PropData> {
         if let Some(PropData::U32(team_num)) = self.get_prop_for_ent("m_iTeamNum", player_entid) {
             let team_entid = match team_num {
@@ -203,17 +195,6 @@ impl Parser {
             "Y" => self.collect_cell_coordinate("Y", entity_id),
             "Z" => self.collect_cell_coordinate("Z", entity_id),
             _ => panic!("unknown custom prop: {}", prop_name),
-        }
-    }
-
-    pub fn find_val_for_entity(&self, entity_id: i32, val: &String) -> Option<PropData> {
-        // used for game events
-        match self.entities.get(&entity_id) {
-            Some(entity) => match entity.props.get(val) {
-                Some(prop) => Some(prop.clone()),
-                None => None,
-            },
-            None => None,
         }
     }
 }

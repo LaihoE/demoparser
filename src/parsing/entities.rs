@@ -4,17 +4,22 @@ use crate::parsing::parser_settings::Parser;
 use crate::parsing::read_bits::Bitreader;
 use crate::parsing::variants::PropData;
 use ahash::HashMap;
+use bit_reverse::LookupReverse;
 use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
 use smallvec::smallvec;
 
 const NSERIALBITS: u32 = 17;
+const STOP_READING_SYMBOL: u32 = 39;
+const HUFFMAN_CODE_MAXLEN: u32 = 17;
+// (64-MAX_LEN+1)
+const RIGHTSHIFT_BITORDER: u32 = 46;
 
 pub struct Entity {
     pub cls_id: u32,
     pub entity_id: i32,
-    pub props: HashMap<String, PropData>,
+    pub props: HashMap<[i32; 7], PropData>,
 }
 
 #[derive(Debug, Clone)]
@@ -27,14 +32,16 @@ pub struct PlayerMetaData {
 }
 
 impl Parser {
-    pub fn get_prop_for_ent(&self, prop: &str, entity_id: &i32) -> Option<PropData> {
+    pub fn get_prop_for_ent(&self, prop_name: &str, entity_id: &i32) -> Option<PropData> {
+        let path = self.prop_name_to_path[prop_name][0];
         if let Some(ent) = self.entities.get(&entity_id) {
-            if let Some(prop) = ent.props.get(prop) {
+            if let Some(prop) = ent.props.get(&path) {
                 return Some(prop.clone());
             }
         }
         None
     }
+    #[inline(always)]
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
         if !self.parse_entities {
             return Ok(());
@@ -42,6 +49,7 @@ impl Parser {
         let packet_ents: CSVCMsg_PacketEntities = Message::parse_from_bytes(&bytes).unwrap();
         Ok(self._parse_packet_ents(packet_ents)?)
     }
+    #[inline(always)]
     fn _parse_packet_ents(
         &mut self,
         packet_ents: CSVCMsg_PacketEntities,
@@ -79,17 +87,22 @@ impl Parser {
                 };
 
                 self.entities.insert(entity_id, entity);
-                /*
+
                 if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
                     let b = &baseline_bytes.clone();
                     let mut br = Bitreader::new(&b);
                     self.decode_entity_update(&mut br, entity_id, true)?;
                 };
-                */
-                if self.cls_by_id[&cls_id].name == "CCSGameRulesProxy" {
+
+                if self.cls_by_id[cls_id as usize].as_ref().unwrap().name == "CCSGameRulesProxy" {
                     self.rules_entity_id = Some(entity_id);
                 }
-                if self.cls_by_id[&cls_id].name.contains("Projectile") {
+                if self.cls_by_id[cls_id as usize]
+                    .as_ref()
+                    .unwrap()
+                    .name
+                    .contains("Projectile")
+                {
                     self.projectiles.insert(entity_id);
                 }
                 self.decode_entity_update(&mut bitreader, entity_id, false)?;
@@ -100,83 +113,103 @@ impl Parser {
         }
         Ok(())
     }
+    #[inline(always)]
     pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, BitReaderError> {
+        /*
+        Create a field path by decoding using a Huffman tree.
+        A field path is like a "path trough a struct" where
+        the struct can have normal fields but also pointers
+        to another structs.
+
+        Example:
+
+        The list will be filled with these:
+
+        Struct Field{
+            wanted_information: Option<T>,
+            Pointer: bool,
+            fields: Option<Vec<Field>>
+        },
+
+        (struct is simplified for this example. In reality it also includes field name etc.)
+
+
+        Path to each of the fields in the below fields list: [
+            [0], [1, 0], [1, 1], [2]    <-- This function generates these
+        ]
+        and they would map to:
+        [0] => FloatDecoder,
+        [1, 0] => IntegerDecoder,
+        [1, 1] => StringDecoder,
+        [2] => VectorDecoder,
+
+        fields = [
+            Field{
+                wanted_information: FloatDecoder,
+                pointer: false,
+                fields: None,
+            },
+            Field{
+                wanted_information: None,
+                pointer: true,
+                fields: Some(
+                    [
+                        Field{
+                            wanted_information: IntegerDecoder,
+                            pointer: false,
+                            fields: Some(
+                        },
+                        Field{
+                            wanted_information: StringDecoder,
+                            pointer: flase,
+                            fields: Some(
+                        }
+                    ]
+                ),
+            },
+            Field{
+                wanted_information: VectorDecoder,
+                pointer: false,
+                fields: None,
+            },
+        ]
+        Not sure what is the maximum depth of these structs are, but others seem to use
+        7 as the max length of field path so maybe that?
+
+        Personally I find this path idea horribly complicated. Why is this chosen over
+        the way it was done in source 1 demos?
+        */
+        // Create an "empty" path ([-1, 0, 0, 0, 0, 0, 0])
+        // For perfomance reasons have them always the same len
         let mut fp = generate_fp();
-        // This is does decoding of huffman tree. If this is too confusing then
-        // look up huffman tree decoding. It's very common and bunch of material is vailable.
-
-        // Read bits against a static huffman tree created when parser is initialized.
-        // In reality we just store the tree as an array where key is the code interpreted as a usize
-
-        // Example when code exists: 0b10 => huffman_codes[2] => 39
-        // Example when code does not exist: 0b11 => huffman_codes[3] => -1
-
-        // Read bits into a usize until we find a match in huffman_codes
-        // The symbol is then mapped into a function in do_op()
-        // symbol 39 signals that we should stop
         let mut idx = 0;
-        let mut val = 0;
-        let mut pred_sym = 0;
-        let mut brem = 0;
+        // Do huffman decoding with a lookup table instead of reading one bit at a time
+        // and traversing a tree.
+        // Here we peek ("HUFFMAN_CODE_MAXLEN" == 17) amount of bits and see from a table what
+        // symbol it maps to and how many bits should be read.
+        // The symbol is then mapped into an op for filling the field path.
         loop {
-            let mut b = 0;
-
-            // 0b000000000000001011000110011011
-            // 0b000000000000011011000110011011
-
-            let x = bitreader.reader.refill_lookahead();
-            //let mut pre = bitreader.reader.peek(1);
-            let mut p = bitreader.reader.peek(17);
-
-            let og = p;
-
-            let mut peekbits = 0;
-            for i in 0..17 {
-                peekbits |= (p & 1 != 0) as u32;
-                peekbits <<= 1;
-                p >>= 1;
+            bitreader.reader.refill_lookahead();
+            let peek_wrong_order = bitreader.reader.peek(HUFFMAN_CODE_MAXLEN);
+            let peekbits = peek_wrong_order.swap_bits() >> RIGHTSHIFT_BITORDER;
+            // Check if first bit is zero then symbol should be zero.
+            // Don't know how a lookup table could handle this.
+            let symbol = match peek_wrong_order & 1 {
+                0 => 0,
+                _ => self.huffman_lookup_table[peekbits as usize],
+            };
+            let n_skip_bits = self.symbol_bits[symbol as usize];
+            bitreader.reader.consume((n_skip_bits) as u32);
+            if symbol == STOP_READING_SYMBOL {
+                break;
             }
-            //println!("og {:#032b}", og);
-            if val == 0 {
-                pred_sym = self.huffman_codes2[peekbits as usize];
-                /*
-                println!(
-                    "-> {} PB {:#032b} ",
-                    self.huffman_codes2[peekbits as usize], peekbits,
-                );
-                */
-            }
-            let mut bbb = bitreader.reader.peek(1);
-            if val == 0 {
-                brem = bitreader.reader.bits_remaining().unwrap();
-            }
-            val <<= 1;
-            val |= bitreader.read_boolie()? as u32;
-            if val == 0 {
-                pred_sym = 0;
-            }
-            let mut skip_bits = self.symbol_bits[pred_sym as usize];
-            if pred_sym == 2 {
-                skip_bits = 6;
-            }
-            // println!("{}", skip_bits);
-            bitreader.reader.read_bits((skip_bits - 1) as u32).unwrap();
-            // println!("VAL {} {}", val, bbb != 0);
-
-            //let symbol = self.huffman_codes[val as usize];
-            if pred_sym != 999999 {
-                // Stop reading
-                if pred_sym == 39 {
-                    break;
-                }
-                do_op(pred_sym, bitreader, &mut fp)?;
-                self.paths[idx] = fp.clone();
-                idx += 1;
-                val = 0;
-            }
+            do_op(symbol, bitreader, &mut fp)?;
+            self.paths[idx] = fp;
+            idx += 1;
         }
         Ok(idx)
     }
+    #[inline(always)]
     pub fn decode_entity_update(
         &mut self,
         bitreader: &mut Bitreader,
@@ -188,18 +221,24 @@ impl Parser {
             Some(ent) => ent,
             None => return Err(BitReaderError::EntityNotFound),
         };
-        let class = match self.cls_by_id.get(&entity.cls_id) {
+        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
             Some(cls) => cls,
             None => return Err(BitReaderError::ClassNotFound),
         };
-        if class.name == "CCSPlayerControllerq" {
+        if class.name == "CCSPlayerController" {
             // hacky solution for now
-            /*
-            let player_md = Parser::fill_player_data(&paths, bitreader, cls, entity, is_baseline);
+
+            let player_md = Parser::fill_player_data(
+                &self.paths[..n_paths],
+                bitreader,
+                class,
+                entity,
+                is_baseline,
+            )?;
+
             if player_md.player_entity_id != -1 {
                 self.players.insert(player_md.player_entity_id, player_md);
             }
-            */
         } else {
             for path in &self.paths[..n_paths] {
                 // probably problem with baseline, this seems to fix
@@ -209,6 +248,7 @@ impl Parser {
 
                 let decoder = class.serializer.find_decoder(&path, 0, is_baseline);
                 let result = bitreader.decode(&decoder);
+
                 // println!("{:?}", result);
                 /*
                 let key = path_to_key(&path, cls.class_id);
@@ -272,35 +312,39 @@ impl Parser {
             name: "".to_string(),
             steamid: 0,
         };
-        if is_baseline {
-            return Ok(player);
-        }
-        /*
-        for path in paths {
-            let (var_name, _field, decoder) = cls.serializer.find_decoder(&path, 0, is_baseline);
-            let result = bitreader.decode(&decoder)?;
-            entity.props.insert(var_name.clone(), result.clone());
 
-            match var_name.as_str() {
-                "m_iTeamNum" => {}
-                "m_iszPlayerName" => {
+        // m_iTeamNum 5
+        // m_iszPlayerName 9
+        // m_steamID 10
+        // m_hPlayerPawn 38
+        for path in paths {
+            if is_baseline && bitreader.reader.bits_remaining().unwrap() < 32 {
+                break;
+            }
+            let decoder = cls.serializer.find_decoder(&path, 0, is_baseline);
+            let result = bitreader.decode(&decoder)?;
+            entity.props.insert(path.path, result.clone());
+
+            match path.path[0] {
+                5 => {}
+                9 => {
                     player.name = match result {
                         PropData::String(n) => n,
                         _ => "Broken name!".to_owned(),
                     };
                 }
-                "m_steamID" => {
+                10 => {
                     player.steamid = match result {
                         PropData::U64(xuid) => xuid,
                         _ => 99999999,
                     };
                 }
-                "m_hPlayerPawn" => {
+                38 => {
                     player.player_entity_id = match result {
                         PropData::U32(handle) => {
                             // create helper value
                             entity.props.insert(
-                                "player_entid".to_string(),
+                                [69, 69, 69, 69, 69, 69, 69],
                                 PropData::I32((handle & 0x7FF) as i32),
                             );
                             (handle & 0x7FF) as i32
@@ -311,44 +355,15 @@ impl Parser {
                 _ => {}
             }
         }
-         */
+
         Ok(player)
     }
 }
-use crate::parsing::sendtables::Decoder;
-
-use super::decoder;
 use super::read_bits::BitReaderError;
-use super::sendtables::serializer_print;
-
-fn reverseBits(mut n: u32) -> u32 {
-    n = ((n & 0xffff0000) >> 16) | ((n & 0x0000ffff) << 16);
-    n = ((n & 0xff00ff00) >> 8) | ((n & 0x00ff00ff) << 8);
-    n = ((n & 0xf0f0f0f0) >> 4) | ((n & 0x0f0f0f0f) << 4);
-    n = ((n & 0xcccccccc) >> 2) | ((n & 0x33333333) << 2);
-    n = ((n & 0xaaaaaaaa) >> 1) | ((n & 0x55555555) << 1);
-    return n;
-}
-
-#[derive(Clone, Debug)]
-pub enum PathVariant {
-    Normal(FieldPath),
-    Cache(Decoder),
-}
 
 fn generate_fp() -> FieldPath {
     FieldPath {
         path: [-1, 0, 0, 0, 0, 0, 0],
         last: 0,
     }
-}
-
-#[inline(always)]
-pub fn path_to_key(field_path: &FieldPath, cls_id: i32) -> u64 {
-    let mut key: u64 = 0;
-    for idx in 0..field_path.last + 1 {
-        key |= field_path.path[idx] as u64;
-        key <<= 14;
-    }
-    key | cls_id as u64
 }

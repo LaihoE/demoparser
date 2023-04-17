@@ -28,12 +28,14 @@ impl Parser {
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             // Uncompress if is_compressed
+            // TODO how to avoid copy
             let bytes = match is_compressed {
                 true => SnapDecoder::new()
                     .decompress_vec(self.read_n_bytes(size)?)
                     .unwrap(),
                 false => self.read_n_bytes(size)?.to_vec(),
             };
+
             let ok = match demo_cmd_type_from_int(msg_type as i32).unwrap() {
                 DEM_Packet => self.parse_packet(&bytes),
                 DEM_FileHeader => self.parse_header(&bytes),

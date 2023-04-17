@@ -517,243 +517,48 @@ fn non_topo_complex_pack4_bits(
     Ok(())
 }
 
-const PAIRS: [(&str, i32); 40] = [
-    ("PlusOne", 36271),
-    ("PlusTwo", 10334),
-    ("PlusThree", 1375),
-    ("PlusFour", 646),
-    ("PlusN", 4128),
-    ("PushOneLeftDeltaZeroRightZero", 35),
-    ("PushOneLeftDeltaZeroRightNonZero", 3),
-    ("PushOneLeftDeltaOneRightZero", 521),
-    ("PushOneLeftDeltaOneRightNonZero", 2942),
-    ("PushOneLeftDeltaNRightZero", 560),
-    ("PushOneLeftDeltaNRightNonZero", 471),
-    ("PushOneLeftDeltaNRightNonZeroPack6Bits", 10530),
-    ("PushOneLeftDeltaNRightNonZeroPack8Bits", 251),
-    ("PushTwoLeftDeltaZero", 0),
-    ("PushTwoPack5LeftDeltaZero", 0),
-    ("PushThreeLeftDeltaZero", 0),
-    ("PushThreePack5LeftDeltaZero", 0),
-    ("PushTwoLeftDeltaOne", 0),
-    ("PushTwoPack5LeftDeltaOne", 0),
-    ("PushThreeLeftDeltaOne", 0),
-    ("PushThreePack5LeftDeltaOne", 0),
-    ("PushTwoLeftDeltaN", 0),
-    ("PushTwoPack5LeftDeltaN", 0),
-    ("PushThreeLeftDeltaN", 0),
-    ("PushThreePack5LeftDeltaN", 0),
-    ("PushN", 0),
-    ("PushNAndNonTopological", 310),
-    ("PopOnePlusOne", 2),
-    ("PopOnePlusN", 0),
-    ("PopAllButOnePlusOne", 1837),
-    ("PopAllButOnePlusN", 149),
-    ("PopAllButOnePlusNPack3Bits", 300),
-    ("PopAllButOnePlusNPack6Bits", 634),
-    ("PopNPlusOne", 0),
-    ("PopNPlusN", 0),
-    ("PopNAndNonTopographical", 1),
-    ("NonTopoComplex", 76),
-    ("NonTopoPenultimatePlusOne", 271),
-    ("NonTopoComplexPack4Bits", 99),
-    ("FieldPathEncodeFinish", 25474),
-];
+/*
+Huffman tree is this:
 
-pub static _BITPATTERN: phf::Map<i32, i32> = phf_map! {
-0i32 => 0 ,
-39i32 => -2 ,
-8i32 => -8 ,
-2i32 => -14 ,
-29i32 => -13 ,
-4i32 => -6 ,
-30i32 => -80 ,
-38i32 => -158 ,
-35i32 => -10048 ,
-34i32 => -10047 ,
-27i32 => -5023 ,
-25i32 => -10044 ,
-24i32 => -10043 ,
-33i32 => -10042 ,
-28i32 => -10041 ,
-13i32 => -10040 ,
-15i32 => -20078 ,
-14i32 => -20077 ,
-6i32 => -5019 ,
-21i32 => -20072 ,
-20i32 => -20071 ,
-23i32 => -20070 ,
-22i32 => -20069 ,
-17i32 => -20068 ,
-16i32 => -20067 ,
-19i32 => -20066 ,
-18i32 => -20065 ,
-5i32 => -627 ,
-36i32 => -313 ,
-10i32 => -39 ,
-7i32 => -38 ,
-12i32 => -74 ,
-37i32 => -73 ,
-9i32 => -36 ,
-31i32 => -70 ,
-26i32 => -69 ,
-32i32 => -34 ,
-3i32 => -33 ,
-1i32 => -2 ,
-11i32 => -1 ,
-};
-
-pub fn generate_huffman_tree() -> Option<HuffmanNode> {
-    /*
-    Should result in this tree (same as Dotabuffs tree):
-
-    value, weight, len(prefix), prefix
-    0	36271	2	0
-    39	25474	3	10
-    8	2942	6	11000
-    2	1375	7	110010
-    29	1837	7	110011
-    4	4128	6	11010
-    30	149	    10	110110000
-    38	99	    11	1101100010
-    35	1	    17	1101100011000000
-    34	1	    17	1101100011000001
-    27	2	    16	110110001100001
-    25	1	    17	1101100011000100
-    24	1	    17	1101100011000101
-    33	1	    17	1101100011000110
-    28	1	    17	1101100011000111
-    13	1	    17	1101100011001000
-    15	1	    18	11011000110010010
-    14	1	    18	11011000110010011
-    6	3	    16	110110001100101
-    21	1	    18	11011000110011000
-    20	1	    18	11011000110011001
-    23	1	    18	11011000110011010
-    22	1	    18	11011000110011011
-    17	1	    18	11011000110011100
-    16	1	    18	11011000110011101
-    19	1	    18	11011000110011110
-    18	1	    18	11011000110011111
-    5	35	    13	110110001101
-    36	76	    12	11011000111
-    10	471	    9	11011001
-    7	521	    9	11011010
-    12	251	    10	110110110
-    37	271	    10	110110111
-    9	560	    9	11011100
-    31	300	    10	110111010
-    26	310	    10	110111011
-    32	634	    9	11011110
-    3	646	    9	11011111
-    1	10334	5	1110
-    11	10530	5	1111
-    */
-
-    /*
-    0,0
-    39,10
-    8,11000
-    2,110010
-    29,110011
-    4,11010
-    30,110110000
-    38,1101100010
-    35,1101100011000000
-    34,1101100011000001
-    27,110110001100001
-    25,1101100011000100
-    24,1101100011000101
-    33,1101100011000110
-    28,1101100011000111
-    13,1101100011001000
-    15,11011000110010010
-    14,11011000110010011
-    6,110110001100101
-    21,11011000110011000
-    20,11011000110011001
-    23,11011000110011010
-    22,11011000110011011
-    17,11011000110011100
-    16,11011000110011101
-    19,11011000110011110
-    18,11011000110011111
-    5,110110001101
-    36,11011000111
-    10,11011001
-    7,11011010
-    12,110110110
-    37,110110111
-    9,11011100
-    31,110111010
-    26,110111011
-    32,11011110
-    3,11011111
-    1,1110
-    11,1111
-
-    */
-
-    let mut trees = vec![];
-    for (idx, (_, weight)) in PAIRS.iter().enumerate() {
-        let node = if *weight == 0 {
-            HuffmanNode {
-                weight: 1,
-                value: idx as i32,
-                left: None,
-                right: None,
-            }
-        } else {
-            HuffmanNode {
-                weight: *weight,
-                value: idx as i32,
-                left: None,
-                right: None,
-            }
-        };
-        trees.push(node);
-    }
-
-    let mut heap = BinaryHeap::new();
-    for tree in trees {
-        heap.push(Reverse(tree));
-    }
-
-    for idx in 0..heap.len() - 1 {
-        let a = heap.pop().unwrap();
-        let b = heap.pop().unwrap();
-        heap.push(Reverse(HuffmanNode {
-            weight: a.0.weight + b.0.weight,
-            value: (idx + 40) as i32,
-            left: Some(Box::new(a.0)),
-            right: Some(Box::new(b.0)),
-        }))
-    }
-    Some(heap.pop().unwrap().0)
-}
-
-#[allow(dead_code)]
-impl Parser {
-    pub fn print_tree(&self, tree: Option<&HuffmanNode>, prefix: Vec<i32>) {
-        match tree {
-            None => return,
-            Some(t) => {
-                if t.is_leaf() {
-                    println!(" ");
-                    print!("{} {} ", t.value, t.weight);
-                    for i in prefix {
-                        print!("{}", i);
-                    }
-                    //println!(" ")
-                } else {
-                    let mut l = prefix.clone();
-                    let mut r = prefix.clone();
-                    l.push(0);
-                    r.push(1);
-                    self.print_tree(Some(&t.left.as_ref().unwrap()), l);
-                    self.print_tree(Some(&t.right.as_ref().unwrap()), r);
-                }
-            }
-        }
-    }
-}
+value, weight, len(prefix), prefix
+0	36271	2	0
+39	25474	3	10
+8	2942	6	11000
+2	1375	7	110010
+29	1837	7	110011
+4	4128	6	11010
+30	149	    10	110110000
+38	99	    11	1101100010
+35	1	    17	1101100011000000
+34	1	    17	1101100011000001
+27	2	    16	110110001100001
+25	1	    17	1101100011000100
+24	1	    17	1101100011000101
+33	1	    17	1101100011000110
+28	1	    17	1101100011000111
+13	1	    17	1101100011001000
+15	1	    18	11011000110010010
+14	1	    18	11011000110010011
+6	3	    16	110110001100101
+21	1	    18	11011000110011000
+20	1	    18	11011000110011001
+23	1	    18	11011000110011010
+22	1	    18	11011000110011011
+17	1	    18	11011000110011100
+16	1	    18	11011000110011101
+19	1	    18	11011000110011110
+18	1	    18	11011000110011111
+5	35	    13	110110001101
+36	76	    12	11011000111
+10	471	    9	11011001
+7	521	    9	11011010
+12	251	    10	110110110
+37	271	    10	110110111
+9	560	    9	11011100
+31	300	    10	110111010
+26	310	    10	110111011
+32	634	    9	11011110
+3	646	    9	11011111
+1	10334	5	1110
+11	10530	5	1111
+*/

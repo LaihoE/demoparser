@@ -22,15 +22,12 @@ impl Parser {
         for class_t in msg.classes {
             let cls_id = class_t.class_id();
             let network_name = class_t.network_name();
-            self.cls_by_id.insert(
-                cls_id.try_into().unwrap(),
-                Class {
-                    class_id: cls_id,
-                    name: network_name.to_string(),
-                    serializer: self.serializers[network_name].clone(),
-                    history: HashSet::default(),
-                },
-            );
+            self.cls_by_id[cls_id as usize] = Some(Class {
+                class_id: cls_id,
+                name: network_name.to_string(),
+                serializer: self.serializers[network_name].clone(),
+                history: HashSet::default(),
+            });
             // For debugging
             // let cls_name = class.name.clone();
             // self.cls_by_name.insert(cls_name, class.clone());

@@ -1,7 +1,5 @@
 use super::class::Class;
-use super::entities::PathVariant;
 use super::entities_utils::FieldPath;
-use super::entities_utils::HuffmanNode;
 use super::game_events::GameEvent;
 use super::sendtables::Serializer;
 use super::stringtables::StringTable;
@@ -9,16 +7,16 @@ use super::variants::PropColumn;
 use crate::parsing::collect_data::ProjectileRecordVec;
 use crate::parsing::entities::Entity;
 use crate::parsing::entities::PlayerMetaData;
-use crate::parsing::entities_utils::generate_huffman_tree;
 use crate::parsing::sendtables::Decoder;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use nohash_hasher::*;
-use smallvec::smallvec;
 use soa_derive::StructOfArray;
 use std::fs;
+
+const HUF_LOOKUPTABLE_MAXVALUE: u32 = 1 << 19 - 1;
+const MAX_HUF_SYMBOL: usize = 40;
 
 pub struct Parser {
     // todo split into smaller parts
@@ -26,7 +24,7 @@ pub struct Parser {
     pub bytes: Vec<u8>,
     pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
-    pub cls_by_id: AHashMap<u32, Class, RandomState>,
+    pub cls_by_id: [Option<Class>; 556],
     pub cls_by_name: AHashMap<String, Class, RandomState>,
     pub cls_bits: Option<u32>,
     pub entities: AHashMap<i32, Entity, RandomState>,
@@ -62,10 +60,10 @@ pub struct Parser {
     pub skins: EconItemVec,
 
     pub history: AHashMap<u64, (u64, Decoder), RandomState>,
+    pub huffman_lookup_table: [u32; HUF_LOOKUPTABLE_MAXVALUE as usize],
+    pub symbol_bits: [u8; MAX_HUF_SYMBOL],
 
-    pub huffman_codes: [u32; 300_000],
-    pub huffman_codes2: [u32; 300_000],
-    pub symbol_bits: [u8; 1024],
+    pub prop_name_to_path: AHashMap<String, Vec<[i32; 7]>>,
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -141,7 +139,8 @@ impl Parser {
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
-        let mut a: [u32; 300_000] = [999999; 300_000];
+        let mut a: [u32; HUF_LOOKUPTABLE_MAXVALUE as usize] =
+            [999999; HUF_LOOKUPTABLE_MAXVALUE as usize];
         a[0] = 0;
         a[2] = 39;
         a[24] = 8;
@@ -185,53 +184,77 @@ impl Parser {
         a[14] = 1;
         a[15] = 11;
 
-        let mut b = a.clone();
-        b[0] = 999999;
-
+        a[0] = 999999;
         let mut v: Vec<u32> = vec![];
-        for (idx, x) in b.iter().enumerate() {
+        for (idx, x) in a.iter().enumerate() {
             if x != &999999 {
                 v.push(idx as u32);
             }
         }
-
-        let mut ans = [0_u8; 1024];
-
+        let mut ans = [0_u8; MAX_HUF_SYMBOL];
+        let mut found = vec![];
         for x in v {
             let shifta = MSB(x);
-            let sym = b[x as usize];
+            let sym = a[x as usize];
             ans[sym as usize] = shifta as u8;
-            for i in 0..300_000 {
+            for i in 0..HUF_LOOKUPTABLE_MAXVALUE {
                 let shiftb = MSB(i);
-
                 if x == i >> shiftb - shifta {
-                    b[i as usize] = b[x as usize];
-                    // println!("{:#032b} {:#032b} {} {}", x, i, x, i);
-                    // println!("{:#032b} {:#032b} {} ", x, i >> shifta, shifta);
+                    found.push(x);
+                    a[i as usize] = a[x as usize];
                 }
             }
         }
         ans[0] = 1;
-        println!("{}", ans[0]);
-        /*
-        for x in v {
-            let n = 32 - x.leading_zeros();
-            for i in 0..140_000 {
-                if (i << (32 - n)) == x << (32 - n) {
-                    println!("{}", a[i as usize]);
-                    a[i as usize] = a[x as usize];
-                    // println!("{:#032b} {:#032b} {} {}", x, i, x, i);
-                }
-            }
-        }
-        */
+        ans[2] = 6;
 
         Parser {
             serializers: AHashMap::default(),
             ptr: 0,
             ge_list: None,
             bytes: bytes,
-            cls_by_id: AHashMap::default(),
+            cls_by_id: [
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None,
+            ],
             cls_by_name: AHashMap::default(),
             entities: AHashMap::default(),
             cls_bits: None,
@@ -263,10 +286,10 @@ impl Parser {
             item_drops: EconItemVec::new(),
             skins: EconItemVec::new(),
             player_end_data: PlayerEndDataVec::new(),
-            huffman_codes: a,
             history: AHashMap::default(),
-            huffman_codes2: b,
+            huffman_lookup_table: a,
             symbol_bits: ans,
+            prop_name_to_path: AHashMap::default(),
         }
     }
 }
