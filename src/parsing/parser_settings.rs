@@ -24,7 +24,7 @@ pub struct Parser {
     pub bytes: Vec<u8>,
     pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
-    pub cls_by_id: [Option<Class>; 556],
+    pub cls_by_id: [Option<Class>; 560],
     pub cls_by_name: AHashMap<String, Class, RandomState>,
     pub cls_bits: Option<u32>,
     pub entities: AHashMap<i32, Entity, RandomState>,
@@ -60,10 +60,10 @@ pub struct Parser {
     pub skins: EconItemVec,
 
     pub history: AHashMap<u64, (u64, Decoder), RandomState>,
-    pub huffman_lookup_table: [u32; HUF_LOOKUPTABLE_MAXVALUE as usize],
-    pub symbol_bits: [u8; MAX_HUF_SYMBOL],
+    pub huffman_lookup_table: [(u32, u8); HUF_LOOKUPTABLE_MAXVALUE as usize],
 
-    pub prop_name_to_path: AHashMap<String, Vec<[i32; 7]>>,
+    pub prop_name_to_path: AHashMap<String, [i32; 7]>,
+    pub wanted_prop_paths: AHashSet<[i32; 7]>,
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -139,64 +139,106 @@ impl Parser {
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
-        let mut a: [u32; HUF_LOOKUPTABLE_MAXVALUE as usize] =
-            [999999; HUF_LOOKUPTABLE_MAXVALUE as usize];
-        a[0] = 0;
-        a[2] = 39;
-        a[24] = 8;
-        a[50] = 2;
-        a[51] = 29;
-        a[100] = 2;
-        a[101] = 29;
-        a[26] = 4;
-        a[432] = 30;
-        a[866] = 38;
-        a[55488] = 35;
-        a[55489] = 34;
-        a[27745] = 27;
-        a[55492] = 25;
-        a[55493] = 24;
-        a[55494] = 33;
-        a[55495] = 28;
-        a[55496] = 13;
-        a[110994] = 15;
-        a[110995] = 14;
-        a[27749] = 6;
-        a[111000] = 21;
-        a[111001] = 20;
-        a[111002] = 23;
-        a[111003] = 22;
-        a[111004] = 17;
-        a[111005] = 16;
-        a[111006] = 19;
-        a[111007] = 18;
-        a[3469] = 5;
-        a[1735] = 36;
-        a[217] = 10;
-        a[218] = 7;
-        a[438] = 12;
-        a[439] = 37;
-        a[220] = 9;
-        a[442] = 31;
-        a[443] = 26;
-        a[222] = 32;
-        a[223] = 3;
-        a[14] = 1;
-        a[15] = 11;
+        let mut a: [(u32, u8); HUF_LOOKUPTABLE_MAXVALUE as usize] =
+            [(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
+        a[0] = (0, 1);
+        a[2] = (39, 2);
+        a[24] = (8, 5);
+        a[50] = (2, 6);
+        a[51] = (29, 6);
+        a[100] = (2, 6);
+        a[101] = (29, 6);
+        a[26] = (4, 5);
+        a[432] = (30, 9);
+        a[866] = (38, 10);
+        a[55488] = (35, 16);
+        a[55489] = (34, 16);
+        a[27745] = (27, 15);
+        a[55492] = (25, 16);
+        a[55493] = (24, 16);
+        a[55494] = (33, 16);
+        a[55495] = (28, 16);
+        a[55496] = (13, 16);
+        a[110994] = (15, 17);
+        a[110995] = (14, 17);
+        a[27749] = (6, 15);
+        a[111000] = (21, 17);
+        a[111001] = (20, 17);
+        a[111002] = (23, 17);
+        a[111003] = (22, 17);
+        a[111004] = (17, 17);
+        a[111005] = (16, 17);
+        a[111006] = (19, 17);
+        a[111007] = (18, 17);
+        a[3469] = (5, 12);
+        a[1735] = (36, 11);
+        a[217] = (10, 8);
+        a[218] = (7, 8);
+        a[438] = (12, 9);
+        a[439] = (37, 9);
+        a[220] = (9, 8);
+        a[442] = (31, 9);
+        a[443] = (26, 9);
+        a[222] = (32, 8);
+        a[223] = (3, 8);
+        a[14] = (1, 4);
+        a[15] = (11, 4);
 
-        a[0] = 999999;
+        /*
+        value, weight, len(prefix), prefix
+        0	36271	2	0
+        39	25474	3	10
+        8	2942	6	11000
+        2	1375	7	110010
+        29	1837	7	110011
+        4	4128	6	11010
+        30	149	    10	110110000
+        38	99	    11	1101100010
+        35	1	    17	1101100011000000
+        34	1	    17	1101100011000001
+        27	2	    16	110110001100001
+        25	1	    17	1101100011000100
+        24	1	    17	1101100011000101
+        33	1	    17	1101100011000110
+        28	1	    17	1101100011000111
+        13	1	    17	1101100011001000
+        15	1	    18	11011000110010010
+        14	1	    18	11011000110010011
+        6	3	    16	110110001100101
+        21	1	    18	11011000110011000
+        20	1	    18	11011000110011001
+        23	1	    18	11011000110011010
+        22	1	    18	11011000110011011
+        17	1	    18	11011000110011100
+        16	1	    18	11011000110011101
+        19	1	    18	11011000110011110
+        18	1	    18	11011000110011111
+        5	35	    13	110110001101
+        36	76	    12	11011000111
+        10	471	    9	11011001
+        7	521	    9	11011010
+        12	251	    10	110110110
+        37	271	    10	110110111
+        9	560	    9	11011100
+        31	300	    10	110111010
+        26	310	    10	110111011
+        32	634	    9	11011110
+        3	646	    9	11011111
+        1	10334	5	1110
+        11	10530	5	1111
+        */
+
+        a[0] = (999999, 255);
         let mut v: Vec<u32> = vec![];
         for (idx, x) in a.iter().enumerate() {
-            if x != &999999 {
+            if x.0 != 999999 {
                 v.push(idx as u32);
             }
         }
-        let mut ans = [0_u8; MAX_HUF_SYMBOL];
         let mut found = vec![];
         for x in v {
             let shifta = MSB(x);
-            let sym = a[x as usize];
-            ans[sym as usize] = shifta as u8;
+            let (sym, bitlen) = a[x as usize];
             for i in 0..HUF_LOOKUPTABLE_MAXVALUE {
                 let shiftb = MSB(i);
                 if x == i >> shiftb - shifta {
@@ -205,8 +247,6 @@ impl Parser {
                 }
             }
         }
-        ans[0] = 1;
-        ans[2] = 6;
 
         Parser {
             serializers: AHashMap::default(),
@@ -253,7 +293,7 @@ impl Parser {
                 None, None, None, None, None, None, None, None, None, None, None, None, None, None,
                 None, None, None, None, None, None, None, None, None, None, None, None, None, None,
                 None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
             ],
             cls_by_name: AHashMap::default(),
             entities: AHashMap::default(),
@@ -288,8 +328,8 @@ impl Parser {
             player_end_data: PlayerEndDataVec::new(),
             history: AHashMap::default(),
             huffman_lookup_table: a,
-            symbol_bits: ans,
             prop_name_to_path: AHashMap::default(),
+            wanted_prop_paths: AHashSet::default(),
         }
     }
 }

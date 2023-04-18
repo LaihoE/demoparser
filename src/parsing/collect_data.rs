@@ -16,6 +16,8 @@ pub struct ProjectileRecord {
     pub grenade_type: Option<String>,
 }
 
+// This file collects the data that is converted into a dataframe in the end in parser.parse_ticks()
+
 impl Parser {
     pub fn collect_entities(&mut self) {
         if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 {
@@ -61,13 +63,12 @@ impl Parser {
         }
         if RULESPROPS.contains(prop_name) {
             match self.rules_entity_id {
-                Some(entity_id) => return self.get_prop_for_ent(prop_name, &entity_id),
+                Some(rules_entid) => return self.get_prop_for_ent(prop_name, &rules_entid),
                 None => return None,
             }
         }
         return self.get_prop_for_ent(&prop_name, &entity_id);
     }
-
     pub fn collect_cell_coordinate(&self, axis: &str, entity_id: &i32) -> Option<PropData> {
         let offset = self.get_prop_for_ent(&("m_vec".to_owned() + axis), entity_id);
         let cell = self.get_prop_for_ent(&("m_cell".to_owned() + axis), entity_id);
@@ -119,7 +120,6 @@ impl Parser {
         }
         None
     }
-
     pub fn collect_projectiles(&mut self) {
         for projectile_entid in &self.projectiles {
             let grenade_type = self.find_grenade_type(projectile_entid);
@@ -153,7 +153,6 @@ impl Parser {
             });
         }
     }
-
     pub fn find_team_prop(&self, player_entid: &i32, prop: &str) -> Option<PropData> {
         if let Some(PropData::U32(team_num)) = self.get_prop_for_ent("m_iTeamNum", player_entid) {
             let team_entid = match team_num {
@@ -224,10 +223,11 @@ pub static TEAMPROPS: phf::Set<&'static str> = phf_set! {
     "m_iClanID",
     "m_scoreFirstHalf",
     "m_scoreOvertime",
-    // WILL PROBABLY BREAK PARSER
-    "m_szTeamFlagImage",
 };
 pub static RULESPROPS: phf::Set<&'static str> = phf_set! {
+    // "CCSGameRulesProxy.CCSGameRules.m_flRestartRoundTime",
+    "CCSGameRules.m_iRoundTime",
+    "CCSGameRules.m_fRoundStartTime",
     "m_iRoundWinStatus",
     "m_eRoundWinReason",
     "m_iMatchStats_PlayersAlive_CT",

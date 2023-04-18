@@ -145,17 +145,16 @@ pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
 impl Field {
     pub fn decoder_from_path(&self, path: &FieldPath, pos: usize, is_baseline: bool) -> Decoder {
         match self.model {
+            FieldModelSimple => {
+                return self.decoder;
+            }
             FieldModelFixedArray => self.decoder,
             FieldModelFixedTable => {
                 if path.last == pos - 1 {
-                    if is_baseline {
-                        if self.serializer.as_ref().unwrap().fields.len() == 0 {
-                            return BooleanDecoder;
-                        } else {
-                            return self.serializer.as_ref().unwrap().fields[pos - 1].decoder;
-                        }
+                    if self.base_decoder.is_some() {
+                        return self.base_decoder.unwrap();
                     }
-                    return self.base_decoder.unwrap();
+                    return self.decoder;
                 } else {
                     match &self.serializer {
                         Some(ser) => {
@@ -184,8 +183,101 @@ impl Field {
                     return self.base_decoder.unwrap();
                 }
             }
+            _ => panic!("HUH"),
+        }
+    }
+    pub fn debug_decoder_from_path(
+        &self,
+        path: &FieldPath,
+        pos: usize,
+        is_baseline: bool,
+        prop_name: String,
+    ) -> DebugField {
+        match self.model {
             FieldModelSimple => {
-                return self.decoder;
+                return DebugField {
+                    full_name: prop_name + "." + &self.var_name.clone(),
+                    field: Some(self.clone()),
+                    decoder: self.decoder,
+                };
+            }
+            FieldModelFixedArray => DebugField {
+                full_name: prop_name + "." + &self.var_name.clone(),
+                field: Some(self.clone()),
+                decoder: self.decoder,
+            },
+            FieldModelFixedTable => {
+                if path.last == pos - 1 {
+                    if is_baseline {
+                        if self.serializer.as_ref().unwrap().fields.len() == 0 {
+                            let debug_field = DebugField {
+                                full_name: prop_name + "." + &self.var_name.clone(),
+                                field: Some(self.clone()),
+                                decoder: BaseDecoder,
+                            };
+                            return debug_field;
+                        } else {
+                            let debug_field = DebugField {
+                                full_name: prop_name + "." + &self.var_name.clone(),
+                                field: Some(self.clone()),
+                                decoder: self.serializer.as_ref().unwrap().fields[pos - 1]
+                                    .decoder
+                                    .clone(),
+                            };
+                            return debug_field;
+                        }
+                    }
+
+                    let debug_field = DebugField {
+                        full_name: prop_name + "." + &self.var_name.clone(),
+                        field: Some(self.clone()),
+                        decoder: self.base_decoder.unwrap(),
+                    };
+                    return debug_field;
+                } else {
+                    match &self.serializer {
+                        Some(ser) => {
+                            return ser.debug_find_decoder(
+                                path,
+                                pos,
+                                is_baseline,
+                                prop_name + "." + &self.var_name,
+                            );
+                        }
+                        None => panic!("no serializer for path"),
+                    }
+                }
+            }
+            FieldModelVariableArray => {
+                if path.last == pos {
+                    return DebugField {
+                        full_name: prop_name + "." + &self.var_name.clone(),
+                        field: Some(self.clone()),
+                        decoder: self.child_decoder.unwrap(),
+                    };
+                } else {
+                    return DebugField {
+                        full_name: prop_name + "." + &self.var_name.clone(),
+                        field: Some(self.clone()),
+                        decoder: self.base_decoder.unwrap(),
+                    };
+                }
+            }
+            FieldModelVariableTable => {
+                if path.last >= pos + 1 {
+                    match &self.serializer {
+                        Some(ser) => {
+                            return ser.debug_find_decoder(path, pos + 1, is_baseline, prop_name);
+                        }
+                        None => panic!("no serializer for path"),
+                    }
+                } else {
+                    return DebugField {
+                        full_name: prop_name + "." + &self.var_name.clone(),
+                        field: Some(self.clone()),
+                        decoder: self.base_decoder.unwrap(),
+                    };
+                }
             }
             _ => panic!("HUH"),
         }
@@ -218,7 +310,7 @@ impl Field {
                     }
                 }
             }
-            FieldModelNOTSET => panic!("wtf"),
+            FieldModelNOTSET => panic!("Field model not set??"),
         }
     }
     pub fn match_decoder(&self) -> Decoder {
@@ -367,12 +459,18 @@ impl Serializer {
     pub fn find_decoder(&self, path: &FieldPath, pos: usize, is_baseline: bool) -> Decoder {
         let idx = path.path[pos];
         let f = &self.fields[idx as usize];
-        if is_baseline {
-            if f.var_name == "CBodyComponent" && path.last == 0 {
-                return X;
-            }
-        }
         f.decoder_from_path(path, pos + 1, is_baseline)
+    }
+    pub fn debug_find_decoder(
+        &self,
+        path: &FieldPath,
+        pos: usize,
+        is_baseline: bool,
+        prop_name: String,
+    ) -> DebugField {
+        let idx = path.path[pos];
+        let f = &self.fields[idx as usize];
+        f.debug_decoder_from_path(path, pos + 1, is_baseline, prop_name)
     }
 }
 
@@ -462,7 +560,7 @@ impl Parser {
                                 }
                             }
                         }
-                        self.serializer_print(&my_serializer, &[0, 0, 0, 0, 0, 0, 0]);
+                        self.find_prop_name_paths(&my_serializer);
                         fields.insert(*idx, field.clone());
                         my_serializer.fields.push(field);
                     }
@@ -473,61 +571,132 @@ impl Parser {
                 .insert(my_serializer.name.clone(), my_serializer);
         }
     }
-    pub fn serializer_print(&mut self, ser: &Serializer, wanted_path: &[i32; 7]) {
-        self.traverse_fields(&ser.fields, vec![], &wanted_path, ser.name.clone())
+    pub fn find_prop_name_paths(&mut self, ser: &Serializer) {
+        // Finds mapping from name to path.
+        // Example: "m_iHealth" => [4, 0, 0, 0, 0, 0, 0]
+        self.traverse_fields(&ser.fields, vec![], ser.name.clone())
     }
-    pub fn traverse_fields(
-        &mut self,
-        fileds: &Vec<Field>,
-        path: Vec<i32>,
-        wanted_path: &[i32; 7],
-        ser_name: String,
-    ) {
+    pub fn traverse_fields(&mut self, fileds: &Vec<Field>, path: Vec<i32>, ser_name: String) {
         for (idx, f) in fileds.iter().enumerate() {
             if let Some(ser) = &f.serializer {
                 let mut tmp = path.clone();
                 tmp.push(idx as i32);
-                self.traverse_fields(&ser.fields, tmp, wanted_path, ser_name.clone())
+                // println!("{}", ser_name);
+                self.traverse_fields(&ser.fields, tmp, ser_name.clone() + "." + &ser.name)
             } else {
                 let mut tmp = path.clone();
                 tmp.push(idx as i32);
 
-                if self.wanted_props.contains(&f.var_name.to_owned()) && ser_name == "CCSPlayerPawn"
-                {
-                    let mut arr = [0, 0, 0, 0, 0, 0, 0];
-                    for (idx, val) in tmp.iter().enumerate() {
-                        arr[idx] = *val;
-                    }
-                    // m_iTeamNum 5
-                    // m_iszPlayerName 9
-                    // m_steamID 10
-                    // m_hPlayerPawn 38
+                let mut arr = [0, 0, 0, 0, 0, 0, 0];
+                for (idx, val) in tmp.iter().enumerate() {
+                    arr[idx] = *val;
+                }
 
-                    /*
-                    "m_iTeamNum" => {}
-                    "m_iszPlayerName" => {
-                        player.name = match result {
-                            PropData::String(n) => n,
-                            _ => "Broken name!".to_owned(),
-                        };
-                    }
-                    "m_steamID" => {
-                        player.steamid = match result {
-                            PropData::U64(xuid) => xuid,
-                            _ => 99999999,
-                        };
-                    }
-                    "m_hPlayerPawn" => {
-                    */
+                if self.wanted_props.contains(&f.var_name) {
+                    self.wanted_prop_paths.insert(arr);
+                }
 
-                    self.prop_name_to_path
-                        .entry(f.var_name.clone())
-                        .or_insert(vec![])
-                        .push(arr);
+                self.prop_name_to_path
+                    .insert(ser_name.clone() + "." + &f.var_name, arr);
+            }
+        }
+    }
+    /*
+    pub fn find_wanted_path(
+        fileds: &Vec<Field>,
+        path: Vec<i32>,
+        ser_name: String,
+        wanted_path: [i32; 7],
+    ) -> DebugField {
+        for (idx, f) in fileds.iter().enumerate() {
+            if let Some(ser) = &f.serializer {
+                let mut tmp = path.clone();
+                tmp.push(idx as i32);
+                // println!("{}", ser_name);
+                return Parser::find_wanted_path(
+                    &ser.fields,
+                    tmp,
+                    ser_name.clone() + "." + &ser.name,
+                    wanted_path,
+                );
+            } else {
+                let mut tmp = path.clone();
+                tmp.push(idx as i32);
+
+                let mut arr = [0, 0, 0, 0, 0, 0, 0];
+                for (idx, val) in tmp.iter().enumerate() {
+                    arr[idx] = *val;
+                }
+                if wanted_path == arr {
+                    let debug_field = DebugField {
+                        full_name: ser_name + "." + &f.var_name,
+                        field: Some(f.clone()),
+                    };
+                    return debug_field;
+                }
+            }
+        }
+        return DebugField {
+            full_name: "Notfound".to_owned(),
+            field: None,
+        };
+    }
+
+    pub fn find_wanted_path_fast(
+        fields: &Vec<Field>,
+        ser_name: String,
+        wanted_path: [i32; 7],
+        mut arr_ptr: usize,
+    ) -> DebugField {
+        let f = &fields[wanted_path[arr_ptr] as usize];
+        // arr_ptr += 1;
+        println!("MODEL {:?}", f.model);
+        match &f.serializer {
+            Some(ser) => {
+                if ser.fields.len() < (wanted_path[arr_ptr + 1]) as usize {
+                    println!(
+                        "ERRRR {} {:?} {}",
+                        ser.fields.len(),
+                        wanted_path[arr_ptr + 1],
+                        arr_ptr
+                    );
+                    return DebugField {
+                        full_name: ser_name + "." + &f.var_name,
+                        field: Some(fields[wanted_path[arr_ptr] as usize].clone()),
+                    };
+                }
+                Parser::find_wanted_path_fast(
+                    &ser.fields,
+                    ser_name + "." + &ser.name,
+                    wanted_path,
+                    arr_ptr + 1,
+                )
+            }
+            None => {
+                println!("{:?} {} {:#?}", wanted_path, arr_ptr, f);
+
+                if f.model == FieldModelVariableTable {
+                    return DebugField {
+                        full_name: ser_name + "." + &f.var_name,
+                        field: Some(fields[wanted_path[arr_ptr + 1] as usize].clone()),
+                    };
+                }
+
+                DebugField {
+                    full_name: ser_name + "." + &f.var_name,
+                    field: Some(fields[wanted_path[arr_ptr] as usize].clone()),
                 }
             }
         }
     }
+    */
+}
+
+#[derive(Debug, Clone)]
+pub struct DebugField {
+    pub full_name: String,
+    pub field: Option<Field>,
+    pub decoder: Decoder,
 }
 
 fn field_from_msg(

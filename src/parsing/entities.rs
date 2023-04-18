@@ -16,6 +16,7 @@ const HUFFMAN_CODE_MAXLEN: u32 = 17;
 // (64-MAX_LEN+1)
 const RIGHTSHIFT_BITORDER: u32 = 46;
 
+#[derive(Debug, Clone)]
 pub struct Entity {
     pub cls_id: u32,
     pub entity_id: i32,
@@ -33,15 +34,18 @@ pub struct PlayerMetaData {
 
 impl Parser {
     pub fn get_prop_for_ent(&self, prop_name: &str, entity_id: &i32) -> Option<PropData> {
-        let path = self.prop_name_to_path[prop_name][0];
-        if let Some(ent) = self.entities.get(&entity_id) {
-            if let Some(prop) = ent.props.get(&path) {
-                return Some(prop.clone());
+        match &self.prop_name_to_path.get(prop_name) {
+            Some(path) => {
+                if let Some(ent) = self.entities.get(&entity_id) {
+                    if let Some(prop) = ent.props.get(path.clone()) {
+                        return Some(prop.clone());
+                    }
+                }
             }
+            None => return None,
         }
         None
     }
-    #[inline(always)]
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
         if !self.parse_entities {
             return Ok(());
@@ -49,7 +53,6 @@ impl Parser {
         let packet_ents: CSVCMsg_PacketEntities = Message::parse_from_bytes(&bytes).unwrap();
         Ok(self._parse_packet_ents(packet_ents)?)
     }
-    #[inline(always)]
     fn _parse_packet_ents(
         &mut self,
         packet_ents: CSVCMsg_PacketEntities,
@@ -113,11 +116,10 @@ impl Parser {
         }
         Ok(())
     }
-    #[inline(always)]
     pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, BitReaderError> {
         /*
         Create a field path by decoding using a Huffman tree.
-        A field path is like a "path trough a struct" where
+        A field path is a "path trough a struct" where
         the struct can have normal fields but also pointers
         to another structs.
 
@@ -135,7 +137,7 @@ impl Parser {
 
 
         Path to each of the fields in the below fields list: [
-            [0], [1, 0], [1, 1], [2]    <-- This function generates these
+            [0], [1, 0], [1, 1], [2]
         ]
         and they would map to:
         [0] => FloatDecoder,
@@ -194,12 +196,17 @@ impl Parser {
             let peekbits = peek_wrong_order.swap_bits() >> RIGHTSHIFT_BITORDER;
             // Check if first bit is zero then symbol should be zero.
             // Don't know how a lookup table could handle this.
-            let symbol = match peek_wrong_order & 1 {
-                0 => 0,
+            let (symbol, bitlen) = match peek_wrong_order & 1 {
+                0 => (0, 1),
                 _ => self.huffman_lookup_table[peekbits as usize],
             };
+            /*
             let n_skip_bits = self.symbol_bits[symbol as usize];
-            bitreader.reader.consume((n_skip_bits) as u32);
+            if bitlen != n_skip_bits as u32 {
+                println!("{} {}", bitlen, n_skip_bits);
+            }
+            */
+            bitreader.reader.consume((bitlen) as u32);
             if symbol == STOP_READING_SYMBOL {
                 break;
             }
@@ -209,7 +216,6 @@ impl Parser {
         }
         Ok(idx)
     }
-    #[inline(always)]
     pub fn decode_entity_update(
         &mut self,
         bitreader: &mut Bitreader,
@@ -227,7 +233,6 @@ impl Parser {
         };
         if class.name == "CCSPlayerController" {
             // hacky solution for now
-
             let player_md = Parser::fill_player_data(
                 &self.paths[..n_paths],
                 bitreader,
@@ -235,40 +240,36 @@ impl Parser {
                 entity,
                 is_baseline,
             )?;
-
             if player_md.player_entity_id != -1 {
                 self.players.insert(player_md.player_entity_id, player_md);
             }
         } else {
             for path in &self.paths[..n_paths] {
-                // probably problem with baseline, this seems to fix
-                if is_baseline && bitreader.reader.bits_remaining().unwrap() < 32 {
-                    break;
-                }
-
                 let decoder = class.serializer.find_decoder(&path, 0, is_baseline);
-                let result = bitreader.decode(&decoder);
+                let result = bitreader.decode(&decoder)?;
 
-                // println!("{:?}", result);
-                /*
-                let key = path_to_key(&path, cls.class_id);
-                match self.pattern_cache.get(&key) {
-                    Some(e) => {
-                        let result = bitreader.decode(e);
-                        continue;
-                    }
-                    None => {
-                        let (name, f, decoder) = cls.serializer.find_decoder(&path, 0, is_baseline);
-                        let result = bitreader.decode(&decoder);
-                        self.pattern_cache.insert(key, decoder);
-                        continue;
-                    }
+                let b = class.serializer.debug_find_decoder(
+                    &path,
+                    0,
+                    is_baseline,
+                    class.serializer.name.clone(),
+                );
+                if b.full_name == "CCSPlayerPawn.m_iTeamNum" {
+                    println!("{} {:?}", is_baseline, result);
                 }
 
-                let (name, f, decoder) = cls.serializer.find_decoder(&path, 0, is_baseline);
-                let result = bitreader.decode(&decoder);
+                entity.props.insert(path.path, result);
 
-                // println!("{} {} {:?} {:?}", name, cls.name, decoder, path);
+                /*
+                let b = class.serializer.debug_find_decoder(
+                    &path,
+                    0,
+                    is_baseline,
+                    class.serializer.name.clone(),
+                );
+                */
+
+                /*
                 if cls.name == "CCSTeam" && name == "m_iTeamNum" {
                     if let PropData::U32(t) = result {
                         match t {
@@ -284,13 +285,6 @@ impl Parser {
                         .entry(name.clone())
                         .and_modify(|counter| *counter += 1)
                         .or_insert(1);
-                }
-
-                if (name == "m_vecX" && f.var_name != "CBodyComponent")
-                    || (name == "m_vecY" && f.var_name != "CBodyComponent")
-                {
-                } else {
-                    // entity.props.insert(name, result);
                 }
                 */
             }
@@ -312,15 +306,11 @@ impl Parser {
             name: "".to_string(),
             steamid: 0,
         };
-
         // m_iTeamNum 5
         // m_iszPlayerName 9
         // m_steamID 10
         // m_hPlayerPawn 38
         for path in paths {
-            if is_baseline && bitreader.reader.bits_remaining().unwrap() < 32 {
-                break;
-            }
             let decoder = cls.serializer.find_decoder(&path, 0, is_baseline);
             let result = bitreader.decode(&decoder)?;
             entity.props.insert(path.path, result.clone());

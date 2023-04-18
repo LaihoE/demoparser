@@ -7,8 +7,8 @@ mod parsing;
 use crate::parsing::sendtables::Decoder;
 
 fn main() {
-    let wanted_props = vec!["m_iHealth".to_owned()];
-    let demo_path = "/home/laiho/Documents/demos/cs2/fulls2demo.dem";
+    let wanted_props = vec!["CCSPlayerPawn.m_iTeamNum".to_owned()];
+    let demo_path = "/home/laiho/Documents/demos/cs2/s2-gotv.dem";
 
     let before = Instant::now();
 
@@ -33,20 +33,13 @@ fn main() {
             parser.ptr as f32 / parser.bytes.len() as f32 * 100.0
         );
 
-        println!("{:?}", parser.prop_name_to_path);
-        /*
-        let mut t: Vec<(u64, u64, Decoder)> = parser
-            .history
-            .iter()
-            .map(|(k, (v, d))| (*k, *v, d.clone()))
-            .collect();
-        t.sort_by_key(|x| x.1);
-
-        for (k, v, d) in t {
-            println!("{} => {:?}", k, d);
+        for k in parser.prop_name_to_path.keys() {
+            if k.contains("CCSPlayerPawn.m_iTeamNum") {
+                println!("{:?}", k);
+            }
         }
-        break;
-        */
+        println!("{:?}", parser.output["CCSPlayerPawn.m_iTeamNum"]);
+
         break;
     }
 

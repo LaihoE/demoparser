@@ -19,7 +19,7 @@ impl<'a> Bitreader<'a> {
             ComponentDecoder => Ok(PropData::Bool(self.read_boolie()?)),
             FloatCoordDecoder => Ok(PropData::F32(self.read_bit_coord()?)),
             FloatSimulationTimeDecoder => Ok(PropData::F32(self.decode_simul_time()?)),
-            NoscaleDecoder => Ok(PropData::F32(self.read_nbits(32)? as f32)),
+            NoscaleDecoder => Ok(PropData::F32(f32::from_bits(self.read_nbits(32)?))),
             UnsignedDecoder => Ok(PropData::U32(self.read_varint()?)),
             StringDecoder => Ok(PropData::String(self.read_string()?)),
             Qangle3Decoder => Ok(PropData::VecXYZ(self.decode_qangle_all_3()?)),
@@ -50,7 +50,6 @@ impl<'a> Bitreader<'a> {
         }
         Ok(v)
     }
-
     pub fn decode_vector_special(
         &mut self,
         float_type: Box<Decoder>,

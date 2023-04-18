@@ -35,7 +35,6 @@ impl Parser {
                     .unwrap(),
                 false => self.read_n_bytes(size)?.to_vec(),
             };
-
             let ok = match demo_cmd_type_from_int(msg_type as i32).unwrap() {
                 DEM_Packet => self.parse_packet(&bytes),
                 DEM_FileHeader => self.parse_header(&bytes),
@@ -148,7 +147,7 @@ impl Parser {
         Ok(())
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
-        return Ok(());
+        // return Ok(());
         // Not in use atm
 
         // A full state dump that happens every ~3000? ticks
