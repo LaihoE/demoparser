@@ -11,7 +11,7 @@ fn main() {
         "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX".to_owned(),
         "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY".to_owned(),
     ];
-    let demo_path = "/home/laiho/Documents/demos/cs2/s2.dem";
+    let demo_path = "/home/laiho/Documents/demos/cs2/s2-gotv.dem";
 
     let before = Instant::now();
 

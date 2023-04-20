@@ -10,6 +10,7 @@ use crate::parsing::entities::PlayerMetaData;
 use crate::parsing::sendtables::Decoder;
 use ahash::AHashMap;
 use ahash::AHashSet;
+use ahash::HashMap;
 use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use soa_derive::StructOfArray;
@@ -66,6 +67,7 @@ pub struct Parser {
     pub path_to_prop_name: AHashMap<[i32; 7], String>,
 
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
+    pub header: HashMap<String, String>,
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -255,6 +257,7 @@ impl Parser {
             ptr: 0,
             ge_list: None,
             bytes: bytes,
+            // JUST LOL
             cls_by_id: [
                 None, None, None, None, None, None, None, None, None, None, None, None, None, None,
                 None, None, None, None, None, None, None, None, None, None, None, None, None, None,
@@ -333,6 +336,7 @@ impl Parser {
             prop_name_to_path: AHashMap::default(),
             wanted_prop_paths: AHashSet::default(),
             path_to_prop_name: AHashMap::default(),
+            header: HashMap::default(),
         }
     }
 }

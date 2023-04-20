@@ -27,8 +27,14 @@ impl DemoParser {
     pub fn py_new(demo_path: String) -> PyResult<Self> {
         Ok(DemoParser { path: demo_path })
     }
+    /// Parses header message (different from the first 16 bytes of the file)
+    /// Should have the following fields:
+    ///
+    /// "addons", "server_name", "demo_file_stamp", "network_protocol",
+    /// "map_name", "fullpackets_version", "allow_clientside_entities",
+    /// "allow_clientside_particles", "demo_version_name", "demo_version_guid",
+    /// "client_name", "game_directory"
     pub fn parse_header(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        //TODO
         let settings = ParserInputs {
             path: self.path.to_owned(),
             wanted_props: vec![],
@@ -42,7 +48,7 @@ impl DemoParser {
         };
         let mut parser = Parser::new(settings);
         parser.start()?;
-        Ok(0.to_object(py))
+        Ok(parser.header.to_object(py))
     }
     /// Returns a dictionary with console vars set. This includes data
     /// like this: "mp_roundtime": "1.92", "mp_buytime": "20" ...

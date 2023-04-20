@@ -1,12 +1,7 @@
+use super::read_bits::BitReaderError;
 use crate::parsing::parser_settings::Parser;
 
-use super::read_bits::BitReaderError;
-
 impl Parser {
-    #[inline]
-    pub fn skip_n_bytes(&mut self, n: u32) {
-        self.ptr += n as usize;
-    }
     #[inline]
     pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], BitReaderError> {
         // This will likely fail when demo download was cut off and demo

@@ -3,6 +3,7 @@ use super::read_bits::BitReaderError;
 use crate::parsing::netmessage_types::netmessage_type_from_int;
 use crate::parsing::parser_settings::Parser;
 use crate::parsing::read_bits::Bitreader;
+use ahash::HashMap;
 use bitter::BitReader;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
@@ -48,7 +49,7 @@ impl Parser {
                 DEM_Stop => break,
                 _ => Ok(()),
             };
-            ok.unwrap();
+            ok?;
             self.collect_entities();
         }
         Ok(())
@@ -60,9 +61,9 @@ impl Parser {
         let mut bitreader = Bitreader::new(&packet_data);
         // Inner loop
         while bitreader.reader.has_bits_remaining(8) {
-            let msg_type = bitreader.read_u_bit_var().unwrap();
-            let size = bitreader.read_varint().unwrap();
-            let msg_bytes = bitreader.read_n_bytes(size as usize).unwrap();
+            let msg_type = bitreader.read_u_bit_var()?;
+            let size = bitreader.read_varint()?;
+            let msg_bytes = bitreader.read_n_bytes(size as usize)?;
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
@@ -81,7 +82,6 @@ impl Parser {
         }
         Ok(())
     }
-
     pub fn parse_stringtable_cmd(&mut self, data: &[u8]) -> Result<(), BitReaderError> {
         // Why do we use this and not just create/update stringtables??
         let tables: CDemoStringTables = Message::parse_from_bytes(data).unwrap();
@@ -101,8 +101,56 @@ impl Parser {
         self.cls_bits = Some((class_count as f32 + 1.).log2().ceil() as u32);
         Ok(())
     }
-    pub fn parse_header(&self, bytes: &[u8]) -> Result<(), BitReaderError> {
-        let _header: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
+    pub fn parse_header(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+        let header: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
+        self.header.insert(
+            "demo_file_stamp".to_string(),
+            header.demo_file_stamp().to_string(),
+        );
+        self.header.insert(
+            "demo_version_guid".to_string(),
+            header.demo_version_guid().to_string(),
+        );
+        self.header.insert(
+            "network_protocol".to_string(),
+            header.network_protocol().to_string(),
+        );
+        self.header
+            .insert("server_name".to_string(), header.server_name().to_string());
+        self.header
+            .insert("client_name".to_string(), header.client_name().to_string());
+        self.header
+            .insert("map_name".to_string(), header.map_name().to_string());
+        self.header.insert(
+            "game_directory".to_string(),
+            header.game_directory().to_string(),
+        );
+        self.header.insert(
+            "fullpackets_version".to_string(),
+            header.fullpackets_version().to_string(),
+        );
+        self.header.insert(
+            "allow_clientside_entities".to_string(),
+            header.allow_clientside_entities().to_string(),
+        );
+        self.header.insert(
+            "allow_clientside_particles".to_string(),
+            header.allow_clientside_particles().to_string(),
+        );
+        self.header.insert(
+            "allow_clientside_particles".to_string(),
+            header.allow_clientside_particles().to_string(),
+        );
+        self.header
+            .insert("addons".to_string(), header.addons().to_string());
+        self.header.insert(
+            "demo_version_name".to_string(),
+            header.demo_version_name().to_string(),
+        );
+        self.header
+            .insert("addons".to_string(), header.addons().to_string());
+
+        println!("{:?}", self.header.keys());
         Ok(())
     }
     pub fn parse_classes(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
@@ -126,7 +174,7 @@ impl Parser {
             Err(_) => {}
         };
         // hmmmm not sure where the 18 comes from if the header is only 16?
-        // can be used to check that file does not end early
+        // can be used to check that file ends early
         let file_length_expected = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) + 18;
         let missing_bytes = file_length_expected - file_len as u32;
         if missing_bytes != 0 {
@@ -143,10 +191,10 @@ impl Parser {
     }
     pub fn parse_user_command_cmd(&mut self, data: &[u8]) -> Result<(), BitReaderError> {
         // Only in pov demos. Maybe implement sometime. Includes buttons etc.
-        // let usr_cmd: CDemoUserCmd = Message::parse_from_bytes(data).unwrap();
         Ok(())
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+        println!("{}", self.tick);
         return Ok(());
         // Not in use atm
 
@@ -167,9 +215,9 @@ impl Parser {
         let mut bitreader = Bitreader::new(p.data());
         // Inner loop
         while bitreader.reader.bits_remaining().unwrap() > 8 {
-            let msg_type = bitreader.read_u_bit_var().unwrap();
-            let size = bitreader.read_varint().unwrap();
-            let msg_bytes = bitreader.read_n_bytes(size as usize).unwrap();
+            let msg_type = bitreader.read_u_bit_var()?;
+            let size = bitreader.read_varint()?;
+            let msg_bytes = bitreader.read_n_bytes(size as usize)?;
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_ServerInfo => self.parse_class_info(&msg_bytes),

@@ -8,7 +8,7 @@ use std::fmt;
 pub enum BitReaderError {
     OutOfBitsError,
     OutOfBytesError,
-    FailedByteRead,
+    FailedByteRead(String),
     UnknownPathOP,
     EntityNotFound,
     ClassNotFound,
@@ -126,7 +126,14 @@ impl<'a> Bitreader<'a> {
         let mut bytes = vec![0; n];
         match self.reader.read_bytes(&mut bytes) {
             true => Ok(bytes),
-            false => Err(BitReaderError::FailedByteRead),
+            false => Err(BitReaderError::FailedByteRead(
+                format!(
+                    "Failed to read message/command. bytes left in stream: {}, requested bytes: {}",
+                    self.reader.bits_remaining().unwrap() / 8,
+                    n,
+                )
+                .to_string(),
+            )),
         }
     }
     #[inline(always)]
