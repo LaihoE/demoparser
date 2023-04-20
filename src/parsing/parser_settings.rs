@@ -63,6 +63,8 @@ pub struct Parser {
     pub huffman_lookup_table: [(u32, u8); HUF_LOOKUPTABLE_MAXVALUE as usize],
 
     pub prop_name_to_path: AHashMap<String, [i32; 7]>,
+    pub path_to_prop_name: AHashMap<[i32; 7], String>,
+
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
 }
 #[derive(Debug, Clone)]
@@ -330,6 +332,7 @@ impl Parser {
             huffman_lookup_table: a,
             prop_name_to_path: AHashMap::default(),
             wanted_prop_paths: AHashSet::default(),
+            path_to_prop_name: AHashMap::default(),
         }
     }
 }

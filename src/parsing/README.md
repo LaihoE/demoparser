@@ -3,12 +3,13 @@
 
 
 
-The outer loop is very simple and can be found in parsing/parser.rs. This is enough to get trough the file:
+The outer loop trough the file is very simple and can be found in parsing/parser.rs.
 
-1. Read what command next bytes will be.
+1. Read what command the next bytes will be.
 2. Read what tick the next command is.
 3. Read how many bytes the next command is.
 
+Repeat above until DEM_Stop command
 ```Rust
     pub fn start(&mut self){
         loop {
@@ -37,8 +38,6 @@ The outer loop is very simple and can be found in parsing/parser.rs. This is eno
 ```
 (slightly simplified from source code)
 
-Depending on which command it is we decode the message accordingly:
-
 
 ### Dem_packet
 DEM_Packet is the most common CMD. The DEM_Packet is decoded similarly to how the outer loop works:
@@ -46,10 +45,12 @@ DEM_Packet is the most common CMD. The DEM_Packet is decoded similarly to how th
 1. Read what msg type the next bytes are.
 2. Read how many bytes the next message is.
 
+I think there is no signal for stop, you just read the bitstream as long as there are >= 8 bits remaining.
+
 ```Rust
 let mut bitreader = Bitreader::new(&bytes);
-// Inner loop
-while bitreader.reader.bits_remaining().unwrap() > 8 {
+
+while bitreader.reader.has_bits_remaining(8) {
 
     let msg_type = bitreader.read_u_bit_var().unwrap();
     let size = bitreader.read_varint().unwrap();
@@ -75,6 +76,8 @@ The main message types are:
 - GE_Source1LegacyGameEvent
 - svc_PacketEntities
 
+There are also some rare other message types that can be found in parsing/parser.rs
+
 
 #### Stringtables (both create and update)
 Stringtables are messages that contains suprise surprise string data. Most of this data is not interesting for demo parsing, but baselines for entities pass trough here. These are the "default" values for entities. For example a players default health is 100?. 
@@ -89,8 +92,6 @@ Typical game events. Triggered when interesting things happen in the game, like 
 #### svc_PacketEntities
 The majority of data in the demo. All the data relating to entities. For example every players every coordinate, health, viewangles and you name it. If you can see a value in a replay then it probably comes from here.  
 
-Something to note is that packet entities only send changes in values. So if a player is standing still then that value is not updated during that tick. This means that a value at tick 5000 may have been set at tick 3542 (when the player last moved) so you can't just parse the ticks that you are interested in because that packet only includes values that changed that tick.
+Something to note is that packet entities only send changes in values. If a player is standing still then the players coordinates are not updated during that tick. This means that a value at tick 5000 may have been set at tick 3542 (when the player last moved) so you can't just parse the ticks that you are interested in, but also ticks before that. In theory it is possible to start a tick and parse ticks backwards until you find the most recent update, but this idea is very messy to implement.
 
-This part combined with command "DEM_SendTables" are by far the most comlicated parts of the demo. Getting these right is many more times harder than the entire rest of demo parsing. If you want to try parsing the demo I would recommend just starting of with Game events and then move to these.
-
-The DEM_SendTables creates blueprints for how to decode values in packet entities. The blueprints come in form of huge nested structs andso you have to traverse down these structs that is quite tricky. Mainly debugging becomes horrible here without proper tools.
+This part combined with command "DEM_SendTables" are by far the most comlicated parts of the demo. Getting these right is way harder than the rest of the demo parsing. If you want to try parsing the demo I would recommend by starting with game events and then move on to these.

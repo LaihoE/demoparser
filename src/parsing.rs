@@ -13,5 +13,4 @@ pub mod read_bits;
 pub mod read_bytes;
 pub mod sendtables;
 pub mod stringtables;
-pub mod u128arr;
 pub mod variants;

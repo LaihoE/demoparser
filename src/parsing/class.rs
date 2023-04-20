@@ -28,9 +28,6 @@ impl Parser {
                 serializer: self.serializers[network_name].clone(),
                 history: HashSet::default(),
             });
-            // For debugging
-            // let cls_name = class.name.clone();
-            // self.cls_by_name.insert(cls_name, class.clone());
         }
         Ok(())
     }

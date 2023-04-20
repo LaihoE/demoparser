@@ -17,6 +17,8 @@ pub enum BitReaderError {
     Source1DemoError,
     DemoEndsEarly(String),
     UnknownFile,
+    IncorrectMetaDataProp,
+    UnknownPropName(String),
 }
 
 impl std::error::Error for BitReaderError {}

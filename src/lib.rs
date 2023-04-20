@@ -4,7 +4,9 @@ use crate::parsing::parser_settings::ParserInputs;
 use ahash::HashMap;
 use arrow::ffi;
 use parsing::parser_settings::Parser;
+use parsing::read_bits::BitReaderError;
 use parsing::variants::VarVec;
+use phf_macros::phf_map;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -353,10 +355,7 @@ impl DemoParser {
         };
 
         // Projectile records are in SoA form
-        let account_id = arr_to_py(Box::new(UInt32Array::from(parser.skins.account_id))).unwrap();
         let def_index = arr_to_py(Box::new(UInt32Array::from(parser.skins.def_index))).unwrap();
-        let dropreason = arr_to_py(Box::new(UInt32Array::from(parser.skins.dropreason))).unwrap();
-        let inventory = arr_to_py(Box::new(UInt32Array::from(parser.skins.inventory))).unwrap();
         let item_id = arr_to_py(Box::new(UInt64Array::from(parser.skins.item_id))).unwrap();
         let paint_index = arr_to_py(Box::new(UInt32Array::from(parser.skins.paint_index))).unwrap();
         let paint_seed = arr_to_py(Box::new(UInt32Array::from(parser.skins.paint_seed))).unwrap();
@@ -369,10 +368,7 @@ impl DemoParser {
 
         let polars = py.import("polars")?;
         let all_series_py = [
-            account_id,
             def_index,
-            dropreason,
-            inventory,
             item_id,
             paint_index,
             paint_seed,
@@ -385,10 +381,7 @@ impl DemoParser {
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
             // Set column names
             let column_names = [
-                "account_id",
                 "def_index",
-                "dropreason",
-                "inventory",
                 "item_id",
                 "paint_index",
                 "paint_seed",
@@ -462,9 +455,16 @@ impl DemoParser {
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<PyObject> {
         let (_, wanted_ticks) = parse_kwargs_ticks(py_kwargs);
+        let mut real_props = rm_user_friendly_names(&wanted_props);
+
+        let mut real_props = match real_props {
+            Ok(real_props) => real_props,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
+
         let settings = ParserInputs {
             path: self.path.clone(),
-            wanted_props: wanted_props.clone(),
+            wanted_props: real_props.clone(),
             wanted_event: None,
             parse_ents: true,
             wanted_ticks: wanted_ticks,
@@ -481,11 +481,14 @@ impl DemoParser {
 
         let mut all_series = vec![];
 
+        real_props.push("tick".to_owned());
+        real_props.push("steamid".to_owned());
+        real_props.push("name".to_owned());
         wanted_props.push("tick".to_owned());
         wanted_props.push("steamid".to_owned());
         wanted_props.push("name".to_owned());
 
-        for prop_name in &wanted_props {
+        for prop_name in &real_props {
             if parser.output.contains_key(prop_name) {
                 match &parser.output[prop_name].data {
                     Some(VarVec::F32(data)) => {
@@ -611,9 +614,145 @@ pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (bool, Vec<String>) {
         None => (false, vec![]),
     }
 }
+fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, BitReaderError> {
+    let mut real_names = vec![];
+    for name in names {
+        match FRIENDLY_NAMES_MAPPING.get(name) {
+            Some(real_name) => real_names.push(real_name.to_string()),
+            None => return Err(BitReaderError::UnknownPropName(name.clone())),
+        }
+    }
+    Ok(real_names)
+}
 
 #[pymodule]
 fn demoparser2(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<DemoParser>()?;
     Ok(())
 }
+
+pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_map! {
+    "team_surrendered" => "CCSTeam.m_bSurrendered",
+    "team_rounds_total" => "CCSTeam.m_iScore",
+    "team_name" => "CCSTeam.m_szTeamname",
+    "team_score_overtime" => "CCSTeam.m_scoreOvertime",
+    "team_match_stat"=>"CCSTeam.m_szTeamMatchStat",
+    "team_num_map_victories"=>"CCSTeam.m_numMapVictories",
+    "team_score_first_half"=>"CCSTeam.m_scoreFirstHalf",
+    "team_score_second_half"=>"CCSTeam.m_scoreSecondHalf",
+    "team_clan_name" =>"CCSTeam.m_szClanTeamname",
+    "is_freeze_period"=>"CCSGameRulesProxy.CCSGameRules.m_bFreezePeriod",
+    "is_warmup_period"=>"CCSGameRulesProxy.CCSGameRules.m_bWarmupPeriod" ,
+    "warmup_period_end"=>"CCSGameRulesProxy.CCSGameRules.m_fWarmupPeriodEnd" ,
+    "warmup_period_start"=>"CCSGameRulesProxy.CCSGameRules.m_fWarmupPeriodStart" ,
+    "is_terrorist_timeout"=>"CCSGameRulesProxy.CCSGameRules.m_bTerroristTimeOutActive" ,
+    "is_ct_timeout"=>"CCSGameRulesProxy.CCSGameRules.m_bCTTimeOutActive" ,
+    "terrorist_timeout_remaining"=>"CCSGameRulesProxy.CCSGameRules.m_flTerroristTimeOutRemaining" ,
+    "ct_timeout_remaining"=>"CCSGameRulesProxy.CCSGameRules.m_flCTTimeOutRemaining" ,
+    "num_terrorist_timeouts"=>"CCSGameRulesProxy.CCSGameRules.m_nTerroristTimeOuts" ,
+    "num_ct_timeouts"=>"CCSGameRulesProxy.CCSGameRules.m_nCTTimeOuts" ,
+    "is_technical_timeout"=>"CCSGameRulesProxy.CCSGameRules.m_bTechnicalTimeOut" ,
+    "is_waiting_for_resume"=>"CCSGameRulesProxy.CCSGameRules.m_bMatchWaitingForResume" ,
+    "match_start_time"=>"CCSGameRulesProxy.CCSGameRules.m_fMatchStartTime" ,
+    "round_start_time"=>"CCSGameRulesProxy.CCSGameRules.m_fRoundStartTime" ,
+    "restart_round_time"=>"CCSGameRulesProxy.CCSGameRules.m_flRestartRoundTime" ,
+    "is_game_restart?"=>"CCSGameRulesProxy.CCSGameRules.m_bGameRestart" ,
+    "game_start_time"=>"CCSGameRulesProxy.CCSGameRules.m_flGameStartTime" ,
+    "time_until_next_phase_start"=>"CCSGameRulesProxy.CCSGameRules.m_timeUntilNextPhaseStarts" ,
+    "game_phase"=>"CCSGameRulesProxy.CCSGameRules.m_gamePhase" ,
+    "total_rounds_played"=>"CCSGameRulesProxy.CCSGameRules.m_totalRoundsPlayed" ,
+    "rounds_played_this_phase"=>"CCSGameRulesProxy.CCSGameRules.m_nRoundsPlayedThisPhase" ,
+    "hostages_remaining"=>"CCSGameRulesProxy.CCSGameRules.m_iHostagesRemaining" ,
+    "any_hostages_reached"=>"CCSGameRulesProxy.CCSGameRules.m_bAnyHostageReached" ,
+    "has_bombites"=>"CCSGameRulesProxy.CCSGameRules.m_bMapHasBombTarget" ,
+    "has_rescue_zone"=>"CCSGameRulesProxy.CCSGameRules.m_bMapHasRescueZone" ,
+    "has_buy_zone"=>"CCSGameRulesProxy.CCSGameRules.m_bMapHasBuyZone" ,
+    "is_matchmaking"=>"CCSGameRulesProxy.CCSGameRules.m_bIsQueuedMatchmaking" ,
+    "match_making_mode"=>"CCSGameRulesProxy.CCSGameRules.m_nQueuedMatchmakingMode" ,
+    "is_valve_dedicated_server"=>"CCSGameRulesProxy.CCSGameRules.m_bIsValveDS" ,
+    "gungame_prog_weap_ct"=>"CCSGameRulesProxy.CCSGameRules.m_iNumGunGameProgressiveWeaponsCT" ,
+    "gungame_prog_weap_t"=>"CCSGameRulesProxy.CCSGameRules.m_iNumGunGameProgressiveWeaponsT" ,
+    "spectator_slot_count"=>"CCSGameRulesProxy.CCSGameRules.m_iSpectatorSlotCount" ,
+    "is_match_started"=>"CCSGameRulesProxy.CCSGameRules.m_bHasMatchStarted" ,
+    "n_best_of_maps"=>"CCSGameRulesProxy.CCSGameRules.m_numBestOfMaps" ,
+    "is_bomb_dropped"=>"CCSGameRulesProxy.CCSGameRules.m_bBombDropped" ,
+    "is_bomb_planed"=>"CCSGameRulesProxy.CCSGameRules.m_bBombPlanted" ,
+    "round_win_status"=>"CCSGameRulesProxy.CCSGameRules.m_iRoundWinStatus" ,
+    "round_win_reason"=>"CCSGameRulesProxy.CCSGameRules.m_eRoundWinReason" ,
+    "terrorist_cant_buy"=>"CCSGameRulesProxy.CCSGameRules.m_bTCantBuy" ,
+    "ct_cant_buy"=>"CCSGameRulesProxy.CCSGameRules.m_bCTCantBuy" ,
+    "num_player_alive_ct"=>"CCSGameRulesProxy.CCSGameRules.m_iMatchStats_PlayersAlive_CT" ,
+    "num_player_alive_t"=>"CCSGameRulesProxy.CCSGameRules.m_iMatchStats_PlayersAlive_T" ,
+    "ct_losing_streak"=>"CCSGameRulesProxy.CCSGameRules.m_iNumConsecutiveCTLoses" ,
+    "t_losing_streak"=>"CCSGameRulesProxy.CCSGameRules.m_iNumConsecutiveTerroristLoses" ,
+    "survival_start_time"=>"CCSGameRulesProxy.CCSGameRules.m_flSurvivalStartTime" ,
+    "round_in_progress"=>"CCSGameRulesProxy.CCSGameRules.m_bRoundInProgress" ,
+    "i_bomb_site?"=>"CCSGameRulesProxy.CCSGameRules.m_iBombSite" ,
+    "is_auto_muted"=>"CCSPlayerController.m_bHasCommunicationAbuseMute",
+    "crosshair_code"=>"CCSPlayerController.m_szCrosshairCodes",
+    "pending_team_num"=>"CCSPlayerController.m_iPendingTeamNum",
+    "player_color"=>"CCSPlayerController.m_iCompTeammateColor",
+    "ever_played_on_team"=>"CCSPlayerController.m_bEverPlayedOnTeam",
+    "clan_name"=>"CCSPlayerController.m_szClan",
+    "is_coach_team"=>"CCSPlayerController.m_iCoachingTeam",
+    "comp_rank"=>"CCSPlayerController.m_iCompetitiveRanking",
+    "comp_wins"=>"CCSPlayerController.m_iCompetitiveWins",
+    "comp_rank_type"=>"CCSPlayerController.m_iCompetitiveRankType",
+    "is_controlling_bot"=>"CCSPlayerController.m_bControllingBot",
+    "has_controlled_bot_this_round"=>"CCSPlayerController.m_bHasControlledBotThisRound",
+    "can_control_bot"=>"CCSPlayerController.m_bCanControlObservedBot",
+    "is_alive"=>"CCSPlayerController.m_bPawnIsAlive",
+    "health"=>"CCSPlayerController.m_iPawnHealth",
+    "armor"=>"CCSPlayerController.m_iPawnArmor",
+    "has_defuser"=>"CCSPlayerController.m_bPawnHasDefuser",
+    "has_helmet"=>"CCSPlayerController.m_bPawnHasHelmet",
+    "spawn_time"=>"CCSPlayerController.m_iPawnLifetimeStart",
+    "death_time"=>"CCSPlayerController.m_iPawnLifetimeEnd",
+    "score"=>"CCSPlayerController.m_iScore",
+    "game_time"=>"CCSPlayerController.m_flSimulationTime",
+    "is_connected"=>"CCSPlayerController.m_iConnected",
+    "player_name"=>"CCSPlayerController.m_iszPlayerName",
+    "player_steamid"=>"CCSPlayerController.m_steamID",
+    "fov"=>"CCSPlayerController.m_iDesiredFOV",
+    "balance"=>"CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iAccount",
+    "start_balance"=>"CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iStartAccount",
+    "total_cash_spent"=>"CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iTotalCashSpent",
+    "cash_spent_this_round"=>"CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iCashSpentThisRound",
+    "music_kit_id"=>"CCSPlayerController.CCSPlayerController_InventoryServices.m_unMusicID",
+    "leader_honors"=>"CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsLeader",
+    "teacher_honors"=>"CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsTeacher",
+    "friendly_honors"=>"CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsFriendly",
+    "kills_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iKills",
+    "deaths_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iDeaths",
+    "assists_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iAssists",
+    "alive_time_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iLiveTime",
+    "headshot_kills_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iHeadShotKills",
+    "damage_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iDamage",
+    "objective_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iObjective",
+    "utility_damage_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iUtilityDamage",
+    "enemies_flashed_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iEnemiesFlashed",
+    "equipment_value_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iEquipmentValue",
+    "money_saved_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iMoneySaved",
+    "kill_reward_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iKillReward",
+    "cash_earned_this_round"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iCashEarned",
+    "kills_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iKills",
+    "deaths_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iDeaths",
+    "assists_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iAssists",
+    "alive_time_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iLiveTime",
+    "headshot_kills_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iHeadShotKills",
+    "ace_rounds_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemy5Ks",
+    "4k_rounds_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemy4Ks",
+    "3k_rounds_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemy3Ks",
+    "damage_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iDamage",
+    "objective_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iObjective",
+    "utility_damage_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iUtilityDamage",
+    "enemies_flashed_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemiesFlashed",
+    "equipment_value_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEquipmentValue",
+    "money_saved_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iMoneySaved",
+    "kill_reward_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iKillReward",
+    "cash_earned_total"=>"CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iCashEarned",
+    "ping"=>"CCSPlayerController.m_iPing",
+    "X"=> "X",
+    "Y"=> "Y",
+    "Z"=> "Z",
+};

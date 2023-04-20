@@ -59,7 +59,7 @@ impl Parser {
         let packet_data = packet.data.unwrap();
         let mut bitreader = Bitreader::new(&packet_data);
         // Inner loop
-        while bitreader.reader.bits_remaining().unwrap() > 8 {
+        while bitreader.reader.has_bits_remaining(8) {
             let msg_type = bitreader.read_u_bit_var().unwrap();
             let size = bitreader.read_varint().unwrap();
             let msg_bytes = bitreader.read_n_bytes(size as usize).unwrap();
@@ -147,7 +147,7 @@ impl Parser {
         Ok(())
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
-        // return Ok(());
+        return Ok(());
         // Not in use atm
 
         // A full state dump that happens every ~3000? ticks

@@ -2,7 +2,7 @@ use super::entities::PlayerMetaData;
 use super::variants::PropData;
 use crate::parsing::parser_settings::Parser;
 use crate::parsing::variants::PropColumn;
-use phf_macros::phf_set;
+use phf_macros::phf_map;
 use soa_derive::StructOfArray;
 
 #[derive(Debug, StructOfArray)]
@@ -39,6 +39,22 @@ impl Parser {
             }
         }
     }
+    pub fn get_prop_for_ent(&self, prop_name: &str, entity_id: &i32) -> Option<PropData> {
+        // Function that allows you to use string name for the prop and the function
+        // translates it to a path. This costs a bit but the elegance of using string names
+        // is just too big to give up. Also I think paths change between demos soo...
+        match &self.prop_name_to_path.get(prop_name) {
+            Some(path) => {
+                if let Some(ent) = self.entities.get(&entity_id) {
+                    if let Some(prop) = ent.props.get(path.clone()) {
+                        return Some(prop.clone());
+                    }
+                }
+            }
+            None => return None,
+        }
+        None
+    }
     pub fn find_prop(
         &self,
         prop_name: &str,
@@ -48,43 +64,94 @@ impl Parser {
         // Early exit these metadata props
         match prop_name {
             "tick" => return Some(PropData::I32(self.tick)),
-            "steamid" => return Some(PropData::U64(player.steamid)),
-            "name" => return Some(PropData::String(player.name.to_string())),
+            "steamid" => match player.steamid {
+                Some(steamid) => return Some(PropData::U64(steamid)),
+                _ => return None,
+            },
+            "name" => match &player.name {
+                Some(name) => return Some(PropData::String(name.to_string())),
+                _ => return None,
+            },
             _ => {}
         }
-        if CONTROLLERPROPS.contains(prop_name) {
-            return self.get_prop_for_ent(prop_name, &player.controller_entid);
-        }
-        if CUSTOMPROPS.contains(&prop_name) {
-            return self.create_custom_prop(&prop_name, entity_id);
-        }
-        if TEAMPROPS.contains(prop_name) {
-            return self.find_team_prop(entity_id, prop_name);
-        }
-        if RULESPROPS.contains(prop_name) {
-            match self.rules_entity_id {
+        match TYPEHM.get(prop_name) {
+            Some(PropType::Team) => return self.find_team_prop(entity_id, prop_name),
+            Some(PropType::Custom) => return self.create_custom_prop(&prop_name, entity_id),
+            Some(PropType::Controller) => match player.controller_entid {
+                Some(entid) => return self.get_prop_for_ent(prop_name, &entid),
+                None => return None,
+            },
+            Some(PropType::Rules) => match self.rules_entity_id {
                 Some(rules_entid) => return self.get_prop_for_ent(prop_name, &rules_entid),
                 None => return None,
+            },
+            None => {
+                if let Some(e) = player.controller_entid {
+                    let is_alive = self.get_prop_for_ent("CCSPlayerController.m_bPawnIsAlive", &e);
+                    match is_alive {
+                        Some(PropData::Bool(true)) => {
+                            return self.get_prop_for_ent(&prop_name, &entity_id)
+                        }
+                        _ => return None,
+                    }
+                };
             }
         }
-        return self.get_prop_for_ent(&prop_name, &entity_id);
+        None
     }
-    pub fn collect_cell_coordinate(&self, axis: &str, entity_id: &i32) -> Option<PropData> {
-        let offset = self.get_prop_for_ent(&("m_vec".to_owned() + axis), entity_id);
-        let cell = self.get_prop_for_ent(&("m_cell".to_owned() + axis), entity_id);
+    pub fn collect_cell_coordinate_player(&self, axis: &str, entity_id: &i32) -> Option<PropData> {
+        let offset = self.get_prop_for_ent(
+            &("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vec".to_owned() + axis),
+            entity_id,
+        );
+        let cell = self.get_prop_for_ent(
+            &("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cell".to_owned() + axis),
+            entity_id,
+        );
+        if let Some(coord) = coord_from_cell(cell, offset) {
+            return Some(PropData::F32(coord));
+        }
+        None
+    }
+    pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Option<PropData> {
+        let entity = match self.entities.get(entity_id) {
+            Some(ent) => ent,
+            None => return None,
+        };
+        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
+            Some(cls) => cls,
+            None => return None,
+        };
+        let offset = self.get_prop_for_ent(
+            &(class.name.to_owned() + "." + "CBodyComponentBaseAnimGraph.m_vec" + axis),
+            entity_id,
+        );
+        let cell = self.get_prop_for_ent(
+            &(class.name.to_owned() + "." + "CBodyComponentBaseAnimGraph.m_cell" + axis),
+            entity_id,
+        );
         if let Some(coord) = coord_from_cell(cell, offset) {
             return Some(PropData::F32(coord));
         }
         None
     }
     pub fn find_thrower_steamid(&self, entity_id: &i32) -> Option<u64> {
-        let owner_entid = match self.get_prop_for_ent("m_nOwnerId", entity_id) {
-            Some(PropData::U32(prop)) => Some(prop & 0x7FF),
-            _ => None,
+        let entity = match self.entities.get(entity_id) {
+            Some(ent) => ent,
+            None => return None,
         };
+        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
+            Some(cls) => cls,
+            None => return None,
+        };
+        let owner_entid =
+            match self.get_prop_for_ent(&(class.name.to_owned() + "." + "m_nOwnerId"), entity_id) {
+                Some(PropData::U32(prop)) => Some(prop & 0x7FF),
+                _ => None,
+            };
         let steamid = match owner_entid {
             Some(entid) => match self.players.get(&(entid as i32)) {
-                Some(metadata) => Some(metadata.steamid as u64),
+                Some(metadata) => metadata.steamid,
                 None => None,
             },
             None => None,
@@ -92,13 +159,22 @@ impl Parser {
         steamid
     }
     pub fn find_thrower_name(&self, entity_id: &i32) -> Option<String> {
-        let owner_entid = match self.get_prop_for_ent("m_nOwnerId", entity_id) {
-            Some(PropData::U32(prop)) => Some(prop & 0x7FF),
-            _ => None,
+        let entity = match self.entities.get(entity_id) {
+            Some(ent) => ent,
+            None => return None,
         };
+        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
+            Some(cls) => cls,
+            None => return None,
+        };
+        let owner_entid =
+            match self.get_prop_for_ent(&(class.name.to_owned() + "." + "m_nOwnerId"), entity_id) {
+                Some(PropData::U32(prop)) => Some(prop & 0x7FF),
+                _ => None,
+            };
         let name = match owner_entid {
             Some(entid) => match self.players.get(&(entid as i32)) {
-                Some(metadata) => Some(metadata.name.clone()),
+                Some(metadata) => return metadata.name.clone(),
                 None => None,
             },
             None => None,
@@ -125,9 +201,9 @@ impl Parser {
             let grenade_type = self.find_grenade_type(projectile_entid);
             let steamid = self.find_thrower_steamid(projectile_entid);
             let name = self.find_thrower_name(projectile_entid);
-            let x = self.collect_cell_coordinate("X", projectile_entid);
-            let y = self.collect_cell_coordinate("Y", projectile_entid);
-            let z = self.collect_cell_coordinate("Z", projectile_entid);
+            let x = self.collect_cell_coordinate_grenade("X", projectile_entid);
+            let y = self.collect_cell_coordinate_grenade("Y", projectile_entid);
+            let z = self.collect_cell_coordinate_grenade("Z", projectile_entid);
 
             let float_x = match x {
                 Some(PropData::F32(p)) => Some(p),
@@ -154,13 +230,14 @@ impl Parser {
         }
     }
     pub fn find_team_prop(&self, player_entid: &i32, prop: &str) -> Option<PropData> {
-        if let Some(PropData::U32(team_num)) = self.get_prop_for_ent("m_iTeamNum", player_entid) {
+        if let Some(PropData::U32(team_num)) =
+            self.get_prop_for_ent("CCSPlayerPawn.m_iTeamNum", player_entid)
+        {
             let team_entid = match team_num {
                 // 1 should be spectator
                 1 => self.teams.team1_entid,
                 2 => self.teams.team2_entid,
                 3 => self.teams.team3_entid,
-                // KNOWN PROBLEM THAT SOMETIMES TEAM IS PARSED INCORRECTLY :(
                 _ => None,
             };
             // Get prop from team entity
@@ -172,27 +249,11 @@ impl Parser {
         }
         None
     }
-    fn find_round(&self) -> Option<PropData> {
-        // Rules entity seems to also have: m_totalRoundsPlayed. Maybe that one would be better
-        let mut total_rounds = 0;
-        if let Some(team) = self.teams.team2_entid {
-            if let Some(PropData::I32(ct_rounds)) = self.get_prop_for_ent("m_iScore", &team) {
-                total_rounds += ct_rounds;
-            }
-        }
-        if let Some(team) = self.teams.team3_entid {
-            if let Some(PropData::I32(t_rounds)) = self.get_prop_for_ent("m_iScore", &team) {
-                total_rounds += t_rounds;
-            }
-        }
-        Some(PropData::I32(total_rounds))
-    }
     pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<PropData> {
         match prop_name {
-            "round" => self.find_round(),
-            "X" => self.collect_cell_coordinate("X", entity_id),
-            "Y" => self.collect_cell_coordinate("Y", entity_id),
-            "Z" => self.collect_cell_coordinate("Z", entity_id),
+            "X" => self.collect_cell_coordinate_player("X", entity_id),
+            "Y" => self.collect_cell_coordinate_player("Y", entity_id),
+            "Z" => self.collect_cell_coordinate_player("Z", entity_id),
             _ => panic!("unknown custom prop: {}", prop_name),
         }
     }
@@ -210,88 +271,259 @@ fn coord_from_cell(cell: Option<PropData>, offset: Option<PropData>) -> Option<f
     }
     None
 }
+pub enum PropType {
+    Team,
+    Rules,
+    Custom,
+    Controller,
+}
 
-pub static TEAMPROPS: phf::Set<&'static str> = phf_set! {
-    "m_szClanTeamname",
-    "m_iTeamNum",
-    "m_scoreSecondHalf",
-    "m_iScore",
-    "m_szTeamMatchStat",
-    "m_szTeamname",
-    "m_bSurrendered",
-    "m_numMapVictories",
-    "m_iClanID",
-    "m_scoreFirstHalf",
-    "m_scoreOvertime",
-};
-pub static RULESPROPS: phf::Set<&'static str> = phf_set! {
-    // "CCSGameRulesProxy.CCSGameRules.m_flRestartRoundTime",
-    "CCSGameRules.m_iRoundTime",
-    "CCSGameRules.m_fRoundStartTime",
-    "m_iRoundWinStatus",
-    "m_eRoundWinReason",
-    "m_iMatchStats_PlayersAlive_CT",
-    "m_iMatchStats_PlayersAlive_T",
-    "m_iNumConsecutiveCTLoses",
-    "m_iNumConsecutiveTLoses",
-    "m_flRestartRoundTime",
-    "m_totalRoundsPlayed",
-    "m_nRoundsPlayedThisPhase",
-    "m_bBombPlanted",
-    "m_bFreezePeriod",
-    "m_bWarmupPeriod",
-};
-
-// Props that dont really exist (we create them manually)
-pub static CUSTOMPROPS: phf::Set<&'static str> = phf_set! {
-    "round",
-    "X",
-    "Y",
-    "Z"
-};
-
-pub static CONTROLLERPROPS: phf::Set<&'static str> = phf_set! {
-    "m_nPersonaDataPublicCommendsTeacher",
-    "m_nPersonaDataPublicCommendsLeader",
-    "m_nPersonaDataPublicCommendsFriendly",
-    "m_szCrosshairCodes",
-    "m_iCompetitiveRankType",
-    "m_iCompTeammateColor",
-    "m_nPersonaDataPublicLevel",
-    "m_unMusicID",
-    "m_iConnected",
-    "m_steamID",
-    "m_nNextThinkTick",
-    "m_iEnemiesFlashed",
-    "m_iTotalCashSpent",
-    "m_iPawnArmor",
-    "m_rank",
-    "m_iAccount",
-    "m_iKillReward",
-    "m_iUtilityDamage",
-    "m_iszPlayerName",
-    "m_iDamage",
-    "m_iEquipmentValue",
-    "m_bPawnIsAlive",
-    "m_iPawnHealth",
-    "m_nPawnCharacterDefIndex",
-    "m_DamageList",
-    "m_flGravityScale",
-    "m_iStartAccount",
-    "m_iPawnLifetimeStart",
-    "m_hPlayerPawn",
-    "m_iPawnLifetimeEnd",
-    "m_flTimeScale",
-    "m_iCashEarned",
-    "m_nQuestProgressReason",
-    "m_nTickBase",
-    "m_perRoundStats",
-    "m_nSendUpdate",
-    "m_iMoneySaved",
-    "m_bPawnHasHelmet",
-    "m_iCashSpentThisRound",
-    "m_iPendingTeamNum",
-    "m_iObjective",
-    "m_vecBaseVelocity",
-    "m_iPing",
+pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
+    // TEAM
+    "CCSTeam.m_iTeamNum" => PropType::Team,
+    "CCSTeam.m_aPlayers" => PropType::Team,
+    "CCSTeam.m_aPawns" => PropType::Team,
+    "CCSTeam.m_iScore" => PropType::Team,
+    "CCSTeam.m_szTeamname" => PropType::Team,
+    "CCSTeam.m_bSurrendered" => PropType::Team,
+    "CCSTeam.m_szTeamMatchStat" => PropType::Team,
+    "CCSTeam.m_numMapVictories" => PropType::Team,
+    "CCSTeam.m_scoreFirstHalf" => PropType::Team,
+    "CCSTeam.m_scoreSecondHalf" => PropType::Team,
+    "CCSTeam.m_scoreOvertime" => PropType::Team,
+    "CCSTeam.m_szClanTeamname" => PropType::Team,
+    // RULES
+    "CCSGameRulesProxy.CCSGameRules.m_bFreezePeriod"=> PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bWarmupPeriod" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_fWarmupPeriodEnd" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_fWarmupPeriodStart" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bTerroristTimeOutActive" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bCTTimeOutActive" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flTerroristTimeOutRemaining" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flCTTimeOutRemaining" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nTerroristTimeOuts" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nCTTimeOuts" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bTechnicalTimeOut" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bMatchWaitingForResume" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iRoundTime" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_fMatchStartTime" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_fRoundStartTime" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flRestartRoundTime" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bGameRestart" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flGameStartTime" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_timeUntilNextPhaseStarts" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_gamePhase" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_totalRoundsPlayed" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nRoundsPlayedThisPhase" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nOvertimePlaying" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iHostagesRemaining" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bAnyHostageReached" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bMapHasBombTarget" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bMapHasRescueZone" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bMapHasBuyZone" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bIsQueuedMatchmaking" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nQueuedMatchmakingMode" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bIsValveDS" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bLogoMap" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bPlayAllStepSoundsOnServer" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iNumGunGameProgressiveWeaponsCT" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iNumGunGameProgressiveWeaponsT" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iSpectatorSlotCount" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_GGProgressiveWeaponOrderCT" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_GGProgressiveWeaponOrderT" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_GGProgressiveWeaponKillUpgradeOrderCT" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_GGProgressiveWeaponKillUpgradeOrderT" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_MatchDevice" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bHasMatchStarted" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flDMBonusStartTime" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flDMBonusTimeLength" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_unDMBonusWeaponLoadoutSlot" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bDMBonusActive" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nNextMapInMapgroup" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_szTournamentEventName" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_szTournamentEventStage" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_szMatchStatTxt" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_szTournamentPredictionsTxt" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nTournamentPredictionsPct" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flCMMItemDropRevealStartTime" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flCMMItemDropRevealEndTime" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bIsDroppingItems" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bIsQuestEligible" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nGuardianModeWaveNumber" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nGuardianModeSpecialKillsRemaining" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nGuardianModeSpecialWeaponNeeded" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_numGlobalGiftsGiven" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_numGlobalGifters" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_numGlobalGiftsPeriodSeconds" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_arrFeaturedGiftersAccounts" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_arrFeaturedGiftersGifts" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_arrProhibitedItemIndices" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_arrTournamentActiveCasterAccounts" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_numBestOfMaps" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nHalloweenMaskListSeed" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bBombDropped" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bBombPlanted" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iRoundWinStatus" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_eRoundWinReason" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bTCantBuy" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bCTCantBuy" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flGuardianBuyUntilTime" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iMatchStats_RoundResults" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iMatchStats_PlayersAlive_CT" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iMatchStats_PlayersAlive_T" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_TeamRespawnWaveTimes" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flNextRespawnWave" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nServerQuestID" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nEndMatchMapGroupVoteTypes" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nEndMatchMapGroupVoteOptions" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nEndMatchMapVoteWinner" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iNumConsecutiveCTLoses" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iNumConsecutiveTerroristLoses" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_vecPlayAreaMins" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_vecPlayAreaMaxs" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iPlayerSpawnHexIndices" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_SpawnTileState" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flSpawnSelectionTimeStartCurrentStage" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flSpawnSelectionTimeEndCurrentStage" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flSpawnSelectionTimeEndLastStage" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_spawnStage" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flTabletHexOriginX" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flTabletHexOriginY" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flTabletHexSize" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_roundData_playerXuids" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_roundData_playerPositions" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_roundData_playerTeams" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_SurvivalGameRuleDecisionTypes" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_SurvivalGameRuleDecisionValues" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_flSurvivalStartTime" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nMatchSeed" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bBlockersPresent" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bRoundInProgress" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iFirstSecondHalfRound" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_iBombSite" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_nMatchEndCount" => PropType::Rules,
+    "CCSGameRulesProxy.CCSGameRules.m_bTeamIntroPeriod" => PropType::Rules,
+    // PLAYER CONTROLLER
+    "CCSPlayerController.m_bHasCommunicationAbuseMute"=> PropType::Controller,
+    "CCSPlayerController.m_szCrosshairCodes" => PropType::Controller,
+    "CCSPlayerController.m_iPendingTeamNum" => PropType::Controller,
+    "CCSPlayerController.m_flForceTeamTime" => PropType::Controller,
+    "CCSPlayerController.m_iCompTeammateColor" => PropType::Controller,
+    "CCSPlayerController.m_bEverPlayedOnTeam" => PropType::Controller,
+    "CCSPlayerController.m_szClan" => PropType::Controller,
+    "CCSPlayerController.m_iCoachingTeam" => PropType::Controller,
+    "CCSPlayerController.m_nPlayerDominated" => PropType::Controller,
+    "CCSPlayerController.m_nPlayerDominatingMe" => PropType::Controller,
+    "CCSPlayerController.m_iCompetitiveRanking" => PropType::Controller,
+    "CCSPlayerController.m_iCompetitiveWins" => PropType::Controller,
+    "CCSPlayerController.m_iCompetitiveRankType" => PropType::Controller,
+    "CCSPlayerController.m_nEndMatchNextMapVote" => PropType::Controller,
+    "CCSPlayerController.m_unActiveQuestId" => PropType::Controller,
+    "CCSPlayerController.m_nQuestProgressReason" => PropType::Controller,
+    "CCSPlayerController.m_unPlayerTvControlFlags" => PropType::Controller,
+    "CCSPlayerController.m_nDisconnectionTick" => PropType::Controller,
+    "CCSPlayerController.m_bControllingBot" => PropType::Controller,
+    "CCSPlayerController.m_bHasControlledBotThisRound" => PropType::Controller,
+    "CCSPlayerController.m_bCanControlObservedBot" => PropType::Controller,
+    "CCSPlayerController.m_hPlayerPawn" => PropType::Controller,
+    "CCSPlayerController.m_hObserverPawn" => PropType::Controller,
+    "CCSPlayerController.m_bPawnIsAlive" => PropType::Controller,
+    "CCSPlayerController.m_iPawnHealth" => PropType::Controller,
+    "CCSPlayerController.m_iPawnArmor" => PropType::Controller,
+    "CCSPlayerController.m_bPawnHasDefuser" => PropType::Controller,
+    "CCSPlayerController.m_bPawnHasHelmet" => PropType::Controller,
+    "CCSPlayerController.m_nPawnCharacterDefIndex" => PropType::Controller,
+    "CCSPlayerController.m_iPawnLifetimeStart" => PropType::Controller,
+    "CCSPlayerController.m_iPawnLifetimeEnd" => PropType::Controller,
+    "CCSPlayerController.m_iPawnGunGameLevel" => PropType::Controller,
+    "CCSPlayerController.m_iPawnBotDifficulty" => PropType::Controller,
+    "CCSPlayerController.m_hOriginalControllerOfCurrentPawn" => PropType::Controller,
+    "CCSPlayerController.m_iScore" => PropType::Controller,
+    "CCSPlayerController.m_flSimulationTime" => PropType::Controller,
+    "CCSPlayerController.m_nTickBase" => PropType::Controller,
+    "CCSPlayerController.m_fFlags" => PropType::Controller,
+    "CCSPlayerController.CEntityIdentity.m_nameStringableIndex" => PropType::Controller,
+    "CCSPlayerController.m_flCreateTime" => PropType::Controller,
+    "CCSPlayerController.m_iTeamNum" => PropType::Controller,
+    "CCSPlayerController.m_bSimulatedEveryTick" => PropType::Controller,
+    "CCSPlayerController.m_hPawn" => PropType::Controller,
+    "CCSPlayerController.m_iConnected" => PropType::Controller,
+    "CCSPlayerController.m_iszPlayerName" => PropType::Controller,
+    "CCSPlayerController.m_steamID" => PropType::Controller,
+    "CCSPlayerController.m_iDesiredFOV" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iAccount" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iStartAccount" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iTotalCashSpent" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iCashSpentThisRound" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.m_unMusicID" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.m_rank" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicLevel" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsLeader" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsTeacher" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsFriendly" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iItemDefinitionIndex" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iEntityQuality" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iEntityLevel" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iItemIDHigh" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iItemIDLow" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iAccountID" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iInventoryPosition" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_bInitialized" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.CEconItemAttribute.m_iAttributeDefinitionIndex" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.CEconItemAttribute.m_iRawValue32" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.CEconItemAttribute.m_flInitialValue" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.CEconItemAttribute.m_nRefundableCurrency" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.CEconItemAttribute.m_bSetBonus" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_szCustomName" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iKills" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iDeaths" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iAssists" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iLiveTime" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iHeadShotKills" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iDamage" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iObjective" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iUtilityDamage" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iEnemiesFlashed" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iEquipmentValue" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iMoneySaved" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iKillReward" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iCashEarned" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iKills" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iDeaths" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iAssists" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iLiveTime" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iHeadShotKills" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemy5Ks" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemy4Ks" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemy3Ks" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iNumRoundKills" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iNumRoundKillsHeadshots" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iDamage" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iObjective" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iUtilityDamage" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemiesFlashed" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEquipmentValue" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iMoneySaved" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iKillReward" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iCashEarned" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.m_nSendUpdate" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_PlayerDamager" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_PlayerRecipient" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_hPlayerControllerDamager" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_hPlayerControllerRecipient" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_szPlayerDamagerName" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_szPlayerRecipientName" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_DamagerXuid" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_RecipientXuid" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_iDamage" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_iActualHealthRemoved" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_iNumHits" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_iLastBulletUpdate" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_bIsOtherEnemy" => PropType::Controller,
+    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_killType" => PropType::Controller,
+    "CCSPlayerController.m_iPing"=> PropType::Controller,
+    // Custom
+    "X"=> PropType::Custom,
+    "Y"=> PropType::Custom,
+    "Z"=> PropType::Custom,
 };

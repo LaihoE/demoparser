@@ -7,8 +7,11 @@ mod parsing;
 use crate::parsing::sendtables::Decoder;
 
 fn main() {
-    let wanted_props = vec!["CCSPlayerPawn.m_iTeamNum".to_owned()];
-    let demo_path = "/home/laiho/Documents/demos/cs2/s2-gotv.dem";
+    let wanted_props = vec![
+        "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX".to_owned(),
+        "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY".to_owned(),
+    ];
+    let demo_path = "/home/laiho/Documents/demos/cs2/s2.dem";
 
     let before = Instant::now();
 
@@ -32,16 +35,14 @@ fn main() {
             parser.bytes.len(),
             parser.ptr as f32 / parser.bytes.len() as f32 * 100.0
         );
-
-        for k in parser.prop_name_to_path.keys() {
-            if k.contains("CCSPlayerPawn.m_iTeamNum") {
-                println!("{:?}", k);
+        /*
+        for p in parser.prop_name_to_path.keys() {
+            if p.contains("CCSPlayerPawn") {
+                println!("{:?}", p);
             }
         }
-        println!("{:?}", parser.output["CCSPlayerPawn.m_iTeamNum"]);
-
+        */
         break;
     }
-
     println!("{:2?}", before.elapsed());
 }

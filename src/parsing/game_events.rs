@@ -92,12 +92,12 @@ impl Parser {
                     Some(player) => {
                         kv_pairs.push(NameDataPair {
                             name: prefix.to_owned() + "_name",
-                            data: Some(KeyData::Str(player.name.clone())),
+                            data: Some(KeyData::Str(player.name.as_ref().unwrap().clone())),
                             data_type: 1,
                         });
                         kv_pairs.push(NameDataPair {
                             name: prefix.to_owned() + "_steamid",
-                            data: Some(KeyData::Uint64(player.steamid)),
+                            data: Some(KeyData::Uint64(player.steamid.as_ref().unwrap().clone())),
                             data_type: 7,
                         });
                     }
@@ -186,7 +186,6 @@ fn parse_key(key: &Key_t) -> Option<KeyData> {
         8 => Some(KeyData::I32(key.val_long().try_into().unwrap())),
         9 => Some(KeyData::I32(key.val_short().try_into().unwrap())),
         _ => {
-            println!("Unknown key type for game event key: {:?}", key);
             return None;
         }
     }

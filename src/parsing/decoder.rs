@@ -1,5 +1,3 @@
-use bitter::BitReader;
-
 use super::{
     read_bits::{BitReaderError, Bitreader},
     sendtables::Decoder,
@@ -49,27 +47,6 @@ impl<'a> Bitreader<'a> {
             v.push(self.decode_noscale()?)
         }
         Ok(v)
-    }
-    pub fn decode_vector_special(
-        &mut self,
-        float_type: Box<Decoder>,
-    ) -> Result<Vec<f32>, BitReaderError> {
-        let mut v = vec![];
-        let float_type = *float_type;
-        match float_type {
-            FloatCoordDecoder => {
-                for _ in 0..3 {
-                    v.push(self.decode_float_coord()?)
-                }
-                return Ok(v);
-            }
-            _ => {
-                for _ in 0..3 {
-                    v.push(self.decode_noscale()?)
-                }
-                return Ok(v);
-            }
-        }
     }
     pub fn decode_uint64(&mut self) -> Result<u64, BitReaderError> {
         let bytes = self.read_n_bytes(8)?;

@@ -8,7 +8,6 @@ use bit_reverse::LookupReverse;
 use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
-use smallvec::smallvec;
 
 const NSERIALBITS: u32 = 17;
 const STOP_READING_SYMBOL: u32 = 39;
@@ -21,31 +20,27 @@ pub struct Entity {
     pub cls_id: u32,
     pub entity_id: i32,
     pub props: HashMap<[i32; 7], PropData>,
+    pub entity_type: EntityType,
 }
 
 #[derive(Debug, Clone)]
 pub struct PlayerMetaData {
-    pub player_entity_id: i32,
-    pub steamid: u64,
-    pub controller_entid: i32,
-    pub name: String,
-    pub team_num: i32,
+    pub player_entity_id: Option<i32>,
+    pub steamid: Option<u64>,
+    pub controller_entid: Option<i32>,
+    pub name: Option<String>,
+    pub team_num: Option<u32>,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum EntityType {
+    PlayerController,
+    Rules,
+    Projectile,
+    Team,
+    Normal,
 }
 
 impl Parser {
-    pub fn get_prop_for_ent(&self, prop_name: &str, entity_id: &i32) -> Option<PropData> {
-        match &self.prop_name_to_path.get(prop_name) {
-            Some(path) => {
-                if let Some(ent) = self.entities.get(&entity_id) {
-                    if let Some(prop) = ent.props.get(path.clone()) {
-                        return Some(prop.clone());
-                    }
-                }
-            }
-            None => return None,
-        }
-        None
-    }
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
         if !self.parse_entities {
             return Ok(());
@@ -67,8 +62,7 @@ impl Parser {
 
         for _ in 0..n_updates {
             entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
-            // ents.push(entity_id);
-            // If the enitity should be deleted
+            // If the enitity should be deleted instead of updated
             if bitreader.read_boolie()? {
                 self.projectiles.remove(&entity_id);
                 self.entities.remove(&entity_id);
@@ -78,15 +72,27 @@ impl Parser {
             let is_new_entity = bitreader.read_boolie()?;
             // Should we create the entity, or refer to an old one
             if is_new_entity {
+                // Entity does not exist. Create it.
                 let cls_id = bitreader.read_nbits(self.cls_bits.unwrap())?;
                 // Both of these are not used. Don't think they are interesting for the parser
                 let _serial = bitreader.read_nbits(NSERIALBITS)?;
                 let _unknown = bitreader.read_varint();
 
+                // Entity type is "made up" not part of the demo in any way,
+                // used internally by the parser to help find data easier
+                let entity_type = self.check_entity_type(&cls_id);
+                match entity_type {
+                    EntityType::Projectile => {
+                        self.projectiles.insert(entity_id);
+                    }
+                    EntityType::Rules => self.rules_entity_id = Some(entity_id),
+                    _ => {}
+                };
                 let entity = Entity {
                     entity_id: entity_id,
                     cls_id: cls_id,
                     props: HashMap::default(),
+                    entity_type: entity_type,
                 };
 
                 self.entities.insert(entity_id, entity);
@@ -94,34 +100,37 @@ impl Parser {
                 if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
                     let b = &baseline_bytes.clone();
                     let mut br = Bitreader::new(&b);
-                    self.decode_entity_update(&mut br, entity_id, true)?;
+                    self.update_entity(&mut br, entity_id)?;
                 };
-
-                if self.cls_by_id[cls_id as usize].as_ref().unwrap().name == "CCSGameRulesProxy" {
-                    self.rules_entity_id = Some(entity_id);
-                }
-                if self.cls_by_id[cls_id as usize]
-                    .as_ref()
-                    .unwrap()
-                    .name
-                    .contains("Projectile")
-                {
-                    self.projectiles.insert(entity_id);
-                }
-                self.decode_entity_update(&mut bitreader, entity_id, false)?;
+                self.update_entity(&mut bitreader, entity_id)?;
             } else {
                 // Entity already exists, don't create it
-                self.decode_entity_update(&mut bitreader, entity_id, false)?;
+                self.update_entity(&mut bitreader, entity_id)?;
             }
         }
         Ok(())
     }
+    pub fn check_entity_type(&self, cls_id: &u32) -> EntityType {
+        let class = self.cls_by_id[*cls_id as usize].as_ref().unwrap();
+        match class.name.as_str() {
+            "CCSPlayerController" => return EntityType::PlayerController,
+            "CCSGameRulesProxy" => return EntityType::Rules,
+            "CCSTeam" => return EntityType::Team,
+            _ => {}
+        }
+        if class.name.contains("Projectile") {
+            return EntityType::Projectile;
+        }
+        return EntityType::Normal;
+    }
     pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, BitReaderError> {
         /*
         Create a field path by decoding using a Huffman tree.
+        The huffman tree can be found at the bottom of entities_utils.rs
+
         A field path is a "path trough a struct" where
         the struct can have normal fields but also pointers
-        to another structs.
+        to other (nested) structs.
 
         Example:
 
@@ -181,13 +190,14 @@ impl Parser {
         Personally I find this path idea horribly complicated. Why is this chosen over
         the way it was done in source 1 demos?
         */
+
         // Create an "empty" path ([-1, 0, 0, 0, 0, 0, 0])
         // For perfomance reasons have them always the same len
         let mut fp = generate_fp();
         let mut idx = 0;
         // Do huffman decoding with a lookup table instead of reading one bit at a time
         // and traversing a tree.
-        // Here we peek ("HUFFMAN_CODE_MAXLEN" == 17) amount of bits and see from a table what
+        // Here we peek ("HUFFMAN_CODE_MAXLEN" == 17) amount of bits and see from a table which
         // symbol it maps to and how many bits should be read.
         // The symbol is then mapped into an op for filling the field path.
         loop {
@@ -195,18 +205,11 @@ impl Parser {
             let peek_wrong_order = bitreader.reader.peek(HUFFMAN_CODE_MAXLEN);
             let peekbits = peek_wrong_order.swap_bits() >> RIGHTSHIFT_BITORDER;
             // Check if first bit is zero then symbol should be zero.
-            // Don't know how a lookup table could handle this.
-            let (symbol, bitlen) = match peek_wrong_order & 1 {
+            let (symbol, code_len) = match peek_wrong_order & 1 {
                 0 => (0, 1),
                 _ => self.huffman_lookup_table[peekbits as usize],
             };
-            /*
-            let n_skip_bits = self.symbol_bits[symbol as usize];
-            if bitlen != n_skip_bits as u32 {
-                println!("{} {}", bitlen, n_skip_bits);
-            }
-            */
-            bitreader.reader.consume((bitlen) as u32);
+            bitreader.reader.consume((code_len) as u32);
             if symbol == STOP_READING_SYMBOL {
                 break;
             }
@@ -216,12 +219,22 @@ impl Parser {
         }
         Ok(idx)
     }
+    pub fn update_entity(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: i32,
+    ) -> Result<(), BitReaderError> {
+        let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
+        if n_updated_values > 0 {
+            self.gather_extra_info(&entity_id)?;
+        }
+        Ok(())
+    }
     pub fn decode_entity_update(
         &mut self,
         bitreader: &mut Bitreader,
         entity_id: i32,
-        is_baseline: bool,
-    ) -> Result<(), BitReaderError> {
+    ) -> Result<usize, BitReaderError> {
         let n_paths = self.parse_paths(bitreader)?;
         let entity = match self.entities.get_mut(&(entity_id)) {
             Some(ent) => ent,
@@ -231,122 +244,94 @@ impl Parser {
             Some(cls) => cls,
             None => return Err(BitReaderError::ClassNotFound),
         };
-        if class.name == "CCSPlayerController" {
-            // hacky solution for now
-            let player_md = Parser::fill_player_data(
-                &self.paths[..n_paths],
-                bitreader,
-                class,
-                entity,
-                is_baseline,
-            )?;
-            if player_md.player_entity_id != -1 {
-                self.players.insert(player_md.player_entity_id, player_md);
-            }
-        } else {
-            for path in &self.paths[..n_paths] {
-                let decoder = class.serializer.find_decoder(&path, 0, is_baseline);
-                let result = bitreader.decode(&decoder)?;
-
-                let b = class.serializer.debug_find_decoder(
-                    &path,
-                    0,
-                    is_baseline,
-                    class.serializer.name.clone(),
-                );
-                if b.full_name == "CCSPlayerPawn.m_iTeamNum" {
-                    println!("{} {:?}", is_baseline, result);
-                }
-
-                entity.props.insert(path.path, result);
-
-                /*
-                let b = class.serializer.debug_find_decoder(
-                    &path,
-                    0,
-                    is_baseline,
-                    class.serializer.name.clone(),
-                );
-                */
-
-                /*
-                if cls.name == "CCSTeam" && name == "m_iTeamNum" {
-                    if let PropData::U32(t) = result {
-                        match t {
-                            1 => self.teams.team1_entid = Some(entity_id),
-                            2 => self.teams.team2_entid = Some(entity_id),
-                            3 => self.teams.team3_entid = Some(entity_id),
-                            _ => {}
-                        }
-                    }
-                }
-                if self.count_props {
-                    self.props_counter
-                        .entry(name.clone())
-                        .and_modify(|counter| *counter += 1)
-                        .or_insert(1);
-                }
-                */
-            }
-        }
-        Ok(())
-    }
-
-    pub fn fill_player_data(
-        paths: &[FieldPath],
-        bitreader: &mut Bitreader,
-        cls: &Class,
-        entity: &mut Entity,
-        is_baseline: bool,
-    ) -> Result<PlayerMetaData, BitReaderError> {
-        let mut player = PlayerMetaData {
-            player_entity_id: -1,
-            controller_entid: entity.entity_id,
-            team_num: -1,
-            name: "".to_string(),
-            steamid: 0,
-        };
-        // m_iTeamNum 5
-        // m_iszPlayerName 9
-        // m_steamID 10
-        // m_hPlayerPawn 38
-        for path in paths {
-            let decoder = cls.serializer.find_decoder(&path, 0, is_baseline);
+        // Where the magic happens (all decoded values come from this loop)
+        for path in &self.paths[..n_paths] {
+            let decoder = class.serializer.find_decoder(&path, 0);
             let result = bitreader.decode(&decoder)?;
-            entity.props.insert(path.path, result.clone());
 
-            match path.path[0] {
-                5 => {}
-                9 => {
-                    player.name = match result {
-                        PropData::String(n) => n,
-                        _ => "Broken name!".to_owned(),
-                    };
+            // Can be used for debugging output
+            if 1 == 0 {
+                if class.name.contains("CCSPlayerResource") {
+                    let debug_field = class.serializer.debug_find_decoder(
+                        &path,
+                        0,
+                        class.serializer.name.clone(),
+                    );
                 }
-                10 => {
-                    player.steamid = match result {
-                        PropData::U64(xuid) => xuid,
-                        _ => 99999999,
-                    };
-                }
-                38 => {
-                    player.player_entity_id = match result {
-                        PropData::U32(handle) => {
-                            // create helper value
-                            entity.props.insert(
-                                [69, 69, 69, 69, 69, 69, 69],
-                                PropData::I32((handle & 0x7FF) as i32),
-                            );
-                            (handle & 0x7FF) as i32
-                        }
-                        _ => -1,
-                    };
-                }
-                _ => {}
             }
+            entity.props.insert(path.path, result);
+        }
+        Ok(n_paths)
+    }
+    pub fn gather_extra_info(&mut self, entity_id: &i32) -> Result<(), BitReaderError> {
+        // Boring stuff.. function does some bookkeeping
+        let entity = match self.entities.get_mut(entity_id) {
+            Some(ent) => ent,
+            None => return Err(BitReaderError::EntityNotFound),
+        };
+        if !(entity.entity_type == EntityType::PlayerController
+            || entity.entity_type == EntityType::Team)
+        {
+            return Ok(());
         }
 
-        Ok(player)
+        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
+            Some(cls) => cls,
+            None => return Err(BitReaderError::ClassNotFound),
+        };
+        if class.name == "CCSTeam" {
+            if let Some(PropData::U32(t)) = self.get_prop_for_ent("CCSTeam.m_iTeamNum", entity_id) {
+                match t {
+                    1 => self.teams.team1_entid = Some(*entity_id),
+                    2 => self.teams.team2_entid = Some(*entity_id),
+                    3 => self.teams.team3_entid = Some(*entity_id),
+                    _ => {}
+                }
+            }
+            return Ok(());
+        }
+
+        let team_num = match self.get_prop_for_ent("CCSPlayerController.m_iTeamNum", entity_id) {
+            Some(team_num) => match team_num {
+                PropData::U32(team_num) => Some(team_num),
+                // Signals that something went very wrong
+                _ => return Err(BitReaderError::IncorrectMetaDataProp),
+            },
+            None => None,
+        };
+        let name = match self.get_prop_for_ent("CCSPlayerController.m_iszPlayerName", entity_id) {
+            Some(name) => match name {
+                PropData::String(name) => Some(name),
+                _ => return Err(BitReaderError::IncorrectMetaDataProp),
+            },
+            None => None,
+        };
+        let steamid = match self.get_prop_for_ent("CCSPlayerController.m_steamID", entity_id) {
+            Some(steamid) => match steamid {
+                PropData::U64(steamid) => Some(steamid),
+                _ => return Err(BitReaderError::IncorrectMetaDataProp),
+            },
+            None => None,
+        };
+        let player_entid =
+            match self.get_prop_for_ent("CCSPlayerController.m_hPlayerPawn", entity_id) {
+                Some(player_entid) => match player_entid {
+                    PropData::U32(handle) => Some((handle & 0x7FF) as i32),
+                    _ => return Err(BitReaderError::IncorrectMetaDataProp),
+                },
+                None => None,
+            };
+        self.players.insert(
+            player_entid.unwrap(),
+            PlayerMetaData {
+                name: name,
+                team_num: team_num,
+                player_entity_id: player_entid,
+                steamid: steamid,
+                controller_entid: Some(*entity_id),
+            },
+        );
+        Ok(())
     }
 }
 use super::read_bits::BitReaderError;
@@ -357,3 +342,12 @@ fn generate_fp() -> FieldPath {
         last: 0,
     }
 }
+
+/*
+if class.name == "CCSPlayerController" {
+    let b =
+        class
+            .serializer
+            .debug_find_decoder(&path, 0, class.serializer.name.clone());
+}
+*/

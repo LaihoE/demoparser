@@ -1,12 +1,5 @@
 use super::read_bits::BitReaderError;
-use super::sendtables::Decoder;
-use crate::parsing::parser_settings::Parser;
 use crate::parsing::read_bits::Bitreader;
-use phf_macros::phf_map;
-use smallvec::SmallVec;
-use std::cmp::Ordering;
-use std::cmp::Reverse;
-use std::collections::BinaryHeap;
 
 pub fn do_op(
     opcode: u32,
@@ -57,47 +50,6 @@ pub fn do_op(
         37 => non_topo_penultimate_plus_one(bitreader, field_path),
         38 => non_topo_complex_pack4_bits(bitreader, field_path),
         _ => Err(BitReaderError::UnknownPathOP),
-    }
-}
-
-#[derive(Eq, Debug)]
-pub struct HuffmanNode {
-    pub weight: i32,
-    pub value: i32,
-    pub left: Option<Box<HuffmanNode>>,
-    pub right: Option<Box<HuffmanNode>>,
-}
-
-impl HuffmanNode {
-    #[inline(always)]
-    pub fn is_leaf(&self) -> bool {
-        self.left.is_none() && self.right.is_none()
-    }
-}
-
-impl Ord for HuffmanNode {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.weight == other.weight {
-            if self.value >= other.value {
-                Ordering::Less
-            } else {
-                Ordering::Greater
-            }
-        } else {
-            self.weight.cmp(&other.weight)
-        }
-    }
-}
-
-impl PartialOrd for HuffmanNode {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for HuffmanNode {
-    fn eq(&self, other: &Self) -> bool {
-        self.weight == other.weight
     }
 }
 
