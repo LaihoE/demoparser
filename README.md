@@ -15,14 +15,13 @@ This will have to do for now 😂
 parser = DemoParser("path_to_demo.dem")
 
 # returns list like: ["player_death", "weapon_fire"...]
-name_list = parser.list_game_events()
+event_name_list = parser.list_game_events()
 
 df = parser.parse_grenades()
 df = parser.parse_item_drops()
 df = parser.parse_skins()
 df = parser.parse_player_info()
 dict_output = parser.parse_convars()
-
 ```
 All of these take no arguments and return the same shape data. Probably easiest to understand by just trying these out.
 

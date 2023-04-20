@@ -149,8 +149,6 @@ impl Parser {
         );
         self.header
             .insert("addons".to_string(), header.addons().to_string());
-
-        println!("{:?}", self.header.keys());
         Ok(())
     }
     pub fn parse_classes(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
@@ -194,7 +192,6 @@ impl Parser {
         Ok(())
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
-        println!("{}", self.tick);
         return Ok(());
         // Not in use atm
 

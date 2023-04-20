@@ -111,7 +111,7 @@ impl Parser {
         Ok(())
     }
     pub fn parse_file_info(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
-        let info: CDemoFileInfo = Message::parse_from_bytes(bytes).unwrap();
+        let _info: CDemoFileInfo = Message::parse_from_bytes(bytes).unwrap();
         Ok(())
     }
 }

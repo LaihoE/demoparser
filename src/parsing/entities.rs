@@ -1,4 +1,3 @@
-use crate::parsing::class::Class;
 use crate::parsing::entities_utils::*;
 use crate::parsing::parser_settings::Parser;
 use crate::parsing::read_bits::Bitreader;
@@ -252,7 +251,7 @@ impl Parser {
             // Can be used for debugging output
             if 1 == 0 {
                 if class.name.contains("CCSPlayerResource") {
-                    let debug_field = class.serializer.debug_find_decoder(
+                    let _debug_field = class.serializer.debug_find_decoder(
                         &path,
                         0,
                         class.serializer.name.clone(),
@@ -274,7 +273,6 @@ impl Parser {
         {
             return Ok(());
         }
-
         let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
             Some(cls) => cls,
             None => return Err(BitReaderError::ClassNotFound),
@@ -290,7 +288,6 @@ impl Parser {
             }
             return Ok(());
         }
-
         let team_num = match self.get_prop_for_ent("CCSPlayerController.m_iTeamNum", entity_id) {
             Some(team_num) => match team_num {
                 PropData::U32(team_num) => Some(team_num),
