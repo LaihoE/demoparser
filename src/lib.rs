@@ -95,32 +95,6 @@ impl DemoParser {
         let dict = pyo3::Python::with_gil(|py| h.to_object(py));
         Ok(dict)
     }
-    /// Returns the names and frequencies of values set to entities during the game.
-    ///
-    /// Example: {"m_vecX": 87741, "m_iAmmo": 98521 ...}
-    pub fn list_entity_values(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let settings = ParserInputs {
-            path: self.path.to_owned(),
-            wanted_props: vec![],
-            wanted_event: None,
-            parse_ents: true,
-            wanted_ticks: vec![],
-            parse_projectiles: false,
-            only_header: false,
-            count_props: true,
-            only_convars: false,
-        };
-        let mut parser = Parser::new(settings);
-        match parser.start() {
-            Ok(_) => {}
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
-        };
-        // Sort by freq
-        let mut v: Vec<_> = parser.props_counter.iter().collect();
-        v.sort_by(|x, y| x.1.cmp(&y.1));
-        let h = HashMap::from_iter(v);
-        Ok(h.to_object(py))
-    }
     /// Returns all coordinates of all grenades along with info about thrower.
     ///
     /// Example:
