@@ -1,6 +1,6 @@
 use crate::parsing::parser_settings::ChatMessageRecord;
 use crate::parsing::parser_settings::PlayerEndData;
-use crate::parsing::read_bits::BitReaderError;
+use crate::parsing::read_bits::DemoParserError;
 use crate::{parsing::parser_settings::EconItem, Parser};
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_EndOfMatchAllPlayersData;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_SendPlayerItemDrops;
@@ -12,7 +12,7 @@ use protobuf::Message;
 // Don't want to create a new file for each of these.
 
 impl Parser {
-    pub fn parse_item_drops(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_item_drops(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let drops: CCSUsrMsg_SendPlayerItemDrops = Message::parse_from_bytes(&bytes).unwrap();
         for item in &drops.entity_updates {
             self.item_drops.push(EconItem {
@@ -34,7 +34,7 @@ impl Parser {
         }
         Ok(())
     }
-    pub fn parse_chat_messages(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_chat_messages(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let chat_msg: CUserMessageSayText2 = Message::parse_from_bytes(bytes).unwrap();
         self.chat_messages.push(ChatMessageRecord {
             entity_idx: chat_msg.entityindex,
@@ -45,7 +45,7 @@ impl Parser {
         });
         Ok(())
     }
-    pub fn parse_convars(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_convars(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let convar: CNETMsg_SetConVar = Message::parse_from_bytes(bytes).unwrap();
         for cv in &convar.convars {
             for var in &cv.cvars {
@@ -56,7 +56,7 @@ impl Parser {
         Ok(())
     }
 
-    pub fn parse_player_end_msg(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_player_end_msg(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let end_data: CCSUsrMsg_EndOfMatchAllPlayersData =
             Message::parse_from_bytes(&bytes).unwrap();
         /*
@@ -105,12 +105,12 @@ impl Parser {
         }
         Ok(())
     }
-    pub fn parse_player_stats_update(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_player_stats_update(&mut self, _bytes: &[u8]) -> Result<(), DemoParserError> {
         // Only in pov demos
         // let upd: CCSUsrMsg_PlayerStatsUpdate = Message::parse_from_bytes(bytes).unwrap();
         Ok(())
     }
-    pub fn parse_file_info(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_file_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let _info: CDemoFileInfo = Message::parse_from_bytes(bytes).unwrap();
         Ok(())
     }

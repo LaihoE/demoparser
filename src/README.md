@@ -1,7 +1,9 @@
 ### Welcome to the source code
 
 
-
+lib.rs => Python bindings
+main.rs => Some junk if you want to try out with rust
+The parser itself is in the parsing dir
 
 The outer loop trough the file is very simple and can be found in parsing/parser.rs.
 
@@ -95,3 +97,10 @@ The majority of data in the demo. All the data relating to entities. For example
 Something to note is that packet entities only send changes in values. If a player is standing still then the players coordinates are not updated during that tick. This means that a value at tick 5000 may have been set at tick 3542 (when the player last moved) so you can't just parse the ticks that you are interested in, but also ticks before that. In theory it is possible to start a tick and parse ticks backwards until you find the most recent update, but this idea is very messy to implement.
 
 This part combined with command "DEM_SendTables" are by far the most comlicated parts of the demo. Getting these right is way harder than the rest of the demo parsing. If you want to try parsing the demo I would recommend by starting with game events and then move on to these.
+
+
+
+
+### Other stuff
+
+The demo has 2 headers. First header 16 bytes and is just demo magic + how long file is expected to be. The other has some more info like what map was played.

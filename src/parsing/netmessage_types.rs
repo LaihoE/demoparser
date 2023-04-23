@@ -90,7 +90,6 @@ pub fn netmessage_type_from_int(msg_type: i32) -> NetmessageType {
         160 => UM_RequestInventory,
         161 => UM_InventoryResponse,
         200 => GE_VDebugGameSessionIDEvent,
-        200 => UM_MAX_BASE,
         201 => GE_PlaceDecalEvent,
         202 => GE_ClearWorldDecalsEvent,
         203 => GE_ClearEntityDecalsEvent,
@@ -183,7 +182,7 @@ pub fn netmessage_type_from_int(msg_type: i32) -> NetmessageType {
     }
 }
 #[derive(Debug, PartialEq)]
-#[warn(non_camel_case_types)]
+#[allow(non_camel_case_types)]
 pub enum NetmessageType {
     Unknown,
     net_NOP,
@@ -362,5 +361,4 @@ pub enum NetmessageType {
     UM_DllStatusResponse,
     UM_RequestInventory,
     UM_InventoryResponse,
-    UM_MAX_BASE,
 }

@@ -570,7 +570,11 @@ impl Parser {
                     arr[idx] = *val;
                 }
 
-                if self.wanted_props.contains(&f.var_name) {
+                if self
+                    .wanted_props
+                    .contains(&(ser_name.clone() + "." + &f.var_name))
+                {
+                    println!("{:?}", f.var_name);
                     self.wanted_prop_paths.insert(arr);
                 }
 

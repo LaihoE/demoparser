@@ -1,3 +1,4 @@
+use super::read_bits::DemoParserError;
 use crate::parsing::entities_utils::*;
 use crate::parsing::parser_settings::Parser;
 use crate::parsing::read_bits::Bitreader;
@@ -20,6 +21,7 @@ pub struct Entity {
     pub entity_id: i32,
     pub props: HashMap<[i32; 7], PropData>,
     pub entity_type: EntityType,
+    pub history: HashMap<[i32; 7], Vec<PropData>>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,9 +40,14 @@ pub enum EntityType {
     Team,
     Normal,
 }
+enum EntityCmd {
+    Delete,
+    CreateAndUpdate,
+    Update,
+}
 
 impl Parser {
-    pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
         }
@@ -50,63 +57,117 @@ impl Parser {
     fn _parse_packet_ents(
         &mut self,
         packet_ents: CSVCMsg_PacketEntities,
-    ) -> Result<(), BitReaderError> {
+    ) -> Result<(), DemoParserError> {
         let n_updates = packet_ents.updated_entries();
         let data = match packet_ents.entity_data {
             Some(data) => data,
-            None => return Err(BitReaderError::MalformedMessage),
+            None => return Err(DemoParserError::MalformedMessage),
         };
         let mut bitreader = Bitreader::new(&data);
-        let mut entity_id: i32 = -1;
 
+        let mut entity_id: i32 = -1;
         for _ in 0..n_updates {
             entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
-            // If the enitity should be deleted instead of updated
-            if bitreader.read_boolie()? {
-                self.projectiles.remove(&entity_id);
-                self.entities.remove(&entity_id);
-                bitreader.read_boolie()?;
-                continue;
-            }
-            let is_new_entity = bitreader.read_boolie()?;
-            // Should we create the entity, or refer to an old one
-            if is_new_entity {
-                // Entity does not exist. Create it.
-                let cls_id = bitreader.read_nbits(self.cls_bits.unwrap())?;
-                // Both of these are not used. Don't think they are interesting for the parser
-                let _serial = bitreader.read_nbits(NSERIALBITS)?;
-                let _unknown = bitreader.read_varint();
 
-                // Entity type is "made up" not part of the demo in any way,
-                // used internally by the parser to help find data easier
-                let entity_type = self.check_entity_type(&cls_id);
-                match entity_type {
-                    EntityType::Projectile => {
-                        self.projectiles.insert(entity_id);
-                    }
-                    EntityType::Rules => self.rules_entity_id = Some(entity_id),
-                    _ => {}
-                };
-                let entity = Entity {
-                    entity_id: entity_id,
-                    cls_id: cls_id,
-                    props: HashMap::default(),
-                    entity_type: entity_type,
-                };
-
-                self.entities.insert(entity_id, entity);
-
-                if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
-                    let b = &baseline_bytes.clone();
-                    let mut br = Bitreader::new(&b);
-                    self.update_entity(&mut br, entity_id)?;
-                };
-                self.update_entity(&mut bitreader, entity_id)?;
-            } else {
-                // Entity already exists, don't create it
-                self.update_entity(&mut bitreader, entity_id)?;
+            // Read 2 bits to know which operation should be done to the entity.
+            let cmd = match bitreader.read_nbits(2)? {
+                0b01 => EntityCmd::Delete,
+                0b11 => EntityCmd::Delete,
+                0b10 => EntityCmd::CreateAndUpdate,
+                0b00 => EntityCmd::Update,
+                _ => panic!("impossible cmd"),
+            };
+            match cmd {
+                EntityCmd::Delete => {
+                    self.projectiles.remove(&entity_id);
+                    self.entities.remove(&entity_id);
+                }
+                EntityCmd::CreateAndUpdate => {
+                    self.create_new_entity(&mut bitreader, &entity_id)?;
+                    self.update_entity(&mut bitreader, entity_id)?;
+                }
+                EntityCmd::Update => {
+                    self.update_entity(&mut bitreader, entity_id)?;
+                }
             }
         }
+        Ok(())
+    }
+    pub fn update_entity(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: i32,
+    ) -> Result<(), DemoParserError> {
+        let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
+        if n_updated_values > 0 {
+            self.gather_extra_info(&entity_id)?;
+        }
+        Ok(())
+    }
+    pub fn decode_entity_update(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: i32,
+    ) -> Result<usize, DemoParserError> {
+        let n_paths = self.parse_paths(bitreader)?;
+        let entity = match self.entities.get_mut(&(entity_id)) {
+            Some(ent) => ent,
+            None => return Err(DemoParserError::EntityNotFound),
+        };
+        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
+            Some(cls) => cls,
+            None => return Err(DemoParserError::ClassNotFound),
+        };
+        // Where the magic happens (all decoded values come from this loop)
+        for path in &self.paths[..n_paths] {
+            let decoder = class.serializer.find_decoder(&path, 0);
+            let result = bitreader.decode(&decoder)?;
+
+            // Can be used for debugging output
+            if 1 == 0 {
+                let debug_field =
+                    class
+                        .serializer
+                        .debug_find_decoder(&path, 0, class.serializer.name.clone());
+            }
+
+            entity.props.insert(path.path, result);
+        }
+        Ok(n_paths)
+    }
+
+    fn create_new_entity(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: &i32,
+    ) -> Result<(), DemoParserError> {
+        let cls_id: u32 = bitreader.read_nbits(self.cls_bits.unwrap())?;
+        // Both of these are not used. Don't think they are interesting for the parser
+        let _serial = bitreader.read_nbits(NSERIALBITS)?;
+        let _unknown = bitreader.read_varint();
+
+        let entity_type = self.check_entity_type(&cls_id);
+        match entity_type {
+            EntityType::Projectile => {
+                self.projectiles.insert(*entity_id);
+            }
+            EntityType::Rules => self.rules_entity_id = Some(*entity_id),
+            _ => {}
+        };
+        let entity = Entity {
+            entity_id: *entity_id,
+            cls_id: cls_id,
+            props: HashMap::default(),
+            entity_type: entity_type,
+            history: HashMap::default(),
+        };
+        self.entities.insert(*entity_id, entity);
+        // Insert baselines
+        if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
+            let b = &baseline_bytes.clone();
+            let mut br = Bitreader::new(&b);
+            self.update_entity(&mut br, *entity_id)?;
+        };
         Ok(())
     }
     pub fn check_entity_type(&self, cls_id: &u32) -> EntityType {
@@ -122,7 +183,7 @@ impl Parser {
         }
         return EntityType::Normal;
     }
-    pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, BitReaderError> {
+    pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, DemoParserError> {
         /*
         Create a field path by decoding using a Huffman tree.
         The huffman tree can be found at the bottom of entities_utils.rs
@@ -133,7 +194,7 @@ impl Parser {
 
         Example:
 
-        The list will be filled with these:
+        The array will be filled with these:
 
         Struct Field{
             wanted_information: Option<T>,
@@ -183,7 +244,7 @@ impl Parser {
                 fields: None,
             },
         ]
-        Not sure what is the maximum depth of these structs are, but others seem to use
+        Not sure what the maximum depth of these structs are, but others seem to use
         7 as the max length of field path so maybe that?
 
         Personally I find this path idea horribly complicated. Why is this chosen over
@@ -209,6 +270,7 @@ impl Parser {
                 _ => self.huffman_lookup_table[peekbits as usize],
             };
             bitreader.reader.consume((code_len) as u32);
+
             if symbol == STOP_READING_SYMBOL {
                 break;
             }
@@ -218,55 +280,12 @@ impl Parser {
         }
         Ok(idx)
     }
-    pub fn update_entity(
-        &mut self,
-        bitreader: &mut Bitreader,
-        entity_id: i32,
-    ) -> Result<(), BitReaderError> {
-        let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
-        if n_updated_values > 0 {
-            self.gather_extra_info(&entity_id)?;
-        }
-        Ok(())
-    }
-    pub fn decode_entity_update(
-        &mut self,
-        bitreader: &mut Bitreader,
-        entity_id: i32,
-    ) -> Result<usize, BitReaderError> {
-        let n_paths = self.parse_paths(bitreader)?;
-        let entity = match self.entities.get_mut(&(entity_id)) {
-            Some(ent) => ent,
-            None => return Err(BitReaderError::EntityNotFound),
-        };
-        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
-            Some(cls) => cls,
-            None => return Err(BitReaderError::ClassNotFound),
-        };
-        // Where the magic happens (all decoded values come from this loop)
-        for path in &self.paths[..n_paths] {
-            let decoder = class.serializer.find_decoder(&path, 0);
-            let result = bitreader.decode(&decoder)?;
 
-            // Can be used for debugging output
-            if 1 == 0 {
-                if class.name.contains("CCSPlayerResource") {
-                    let _debug_field = class.serializer.debug_find_decoder(
-                        &path,
-                        0,
-                        class.serializer.name.clone(),
-                    );
-                }
-            }
-            entity.props.insert(path.path, result);
-        }
-        Ok(n_paths)
-    }
-    pub fn gather_extra_info(&mut self, entity_id: &i32) -> Result<(), BitReaderError> {
+    pub fn gather_extra_info(&mut self, entity_id: &i32) -> Result<(), DemoParserError> {
         // Boring stuff.. function does some bookkeeping
         let entity = match self.entities.get_mut(entity_id) {
             Some(ent) => ent,
-            None => return Err(BitReaderError::EntityNotFound),
+            None => return Err(DemoParserError::EntityNotFound),
         };
         if !(entity.entity_type == EntityType::PlayerController
             || entity.entity_type == EntityType::Team)
@@ -275,7 +294,7 @@ impl Parser {
         }
         let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
             Some(cls) => cls,
-            None => return Err(BitReaderError::ClassNotFound),
+            None => return Err(DemoParserError::ClassNotFound),
         };
         if class.name == "CCSTeam" {
             if let Some(PropData::U32(t)) = self.get_prop_for_ent("CCSTeam.m_iTeamNum", entity_id) {
@@ -292,21 +311,21 @@ impl Parser {
             Some(team_num) => match team_num {
                 PropData::U32(team_num) => Some(team_num),
                 // Signals that something went very wrong
-                _ => return Err(BitReaderError::IncorrectMetaDataProp),
+                _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
             None => None,
         };
         let name = match self.get_prop_for_ent("CCSPlayerController.m_iszPlayerName", entity_id) {
             Some(name) => match name {
                 PropData::String(name) => Some(name),
-                _ => return Err(BitReaderError::IncorrectMetaDataProp),
+                _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
             None => None,
         };
         let steamid = match self.get_prop_for_ent("CCSPlayerController.m_steamID", entity_id) {
             Some(steamid) => match steamid {
                 PropData::U64(steamid) => Some(steamid),
-                _ => return Err(BitReaderError::IncorrectMetaDataProp),
+                _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
             None => None,
         };
@@ -314,7 +333,7 @@ impl Parser {
             match self.get_prop_for_ent("CCSPlayerController.m_hPlayerPawn", entity_id) {
                 Some(player_entid) => match player_entid {
                     PropData::U32(handle) => Some((handle & 0x7FF) as i32),
-                    _ => return Err(BitReaderError::IncorrectMetaDataProp),
+                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
                 },
                 None => None,
             };
@@ -331,7 +350,6 @@ impl Parser {
         Ok(())
     }
 }
-use super::read_bits::BitReaderError;
 
 fn generate_fp() -> FieldPath {
     FieldPath {
@@ -339,12 +357,3 @@ fn generate_fp() -> FieldPath {
         last: 0,
     }
 }
-
-/*
-if class.name == "CCSPlayerController" {
-    let b =
-        class
-            .serializer
-            .debug_find_decoder(&path, 0, class.serializer.name.clone());
-}
-*/

@@ -481,6 +481,7 @@ dependencies = [
  "fxhash",
  "itertools",
  "lazy_static",
+ "memmap2",
  "ndarray",
  "nohash-hasher",
  "phf",

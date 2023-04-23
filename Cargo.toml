@@ -34,6 +34,7 @@ arrow-array = "37.0.0"
 nohash-hasher = "0.2.0"
 lazy_static = "1.4.0"
 bit_reverse = "0.1.8"
+memmap2 = "0.5.10"
 
 
 

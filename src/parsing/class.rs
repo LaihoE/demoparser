@@ -1,4 +1,4 @@
-use super::{read_bits::BitReaderError, sendtables::Serializer};
+use super::{read_bits::DemoParserError, sendtables::Serializer};
 use crate::parsing::parser_settings::Parser;
 use ahash::HashSet;
 use csgoproto::demo::CDemoClassInfo;
@@ -13,7 +13,7 @@ pub struct Class {
 }
 
 impl Parser {
-    pub fn parse_class_info(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_class_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
         }

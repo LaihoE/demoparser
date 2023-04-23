@@ -1,6 +1,6 @@
 use super::entities::PlayerMetaData;
 use crate::parsing::parser_settings::Parser;
-use crate::parsing::read_bits::BitReaderError;
+use crate::parsing::read_bits::DemoParserError;
 use crate::parsing::variants::keydata_type_from_propdata;
 use crate::parsing::variants::*;
 use ahash::AHashMap;
@@ -33,7 +33,7 @@ impl TryFrom<Option<PropData>> for KeyData {
 }
 
 impl Parser {
-    pub fn parse_game_event_map(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_game_event_map(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
         let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
         for event_desc in event_list.descriptors {
@@ -43,7 +43,7 @@ impl Parser {
         Ok(())
     }
 
-    pub fn parse_event(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_event(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if self.wanted_event.is_none() {
             return Ok(());
         }
@@ -133,7 +133,6 @@ impl Parser {
     pub fn player_metadata_from_entid(&self, entity_id: i32) -> Option<&PlayerMetaData> {
         self.players.get(&entity_id)
     }
-
     pub fn find_extra_props(&self, entity_id: i32, prefix: &str) -> Vec<NameDataPair> {
         let mut extra_pairs = vec![];
         for prop_name in &self.wanted_props {

@@ -5,7 +5,7 @@ use pyo3::PyErr;
 use std::fmt;
 
 #[derive(Debug)]
-pub enum BitReaderError {
+pub enum DemoParserError {
     OutOfBitsError,
     OutOfBytesError,
     FailedByteRead(String),
@@ -19,18 +19,19 @@ pub enum BitReaderError {
     UnknownFile,
     IncorrectMetaDataProp,
     UnknownPropName(String),
+    FileError(std::io::Error),
 }
 
-impl std::error::Error for BitReaderError {}
+impl std::error::Error for DemoParserError {}
 
-impl fmt::Display for BitReaderError {
+impl fmt::Display for DemoParserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl std::convert::From<BitReaderError> for PyErr {
-    fn from(err: BitReaderError) -> PyErr {
+impl std::convert::From<DemoParserError> for PyErr {
+    fn from(err: DemoParserError) -> PyErr {
         PyValueError::new_err(err.to_string())
     }
 }
@@ -47,14 +48,14 @@ impl<'a> Bitreader<'a> {
         b
     }
     #[inline(always)]
-    pub fn read_nbits(&mut self, n: u32) -> Result<u32, BitReaderError> {
+    pub fn read_nbits(&mut self, n: u32) -> Result<u32, DemoParserError> {
         match self.reader.read_bits(n) {
             Some(bits) => Ok(bits as u32 & MASKS[n as usize]),
-            None => Err(BitReaderError::OutOfBitsError),
+            None => Err(DemoParserError::OutOfBitsError),
         }
     }
     #[inline(always)]
-    pub fn read_u_bit_var(&mut self) -> Result<u32, BitReaderError> {
+    pub fn read_u_bit_var(&mut self) -> Result<u32, DemoParserError> {
         let mut ret = self.read_nbits(6)?;
         if ret & 48 == 16 {
             ret = (ret & 15) | (self.read_nbits(4)? << 4);
@@ -66,7 +67,7 @@ impl<'a> Bitreader<'a> {
         Ok(ret)
     }
     #[inline(always)]
-    pub fn read_varint32(&mut self) -> Result<i32, BitReaderError> {
+    pub fn read_varint32(&mut self) -> Result<i32, DemoParserError> {
         let x = self.read_varint()? as i32;
         let mut y = x >> 1;
         if x & 1 != 0 {
@@ -75,7 +76,7 @@ impl<'a> Bitreader<'a> {
         Ok(y as i32)
     }
     #[inline(always)]
-    pub fn read_varint(&mut self) -> Result<u32, BitReaderError> {
+    pub fn read_varint(&mut self) -> Result<u32, DemoParserError> {
         let mut result: u32 = 0;
         let mut count: i32 = 0;
         let mut b: u32;
@@ -93,7 +94,7 @@ impl<'a> Bitreader<'a> {
         Ok(result)
     }
     #[inline(always)]
-    pub fn read_varint_u_64(&mut self) -> Result<u64, BitReaderError> {
+    pub fn read_varint_u_64(&mut self) -> Result<u64, DemoParserError> {
         let mut result: u64 = 0;
         let mut count: i32 = 0;
         let mut b: u32;
@@ -116,17 +117,17 @@ impl<'a> Bitreader<'a> {
         Ok(result)
     }
     #[inline(always)]
-    pub fn read_boolie(&mut self) -> Result<bool, BitReaderError> {
+    pub fn read_boolie(&mut self) -> Result<bool, DemoParserError> {
         match self.reader.read_bit() {
             Some(b) => Ok(b),
-            None => Err(BitReaderError::OutOfBitsError),
+            None => Err(DemoParserError::OutOfBitsError),
         }
     }
-    pub fn read_n_bytes(&mut self, n: usize) -> Result<Vec<u8>, BitReaderError> {
+    pub fn read_n_bytes(&mut self, n: usize) -> Result<Vec<u8>, DemoParserError> {
         let mut bytes = vec![0; n];
         match self.reader.read_bytes(&mut bytes) {
             true => Ok(bytes),
-            false => Err(BitReaderError::FailedByteRead(
+            false => Err(DemoParserError::FailedByteRead(
                 format!(
                     "Failed to read message/command. bytes left in stream: {}, requested bytes: {}",
                     self.reader.bits_remaining().unwrap() / 8,
@@ -137,7 +138,7 @@ impl<'a> Bitreader<'a> {
         }
     }
     #[inline(always)]
-    pub fn read_ubit_var_fp(&mut self) -> Result<u32, BitReaderError> {
+    pub fn read_ubit_var_fp(&mut self) -> Result<u32, DemoParserError> {
         if self.read_boolie()? {
             return Ok(self.read_nbits(2)?);
         }
@@ -153,7 +154,7 @@ impl<'a> Bitreader<'a> {
         return Ok(self.read_nbits(31)?);
     }
     #[inline(always)]
-    pub fn read_bit_coord(&mut self) -> Result<f32, BitReaderError> {
+    pub fn read_bit_coord(&mut self) -> Result<f32, DemoParserError> {
         let mut int_val = 0;
         let mut frac_val = 0;
         let i2 = self.read_boolie()?;

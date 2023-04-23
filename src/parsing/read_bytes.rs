@@ -1,31 +1,20 @@
-use super::read_bits::BitReaderError;
+use super::read_bits::DemoParserError;
 use crate::parsing::parser_settings::Parser;
 
 impl Parser {
     #[inline]
-    pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], BitReaderError> {
+    pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], DemoParserError> {
         // This will likely fail when demo download was cut off and demo
         // ends early
         if self.ptr + n as usize >= self.bytes.len() {
-            return Err(BitReaderError::OutOfBytesError);
+            return Err(DemoParserError::OutOfBytesError);
         }
         let s = &self.bytes[self.ptr..self.ptr + n as usize];
         self.ptr += n as usize;
         Ok(s)
     }
     #[inline]
-    pub fn read_n_bytes_into_buffer(&mut self, n: u32) -> Result<&[u8], BitReaderError> {
-        // This will likely fail when demo download was cut off and demo
-        // ends early
-        if self.ptr + n as usize >= self.bytes.len() {
-            return Err(BitReaderError::OutOfBytesError);
-        }
-        let s = &self.bytes[self.ptr..self.ptr + n as usize];
-        self.ptr += n as usize;
-        Ok(s)
-    }
-    #[inline]
-    pub fn read_varint(&mut self) -> Result<u32, BitReaderError> {
+    pub fn read_varint(&mut self) -> Result<u32, DemoParserError> {
         let mut result: u32 = 0;
         let mut count: u8 = 0;
         let mut b: u32;
@@ -35,7 +24,7 @@ impl Parser {
                 return Ok(result as u32);
             }
             if self.ptr >= self.bytes.len() {
-                return Err(BitReaderError::OutOfBytesError);
+                return Err(DemoParserError::OutOfBytesError);
             }
             b = self.bytes[self.ptr].try_into().unwrap();
             self.ptr += 1;

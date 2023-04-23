@@ -1,4 +1,4 @@
-use super::read_bits::{BitReaderError, Bitreader};
+use super::read_bits::{Bitreader, DemoParserError};
 use crate::parsing::parser_settings::Parser;
 use csgoproto::netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable};
 use protobuf::Message;
@@ -20,7 +20,7 @@ pub struct StringTableEntry {
 }
 
 impl Parser {
-    pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
 
         match self.string_tables.get(table.table_id() as usize) {
@@ -32,12 +32,12 @@ impl Parser {
                 st.user_data_size,
                 st.flags,
             )?,
-            None => return Err(BitReaderError::StringTableNotFound),
+            None => return Err(DemoParserError::StringTableNotFound),
         }
         Ok(())
     }
 
-    pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), BitReaderError> {
+    pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
         let bytes = match table.data_compressed() {
             true => snap::raw::Decoder::new()
@@ -66,7 +66,7 @@ impl Parser {
         udf: bool,
         user_data_size: i32,
         flags: i32,
-    ) -> Result<(), BitReaderError> {
+    ) -> Result<(), DemoParserError> {
         let mut bitreader = Bitreader::new(&bytes);
         let mut idx = -1;
         let mut keys: Vec<String> = vec![];

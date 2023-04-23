@@ -4,7 +4,7 @@ use crate::parsing::parser_settings::ParserInputs;
 use ahash::HashMap;
 use arrow::ffi;
 use parsing::parser_settings::Parser;
-use parsing::read_bits::BitReaderError;
+use parsing::read_bits::DemoParserError;
 use parsing::variants::VarVec;
 use phf_macros::phf_map;
 use polars::prelude::ArrowField;
@@ -46,8 +46,12 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings);
-        parser.start()?;
+        let mut parser = Parser::new(settings)?;
+
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         Ok(parser.header.to_object(py))
     }
     /// Returns a dictionary with console vars set. This includes data
@@ -64,7 +68,8 @@ impl DemoParser {
             count_props: false,
             only_convars: true,
         };
-        let mut parser = Parser::new(settings);
+        let mut parser = Parser::new(settings)?;
+
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -86,8 +91,12 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings);
-        parser.start()?;
+        let mut parser = Parser::new(settings)?;
+
+        match parser.start() {
+            Ok(_) => {}
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         // Sort by freq
         let mut v: Vec<_> = parser.game_events_counter.iter().collect();
         v.sort_by(|x, y| x.1.cmp(&y.1));
@@ -114,7 +123,8 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings);
+        let mut parser = Parser::new(settings)?;
+
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -157,8 +167,8 @@ impl DemoParser {
     ///
     /// Example output:
     ///   entid           name     message  param3 param4
-    /// 0     8        person1       asdfa               
-    /// 1     8        person2        asdf  TSpawn       
+    /// 0     8        person1       asdfa
+    /// 1     8        person2        asdf  TSpawn
     pub fn parse_chat_messages(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             path: self.path.to_owned(),
@@ -171,7 +181,8 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings);
+        let mut parser = Parser::new(settings)?;
+
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -214,7 +225,8 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings);
+        let mut parser = Parser::new(settings)?;
+
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -256,12 +268,12 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings);
+        let mut parser = Parser::new(settings)?;
+
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-
         // SoA form
         let account_id =
             arr_to_py(Box::new(UInt32Array::from(parser.item_drops.account_id))).unwrap();
@@ -328,7 +340,8 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings);
+        let mut parser = Parser::new(settings)?;
+
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -376,7 +389,6 @@ impl DemoParser {
             Ok(pandas_df.to_object(py))
         })
     }
-
     #[args(py_kwargs = "**")]
     pub fn parse_events(
         &self,
@@ -396,7 +408,8 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings);
+        let mut parser = Parser::new(settings)?;
+
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -435,7 +448,7 @@ impl DemoParser {
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<PyObject> {
         let (_, wanted_ticks) = parse_kwargs_ticks(py_kwargs);
-        let mut real_props = rm_user_friendly_names(&wanted_props);
+        let real_props = rm_user_friendly_names(&wanted_props);
 
         let mut real_props = match real_props {
             Ok(real_props) => real_props,
@@ -453,7 +466,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings);
+        let mut parser = Parser::new(settings)?;
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -594,12 +607,12 @@ pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (bool, Vec<String>) {
         None => (false, vec![]),
     }
 }
-fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, BitReaderError> {
+fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoParserError> {
     let mut real_names = vec![];
     for name in names {
         match FRIENDLY_NAMES_MAPPING.get(name) {
             Some(real_name) => real_names.push(real_name.to_string()),
-            None => return Err(BitReaderError::UnknownPropName(name.clone())),
+            None => return Err(DemoParserError::UnknownPropName(name.clone())),
         }
     }
     Ok(real_names)

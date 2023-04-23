@@ -1,6 +1,7 @@
 use super::class::Class;
 use super::entities_utils::FieldPath;
 use super::game_events::GameEvent;
+use super::read_bits::DemoParserError;
 use super::sendtables::Serializer;
 use super::stringtables::StringTable;
 use super::variants::PropColumn;
@@ -13,16 +14,17 @@ use ahash::AHashSet;
 use ahash::HashMap;
 use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
+use memmap2::Mmap;
+use memmap2::MmapOptions;
 use soa_derive::StructOfArray;
 use std::fs;
 
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = 1 << 19 - 1;
-const MAX_HUF_SYMBOL: usize = 40;
 
 pub struct Parser {
     // todo split into smaller parts
     pub ptr: usize,
-    pub bytes: Vec<u8>,
+    pub bytes: Mmap,
     pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_by_id: [Option<Class>; 560],
@@ -61,7 +63,7 @@ pub struct Parser {
     pub skins: EconItemVec,
 
     pub history: AHashMap<u64, (u64, Decoder), RandomState>,
-    pub huffman_lookup_table: [(u32, u8); HUF_LOOKUPTABLE_MAXVALUE as usize],
+    pub huffman_lookup_table: Vec<(u32, u8)>,
 
     pub prop_name_to_path: AHashMap<String, [i32; 7]>,
     pub path_to_prop_name: AHashMap<[i32; 7], String>,
@@ -131,9 +133,15 @@ pub struct ParserInputs {
 }
 
 impl Parser {
-    pub fn new(mut settings: ParserInputs) -> Self {
-        let bytes = fs::read(settings.path).unwrap();
-        // let tree = generate_huffman_tree().unwrap();
+    pub fn new(mut settings: ParserInputs) -> Result<Self, DemoParserError> {
+        let file = match std::fs::File::open(&settings.path) {
+            Ok(f) => f,
+            Err(e) => return Err(DemoParserError::FileError(e)),
+        };
+        let bytes = match unsafe { MmapOptions::new().map(&file) } {
+            Ok(f) => f,
+            Err(e) => return Err(DemoParserError::FileError(e)),
+        };
         let fp_filler = FieldPath {
             last: 0,
             path: [-1, 0, 0, 0, 0, 0, 0],
@@ -143,116 +151,71 @@ impl Parser {
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
-        let mut a: [(u32, u8); HUF_LOOKUPTABLE_MAXVALUE as usize] =
+        let mut huffman_table: [(u32, u8); HUF_LOOKUPTABLE_MAXVALUE as usize] =
             [(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
-        a[0] = (0, 1);
-        a[2] = (39, 2);
-        a[24] = (8, 5);
-        a[50] = (2, 6);
-        a[51] = (29, 6);
-        a[100] = (2, 6);
-        a[101] = (29, 6);
-        a[26] = (4, 5);
-        a[432] = (30, 9);
-        a[866] = (38, 10);
-        a[55488] = (35, 16);
-        a[55489] = (34, 16);
-        a[27745] = (27, 15);
-        a[55492] = (25, 16);
-        a[55493] = (24, 16);
-        a[55494] = (33, 16);
-        a[55495] = (28, 16);
-        a[55496] = (13, 16);
-        a[110994] = (15, 17);
-        a[110995] = (14, 17);
-        a[27749] = (6, 15);
-        a[111000] = (21, 17);
-        a[111001] = (20, 17);
-        a[111002] = (23, 17);
-        a[111003] = (22, 17);
-        a[111004] = (17, 17);
-        a[111005] = (16, 17);
-        a[111006] = (19, 17);
-        a[111007] = (18, 17);
-        a[3469] = (5, 12);
-        a[1735] = (36, 11);
-        a[217] = (10, 8);
-        a[218] = (7, 8);
-        a[438] = (12, 9);
-        a[439] = (37, 9);
-        a[220] = (9, 8);
-        a[442] = (31, 9);
-        a[443] = (26, 9);
-        a[222] = (32, 8);
-        a[223] = (3, 8);
-        a[14] = (1, 4);
-        a[15] = (11, 4);
+        huffman_table[0] = (0, 1);
+        huffman_table[2] = (39, 2);
+        huffman_table[24] = (8, 5);
+        huffman_table[50] = (2, 6);
+        huffman_table[51] = (29, 6);
+        huffman_table[100] = (2, 6);
+        huffman_table[101] = (29, 6);
+        huffman_table[26] = (4, 5);
+        huffman_table[432] = (30, 9);
+        huffman_table[866] = (38, 10);
+        huffman_table[55488] = (35, 16);
+        huffman_table[55489] = (34, 16);
+        huffman_table[27745] = (27, 15);
+        huffman_table[55492] = (25, 16);
+        huffman_table[55493] = (24, 16);
+        huffman_table[55494] = (33, 16);
+        huffman_table[55495] = (28, 16);
+        huffman_table[55496] = (13, 16);
+        huffman_table[110994] = (15, 17);
+        huffman_table[110995] = (14, 17);
+        huffman_table[27749] = (6, 15);
+        huffman_table[111000] = (21, 17);
+        huffman_table[111001] = (20, 17);
+        huffman_table[111002] = (23, 17);
+        huffman_table[111003] = (22, 17);
+        huffman_table[111004] = (17, 17);
+        huffman_table[111005] = (16, 17);
+        huffman_table[111006] = (19, 17);
+        huffman_table[111007] = (18, 17);
+        huffman_table[3469] = (5, 12);
+        huffman_table[1735] = (36, 11);
+        huffman_table[217] = (10, 8);
+        huffman_table[218] = (7, 8);
+        huffman_table[438] = (12, 9);
+        huffman_table[439] = (37, 9);
+        huffman_table[220] = (9, 8);
+        huffman_table[442] = (31, 9);
+        huffman_table[443] = (26, 9);
+        huffman_table[222] = (32, 8);
+        huffman_table[223] = (3, 8);
+        huffman_table[14] = (1, 4);
+        huffman_table[15] = (11, 4);
+        huffman_table[0] = (999999, 255);
 
-        /*
-        value, weight, len(prefix), prefix
-        0	36271	2	0
-        39	25474	3	10
-        8	2942	6	11000
-        2	1375	7	110010
-        29	1837	7	110011
-        4	4128	6	11010
-        30	149	    10	110110000
-        38	99	    11	1101100010
-        35	1	    17	1101100011000000
-        34	1	    17	1101100011000001
-        27	2	    16	110110001100001
-        25	1	    17	1101100011000100
-        24	1	    17	1101100011000101
-        33	1	    17	1101100011000110
-        28	1	    17	1101100011000111
-        13	1	    17	1101100011001000
-        15	1	    18	11011000110010010
-        14	1	    18	11011000110010011
-        6	3	    16	110110001100101
-        21	1	    18	11011000110011000
-        20	1	    18	11011000110011001
-        23	1	    18	11011000110011010
-        22	1	    18	11011000110011011
-        17	1	    18	11011000110011100
-        16	1	    18	11011000110011101
-        19	1	    18	11011000110011110
-        18	1	    18	11011000110011111
-        5	35	    13	110110001101
-        36	76	    12	11011000111
-        10	471	    9	11011001
-        7	521	    9	11011010
-        12	251	    10	110110110
-        37	271	    10	110110111
-        9	560	    9	11011100
-        31	300	    10	110111010
-        26	310	    10	110111011
-        32	634	    9	11011110
-        3	646	    9	11011111
-        1	10334	5	1110
-        11	10530	5	1111
-        */
-
-        a[0] = (999999, 255);
         let mut v: Vec<u32> = vec![];
-        for (idx, x) in a.iter().enumerate() {
+        for (idx, x) in huffman_table.iter().enumerate() {
             if x.0 != 999999 {
                 v.push(idx as u32);
             }
         }
         let mut found = vec![];
         for x in v {
-            let shifta = MSB(x);
-            let (sym, bitlen) = a[x as usize];
+            let shifta = msb(x);
             for i in 0..HUF_LOOKUPTABLE_MAXVALUE {
-                let shiftb = MSB(i);
+                let shiftb = msb(i);
                 if x == i >> shiftb - shifta {
                     found.push(x);
-                    a[i as usize] = a[x as usize];
+                    huffman_table[i as usize] = huffman_table[x as usize];
                 }
             }
         }
 
-        Parser {
+        Ok(Parser {
             serializers: AHashMap::default(),
             ptr: 0,
             ge_list: None,
@@ -332,16 +295,16 @@ impl Parser {
             skins: EconItemVec::new(),
             player_end_data: PlayerEndDataVec::new(),
             history: AHashMap::default(),
-            huffman_lookup_table: a,
+            huffman_lookup_table: huffman_table.to_vec(),
             prop_name_to_path: AHashMap::default(),
             wanted_prop_paths: AHashSet::default(),
             path_to_prop_name: AHashMap::default(),
             header: HashMap::default(),
-        }
+        })
     }
 }
 
-fn MSB(mut val: u32) -> u32 {
+fn msb(mut val: u32) -> u32 {
     let mut cnt = 0;
     while val > 0 {
         cnt = cnt + 1;
