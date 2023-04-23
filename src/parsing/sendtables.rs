@@ -574,7 +574,6 @@ impl Parser {
                     .wanted_props
                     .contains(&(ser_name.clone() + "." + &f.var_name))
                 {
-                    println!("{:?}", f.var_name);
                     self.wanted_prop_paths.insert(arr);
                 }
 

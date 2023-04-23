@@ -151,8 +151,7 @@ impl Parser {
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
-        let mut huffman_table: [(u32, u8); HUF_LOOKUPTABLE_MAXVALUE as usize] =
-            [(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
+        let mut huffman_table = vec![(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
         huffman_table[0] = (0, 1);
         huffman_table[2] = (39, 2);
         huffman_table[24] = (8, 5);
