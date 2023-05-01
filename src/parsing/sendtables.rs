@@ -1,4 +1,4 @@
-use super::read_bits::Bitreader;
+use super::read_bits::{Bitreader, DemoParserError};
 use crate::parsing::entities_utils::FieldPath;
 use crate::parsing::parser_settings::Parser;
 use crate::parsing::q_float::QuantalizedFloat;
@@ -434,7 +434,6 @@ pub struct Serializer {
     pub name: String,
     // Maybe hm?
     pub fields: Vec<Field>,
-    pub history: Vec<Vec<i32>>,
 }
 
 impl Serializer {
@@ -482,21 +481,21 @@ const POINTER_TYPES: &'static [&'static str] = &[
 ];
 
 impl Parser {
-    pub fn parse_sendtable(&mut self, tables: CDemoSendTables) {
+    // This part is so insanely complicated. There are multiple versions of each serializer and
+    // each serializer is this huge nested struct.
+    pub fn parse_sendtable(&mut self, tables: CDemoSendTables) -> Result<(), DemoParserError> {
         let mut bitreader = Bitreader::new(tables.data());
-        let n_bytes = bitreader.read_varint().unwrap();
+        let n_bytes = bitreader.read_varint()?;
 
-        let bytes = bitreader.read_n_bytes(n_bytes as usize).unwrap();
+        let bytes = bitreader.read_n_bytes(n_bytes as usize)?;
         let serializer_msg: CSVCMsg_FlattenedSerializer =
             Message::parse_from_bytes(&bytes).unwrap();
 
         let mut fields: HashMap<i32, Field> = HashMap::default();
-
         for serializer in &serializer_msg.serializers {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
                 fields: vec![],
-                history: vec![],
             };
 
             for idx in &serializer.fields_index {
@@ -539,6 +538,7 @@ impl Parser {
                                 }
                             }
                         }
+                        // println!("{:#?}", field);
                         fields.insert(*idx, field.clone());
                         my_serializer.fields.push(field);
                         self.find_prop_name_paths(&my_serializer);
@@ -549,14 +549,15 @@ impl Parser {
             self.serializers
                 .insert(my_serializer.name.clone(), my_serializer);
         }
+        Ok(())
     }
     pub fn find_prop_name_paths(&mut self, ser: &Serializer) {
         // Finds mapping from name to path.
         // Example: "m_iHealth" => [4, 0, 0, 0, 0, 0, 0]
         self.traverse_fields(&ser.fields, vec![], ser.name.clone())
     }
-    pub fn traverse_fields(&mut self, fileds: &Vec<Field>, path: Vec<i32>, ser_name: String) {
-        for (idx, f) in fileds.iter().enumerate() {
+    pub fn traverse_fields(&mut self, fields: &Vec<Field>, path: Vec<i32>, ser_name: String) {
+        for (idx, f) in fields.iter().enumerate() {
             if let Some(ser) = &f.serializer {
                 let mut tmp = path.clone();
                 tmp.push(idx as i32);

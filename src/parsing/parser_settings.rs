@@ -13,13 +13,14 @@ use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
 use ahash::RandomState;
+use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use memmap2::Mmap;
 use memmap2::MmapOptions;
 use soa_derive::StructOfArray;
-use std::fs;
 
-const HUF_LOOKUPTABLE_MAXVALUE: u32 = 1 << 19 - 1;
+// Wont fit in L1, evaluate if worth to use pointer method
+const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 19) - 1;
 
 pub struct Parser {
     // todo split into smaller parts
@@ -151,68 +152,7 @@ impl Parser {
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
-        let mut huffman_table = vec![(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
-        huffman_table[0] = (0, 1);
-        huffman_table[2] = (39, 2);
-        huffman_table[24] = (8, 5);
-        huffman_table[50] = (2, 6);
-        huffman_table[51] = (29, 6);
-        huffman_table[100] = (2, 6);
-        huffman_table[101] = (29, 6);
-        huffman_table[26] = (4, 5);
-        huffman_table[432] = (30, 9);
-        huffman_table[866] = (38, 10);
-        huffman_table[55488] = (35, 16);
-        huffman_table[55489] = (34, 16);
-        huffman_table[27745] = (27, 15);
-        huffman_table[55492] = (25, 16);
-        huffman_table[55493] = (24, 16);
-        huffman_table[55494] = (33, 16);
-        huffman_table[55495] = (28, 16);
-        huffman_table[55496] = (13, 16);
-        huffman_table[110994] = (15, 17);
-        huffman_table[110995] = (14, 17);
-        huffman_table[27749] = (6, 15);
-        huffman_table[111000] = (21, 17);
-        huffman_table[111001] = (20, 17);
-        huffman_table[111002] = (23, 17);
-        huffman_table[111003] = (22, 17);
-        huffman_table[111004] = (17, 17);
-        huffman_table[111005] = (16, 17);
-        huffman_table[111006] = (19, 17);
-        huffman_table[111007] = (18, 17);
-        huffman_table[3469] = (5, 12);
-        huffman_table[1735] = (36, 11);
-        huffman_table[217] = (10, 8);
-        huffman_table[218] = (7, 8);
-        huffman_table[438] = (12, 9);
-        huffman_table[439] = (37, 9);
-        huffman_table[220] = (9, 8);
-        huffman_table[442] = (31, 9);
-        huffman_table[443] = (26, 9);
-        huffman_table[222] = (32, 8);
-        huffman_table[223] = (3, 8);
-        huffman_table[14] = (1, 4);
-        huffman_table[15] = (11, 4);
-        huffman_table[0] = (999999, 255);
-
-        let mut v: Vec<u32> = vec![];
-        for (idx, x) in huffman_table.iter().enumerate() {
-            if x.0 != 999999 {
-                v.push(idx as u32);
-            }
-        }
-        let mut found = vec![];
-        for x in v {
-            let shifta = msb(x);
-            for i in 0..HUF_LOOKUPTABLE_MAXVALUE {
-                let shiftb = msb(i);
-                if x == i >> shiftb - shifta {
-                    found.push(x);
-                    huffman_table[i as usize] = huffman_table[x as usize];
-                }
-            }
-        }
+        let huffman_table = create_huffman_lookup_table();
 
         Ok(Parser {
             serializers: AHashMap::default(),
@@ -279,7 +219,7 @@ impl Parser {
             baselines: AHashMap::default(),
             string_tables: vec![],
             cache: AHashMap::default(),
-            paths: vec![fp_filler; 10000],
+            paths: vec![fp_filler; 4096],
             teams: Teams::new(),
             game_events_counter: AHashMap::default(),
             props_counter: AHashMap::default(),
@@ -294,7 +234,7 @@ impl Parser {
             skins: EconItemVec::new(),
             player_end_data: PlayerEndDataVec::new(),
             history: AHashMap::default(),
-            huffman_lookup_table: huffman_table.to_vec(),
+            huffman_lookup_table: huffman_table,
             prop_name_to_path: AHashMap::default(),
             wanted_prop_paths: AHashSet::default(),
             path_to_prop_name: AHashMap::default(),
@@ -302,7 +242,7 @@ impl Parser {
         })
     }
 }
-
+#[inline(always)]
 fn msb(mut val: u32) -> u32 {
     let mut cnt = 0;
     while val > 0 {
@@ -310,4 +250,126 @@ fn msb(mut val: u32) -> u32 {
         val = val >> 1;
     }
     cnt
+}
+
+fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
+    let mut huffman_table = vec![(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
+    let mut huffman_rev_table = vec![(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
+
+    huffman_table[0] = (0, 1);
+    huffman_table[2] = (39, 2);
+    huffman_table[24] = (8, 5);
+    huffman_table[50] = (2, 6);
+    huffman_table[51] = (29, 6);
+    huffman_table[100] = (2, 6);
+    huffman_table[101] = (29, 6);
+    huffman_table[26] = (4, 5);
+    huffman_table[432] = (30, 9);
+    huffman_table[866] = (38, 10);
+    huffman_table[55488] = (35, 16);
+    huffman_table[55489] = (34, 16);
+    huffman_table[27745] = (27, 15);
+    huffman_table[55492] = (25, 16);
+    huffman_table[55493] = (24, 16);
+    huffman_table[55494] = (33, 16);
+    huffman_table[55495] = (28, 16);
+    huffman_table[55496] = (13, 16);
+    huffman_table[110994] = (15, 17);
+    huffman_table[110995] = (14, 17);
+    huffman_table[27749] = (6, 15);
+    huffman_table[111000] = (21, 17);
+    huffman_table[111001] = (20, 17);
+    huffman_table[111002] = (23, 17);
+    huffman_table[111003] = (22, 17);
+    huffman_table[111004] = (17, 17);
+    huffman_table[111005] = (16, 17);
+    huffman_table[111006] = (19, 17);
+    huffman_table[111007] = (18, 17);
+    huffman_table[3469] = (5, 12);
+    huffman_table[1735] = (36, 11);
+    huffman_table[217] = (10, 8);
+    huffman_table[218] = (7, 8);
+    huffman_table[438] = (12, 9);
+    huffman_table[439] = (37, 9);
+    huffman_table[220] = (9, 8);
+    huffman_table[442] = (31, 9);
+    huffman_table[443] = (26, 9);
+    huffman_table[222] = (32, 8);
+    huffman_table[223] = (3, 8);
+    huffman_table[14] = (1, 4);
+    huffman_table[15] = (11, 4);
+    huffman_table[0] = (999999, 255);
+
+    huffman_rev_table[0.swap_bits() >> RIGHTSHIFT_BITORDER] = (0, 1);
+    huffman_rev_table[2.swap_bits() >> RIGHTSHIFT_BITORDER] = (39, 2);
+    huffman_rev_table[24.swap_bits() >> RIGHTSHIFT_BITORDER] = (8, 5);
+    huffman_rev_table[50.swap_bits() >> RIGHTSHIFT_BITORDER] = (2, 6);
+    huffman_rev_table[51.swap_bits() >> RIGHTSHIFT_BITORDER] = (29, 6);
+    huffman_rev_table[100.swap_bits() >> RIGHTSHIFT_BITORDER] = (2, 6);
+    huffman_rev_table[101.swap_bits() >> RIGHTSHIFT_BITORDER] = (29, 6);
+    huffman_rev_table[26.swap_bits() >> RIGHTSHIFT_BITORDER] = (4, 5);
+    huffman_rev_table[432.swap_bits() >> RIGHTSHIFT_BITORDER] = (30, 9);
+    huffman_rev_table[866.swap_bits() >> RIGHTSHIFT_BITORDER] = (38, 10);
+    huffman_rev_table[55488.swap_bits() >> RIGHTSHIFT_BITORDER] = (35, 16);
+    huffman_rev_table[55489.swap_bits() >> RIGHTSHIFT_BITORDER] = (34, 16);
+    huffman_rev_table[27745.swap_bits() >> RIGHTSHIFT_BITORDER] = (27, 15);
+    huffman_rev_table[55492.swap_bits() >> RIGHTSHIFT_BITORDER] = (25, 16);
+    huffman_rev_table[55493.swap_bits() >> RIGHTSHIFT_BITORDER] = (24, 16);
+    huffman_rev_table[55494.swap_bits() >> RIGHTSHIFT_BITORDER] = (33, 16);
+    huffman_rev_table[55495.swap_bits() >> RIGHTSHIFT_BITORDER] = (28, 16);
+    huffman_rev_table[55496.swap_bits() >> RIGHTSHIFT_BITORDER] = (13, 16);
+    huffman_rev_table[110994.swap_bits() >> RIGHTSHIFT_BITORDER] = (15, 17);
+    huffman_rev_table[110995.swap_bits() >> RIGHTSHIFT_BITORDER] = (14, 17);
+    huffman_rev_table[27749.swap_bits() >> RIGHTSHIFT_BITORDER] = (6, 15);
+    huffman_rev_table[111000.swap_bits() >> RIGHTSHIFT_BITORDER] = (21, 17);
+    huffman_rev_table[111001.swap_bits() >> RIGHTSHIFT_BITORDER] = (20, 17);
+    huffman_rev_table[111002.swap_bits() >> RIGHTSHIFT_BITORDER] = (23, 17);
+    huffman_rev_table[111003.swap_bits() >> RIGHTSHIFT_BITORDER] = (22, 17);
+    huffman_rev_table[111004.swap_bits() >> RIGHTSHIFT_BITORDER] = (17, 17);
+    huffman_rev_table[111005.swap_bits() >> RIGHTSHIFT_BITORDER] = (16, 17);
+    huffman_rev_table[111006.swap_bits() >> RIGHTSHIFT_BITORDER] = (19, 17);
+    huffman_rev_table[111007.swap_bits() >> RIGHTSHIFT_BITORDER] = (18, 17);
+    huffman_rev_table[3469.swap_bits() >> RIGHTSHIFT_BITORDER] = (5, 12);
+    huffman_rev_table[1735.swap_bits() >> RIGHTSHIFT_BITORDER] = (36, 11);
+    huffman_rev_table[217.swap_bits() >> RIGHTSHIFT_BITORDER] = (10, 8);
+    huffman_rev_table[218.swap_bits() >> RIGHTSHIFT_BITORDER] = (7, 8);
+    huffman_rev_table[438.swap_bits() >> RIGHTSHIFT_BITORDER] = (12, 9);
+    huffman_rev_table[439.swap_bits() >> RIGHTSHIFT_BITORDER] = (37, 9);
+    huffman_rev_table[220.swap_bits() >> RIGHTSHIFT_BITORDER] = (9, 8);
+    huffman_rev_table[442.swap_bits() >> RIGHTSHIFT_BITORDER] = (31, 9);
+    huffman_rev_table[443.swap_bits() >> RIGHTSHIFT_BITORDER] = (26, 9);
+    huffman_rev_table[222.swap_bits() >> RIGHTSHIFT_BITORDER] = (32, 8);
+    huffman_rev_table[223.swap_bits() >> RIGHTSHIFT_BITORDER] = (3, 8);
+    huffman_rev_table[14.swap_bits() >> RIGHTSHIFT_BITORDER] = (1, 4);
+    huffman_rev_table[15.swap_bits() >> RIGHTSHIFT_BITORDER] = (11, 4);
+    huffman_rev_table[0.swap_bits() >> RIGHTSHIFT_BITORDER] = (999999, 255);
+
+    const RIGHTSHIFT_BITORDER: u32 = 45;
+
+    let mut v: Vec<u32> = vec![];
+    for (idx, x) in huffman_table.iter().enumerate() {
+        if x.0 != 999999 {
+            v.push(idx as u32);
+        }
+    }
+    let mut found = vec![];
+    for x in v {
+        let shifta = msb(x);
+        for i in 0..HUF_LOOKUPTABLE_MAXVALUE {
+            let shiftb = msb(i);
+            if x == i >> shiftb - shifta {
+                found.push(x);
+                let peekbits = (i as u64).swap_bits() >> RIGHTSHIFT_BITORDER;
+                huffman_table[i as usize] = huffman_table[x as usize];
+                huffman_rev_table[peekbits as usize] = huffman_table[x as usize];
+            }
+        }
+    }
+    for v in 0..HUF_LOOKUPTABLE_MAXVALUE {
+        let p: u64 = (v as u64).swap_bits() >> RIGHTSHIFT_BITORDER;
+        if p & 1 == 0 {
+            huffman_rev_table[p as usize] = (0, 1);
+        }
+    }
+    huffman_rev_table
 }

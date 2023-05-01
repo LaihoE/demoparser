@@ -77,14 +77,14 @@ impl Parser {
             let mut value = vec![];
 
             // Increment index
-            match bitreader.read_boolie()? {
+            match bitreader.read_boolean()? {
                 true => idx += 1,
                 false => idx += (bitreader.read_varint()? + 1) as i32,
             };
             // Does the value have a key
-            if bitreader.read_boolie()? {
+            if bitreader.read_boolean()? {
                 // Should we refer back to history (similar to LZ77)
-                match bitreader.read_boolie()? {
+                match bitreader.read_boolean()? {
                     // If no history then just read the data as one string
                     false => key = key.to_owned() + &bitreader.read_string()?,
                     // Refer to history
@@ -113,7 +113,7 @@ impl Parser {
                 }
                 keys.push(key.clone());
                 // Does the entry have a value
-                if bitreader.read_boolie()? {
+                if bitreader.read_boolean()? {
                     let bits: i32;
                     let mut is_compressed = false;
 
@@ -121,7 +121,7 @@ impl Parser {
                         true => bits = user_data_size,
                         false => {
                             if (flags & 0x1) != 0 {
-                                is_compressed = bitreader.read_boolie()?;
+                                is_compressed = bitreader.read_boolean()?;
                             }
                             bits = (bitreader.read_nbits(17)? * 8) as i32;
                         }

@@ -85,7 +85,7 @@ impl Parser {
                 Some(rules_entid) => return self.get_prop_for_ent(prop_name, &rules_entid),
                 None => return None,
             },
-            None => {
+            Some(PropType::Player) => {
                 if let Some(e) = player.controller_entid {
                     let is_alive = self.get_prop_for_ent("CCSPlayerController.m_bPawnIsAlive", &e);
                     match is_alive {
@@ -96,6 +96,7 @@ impl Parser {
                     }
                 };
             }
+            _ => return None,
         }
         None
     }
@@ -276,6 +277,7 @@ pub enum PropType {
     Rules,
     Custom,
     Controller,
+    Player,
 }
 
 pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
@@ -522,6 +524,74 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_bIsOtherEnemy" => PropType::Controller,
     "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_killType" => PropType::Controller,
     "CCSPlayerController.m_iPing"=> PropType::Controller,
+
+    "CCSPlayerPawn.m_MoveCollide" => PropType::Player,
+    "CCSPlayerPawn.m_MoveType" => PropType::Player,
+    "CCSPlayerPawn.m_iTeamNum" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_bIsLookingAtWeapon" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_bIsHoldingLookAtWeapon" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_flNextAttack" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nDuckTimeMsecs" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flMaxspeed" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flMaxFallVelocity" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flDuckAmount" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flDuckSpeed" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDuckOverride" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bOldJumpPressed" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flJumpUntil" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flJumpVel" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flFallVelocity" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bInCrouch" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nCrouchState" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDucked" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDucking" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bInDuckJump" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bAllowAutoMovement" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nJumpTimeMsecs" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flLastDuckTime" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.m_bIsRescuing" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.m_iWeaponPurchasesThisMatch" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.m_iWeaponPurchasesThisRound" => PropType::Player,
+    "CCSPlayerPawn.m_bSpotted" => PropType::Player,
+    "CCSPlayerPawn.m_bSpottedByMask" => PropType::Player,
+    "CCSPlayerPawn.m_flTimeOfLastInjury" => PropType::Player,
+    "CCSPlayerPawn.m_nRelativeDirectionOfLastInjury" => PropType::Player,
+    "CCSPlayerPawn.m_iPlayerState" => PropType::Player,
+    "CCSPlayerPawn.m_passiveItems" => PropType::Player,
+    "CCSPlayerPawn.m_bIsScoped" => PropType::Player,
+    "CCSPlayerPawn.m_bIsWalking" => PropType::Player,
+    "CCSPlayerPawn.m_bResumeZoom" => PropType::Player,
+    "CCSPlayerPawn.m_bIsDefusing" => PropType::Player,
+    "CCSPlayerPawn.m_bIsGrabbingHostage" => PropType::Player,
+    "CCSPlayerPawn.m_iBlockingUseActionInProgress" => PropType::Player,
+    "CCSPlayerPawn.m_fMolotovDamageTime" => PropType::Player,
+    "CCSPlayerPawn.m_bHasMovedSinceSpawn" => PropType::Player,
+    "CCSPlayerPawn.m_bInBombZone" => PropType::Player,
+    "CCSPlayerPawn.m_bInBuyZone" => PropType::Player,
+    "CCSPlayerPawn.m_bInNoDefuseArea" => PropType::Player,
+    "CCSPlayerPawn.m_bKilledByTaser" => PropType::Player,
+    "CCSPlayerPawn.m_iMoveState" => PropType::Player,
+    "CCSPlayerPawn.m_nWhichBombZone" => PropType::Player,
+    "CCSPlayerPawn.m_bInHostageRescueZone" => PropType::Player,
+    "CCSPlayerPawn.m_flStamina" => PropType::Player,
+    "CCSPlayerPawn.m_iDirection" => PropType::Player,
+    "CCSPlayerPawn.m_iShotsFired" => PropType::Player,
+    "CCSPlayerPawn.m_ArmorValue" => PropType::Player,
+    "CCSPlayerPawn.m_flVelocityModifier" => PropType::Player,
+    "CCSPlayerPawn.m_flGroundAccelLinearFracLastTime" => PropType::Player,
+    "CCSPlayerPawn.m_flFlashDuration" => PropType::Player,
+    "CCSPlayerPawn.m_flFlashMaxAlpha" => PropType::Player,
+    "CCSPlayerPawn.m_bWaitForNoAttack" => PropType::Player,
+    "CCSPlayerPawn.m_szLastPlaceName" => PropType::Player,
+    "CCSPlayerPawn.m_bStrafing" => PropType::Player,
+    "CCSPlayerPawn.m_unRoundStartEquipmentValue" => PropType::Player,
+    "CCSPlayerPawn.m_unCurrentEquipmentValue" => PropType::Player,
+    "CCSPlayerPawn.m_flSimulationTime" => PropType::Player,
+    "CCSPlayerPawn.m_iHealth" => PropType::Player,
+    // "pitchyaw" => "CCSPlayerPawn.m_angEyeAngles"
+    "CCSPlayerPawn.m_lifeState" => PropType::Player,
     // Custom
     "X"=> PropType::Custom,
     "Y"=> PropType::Custom,

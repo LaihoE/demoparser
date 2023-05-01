@@ -20,6 +20,7 @@ pub enum DemoParserError {
     IncorrectMetaDataProp,
     UnknownPropName(String),
     FileError(std::io::Error),
+    GameEventListNotSet,
 }
 
 impl std::error::Error for DemoParserError {}
@@ -56,15 +57,13 @@ impl<'a> Bitreader<'a> {
     }
     #[inline(always)]
     pub fn read_u_bit_var(&mut self) -> Result<u32, DemoParserError> {
-        let mut ret = self.read_nbits(6)?;
-        if ret & 48 == 16 {
-            ret = (ret & 15) | (self.read_nbits(4)? << 4);
-        } else if ret & 48 == 32 {
-            ret = (ret & 15) | (self.read_nbits(8)? << 4);
-        } else if ret & 48 == 48 {
-            ret = (ret & 15) | (self.read_nbits(28)? << 4);
+        let bits = self.read_nbits(6)?;
+        match bits & 48 {
+            16 => return Ok((bits & 15) | (self.read_nbits(4)? << 4)),
+            32 => return Ok((bits & 15) | (self.read_nbits(8)? << 4)),
+            48 => return Ok((bits & 15) | (self.read_nbits(28)? << 4)),
+            _ => return Ok(bits),
         }
-        Ok(ret)
     }
     #[inline(always)]
     pub fn read_varint32(&mut self) -> Result<i32, DemoParserError> {
@@ -117,7 +116,7 @@ impl<'a> Bitreader<'a> {
         Ok(result)
     }
     #[inline(always)]
-    pub fn read_boolie(&mut self) -> Result<bool, DemoParserError> {
+    pub fn read_boolean(&mut self) -> Result<bool, DemoParserError> {
         match self.reader.read_bit() {
             Some(b) => Ok(b),
             None => Err(DemoParserError::OutOfBitsError),
@@ -139,16 +138,16 @@ impl<'a> Bitreader<'a> {
     }
     #[inline(always)]
     pub fn read_ubit_var_fp(&mut self) -> Result<u32, DemoParserError> {
-        if self.read_boolie()? {
+        if self.read_boolean()? {
             return Ok(self.read_nbits(2)?);
         }
-        if self.read_boolie()? {
+        if self.read_boolean()? {
             return Ok(self.read_nbits(4)?);
         }
-        if self.read_boolie()? {
+        if self.read_boolean()? {
             return Ok(self.read_nbits(10)?);
         }
-        if self.read_boolie()? {
+        if self.read_boolean()? {
             return Ok(self.read_nbits(17)?);
         }
         return Ok(self.read_nbits(31)?);
@@ -157,12 +156,12 @@ impl<'a> Bitreader<'a> {
     pub fn read_bit_coord(&mut self) -> Result<f32, DemoParserError> {
         let mut int_val = 0;
         let mut frac_val = 0;
-        let i2 = self.read_boolie()?;
-        let f2 = self.read_boolie()?;
+        let i2 = self.read_boolean()?;
+        let f2 = self.read_boolean()?;
         if !i2 && !f2 {
             return Ok(0.0);
         }
-        let sign = self.read_boolie()?;
+        let sign = self.read_boolean()?;
         if i2 {
             int_val = self.read_nbits(14)? + 1;
         }

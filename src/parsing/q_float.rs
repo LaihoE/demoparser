@@ -97,13 +97,13 @@ impl QuantalizedFloat {
         self.low + (self.high - self.low) * ((i as f32) * self.dec_mul)
     }
     pub fn decode(&mut self, bitreader: &mut Bitreader) -> f32 {
-        if self.flags & QFF_ROUNDDOWN != 0 && bitreader.read_boolie().unwrap() {
+        if self.flags & QFF_ROUNDDOWN != 0 && bitreader.read_boolean().unwrap() {
             return self.low;
         }
-        if self.flags & QFF_ROUNDUP != 0 && bitreader.read_boolie().unwrap() {
+        if self.flags & QFF_ROUNDUP != 0 && bitreader.read_boolean().unwrap() {
             return self.high;
         }
-        if self.flags & QFF_ENCODE_ZERO != 0 && bitreader.read_boolie().unwrap() {
+        if self.flags & QFF_ENCODE_ZERO != 0 && bitreader.read_boolean().unwrap() {
             return 0.0;
         }
         let bits = bitreader.read_nbits(self.bit_count).unwrap();

@@ -2,6 +2,7 @@ use super::read_bits::DemoParserError;
 use crate::parsing::entities_utils::*;
 use crate::parsing::parser_settings::Parser;
 use crate::parsing::read_bits::Bitreader;
+use crate::parsing::sendtables::Decoder;
 use crate::parsing::variants::PropData;
 use ahash::HashMap;
 use bit_reverse::LookupReverse;
@@ -52,12 +53,6 @@ impl Parser {
             return Ok(());
         }
         let packet_ents: CSVCMsg_PacketEntities = Message::parse_from_bytes(&bytes).unwrap();
-        Ok(self._parse_packet_ents(packet_ents)?)
-    }
-    fn _parse_packet_ents(
-        &mut self,
-        packet_ents: CSVCMsg_PacketEntities,
-    ) -> Result<(), DemoParserError> {
         let n_updates = packet_ents.updated_entries();
         let data = match packet_ents.entity_data {
             Some(data) => data,
@@ -100,7 +95,7 @@ impl Parser {
     ) -> Result<(), DemoParserError> {
         let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
         if n_updated_values > 0 {
-            self.gather_extra_info(&entity_id)?;
+            // self.gather_extra_info(&entity_id)?;
         }
         Ok(())
     }
@@ -118,20 +113,32 @@ impl Parser {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),
         };
+        /*
+        let v: Vec<Decoder> = self.paths[..n_paths]
+            .iter()
+            .map(|x| class.serializer.find_decoder(&x, 0))
+            .collect();
+        for d in v {
+            let result = bitreader.decode(&d)?;
+        }
+        return Ok(22);
+        */
         // Where the magic happens (all decoded values come from this loop)
         for path in &self.paths[..n_paths] {
             let decoder = class.serializer.find_decoder(&path, 0);
             let result = bitreader.decode(&decoder)?;
-
             // Can be used for debugging output
             if 1 == 0 {
                 let debug_field =
                     class
                         .serializer
                         .debug_find_decoder(&path, 0, class.serializer.name.clone());
+                if debug_field.full_name.contains("Round") {
+                    println!("{:#?} {:?}", debug_field.full_name, result);
+                }
             }
 
-            entity.props.insert(path.path, result);
+            // entity.props.insert(path.path, result);
         }
         Ok(n_paths)
     }
@@ -258,18 +265,13 @@ impl Parser {
         // Do huffman decoding with a lookup table instead of reading one bit at a time
         // and traversing a tree.
         // Here we peek ("HUFFMAN_CODE_MAXLEN" == 17) amount of bits and see from a table which
-        // symbol it maps to and how many bits should be read.
+        // symbol it maps to and how many bits should be consumed from the stream.
         // The symbol is then mapped into an op for filling the field path.
         loop {
             bitreader.reader.refill_lookahead();
-            let peek_wrong_order = bitreader.reader.peek(HUFFMAN_CODE_MAXLEN);
-            let peekbits = peek_wrong_order.swap_bits() >> RIGHTSHIFT_BITORDER;
-            // Check if first bit is zero then symbol should be zero.
-            let (symbol, code_len) = match peek_wrong_order & 1 {
-                0 => (0, 1),
-                _ => self.huffman_lookup_table[peekbits as usize],
-            };
-            bitreader.reader.consume((code_len) as u32);
+            let peeked_bits = bitreader.reader.peek(HUFFMAN_CODE_MAXLEN);
+            let (symbol, code_len) = self.huffman_lookup_table[peeked_bits as usize];
+            bitreader.reader.consume(code_len as u32);
 
             if symbol == STOP_READING_SYMBOL {
                 break;
@@ -280,7 +282,6 @@ impl Parser {
         }
         Ok(idx)
     }
-
     pub fn gather_extra_info(&mut self, entity_id: &i32) -> Result<(), DemoParserError> {
         // Boring stuff.. function does some bookkeeping
         let entity = match self.entities.get_mut(entity_id) {

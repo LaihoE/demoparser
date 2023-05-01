@@ -10,11 +10,11 @@ impl<'a> Bitreader<'a> {
     pub fn decode(&mut self, decoder: &Decoder) -> Result<PropData, DemoParserError> {
         match decoder {
             SignedDecoder => Ok(PropData::I32(self.read_varint32()?)),
-            BooleanDecoder => Ok(PropData::Bool(self.read_boolie()?)),
+            BooleanDecoder => Ok(PropData::Bool(self.read_boolean()?)),
             BaseDecoder => Ok(PropData::U32(self.read_varint()?)),
             CentityHandleDecoder => Ok(PropData::U32(self.read_varint()?)),
             ChangleDecoder => Ok(PropData::U32(self.read_varint()?)),
-            ComponentDecoder => Ok(PropData::Bool(self.read_boolie()?)),
+            ComponentDecoder => Ok(PropData::Bool(self.read_boolean()?)),
             FloatCoordDecoder => Ok(PropData::F32(self.read_bit_coord()?)),
             FloatSimulationTimeDecoder => Ok(PropData::F32(self.decode_simul_time()?)),
             NoscaleDecoder => Ok(PropData::F32(f32::from_bits(self.read_nbits(32)?))),
@@ -75,7 +75,7 @@ impl<'a> Bitreader<'a> {
         Ok(self.read_varint()? as f32 * (1.0 / 30.0))
     }
     pub fn decode_normal(&mut self) -> Result<f32, DemoParserError> {
-        let is_neg = self.read_boolie()?;
+        let is_neg = self.read_boolean()?;
         let len = self.read_nbits(11)?;
         let result = (len as f64 * (1.0 / ((1 << 11) as f64) - 1.0)) as f32;
         match is_neg {
@@ -85,15 +85,15 @@ impl<'a> Bitreader<'a> {
     }
     pub fn decode_normal_vec(&mut self) -> Result<Vec<f32>, DemoParserError> {
         let mut v = vec![0.0; 3];
-        let has_x = self.read_boolie()?;
-        let has_y = self.read_boolie()?;
+        let has_x = self.read_boolean()?;
+        let has_y = self.read_boolean()?;
         if has_x {
             v[0] = self.decode_normal()?;
         }
         if has_y {
             v[1] = self.decode_normal()?;
         }
-        let neg_z = self.read_boolie()?;
+        let neg_z = self.read_boolean()?;
         let prod_sum = v[0] * v[0] + v[1] * v[1];
         if prod_sum < 1.0 {
             v[2] = (1.0 - prod_sum).sqrt() as f32;
@@ -120,9 +120,9 @@ impl<'a> Bitreader<'a> {
     }
     pub fn decode_qangle_variant(&mut self) -> Result<[f32; 3], DemoParserError> {
         let mut v = [0.0; 3];
-        let has_x = self.read_boolie()?;
-        let has_y = self.read_boolie()?;
-        let has_z = self.read_boolie()?;
+        let has_x = self.read_boolean()?;
+        let has_y = self.read_boolean()?;
+        let has_z = self.read_boolean()?;
         if has_x {
             v[0] = self.read_bit_coord()?;
         }

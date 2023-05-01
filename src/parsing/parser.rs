@@ -18,7 +18,7 @@ impl Parser {
         // Header (there is a longer header as a DEM_FileHeader msg below)
         let header = self.read_n_bytes(16)?;
         Parser::handle_short_header(file_length, header)?;
-        // Outer loop that continues until "DEM_Stop" msg
+        // Outer loop that continues trough the file, until "DEM_Stop" msg
         loop {
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
@@ -27,14 +27,13 @@ impl Parser {
 
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
-            // Uncompress if is_compressed
-            // TODO how to avoid copy
             let bytes = match is_compressed {
                 true => SnapDecoder::new()
                     .decompress_vec(self.read_n_bytes(size)?)
                     .unwrap(),
                 false => self.read_n_bytes(size)?.to_vec(),
             };
+
             let ok = match demo_cmd_type_from_int(msg_type as i32).unwrap() {
                 DEM_Packet => self.parse_packet(&bytes),
                 DEM_FileHeader => self.parse_header(&bytes),
@@ -48,7 +47,7 @@ impl Parser {
                 _ => Ok(()),
             };
             ok?;
-            self.collect_entities();
+            // self.collect_entities();
         }
         Ok(())
     }
@@ -67,7 +66,7 @@ impl Parser {
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
-                GE_Source1LegacyGameEventList => self.parse_game_event_map(&msg_bytes),
+                GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
                 GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
@@ -102,7 +101,7 @@ impl Parser {
     pub fn parse_classes(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if self.parse_entities {
             let tables: CDemoSendTables = Message::parse_from_bytes(bytes).unwrap();
-            self.parse_sendtable(tables);
+            self.parse_sendtable(tables)?;
         }
         Ok(())
     }

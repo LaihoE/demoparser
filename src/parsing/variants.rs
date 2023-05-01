@@ -53,6 +53,7 @@ impl PropColumn {
             num_nones: 0,
         }
     }
+    #[inline(always)]
     pub fn push(&mut self, item: Option<PropData>) {
         match &item {
             // If we dont know what type the column is (prop has not been parsed yet)
@@ -77,6 +78,7 @@ impl PropColumn {
 }
 
 impl VarVec {
+    #[inline(always)]
     pub fn push_propdata(&mut self, item: Option<PropData>) {
         match item {
             Some(PropData::F32(p)) => match self {
@@ -91,7 +93,6 @@ impl VarVec {
                     panic!("Tried to push a {:?} into a {:?} column", item, self);
                 }
             },
-
             Some(PropData::String(p)) => match self {
                 VarVec::String(f) => f.push(Some(p)),
                 _ => {

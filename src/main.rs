@@ -6,10 +6,7 @@ mod parsing;
 use arrow_array::{Array, Float32Array};
 
 fn main() {
-    let wanted_props = vec![
-        "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX".to_owned(),
-        "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY".to_owned(),
-    ];
+    let wanted_props = vec!["kills_this_round".to_owned()];
     let demo_path = "/home/laiho/Documents/demos/cs2/s2.dem";
 
     let settings = ParserInputs {

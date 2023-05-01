@@ -1,6 +1,7 @@
 use super::read_bits::DemoParserError;
 use crate::parsing::read_bits::Bitreader;
 
+#[inline(always)]
 pub fn do_op(
     opcode: u32,
     bitreader: &mut Bitreader,
@@ -343,7 +344,7 @@ fn push_n_and_non_topological(
     field_path: &mut FieldPath,
 ) -> Result<(), DemoParserError> {
     for i in 0..field_path.last + 1 {
-        if bitreader.read_boolie()? {
+        if bitreader.read_boolean()? {
             field_path.path[i] += bitreader.read_varint32()? + 1;
         }
     }
@@ -433,7 +434,7 @@ fn pop_n_and_non_topographical(
 ) -> Result<(), DemoParserError> {
     field_path.pop_special(bitreader.read_ubit_var_fp()? as usize);
     for i in 0..field_path.last + 1 {
-        if bitreader.read_boolie()? {
+        if bitreader.read_boolean()? {
             field_path.path[i] += bitreader.read_varint32()?;
         }
     }
@@ -445,7 +446,7 @@ fn non_topo_complex(
     field_path: &mut FieldPath,
 ) -> Result<(), DemoParserError> {
     for i in 0..field_path.last + 1 {
-        if bitreader.read_boolie()? {
+        if bitreader.read_boolean()? {
             field_path.path[i] += bitreader.read_varint32()?;
         }
     }
@@ -465,7 +466,7 @@ fn non_topo_complex_pack4_bits(
     field_path: &mut FieldPath,
 ) -> Result<(), DemoParserError> {
     for i in 0..field_path.last + 1 {
-        if bitreader.read_boolie()? {
+        if bitreader.read_boolean()? {
             field_path.path[i] += bitreader.read_nbits(4)? as i32 - 7;
         }
     }
