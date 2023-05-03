@@ -10,6 +10,24 @@ Work in progress so expect some bugs here and there!
 # Documentation
 This will have to do for now 😂
 
+
+### Game events
+```python
+from demoparser2 import DemoParser
+
+parser = DemoParser("path_to_demo.dem")
+# You can add additional fields into the event like so:
+df = parser.parse_events("player_death", extra_values=["last_place_name"])
+```
+You can find out what events your demo had with:
+```event_names = parser.list_game_events()```
+
+
+This can be helpful: https://wiki.alliedmods.net/Counter-Strike:_Global_Offensive_Events  
+
+
+
+
 ### Utility functions
 ```python
 parser = DemoParser("path_to_demo.dem")
@@ -25,20 +43,7 @@ dict_output = parser.parse_convars()
 ```
 All of these take no arguments and return the same shape data. Probably easiest to understand by just trying these out.
 
-### Game events
-```python
-from demoparser2 import DemoParser
 
-parser = DemoParser("path_to_demo.dem")
-df = parser.parse_events("player_death")
-```
-You can find out what events your demo had with:
-```event_names = parser.list_game_events()```
-
-
-
-This can be helpful: https://wiki.alliedmods.net/Counter-Strike:_Global_Offensive_Events  
-List is for CSGO events seem similar to CS2.
 
 
 ### Tick data (entities)
@@ -67,11 +72,70 @@ df = parser.parse_ticks(wanted_fields)
 ```
 
 
-##### List of values to try for parse_ticks()
-```
+### List of values to try for parse_ticks():
+
+### Player data
 "X"
 "Y"
 "Z"
+"is_alive"
+"health"
+"armor"
+"has_defuser"
+"has_helmet"
+"spawn_time"
+"death_time"
+"last_place_name"
+"score"
+"game_time"
+"is_connected"
+"player_name"
+"player_steamid"
+"fov"
+"balance"
+"start_balance"
+"total_cash_spent"
+"cash_spent_this_round"
+"ping"
+"direction_last_injury"
+"in_crouch"
+"crouch_state"
+"is_scoped"
+"is_walking"
+"is_defusing"
+"time_last_injury"
+"moved_since_spawn"
+"in_bomb_zone"
+"in_buy_zone"
+"in_no_defuse_area"
+"which_bomb_zone"       // 0=Not in bombsite, 1 = A, 2 = B
+"flash_duration"
+"flash_max_alpha"
+"is_strafing"
+"current_equip_value"
+"time"
+"health"
+"life_state"
+"active_weapon"
+"ammo"
+"looking_at_weapon"
+"holding_look_at_weapon"
+"ducked"
+"ducking"
+"is_auto_muted"
+"crosshair_code"
+"pending_team_num"
+"player_color"
+"comp_rank"
+"comp_wins"
+"comp_rank_type"
+"music_kit_id"
+"leader_honors"
+"teacher_honors"
+"friendly_honors"
+
+
+### Match info
 "is_freeze_period"
 "is_warmup_period"
 "warmup_period_end"
@@ -118,40 +182,30 @@ df = parser.parse_ticks(wanted_fields)
 "t_losing_streak"
 "survival_start_time"
 "round_in_progress"
-"is_auto_muted"
-"crosshair_code"
-"pending_team_num"
-"player_color"
+
+
+### Team
 "ever_played_on_team"
-"clan_name"
 "is_coach_team"
-"comp_rank"
-"comp_wins"
-"comp_rank_type"
 "is_controlling_bot"
 "has_controlled_bot_this_round"
 "can_control_bot"
-"is_alive"
-"health"
-"armor"
-"has_defuser"
-"has_helmet"
-"spawn_time"
-"death_time"
-"score"
-"game_time"
-"is_connected"
-"player_name"
-"player_steamid"
-"fov"
-"balance"
-"start_balance"
-"total_cash_spent"
-"cash_spent_this_round"
-"music_kit_id"
-"leader_honors"
-"teacher_honors"
-"friendly_honors"
+"team_surrendered"
+"team_rounds_total"
+"team_name"
+"team_score_overtime"
+"team_match_stat"
+"team_num_map_victories"
+"team_score_first_half"
+"team_score_second_half"
+"team_clan_name
+"move_collide"
+"move_type"
+"team_num"
+
+
+
+### Per round stats
 "kills_this_round"
 "deaths_this_round"
 "assists_this_round"
@@ -165,6 +219,10 @@ df = parser.parse_ticks(wanted_fields)
 "money_saved_this_round"
 "kill_reward_this_round"
 "cash_earned_this_round"
+"round_start_equip_value"
+
+
+### Stats total (so far into the demo)
 "kills_total"
 "deaths_total"
 "assists_total"
@@ -181,84 +239,7 @@ df = parser.parse_ticks(wanted_fields)
 "money_saved_total"
 "kill_reward_total"
 "cash_earned_total"
-"ping"
-"team_surrendered"
-"team_rounds_total"
-"team_name"
-"team_score_overtime"
-"team_match_stat"
-"team_num_map_victories"
-"team_score_first_half"
-"team_score_second_half"
-"team_clan_name
-"move_collide"
-"move_type"
-"team_num"
-"active_weapon"
-"ammo"
-"looking_at_weapon"
-"holding_look_at_weapon"
-"next_attack_time"
-"duck_time_ms"
-"max_speed"
-"max_fall_velo"
-"duck_amount"
-"duck_speed"
-"duck_overrdie"
-"old_jump_pressed"
-"jump_until"
-"jump_velo"
-"fall_velo"
-"in_crouch"
-"crouch_state"
-"ducked"
-"ducking"
-"in_duck_jump"
-"allow_auto_movement"
-"jump_time_ms"
-"last_duck_time"
-"is_rescuing"
-"weapon_purchases_this_match"
-"weapon_purchases_this_round"
-"spotted"
-"spotted_mask"
-"time_last_injury"
-"direction_last_injury"
-"player_state"
-"passive_items"
-"is_scoped"
-"is_walking"
-"resume_zoom"
-"is_defusing"
-"is_grabbing_hostage"
-"blocking_use_in_progess"
-"molotov_damage_time"
-"moved_since_spawn"
-"in_bomb_zone"
-"in_buy_zone"
-"in_no_defuse_area"
-"killed_by_taser"
-"move_state"
-"which_bomb_zone"
-"in_hostage_rescue_zone"
-"stamina"
-"direction"
-"shots_fired"
-"armor_value"
-"velo_modifier"
-"ground_accel_linear_frac_last_time"
-"flash_duration"
-"flash_max_alpha"
-"wait_for_no_attack"
-"last_place_name"
-"is_strafing"
-"round_start_equip_value"
-"current_equip_value"
-"time"
-"health"
-"life_state"
-// "pitchyaw"
-```
+
 
 
 

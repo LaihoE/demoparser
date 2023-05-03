@@ -9,31 +9,30 @@ impl<'a> Bitreader<'a> {
     #[inline(always)]
     pub fn decode(&mut self, decoder: &Decoder) -> Result<PropData, DemoParserError> {
         match decoder {
+            NoscaleDecoder => Ok(PropData::F32(f32::from_bits(self.read_nbits(32)?))),
+            FloatSimulationTimeDecoder => Ok(PropData::F32(self.decode_simul_time()?)),
+            UnsignedDecoder => Ok(PropData::U32(self.read_varint()?)),
+            QuantalizedFloatDecoder(qf) => Ok(PropData::F32(qf.clone().decode(self))),
+            Qangle3Decoder => Ok(PropData::VecXYZ(self.decode_qangle_all_3()?)),
             SignedDecoder => Ok(PropData::I32(self.read_varint32()?)),
+            VectorNoscaleDecoder => Ok(PropData::FloatVec32(self.decode_vector_noscale()?)),
             BooleanDecoder => Ok(PropData::Bool(self.read_boolean()?)),
             BaseDecoder => Ok(PropData::U32(self.read_varint()?)),
             CentityHandleDecoder => Ok(PropData::U32(self.read_varint()?)),
             ChangleDecoder => Ok(PropData::U32(self.read_varint()?)),
             ComponentDecoder => Ok(PropData::Bool(self.read_boolean()?)),
             FloatCoordDecoder => Ok(PropData::F32(self.read_bit_coord()?)),
-            FloatSimulationTimeDecoder => Ok(PropData::F32(self.decode_simul_time()?)),
-            NoscaleDecoder => Ok(PropData::F32(f32::from_bits(self.read_nbits(32)?))),
-            UnsignedDecoder => Ok(PropData::U32(self.read_varint()?)),
             StringDecoder => Ok(PropData::String(self.read_string()?)),
-            Qangle3Decoder => Ok(PropData::VecXYZ(self.decode_qangle_all_3()?)),
             QanglePitchYawDecoder => Ok(PropData::VecXYZ(self.decode_qangle_pitch_yaw()?)),
             QangleVarDecoder => Ok(PropData::VecXYZ(self.decode_qangle_variant()?)),
-            QuantalizedFloatDecoder(qf) => Ok(PropData::F32(qf.clone().decode(self))),
             VectorNormalDecoder => Ok(PropData::FloatVec32(self.decode_normal_vec()?)),
             Unsigned64Decoder => Ok(PropData::U64(self.read_varint_u_64()?)),
             Fixed64Decoder => Ok(PropData::U64(self.decode_uint64()?)),
             VectorFloatCoordDecoder => Ok(PropData::FloatVec32(self.decode_vector_float_coord()?)),
-            VectorNoscaleDecoder => Ok(PropData::FloatVec32(self.decode_vector_noscale()?)),
-            NO => Ok(PropData::U32(self.read_varint()?)),
-            X => Ok(PropData::U32(self.read_nbits(1)?)),
             _ => panic!("huh {:?}", decoder),
         }
     }
+
     pub fn decode_vector_float_coord(&mut self) -> Result<Vec<f32>, DemoParserError> {
         let mut v = vec![];
         for _ in 0..3 {
@@ -59,7 +58,6 @@ impl<'a> Bitreader<'a> {
     pub fn read_string(&mut self) -> Result<String, DemoParserError> {
         let mut s: Vec<u8> = vec![];
         loop {
-            // Slow
             let c = self.read_n_bytes(1)?[0];
             if c == 0 {
                 break;

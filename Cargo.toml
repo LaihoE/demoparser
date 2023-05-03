@@ -36,6 +36,7 @@ lazy_static = "1.4.0"
 bit_reverse = "0.1.8"
 memmap2 = "0.5.10"
 mimalloc = "0.1.37"
+cached = "0.43.0"
 
 
 
@@ -49,7 +50,7 @@ path = "src/csgoproto"
 overflow-checks = false
 
 [profile.release]
-debug = true
+#debug = true
 
 #opt-level = 3
 #lto = "fat"

@@ -18,7 +18,6 @@ impl Parser {
             return Ok(());
         }
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
-
         for class_t in msg.classes {
             let cls_id = class_t.class_id();
             let network_name = class_t.network_name();

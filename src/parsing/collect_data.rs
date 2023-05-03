@@ -590,7 +590,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_unCurrentEquipmentValue" => PropType::Player,
     "CCSPlayerPawn.m_flSimulationTime" => PropType::Player,
     "CCSPlayerPawn.m_iHealth" => PropType::Player,
-    // "pitchyaw" => "CCSPlayerPawn.m_angEyeAngles"
     "CCSPlayerPawn.m_lifeState" => PropType::Player,
     // Custom
     "X"=> PropType::Custom,

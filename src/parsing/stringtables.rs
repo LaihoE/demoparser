@@ -43,10 +43,8 @@ impl Parser {
             true => snap::raw::Decoder::new()
                 .decompress_vec(table.string_data())
                 .unwrap(),
-            // slow
             false => table.string_data().to_vec(),
         };
-
         self.parse_string_table(
             bytes,
             table.num_entries(),
@@ -54,8 +52,7 @@ impl Parser {
             table.user_data_fixed_size(),
             table.user_data_size(),
             table.flags(),
-        )
-        .unwrap();
+        )?;
         Ok(())
     }
     pub fn parse_string_table(

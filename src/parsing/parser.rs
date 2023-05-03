@@ -47,7 +47,7 @@ impl Parser {
                 _ => Ok(()),
             };
             ok?;
-            // self.collect_entities();
+            self.collect_entities();
         }
         Ok(())
     }

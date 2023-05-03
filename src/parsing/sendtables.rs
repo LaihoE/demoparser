@@ -2,6 +2,8 @@ use super::read_bits::{Bitreader, DemoParserError};
 use crate::parsing::entities_utils::FieldPath;
 use crate::parsing::parser_settings::Parser;
 use crate::parsing::q_float::QuantalizedFloat;
+use crate::parsing::sendtables::Decoder::*;
+use crate::parsing::sendtables::FieldModel::*;
 use ahash::HashMap;
 use csgoproto::{
     demo::CDemoSendTables,
@@ -41,17 +43,22 @@ pub enum FieldModel {
     FieldModelVariableTable,
     FieldModelNOTSET,
 }
+use std::fmt;
+
+impl fmt::Display for Decoder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[allow(dead_code)]
 pub enum Decoder {
-    FloatDecoder,
     QuantalizedFloatDecoder(QuantalizedFloat),
     VectorNormalDecoder,
     VectorNoscaleDecoder,
     VectorFloatCoordDecoder,
-    Vector2DDecoder,
-    Vector4DDecoder,
     Unsigned64Decoder,
     QangleDecoder,
     ChangleDecoder,
@@ -65,19 +72,14 @@ pub enum Decoder {
     ComponentDecoder,
     FloatCoordDecoder,
     FloatSimulationTimeDecoder,
-    FloatRuneTimeDecoder,
     Fixed64Decoder,
     QanglePitchYawDecoder,
     Qangle3Decoder,
     QangleVarDecoder,
-    VectorDecoder,
     BaseDecoder,
     NO,
     X,
 }
-
-use crate::parsing::sendtables::Decoder::*;
-use crate::parsing::sendtables::FieldModel::*;
 
 pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
     "bool" =>   BooleanDecoder,
@@ -316,7 +318,7 @@ impl Field {
                 "CNetworkedQuantizedFloat" => self.find_float_type(),
                 "CStrongHandle" => self.find_uint_type(),
                 "CEntityHandle" => self.find_uint_type(),
-                _ => Decoder::NO, //panic!("no decoder {}", self.field_type.base_type.as_str()),
+                _ => Decoder::UnsignedDecoder,
             },
         };
         dec
@@ -342,9 +344,7 @@ impl Field {
         match self.encoder.as_str() {
             "coord" => Decoder::FloatCoordDecoder,
             "m_flSimulationTime" => Decoder::FloatSimulationTimeDecoder,
-            // Maybe dota only?
             _ => {
-                // IF NIL?
                 if self.bitcount <= 0 || self.bitcount >= 32 {
                     return Decoder::NoscaleDecoder;
                 } else {
@@ -432,7 +432,6 @@ fn find_field_type(name: &str) -> FieldType {
 #[derive(Debug, Clone)]
 pub struct Serializer {
     pub name: String,
-    // Maybe hm?
     pub fields: Vec<Field>,
 }
 
@@ -442,7 +441,6 @@ impl Serializer {
         let f = &self.fields[idx as usize];
         f.decoder_from_path(path, pos + 1)
     }
-
     pub fn debug_find_decoder(
         &self,
         path: &FieldPath,
@@ -456,7 +454,6 @@ impl Serializer {
 }
 
 const POINTER_TYPES: &'static [&'static str] = &[
-    // TODO CS ONES
     "PhysicsRagdollPose_t",
     "CBodyComponent",
     "CEntityIdentity",
@@ -538,7 +535,6 @@ impl Parser {
                                 }
                             }
                         }
-                        // println!("{:#?}", field);
                         fields.insert(*idx, field.clone());
                         my_serializer.fields.push(field);
                         self.find_prop_name_paths(&my_serializer);
@@ -570,10 +566,11 @@ impl Parser {
                 for (idx, val) in tmp.iter().enumerate() {
                     arr[idx] = *val;
                 }
+                let full_name = ser_name.clone() + "." + &f.var_name;
 
-                if self
-                    .wanted_props
-                    .contains(&(ser_name.clone() + "." + &f.var_name))
+                if self.wanted_props.contains(&full_name)
+                    || full_name.contains("cell")
+                    || full_name.contains("m_vec")
                 {
                     self.wanted_prop_paths.insert(arr);
                 }

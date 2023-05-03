@@ -14,6 +14,7 @@ use ahash::AHashSet;
 use ahash::HashMap;
 use ahash::RandomState;
 use bit_reverse::LookupReverse;
+use cached::instant::Instant;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use memmap2::Mmap;
 use memmap2::MmapOptions;
@@ -71,6 +72,8 @@ pub struct Parser {
 
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
     pub header: HashMap<String, String>,
+    pub counter: HashMap<String, i32>,
+    pub wanted_prop_og_names: Vec<String>,
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -124,6 +127,7 @@ pub struct PlayerEndData {
 pub struct ParserInputs {
     pub path: String,
     pub wanted_props: Vec<String>,
+    pub wanted_prop_og_names: Vec<String>,
     pub wanted_ticks: Vec<i32>,
     pub wanted_event: Option<String>,
     pub parse_ents: bool,
@@ -152,8 +156,9 @@ impl Parser {
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
+        let before = Instant::now();
         let huffman_table = create_huffman_lookup_table();
-
+        println!("{:2?}", before.elapsed());
         Ok(Parser {
             serializers: AHashMap::default(),
             ptr: 0,
@@ -239,10 +244,12 @@ impl Parser {
             wanted_prop_paths: AHashSet::default(),
             path_to_prop_name: AHashMap::default(),
             header: HashMap::default(),
+            counter: HashMap::default(),
+            wanted_prop_og_names: settings.wanted_prop_og_names,
         })
     }
 }
-#[inline(always)]
+
 fn msb(mut val: u32) -> u32 {
     let mut cnt = 0;
     while val > 0 {
@@ -352,19 +359,34 @@ fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
             v.push(idx as u32);
         }
     }
-    let mut found = vec![];
+
+    let mut idx_msb_map = Vec::with_capacity(HUF_LOOKUPTABLE_MAXVALUE as usize);
+    for i in 0..HUF_LOOKUPTABLE_MAXVALUE {
+        idx_msb_map.push(msb(i));
+    }
+    for x in v {
+        let shifta = msb(x);
+        for (idx, pair) in idx_msb_map.iter().enumerate() {
+            if x == idx as u32 >> pair - shifta {
+                let peekbits = (idx as u64).swap_bits() >> RIGHTSHIFT_BITORDER;
+                huffman_table[idx as usize] = huffman_table[x as usize];
+                huffman_rev_table[peekbits as usize] = huffman_table[x as usize];
+            }
+        }
+    }
+    /*
     for x in v {
         let shifta = msb(x);
         for i in 0..HUF_LOOKUPTABLE_MAXVALUE {
             let shiftb = msb(i);
             if x == i >> shiftb - shifta {
-                found.push(x);
                 let peekbits = (i as u64).swap_bits() >> RIGHTSHIFT_BITORDER;
                 huffman_table[i as usize] = huffman_table[x as usize];
                 huffman_rev_table[peekbits as usize] = huffman_table[x as usize];
             }
         }
     }
+    */
     for v in 0..HUF_LOOKUPTABLE_MAXVALUE {
         let p: u64 = (v as u64).swap_bits() >> RIGHTSHIFT_BITORDER;
         if p & 1 == 0 {

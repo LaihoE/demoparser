@@ -38,6 +38,7 @@ impl DemoParser {
         let settings = ParserInputs {
             path: self.path.to_owned(),
             wanted_props: vec![],
+            wanted_prop_og_names: vec![],
             wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
@@ -60,6 +61,7 @@ impl DemoParser {
         let settings = ParserInputs {
             path: self.path.to_owned(),
             wanted_props: vec![],
+            wanted_prop_og_names: vec![],
             wanted_event: None,
             parse_ents: false,
             wanted_ticks: vec![],
@@ -83,6 +85,7 @@ impl DemoParser {
         let settings = ParserInputs {
             path: self.path.to_owned(),
             wanted_props: vec![],
+            wanted_prop_og_names: vec![],
             wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
@@ -115,6 +118,7 @@ impl DemoParser {
         let settings = ParserInputs {
             path: self.path.to_owned(),
             wanted_props: vec![],
+            wanted_prop_og_names: vec![],
             wanted_event: None,
             parse_ents: true,
             wanted_ticks: vec![],
@@ -173,6 +177,7 @@ impl DemoParser {
         let settings = ParserInputs {
             path: self.path.to_owned(),
             wanted_props: vec![],
+            wanted_prop_og_names: vec![],
             wanted_event: None,
             parse_ents: false,
             wanted_ticks: vec![],
@@ -217,6 +222,7 @@ impl DemoParser {
         let settings = ParserInputs {
             path: self.path.to_owned(),
             wanted_props: vec![],
+            wanted_prop_og_names: vec![],
             wanted_event: None,
             parse_ents: false,
             wanted_ticks: vec![],
@@ -260,6 +266,7 @@ impl DemoParser {
         let settings = ParserInputs {
             path: self.path.to_owned(),
             wanted_props: vec![],
+            wanted_prop_og_names: vec![],
             wanted_event: None,
             parse_ents: false,
             wanted_ticks: vec![],
@@ -332,6 +339,7 @@ impl DemoParser {
         let settings = ParserInputs {
             path: self.path.to_owned(),
             wanted_props: vec![],
+            wanted_prop_og_names: vec![],
             wanted_event: None,
             parse_ents: false,
             wanted_ticks: vec![],
@@ -397,11 +405,18 @@ impl DemoParser {
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<Py<PyAny>> {
         let (_, wanted_props) = parse_kwargs_event(py_kwargs);
+        let real_props = rm_user_friendly_names(&wanted_props);
+
+        let mut real_props = match real_props {
+            Ok(real_props) => real_props,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         let settings = ParserInputs {
             path: self.path.to_owned(),
-            wanted_props: wanted_props.clone(),
+            wanted_props: real_props.clone(),
+            wanted_prop_og_names: wanted_props.clone(),
             wanted_event: event_name.clone(),
-            parse_ents: wanted_props.len() > 0,
+            parse_ents: real_props.len() > 0,
             wanted_ticks: vec![],
             parse_projectiles: false,
             only_header: false,
@@ -458,6 +473,7 @@ impl DemoParser {
         let settings = ParserInputs {
             path: self.path.clone(),
             wanted_props: real_props.clone(),
+            wanted_prop_og_names: wanted_props.clone(),
             wanted_event: None,
             parse_ents: true,
             wanted_ticks: wanted_ticks,
@@ -596,7 +612,7 @@ pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (bool, Vec<String>) {
                 }
                 None => {}
             }
-            match k.get_item("props") {
+            match k.get_item("extra_values") {
                 Some(t) => {
                     props = t.extract().unwrap();
                 }

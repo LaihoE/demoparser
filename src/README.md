@@ -1,10 +1,5 @@
 ### Welcome to the source code
 
-
-lib.rs => Python bindings
-main.rs => Some junk if you want to try out with rust
-The parser itself is in the parsing dir
-
 The outer loop trough the file is very simple and can be found in parsing/parser.rs.
 
 1. Read what command the next bytes will be.
@@ -74,9 +69,9 @@ The main message types are:
 
 - svc_CreateStringTable
 - svc_UpdateStringTable
+- svc_PacketEntities
 - GE_Source1LegacyGameEventList
 - GE_Source1LegacyGameEvent
-- svc_PacketEntities
 
 There are also some rare other message types that can be found in parsing/parser.rs
 
