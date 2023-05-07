@@ -1,34 +1,34 @@
 use super::{
     read_bits::{Bitreader, DemoParserError},
     sendtables::Decoder,
-    variants::PropData,
+    variants::Variant,
 };
-use crate::parsing::sendtables::Decoder::*;
+use crate::sendtables::Decoder::*;
 
 impl<'a> Bitreader<'a> {
     #[inline(always)]
-    pub fn decode(&mut self, decoder: &Decoder) -> Result<PropData, DemoParserError> {
+    pub fn decode(&mut self, decoder: &Decoder) -> Result<Variant, DemoParserError> {
         match decoder {
-            NoscaleDecoder => Ok(PropData::F32(f32::from_bits(self.read_nbits(32)?))),
-            FloatSimulationTimeDecoder => Ok(PropData::F32(self.decode_simul_time()?)),
-            UnsignedDecoder => Ok(PropData::U32(self.read_varint()?)),
-            QuantalizedFloatDecoder(qf) => Ok(PropData::F32(qf.clone().decode(self))),
-            Qangle3Decoder => Ok(PropData::VecXYZ(self.decode_qangle_all_3()?)),
-            SignedDecoder => Ok(PropData::I32(self.read_varint32()?)),
-            VectorNoscaleDecoder => Ok(PropData::FloatVec32(self.decode_vector_noscale()?)),
-            BooleanDecoder => Ok(PropData::Bool(self.read_boolean()?)),
-            BaseDecoder => Ok(PropData::U32(self.read_varint()?)),
-            CentityHandleDecoder => Ok(PropData::U32(self.read_varint()?)),
-            ChangleDecoder => Ok(PropData::U32(self.read_varint()?)),
-            ComponentDecoder => Ok(PropData::Bool(self.read_boolean()?)),
-            FloatCoordDecoder => Ok(PropData::F32(self.read_bit_coord()?)),
-            StringDecoder => Ok(PropData::String(self.read_string()?)),
-            QanglePitchYawDecoder => Ok(PropData::VecXYZ(self.decode_qangle_pitch_yaw()?)),
-            QangleVarDecoder => Ok(PropData::VecXYZ(self.decode_qangle_variant()?)),
-            VectorNormalDecoder => Ok(PropData::FloatVec32(self.decode_normal_vec()?)),
-            Unsigned64Decoder => Ok(PropData::U64(self.read_varint_u_64()?)),
-            Fixed64Decoder => Ok(PropData::U64(self.decode_uint64()?)),
-            VectorFloatCoordDecoder => Ok(PropData::FloatVec32(self.decode_vector_float_coord()?)),
+            NoscaleDecoder => Ok(Variant::F32(f32::from_bits(self.read_nbits(32)?))),
+            FloatSimulationTimeDecoder => Ok(Variant::F32(self.decode_simul_time()?)),
+            UnsignedDecoder => Ok(Variant::U32(self.read_varint()?)),
+            QuantalizedFloatDecoder(qf) => Ok(Variant::F32(qf.clone().decode(self))),
+            Qangle3Decoder => Ok(Variant::VecXYZ(self.decode_qangle_all_3()?)),
+            SignedDecoder => Ok(Variant::I32(self.read_varint32()?)),
+            VectorNoscaleDecoder => Ok(Variant::FloatVec32(self.decode_vector_noscale()?)),
+            BooleanDecoder => Ok(Variant::Bool(self.read_boolean()?)),
+            BaseDecoder => Ok(Variant::U32(self.read_varint()?)),
+            CentityHandleDecoder => Ok(Variant::U32(self.read_varint()?)),
+            ChangleDecoder => Ok(Variant::U32(self.read_varint()?)),
+            ComponentDecoder => Ok(Variant::Bool(self.read_boolean()?)),
+            FloatCoordDecoder => Ok(Variant::F32(self.read_bit_coord()?)),
+            StringDecoder => Ok(Variant::String(self.read_string()?)),
+            QanglePitchYawDecoder => Ok(Variant::VecXYZ(self.decode_qangle_pitch_yaw()?)),
+            QangleVarDecoder => Ok(Variant::VecXYZ(self.decode_qangle_variant()?)),
+            VectorNormalDecoder => Ok(Variant::FloatVec32(self.decode_normal_vec()?)),
+            Unsigned64Decoder => Ok(Variant::U64(self.read_varint_u_64()?)),
+            Fixed64Decoder => Ok(Variant::U64(self.decode_uint64()?)),
+            VectorFloatCoordDecoder => Ok(Variant::FloatVec32(self.decode_vector_float_coord()?)),
             _ => panic!("huh {:?}", decoder),
         }
     }

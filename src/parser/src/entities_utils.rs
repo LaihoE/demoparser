@@ -1,5 +1,5 @@
 use super::read_bits::DemoParserError;
-use crate::parsing::read_bits::Bitreader;
+use crate::read_bits::Bitreader;
 
 #[inline(always)]
 pub fn do_op(

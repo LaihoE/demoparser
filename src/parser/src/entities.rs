@@ -1,8 +1,8 @@
 use super::read_bits::DemoParserError;
-use crate::parsing::entities_utils::*;
-use crate::parsing::parser_settings::Parser;
-use crate::parsing::read_bits::Bitreader;
-use crate::parsing::variants::PropData;
+use crate::entities_utils::*;
+use crate::parser_settings::Parser;
+use crate::read_bits::Bitreader;
+use crate::variants::Variant;
 use ahash::HashMap;
 use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
@@ -16,9 +16,9 @@ const HUFFMAN_CODE_MAXLEN: u32 = 17;
 pub struct Entity {
     pub cls_id: u32,
     pub entity_id: i32,
-    pub props: HashMap<[i32; 7], PropData>,
+    pub props: HashMap<[i32; 7], Variant>,
     pub entity_type: EntityType,
-    pub history: HashMap<[i32; 7], Vec<PropData>>,
+    pub history: HashMap<[i32; 7], Vec<Variant>>,
 }
 
 #[derive(Debug, Clone)]
@@ -43,7 +43,7 @@ enum EntityCmd {
     Update,
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
@@ -243,7 +243,7 @@ impl Parser {
             None => return Err(DemoParserError::ClassNotFound),
         };
         if class.name == "CCSTeam" {
-            if let Some(PropData::U32(t)) = self.get_prop_for_ent("CCSTeam.m_iTeamNum", entity_id) {
+            if let Some(Variant::U32(t)) = self.get_prop_for_ent("CCSTeam.m_iTeamNum", entity_id) {
                 match t {
                     1 => self.teams.team1_entid = Some(*entity_id),
                     2 => self.teams.team2_entid = Some(*entity_id),
@@ -255,7 +255,7 @@ impl Parser {
         }
         let team_num = match self.get_prop_for_ent("CCSPlayerController.m_iTeamNum", entity_id) {
             Some(team_num) => match team_num {
-                PropData::U32(team_num) => Some(team_num),
+                Variant::U32(team_num) => Some(team_num),
                 // Signals that something went very wrong
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
@@ -263,14 +263,14 @@ impl Parser {
         };
         let name = match self.get_prop_for_ent("CCSPlayerController.m_iszPlayerName", entity_id) {
             Some(name) => match name {
-                PropData::String(name) => Some(name),
+                Variant::String(name) => Some(name),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
             None => None,
         };
         let steamid = match self.get_prop_for_ent("CCSPlayerController.m_steamID", entity_id) {
             Some(steamid) => match steamid {
-                PropData::U64(steamid) => Some(steamid),
+                Variant::U64(steamid) => Some(steamid),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
             None => None,
@@ -278,7 +278,7 @@ impl Parser {
         let player_entid =
             match self.get_prop_for_ent("CCSPlayerController.m_hPlayerPawn", entity_id) {
                 Some(player_entid) => match player_entid {
-                    PropData::U32(handle) => Some((handle & 0x7FF) as i32),
+                    Variant::U32(handle) => Some((handle & 0x7FF) as i32),
                     _ => return Err(DemoParserError::IncorrectMetaDataProp),
                 },
                 None => None,
@@ -313,18 +313,7 @@ impl Parser {
             EntityType::Rules => self.rules_entity_id = Some(*entity_id),
             _ => {}
         };
-        if self.cls_by_id[cls_id as usize]
-            .as_ref()
-            .unwrap()
-            .name
-            .contains("Player")
-        {
-            println!(
-                "{:?} {}",
-                self.cls_by_id[cls_id as usize].as_ref().unwrap().name,
-                entity_id
-            );
-        }
+
         let entity = Entity {
             entity_id: *entity_id,
             cls_id: cls_id,

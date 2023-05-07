@@ -212,7 +212,7 @@ impl QuantalizedFloat {
 
 #[cfg(test)]
 mod tests {
-    use crate::parsing::q_float::*;
+    use crate::q_float::*;
 
     #[test]
     fn test_qfloat_new() {

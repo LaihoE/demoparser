@@ -1,7 +1,8 @@
-use crate::parsing::parser_settings::ChatMessageRecord;
-use crate::parsing::parser_settings::PlayerEndData;
-use crate::parsing::read_bits::DemoParserError;
-use crate::{parsing::parser_settings::EconItem, Parser};
+use crate::parser_settings::ChatMessageRecord;
+use crate::parser_settings::EconItem;
+use crate::parser_settings::Parser;
+use crate::parser_settings::PlayerEndData;
+use crate::read_bits::DemoParserError;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_EndOfMatchAllPlayersData;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_SendPlayerItemDrops;
 use csgoproto::demo::CDemoFileInfo;
@@ -11,7 +12,7 @@ use protobuf::Message;
 // This file has functions for the simpler netmessages.
 // Don't want to create a new file for each of these.
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_item_drops(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let drops: CCSUsrMsg_SendPlayerItemDrops = Message::parse_from_bytes(&bytes).unwrap();
         for item in &drops.entity_updates {

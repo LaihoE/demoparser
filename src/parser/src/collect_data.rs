@@ -1,7 +1,7 @@
 use super::entities::PlayerMetaData;
-use super::variants::PropData;
-use crate::parsing::parser_settings::Parser;
-use crate::parsing::variants::PropColumn;
+use super::variants::Variant;
+use crate::parser_settings::Parser;
+use crate::variants::PropColumn;
 use phf_macros::phf_map;
 use soa_derive::StructOfArray;
 
@@ -18,7 +18,7 @@ pub struct ProjectileRecord {
 
 // This file collects the data that is converted into a dataframe in the end in parser.parse_ticks()
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn collect_entities(&mut self) {
         if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 {
             return;
@@ -39,7 +39,7 @@ impl Parser {
             }
         }
     }
-    pub fn get_prop_for_ent(&self, prop_name: &str, entity_id: &i32) -> Option<PropData> {
+    pub fn get_prop_for_ent(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
         // Function that allows you to use string name for the prop and the function
         // translates it to a path. This costs a bit but the elegance of using string names
         // is just too big to give up. Also I think paths change between demos soo...
@@ -60,16 +60,16 @@ impl Parser {
         prop_name: &str,
         entity_id: &i32,
         player: &PlayerMetaData,
-    ) -> Option<PropData> {
+    ) -> Option<Variant> {
         // Early exit these metadata props
         match prop_name {
-            "tick" => return Some(PropData::I32(self.tick)),
+            "tick" => return Some(Variant::I32(self.tick)),
             "steamid" => match player.steamid {
-                Some(steamid) => return Some(PropData::U64(steamid)),
+                Some(steamid) => return Some(Variant::U64(steamid)),
                 _ => return None,
             },
             "name" => match &player.name {
-                Some(name) => return Some(PropData::String(name.to_string())),
+                Some(name) => return Some(Variant::String(name.to_string())),
                 _ => return None,
             },
             _ => {}
@@ -89,7 +89,7 @@ impl Parser {
                 if let Some(e) = player.controller_entid {
                     let is_alive = self.get_prop_for_ent("CCSPlayerController.m_bPawnIsAlive", &e);
                     match is_alive {
-                        Some(PropData::Bool(true)) => {
+                        Some(Variant::Bool(true)) => {
                             return self.get_prop_for_ent(&prop_name, &entity_id)
                         }
                         _ => return None,
@@ -100,7 +100,7 @@ impl Parser {
         }
         None
     }
-    pub fn collect_cell_coordinate_player(&self, axis: &str, entity_id: &i32) -> Option<PropData> {
+    pub fn collect_cell_coordinate_player(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
         let offset = self.get_prop_for_ent(
             &("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vec".to_owned() + axis),
             entity_id,
@@ -110,11 +110,11 @@ impl Parser {
             entity_id,
         );
         if let Some(coord) = coord_from_cell(cell, offset) {
-            return Some(PropData::F32(coord));
+            return Some(Variant::F32(coord));
         }
         None
     }
-    pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Option<PropData> {
+    pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
         let entity = match self.entities.get(entity_id) {
             Some(ent) => ent,
             None => return None,
@@ -132,7 +132,7 @@ impl Parser {
             entity_id,
         );
         if let Some(coord) = coord_from_cell(cell, offset) {
-            return Some(PropData::F32(coord));
+            return Some(Variant::F32(coord));
         }
         None
     }
@@ -147,7 +147,7 @@ impl Parser {
         };
         let owner_entid =
             match self.get_prop_for_ent(&(class.name.to_owned() + "." + "m_nOwnerId"), entity_id) {
-                Some(PropData::U32(prop)) => Some(prop & 0x7FF),
+                Some(Variant::U32(prop)) => Some(prop & 0x7FF),
                 _ => None,
             };
         let steamid = match owner_entid {
@@ -170,7 +170,7 @@ impl Parser {
         };
         let owner_entid =
             match self.get_prop_for_ent(&(class.name.to_owned() + "." + "m_nOwnerId"), entity_id) {
-                Some(PropData::U32(prop)) => Some(prop & 0x7FF),
+                Some(Variant::U32(prop)) => Some(prop & 0x7FF),
                 _ => None,
             };
         let name = match owner_entid {
@@ -207,15 +207,15 @@ impl Parser {
             let z = self.collect_cell_coordinate_grenade("Z", projectile_entid);
 
             let float_x = match x {
-                Some(PropData::F32(p)) => Some(p),
+                Some(Variant::F32(p)) => Some(p),
                 _ => None,
             };
             let float_y = match y {
-                Some(PropData::F32(p)) => Some(p),
+                Some(Variant::F32(p)) => Some(p),
                 _ => None,
             };
             let float_z = match z {
-                Some(PropData::F32(p)) => Some(p),
+                Some(Variant::F32(p)) => Some(p),
                 _ => None,
             };
 
@@ -230,8 +230,8 @@ impl Parser {
             });
         }
     }
-    pub fn find_team_prop(&self, player_entid: &i32, prop: &str) -> Option<PropData> {
-        if let Some(PropData::U32(team_num)) =
+    pub fn find_team_prop(&self, player_entid: &i32, prop: &str) -> Option<Variant> {
+        if let Some(Variant::U32(team_num)) =
             self.get_prop_for_ent("CCSPlayerPawn.m_iTeamNum", player_entid)
         {
             let team_entid = match team_num {
@@ -250,7 +250,7 @@ impl Parser {
         }
         None
     }
-    pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<PropData> {
+    pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
         match prop_name {
             "X" => self.collect_cell_coordinate_player("X", entity_id),
             "Y" => self.collect_cell_coordinate_player("Y", entity_id),
@@ -259,13 +259,13 @@ impl Parser {
         }
     }
 }
-fn coord_from_cell(cell: Option<PropData>, offset: Option<PropData>) -> Option<f32> {
+fn coord_from_cell(cell: Option<Variant>, offset: Option<Variant>) -> Option<f32> {
     // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
     let cell_bits = 9;
     let max_coord = (1 << 14) as f32;
     // Both are cell and offset are needed for calculation
-    if let Some(PropData::U32(cell)) = cell {
-        if let Some(PropData::F32(offset)) = offset {
+    if let Some(Variant::U32(cell)) = cell {
+        if let Some(Variant::F32(offset)) = offset {
             let cell_coord = ((cell as f32 * (1 << cell_bits) as f32) - max_coord) as f32;
             return Some(cell_coord + offset);
         }

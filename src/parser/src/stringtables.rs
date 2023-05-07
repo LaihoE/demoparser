@@ -1,5 +1,5 @@
 use super::read_bits::{Bitreader, DemoParserError};
-use crate::parsing::parser_settings::Parser;
+use crate::parser_settings::Parser;
 use csgoproto::netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable};
 use protobuf::Message;
 use snap::raw::Decoder;
@@ -19,7 +19,7 @@ pub struct StringTableEntry {
     pub value: Vec<u8>,
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
 

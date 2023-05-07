@@ -5,28 +5,25 @@ use super::read_bits::DemoParserError;
 use super::sendtables::Serializer;
 use super::stringtables::StringTable;
 use super::variants::PropColumn;
-use crate::parsing::collect_data::ProjectileRecordVec;
-use crate::parsing::entities::Entity;
-use crate::parsing::entities::PlayerMetaData;
-use crate::parsing::sendtables::Decoder;
+use crate::collect_data::ProjectileRecordVec;
+use crate::entities::Entity;
+use crate::entities::PlayerMetaData;
+use crate::sendtables::Decoder;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
 use ahash::RandomState;
 use bit_reverse::LookupReverse;
-use cached::instant::Instant;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use memmap2::Mmap;
-use memmap2::MmapOptions;
 use soa_derive::StructOfArray;
 
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 19) - 1;
 
-pub struct Parser {
+pub struct Parser<'a> {
     // todo split into smaller parts
     pub ptr: usize,
-    pub bytes: Mmap,
+    pub bytes: &'a [u8],
     pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_by_id: [Option<Class>; 560],
@@ -43,9 +40,7 @@ pub struct Parser {
     pub parse_entities: bool,
     pub projectiles: AHashSet<i32, RandomState>,
     pub projectile_records: ProjectileRecordVec,
-
     pub paths: Vec<FieldPath>,
-
     pub pattern_cache: AHashMap<u64, Decoder, RandomState>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub string_tables: Vec<StringTable>,
@@ -63,13 +58,10 @@ pub struct Parser {
     pub item_drops: EconItemVec,
     pub player_end_data: PlayerEndDataVec,
     pub skins: EconItemVec,
-
     pub history: AHashMap<u64, (u64, Decoder), RandomState>,
     pub huffman_lookup_table: Vec<(u32, u8)>,
-
     pub prop_name_to_path: AHashMap<String, [i32; 7]>,
     pub path_to_prop_name: AHashMap<[i32; 7], String>,
-
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
     pub header: HashMap<String, String>,
     pub counter: HashMap<String, i32>,
@@ -124,8 +116,8 @@ pub struct PlayerEndData {
 }
 
 #[derive(Debug)]
-pub struct ParserInputs {
-    pub path: String,
+pub struct ParserInputs<'a> {
+    pub bytes: &'a [u8],
     pub wanted_props: Vec<String>,
     pub wanted_prop_og_names: Vec<String>,
     pub wanted_ticks: Vec<i32>,
@@ -137,16 +129,8 @@ pub struct ParserInputs {
     pub only_convars: bool,
 }
 
-impl Parser {
-    pub fn new(mut settings: ParserInputs) -> Result<Self, DemoParserError> {
-        let file = match std::fs::File::open(&settings.path) {
-            Ok(f) => f,
-            Err(e) => return Err(DemoParserError::FileError(e)),
-        };
-        let bytes = match unsafe { MmapOptions::new().map(&file) } {
-            Ok(f) => f,
-            Err(e) => return Err(DemoParserError::FileError(e)),
-        };
+impl<'a> Parser<'a> {
+    pub fn new(mut settings: ParserInputs<'a>) -> Result<Self, DemoParserError> {
         let fp_filler = FieldPath {
             last: 0,
             path: [-1, 0, 0, 0, 0, 0, 0],
@@ -156,14 +140,12 @@ impl Parser {
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
-        let before = Instant::now();
         let huffman_table = create_huffman_lookup_table();
-        println!("{:2?}", before.elapsed());
         Ok(Parser {
             serializers: AHashMap::default(),
             ptr: 0,
             ge_list: None,
-            bytes: bytes,
+            bytes: settings.bytes,
             // JUST LOL
             cls_by_id: [
                 None, None, None, None, None, None, None, None, None, None, None, None, None, None,
@@ -306,7 +288,7 @@ fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
     huffman_table[14] = (1, 4);
     huffman_table[15] = (11, 4);
     huffman_table[0] = (999999, 255);
-
+    /*
     huffman_rev_table[0.swap_bits() >> RIGHTSHIFT_BITORDER] = (0, 1);
     huffman_rev_table[2.swap_bits() >> RIGHTSHIFT_BITORDER] = (39, 2);
     huffman_rev_table[24.swap_bits() >> RIGHTSHIFT_BITORDER] = (8, 5);
@@ -350,7 +332,7 @@ fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
     huffman_rev_table[14.swap_bits() >> RIGHTSHIFT_BITORDER] = (1, 4);
     huffman_rev_table[15.swap_bits() >> RIGHTSHIFT_BITORDER] = (11, 4);
     huffman_rev_table[0.swap_bits() >> RIGHTSHIFT_BITORDER] = (999999, 255);
-
+    */
     const RIGHTSHIFT_BITORDER: u32 = 45;
 
     let mut v: Vec<u32> = vec![];

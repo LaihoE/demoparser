@@ -1,9 +1,9 @@
 use super::read_bits::{Bitreader, DemoParserError};
-use crate::parsing::entities_utils::FieldPath;
-use crate::parsing::parser_settings::Parser;
-use crate::parsing::q_float::QuantalizedFloat;
-use crate::parsing::sendtables::Decoder::*;
-use crate::parsing::sendtables::FieldModel::*;
+use crate::entities_utils::FieldPath;
+use crate::parser_settings::Parser;
+use crate::q_float::QuantalizedFloat;
+use crate::sendtables::Decoder::*;
+use crate::sendtables::FieldModel::*;
 use ahash::HashMap;
 use csgoproto::{
     demo::CDemoSendTables,
@@ -477,7 +477,7 @@ const POINTER_TYPES: &'static [&'static str] = &[
     "CPhysicsComponent",
 ];
 
-impl Parser {
+impl<'a> Parser<'a> {
     // This part is so insanely complicated. There are multiple versions of each serializer and
     // each serializer is this huge nested struct.
     pub fn parse_sendtable(&mut self, tables: CDemoSendTables) -> Result<(), DemoParserError> {

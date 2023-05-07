@@ -1,11 +1,16 @@
-mod parsing;
+use std::fs;
+
 use crate::arrow::array::*;
-use crate::parsing::parser_settings::ParserInputs;
 use ahash::HashMap;
 use arrow::ffi;
-use parsing::parser_settings::Parser;
-use parsing::read_bits::DemoParserError;
-use parsing::variants::VarVec;
+use itertools::Itertools;
+use parser::game_events::EventField;
+use parser::game_events::GameEvent;
+use parser::parser_settings::Parser;
+use parser::parser_settings::ParserInputs;
+use parser::read_bits::DemoParserError;
+use parser::variants::VarVec;
+use parser::variants::Variant;
 use phf_macros::phf_map;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
@@ -25,7 +30,14 @@ use pyo3::{PyAny, PyObject, PyResult};
 impl DemoParser {
     #[new]
     pub fn py_new(demo_path: String) -> PyResult<Self> {
-        Ok(DemoParser { path: demo_path })
+        let bytes = match fs::read(&demo_path) {
+            Ok(bytes) => bytes,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
+        Ok(DemoParser {
+            path: demo_path,
+            bytes: bytes,
+        })
     }
     /// Parses header message (different from the first 16 bytes of the file)
     /// Should have the following fields:
@@ -36,7 +48,7 @@ impl DemoParser {
     /// "client_name", "game_directory"
     pub fn parse_header(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
-            path: self.path.to_owned(),
+            bytes: &self.bytes,
             wanted_props: vec![],
             wanted_prop_og_names: vec![],
             wanted_event: Some("-".to_owned()),
@@ -47,8 +59,10 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings)?;
-
+        let mut parser = match Parser::new(settings) {
+            Ok(parser) => parser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -59,19 +73,21 @@ impl DemoParser {
     /// like this: "mp_roundtime": "1.92", "mp_buytime": "20" ...
     pub fn parse_convars(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
-            path: self.path.to_owned(),
+            bytes: &self.bytes,
             wanted_props: vec![],
             wanted_prop_og_names: vec![],
-            wanted_event: None,
+            wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
-            only_header: false,
+            only_header: true,
             count_props: false,
-            only_convars: true,
+            only_convars: false,
         };
-        let mut parser = Parser::new(settings)?;
-
+        let mut parser = match Parser::new(settings) {
+            Ok(parser) => parser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -83,19 +99,22 @@ impl DemoParser {
     /// Example: {"player_death": 43, "bomb_planted": 4 ...}
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
-            path: self.path.to_owned(),
+            bytes: &self.bytes,
             wanted_props: vec![],
             wanted_prop_og_names: vec![],
             wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
-            only_header: false,
+            only_header: true,
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings)?;
 
+        let mut parser = match Parser::new(settings) {
+            Ok(parser) => parser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -116,19 +135,22 @@ impl DemoParser {
     /// 2 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
     pub fn parse_grenades(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
-            path: self.path.to_owned(),
+            bytes: &self.bytes,
             wanted_props: vec![],
             wanted_prop_og_names: vec![],
             wanted_event: None,
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: true,
-            only_header: false,
+            only_header: true,
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings)?;
 
+        let mut parser = match Parser::new(settings) {
+            Ok(parser) => parser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -175,19 +197,22 @@ impl DemoParser {
     /// 1     8        person2        asdf  TSpawn
     pub fn parse_chat_messages(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
-            path: self.path.to_owned(),
+            bytes: &self.bytes,
             wanted_props: vec![],
             wanted_prop_og_names: vec![],
-            wanted_event: None,
+            wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
-            only_header: false,
+            only_header: true,
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings)?;
 
+        let mut parser = match Parser::new(settings) {
+            Ok(parser) => parser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -220,24 +245,26 @@ impl DemoParser {
     }
     pub fn parse_player_info(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
-            path: self.path.to_owned(),
+            bytes: &self.bytes,
             wanted_props: vec![],
             wanted_prop_og_names: vec![],
-            wanted_event: None,
+            wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
-            only_header: false,
+            only_header: true,
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings)?;
 
+        let mut parser = match Parser::new(settings) {
+            Ok(parser) => parser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-
         // SoA form
         let steamid =
             rust_series_to_py_series(&Series::new("param1", parser.player_end_data.steamid))
@@ -264,19 +291,22 @@ impl DemoParser {
     }
     pub fn parse_item_drops(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
-            path: self.path.to_owned(),
+            bytes: &self.bytes,
             wanted_props: vec![],
             wanted_prop_og_names: vec![],
-            wanted_event: None,
+            wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
-            only_header: false,
+            only_header: true,
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings)?;
 
+        let mut parser = match Parser::new(settings) {
+            Ok(parser) => parser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -337,19 +367,22 @@ impl DemoParser {
     }
     pub fn parse_skins(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
-            path: self.path.to_owned(),
+            bytes: &self.bytes,
             wanted_props: vec![],
             wanted_prop_og_names: vec![],
-            wanted_event: None,
+            wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
-            only_header: false,
+            only_header: true,
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings)?;
 
+        let mut parser = match Parser::new(settings) {
+            Ok(parser) => parser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -412,29 +445,35 @@ impl DemoParser {
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
         let settings = ParserInputs {
-            path: self.path.to_owned(),
-            wanted_props: real_props.clone(),
-            wanted_prop_og_names: wanted_props.clone(),
+            bytes: &self.bytes,
+            wanted_props: vec![],
+            wanted_prop_og_names: vec![],
             wanted_event: event_name.clone(),
-            parse_ents: real_props.len() > 0,
+            parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
-            only_header: false,
+            only_header: true,
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings)?;
 
+        let mut parser = match Parser::new(settings) {
+            Ok(parser) => parser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-
-        let event_series = parser.series_from_events(&parser.game_events);
+        let event_series = match series_from_events(&parser.game_events) {
+            Ok(ser) => ser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         let column_names: Vec<&str> = event_series.iter().map(|x| x.name().clone()).collect();
         let mut rows = 0;
 
         let mut all_series = vec![];
+
         for ser in &event_series {
             rows = ser.len().max(rows);
             let py_series = rust_series_to_py_series(&ser).unwrap();
@@ -471,23 +510,26 @@ impl DemoParser {
         };
 
         let settings = ParserInputs {
-            path: self.path.clone(),
+            bytes: &self.bytes,
             wanted_props: real_props.clone(),
             wanted_prop_og_names: wanted_props.clone(),
             wanted_event: None,
             parse_ents: true,
-            wanted_ticks: wanted_ticks,
+            wanted_ticks: vec![],
             parse_projectiles: false,
-            only_header: false,
+            only_header: true,
             count_props: false,
             only_convars: false,
         };
-        let mut parser = Parser::new(settings)?;
+
+        let mut parser = match Parser::new(settings) {
+            Ok(parser) => parser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
         match parser.start() {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-
         let mut all_series = vec![];
 
         real_props.push("tick".to_owned());
@@ -577,6 +619,7 @@ pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
 #[pyclass]
 struct DemoParser {
     path: String,
+    bytes: Vec<u8>,
 }
 
 pub fn parse_kwargs_ticks(kwargs: Option<&PyDict>) -> (Vec<u64>, Vec<i32>) {
@@ -632,6 +675,149 @@ fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoParser
         }
     }
     Ok(real_names)
+}
+pub fn series_from_events(events: &Vec<GameEvent>) -> Result<Vec<Series>, DemoParserError> {
+    let pairs: Vec<EventField> = events.iter().map(|x| x.fields.clone()).flatten().collect();
+    let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
+    let mut series = vec![];
+
+    for (name, vals) in per_key_name {
+        let s = series_from_pairs(&vals, name)?;
+        series.push(s);
+    }
+    series.sort_by_key(|x| x.name().to_string());
+    Ok(series)
+}
+fn to_f32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(f) => match f {
+                Variant::F32(val) => v.push(Some(*val)),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    Series::new(name, v)
+}
+fn to_i32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(k) => match k {
+                Variant::I32(val) => v.push(Some(*val)),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    Series::new(name, v)
+}
+fn to_u64_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(k) => match k {
+                Variant::U64(val) => v.push(Some(*val)),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    Series::new(name, v)
+}
+fn to_string_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(k) => match k {
+                Variant::String(val) => v.push(Some(val.to_owned())),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    Series::new(name, v)
+}
+
+fn to_bool_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(k) => match k {
+                Variant::Bool(val) => v.push(Some(val.to_owned())),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    Series::new(name, v)
+}
+fn to_u8_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(k) => match k {
+                Variant::I32(val) => v.push(Some(*val as u32)),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    Series::new(name, v)
+}
+fn to_null_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+    // All series are null can pick any type
+    let mut v: Vec<Option<i32>> = vec![];
+    for _ in pairs {
+        v.push(None);
+    }
+    Series::new(name, v)
+}
+
+pub fn series_from_pairs(
+    pairs: &Vec<&EventField>,
+    name: &String,
+) -> Result<Series, DemoParserError> {
+    let field_type = find_type_of_vals(pairs)?;
+
+    let s = match field_type {
+        None => to_null_series(pairs, name),
+        Some(Variant::Bool(_)) => to_bool_series(pairs, name),
+        Some(Variant::F32(_)) => to_f32_series(pairs, name),
+        Some(Variant::I32(_)) => to_i32_series(pairs, name),
+        Some(Variant::U64(_)) => to_u64_series(pairs, name),
+        Some(Variant::String(_)) => to_string_series(pairs, name),
+        _ => panic!("unkown ge key: {:?}", field_type),
+    };
+    Ok(s)
+}
+fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoParserError> {
+    // Need to find the correct type for outgoing series,
+    let mut all_types = vec![];
+    for pair in pairs {
+        all_types.push(match &pair.data {
+            Some(Variant::Bool(v)) => Some(Variant::Bool(*v)),
+            Some(Variant::I32(v)) => Some(Variant::I32(*v)),
+            Some(Variant::F32(v)) => Some(Variant::F32(*v)),
+            Some(Variant::String(s)) => Some(Variant::String(s.clone())),
+            Some(Variant::U64(u)) => Some(Variant::U64(*u)),
+            _ => {
+                return Err(DemoParserError::UnknownGameEventVariant(
+                    pair.name.clone(),
+                    pair.data.clone(),
+                ));
+            }
+        });
+    }
+
+    for t in &all_types {
+        if t.is_some() {
+            return Ok(t.clone());
+        }
+    }
+    return Ok(None);
 }
 
 #[pymodule]

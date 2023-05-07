@@ -41,9 +41,11 @@ cached = "0.43.0"
 
 
 
+[dependencies.parser]
+path = "../parser"
 
 [dependencies.csgoproto]
-path = "src/csgoproto"
+path = "../csgoproto"
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 
 [profile.dev]

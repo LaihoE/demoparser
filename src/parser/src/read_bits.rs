@@ -1,7 +1,6 @@
+use crate::variants::Variant;
 use bitter::BitReader;
 use bitter::LittleEndianReader;
-use pyo3::exceptions::PyValueError;
-use pyo3::PyErr;
 use std::fmt;
 
 #[derive(Debug)]
@@ -21,6 +20,11 @@ pub enum DemoParserError {
     UnknownPropName(String),
     FileError(std::io::Error),
     GameEventListNotSet,
+    PropTypeNotFound(String),
+    GameEventUnknownId(String),
+    UnknownPawnPrefix(String),
+    UnknownEntityHandle((String, Option<Variant>)),
+    UnknownGameEventVariant(String, Option<Variant>),
 }
 
 impl std::error::Error for DemoParserError {}
@@ -28,12 +32,6 @@ impl std::error::Error for DemoParserError {}
 impl fmt::Display for DemoParserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
-    }
-}
-
-impl std::convert::From<DemoParserError> for PyErr {
-    fn from(err: DemoParserError) -> PyErr {
-        PyValueError::new_err(err.to_string())
     }
 }
 

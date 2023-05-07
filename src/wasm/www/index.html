@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+
+<head>
+
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" sizes="any" type="image/svg+xml" href="/images/favicon.svg">
+</head>
+
+<body>
+  <div id=wrapper>
+    <h1>Demoparser69</h1>
+    <p>
+      In this example, we compile our WASM code without creating ES modules. The worker is
+      spawned in `index.js` using JS directly.
+    </p>
+    <p>
+      <b>Open the JS console (F12) to see the script output</b>
+    </p>
+
+    <p>
+      <input type="text" id="event_name" name="event_name">
+
+
+      <label for="file_picker">Choose a file to read its first byte using Rust:</label>
+      <input type="file" id="file_picker" name="file_picker">
+    </p>
+
+  </div>
+
+  <!-- Here, we have to load the generated JS file directly in the document -->
+  <script src='./pkg/wasmparser.js'>
+  </script>
+  <!-- Note that there is NO `type="module"` in the script tag -->
+  <script src="./index.js"></script>
+
+</body>
+
+</html>

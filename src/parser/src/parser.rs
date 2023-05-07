@@ -1,8 +1,9 @@
 use super::netmessage_types;
 use super::read_bits::DemoParserError;
-use crate::parsing::netmessage_types::netmessage_type_from_int;
-use crate::parsing::parser_settings::Parser;
-use crate::parsing::read_bits::Bitreader;
+use crate::netmessage_types::netmessage_type_from_int;
+use crate::parser_settings::Parser;
+use crate::read_bits::Bitreader;
+
 use bitter::BitReader;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
@@ -12,7 +13,7 @@ use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
 // The parser struct is defined in parser_settings.rs
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
         let file_length = self.bytes.len();
         // Header (there is a longer header as a DEM_FileHeader msg below)
