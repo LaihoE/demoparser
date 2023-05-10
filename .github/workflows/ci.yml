@@ -33,7 +33,7 @@ jobs:
         with:
           command: publish
           target: ${{ matrix.target }}
-          args: -i ${{ matrix.python-version }} --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --no-sdist --skip-existing --workdir ./src/python
+          args: -i ${{ matrix.python-version }} --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --no-sdist --skip-existing
 
   linux:
     runs-on: ubuntu-latest
@@ -57,7 +57,7 @@ jobs:
         with:
           command: publish
           target: ${{ matrix.target }}
-          args: -i ${{ matrix.python-version }} --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --no-sdist --skip-existing --workdir ./src/python
+          args: -i ${{ matrix.python-version }} --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --no-sdist --skip-existing
 
   macos:
     runs-on: macos-latest
@@ -81,4 +81,4 @@ jobs:
         with:
           command: publish
           target: ${{ matrix.target }}
-          args: -i ${{ matrix.python-version }} --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --no-sdist --skip-existing --workdir ./src/python
+          args: -i ${{ matrix.python-version }} --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --no-sdist --skip-existing

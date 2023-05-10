@@ -21,3 +21,6 @@ path = "./csgoproto"
 
 [profile.dev]
 overflow-checks = false
+
+[tool.maturin]
+python-source = "src/python"
