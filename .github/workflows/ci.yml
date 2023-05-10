@@ -2,9 +2,9 @@ name: Python application
 
 on:
   push:
-    branches: ["asdf"]
+    branches: ["main"]
   pull_request:
-    branches: ["asdf"]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -16,6 +16,10 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         target: [x86, x64]
+    defaults:
+      run:
+        working-directory: ./src/python
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -37,6 +41,9 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         target: [x86_64]
+    defaults:
+      run:
+        working-directory: ./src/python
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -58,6 +65,9 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         target: [x86_64]
+    defaults:
+      run:
+        working-directory: ./src/python
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
