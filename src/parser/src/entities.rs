@@ -119,12 +119,11 @@ impl<'a> Parser<'a> {
                         .serializer
                         .debug_find_decoder(&path, 0, class.serializer.name.clone());
 
-                println!("{:#?} {:?}", debug_field.full_name, result);
+                // println!("{:#?} {:?}", debug_field.full_name, result);
             }
 
             if self.wanted_prop_paths.contains(&path.path)
-                || entity.entity_type == EntityType::Team
-                || entity.entity_type == EntityType::PlayerController
+                || entity.entity_type != EntityType::Normal
             {
                 entity.props.insert(path.path, result);
             }

@@ -16,9 +16,12 @@ This will have to do for now 😂
 from demoparser2 import DemoParser
 
 parser = DemoParser("path_to_demo.dem")
-# You can add additional fields into the event like so:
-df = parser.parse_events("player_death", extra_values=["last_place_name"])
+# Extra_player and extra_other are optional fields to be added into the game event
+df = parser.parse_events("player_death", extra_player=["last_place_name"], extra_other=["team_rounds_total"])
 ```
+extra_player adds values to players that are referred to in events like attacker and victim. Extra_other are values that don't refer to players like how many rounds the ct team has won or when the round started.
+
+
 You can find out what events your demo had with:
 ```event_names = parser.list_game_events()```
 

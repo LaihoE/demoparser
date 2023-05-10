@@ -61,6 +61,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "demoparser2"
+version = "0.1.0"
+dependencies = [
+ "csgoproto",
+ "getrandom",
+ "itertools",
+ "js-sys",
+ "parser",
+ "serde",
+ "serde-wasm-bindgen",
+ "wasm-bindgen",
+ "wasm-bindgen-file-reader",
+ "web-sys",
+]
+
+[[package]]
 name = "derive_more"
 version = "0.99.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -491,22 +507,6 @@ name = "wasm-bindgen-shared"
 version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0046fef7e28c3804e5e38bfa31ea2a0f73905319b677e57ebe37e49358989b5d"
-
-[[package]]
-name = "wasmparser"
-version = "0.1.0"
-dependencies = [
- "csgoproto",
- "getrandom",
- "itertools",
- "js-sys",
- "parser",
- "serde",
- "serde-wasm-bindgen",
- "wasm-bindgen",
- "wasm-bindgen-file-reader",
- "web-sys",
-]
 
 [[package]]
 name = "web-sys"

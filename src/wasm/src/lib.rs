@@ -1,17 +1,12 @@
-use itertools::Itertools;
-use parser::game_events::EventField;
-use parser::game_events::GameEvent;
+use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::variants::Variant;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::{io::Read, time::Instant};
+use std::io::Read;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_file_reader::WebSysFile;
 use web_sys::console;
-// The wasm-pack uses wasm-bindgen to build and generate JavaScript binding file.
-// Import the wasm-bindgen crate.
-use parser::parser_settings::Parser;
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Example {
@@ -40,8 +35,10 @@ pub fn parse_chat_messages(file: web_sys::File) -> Result<JsValue, JsError> {
 
     let settings = ParserInputs {
         bytes: &buf,
-        wanted_props: vec![],
-        wanted_prop_og_names: vec![],
+        wanted_player_props: vec![],
+        wanted_player_props_og_names: vec![],
+        wanted_other_props: vec![],
+        wanted_other_props_og_names: vec![],
         wanted_event: Some("-".to_owned()),
         parse_ents: false,
         wanted_ticks: vec![],
@@ -83,8 +80,10 @@ pub fn parse_skins(file: web_sys::File) -> Result<JsValue, JsError> {
 
     let settings = ParserInputs {
         bytes: &buf,
-        wanted_props: vec![],
-        wanted_prop_og_names: vec![],
+        wanted_player_props: vec![],
+        wanted_player_props_og_names: vec![],
+        wanted_other_props: vec![],
+        wanted_other_props_og_names: vec![],
         wanted_event: Some("-".to_owned()),
         parse_ents: false,
         wanted_ticks: vec![],
@@ -147,8 +146,10 @@ pub fn parse_events(file: web_sys::File, event_name: Option<String>) -> Result<J
 
     let settings = ParserInputs {
         bytes: &buf,
-        wanted_props: vec![],
-        wanted_prop_og_names: vec![],
+        wanted_player_props: vec![],
+        wanted_player_props_og_names: vec![],
+        wanted_other_props: vec![],
+        wanted_other_props_og_names: vec![],
         wanted_event: Some(event_name.unwrap()),
         parse_ents: true,
         wanted_ticks: vec![],

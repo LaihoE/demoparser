@@ -1,7 +1,7 @@
 [package]
-name = "wasmparser"
+name = "demoparser2"
 version = "0.1.0"
-authors = ["Your Name <your@name.com>"]
+authors = ["LaihoE"]
 edition = "2018"
 
 [lib]

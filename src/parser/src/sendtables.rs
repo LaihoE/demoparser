@@ -568,7 +568,7 @@ impl<'a> Parser<'a> {
                 }
                 let full_name = ser_name.clone() + "." + &f.var_name;
 
-                if self.wanted_props.contains(&full_name)
+                if self.wanted_player_props.contains(&full_name)
                     || full_name.contains("cell")
                     || full_name.contains("m_vec")
                 {

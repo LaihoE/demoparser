@@ -29,7 +29,7 @@ impl<'a> Parser<'a> {
         // iterate every player and every wanted prop name
         // if either one is missing then push None to output
         for (entity_id, player) in &self.players {
-            for prop_name in &self.wanted_props {
+            for prop_name in &self.wanted_player_props {
                 // returns none if missing
                 let prop = self.find_prop(prop_name, entity_id, player);
                 self.output

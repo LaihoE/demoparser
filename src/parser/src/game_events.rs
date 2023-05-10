@@ -1,3 +1,5 @@
+use crate::collect_data::PropType;
+use crate::collect_data::TYPEHM;
 use crate::parser_settings::Parser;
 use crate::read_bits::DemoParserError;
 use crate::variants::*;
@@ -17,6 +19,7 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
     "attacker_pawn",
     "assister_pawn",
 ];
+const ENTITYIDNONE: i32 = 2047;
 
 impl<'a> Parser<'a> {
     // Message that should come before first game event
@@ -117,7 +120,60 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+        // Values from Teams and Rules entity. Not bound to any player so can be added to any event.
+        extra_fields.extend(self.find_non_player_props());
         Ok(extra_fields)
+    }
+
+    fn find_non_player_props(&self) -> Vec<EventField> {
+        let mut extra_fields = vec![];
+        for (prop_name, og_name) in self
+            .wanted_other_props
+            .iter()
+            .zip(&self.wanted_other_props_og_names)
+        {
+            let fields = match TYPEHM.get(&prop_name) {
+                Some(PropType::Team) => self.find_other_team_props(prop_name, og_name),
+                Some(PropType::Rules) => self.find_other_rules_props(prop_name, og_name),
+                _ => vec![],
+            };
+            extra_fields.extend(fields);
+        }
+        extra_fields
+    }
+    fn find_other_rules_props(&self, prop_name: &String, og_name: &String) -> Vec<EventField> {
+        let mut extra_fields = vec![];
+        let prop = match self.rules_entity_id {
+            Some(entid) => self.get_prop_for_ent(prop_name, &entid),
+            None => None,
+        };
+        extra_fields.push(EventField {
+            name: og_name.to_owned(),
+            data: prop,
+        });
+        extra_fields
+    }
+    fn find_other_team_props(&self, prop_name: &String, og_name: &String) -> Vec<EventField> {
+        let mut extra_fields = vec![];
+        let t = self.teams.team2_entid;
+        let ct = self.teams.team3_entid;
+        let t_prop = match t {
+            Some(entid) => self.get_prop_for_ent(prop_name, &entid),
+            None => None,
+        };
+        let ct_prop = match ct {
+            Some(entid) => self.get_prop_for_ent(prop_name, &entid),
+            None => None,
+        };
+        extra_fields.push(EventField {
+            name: "t_".to_owned() + og_name,
+            data: t_prop,
+        });
+        extra_fields.push(EventField {
+            name: "ct_".to_owned() + og_name,
+            data: ct_prop,
+        });
+        extra_fields
     }
 
     pub fn find_extra_props_events(
@@ -127,11 +183,24 @@ impl<'a> Parser<'a> {
     ) -> Result<Vec<EventField>, DemoParserError> {
         let mut extra_pairs = vec![];
 
-        for (prop_name, og_name) in self.wanted_props.iter().zip(&self.wanted_prop_og_names) {
+        // prop name:
+        for (prop_name, og_name) in self
+            .wanted_player_props
+            .iter()
+            .zip(&self.wanted_player_props_og_names)
+        {
             // These are meant for entities not used here
             if prop_name == "tick" || prop_name == "name" || prop_name == "steamid" {
                 continue;
             }
+            if entity_id == ENTITYIDNONE {
+                extra_pairs.push(EventField {
+                    name: prefix.to_owned() + "_" + og_name,
+                    data: None,
+                });
+                continue;
+            }
+
             let prop = match self.players.get(&entity_id) {
                 Some(player_md) => self.find_prop(prop_name, &entity_id, player_md),
                 None => None,
@@ -154,6 +223,12 @@ impl<'a> Parser<'a> {
         Ok(extra_pairs)
     }
     fn create_player_name_field(&self, entity_id: i32, prefix: &str) -> EventField {
+        if entity_id == ENTITYIDNONE {
+            return EventField {
+                name: prefix.to_owned() + "_name",
+                data: None,
+            };
+        }
         let data = match self.players.get(&entity_id) {
             Some(player_md) => match &player_md.name {
                 Some(name) => Some(Variant::String(name.clone())),
@@ -167,9 +242,15 @@ impl<'a> Parser<'a> {
         }
     }
     fn create_player_steamid_field(&self, entity_id: i32, prefix: &str) -> EventField {
+        if entity_id == ENTITYIDNONE {
+            return EventField {
+                name: prefix.to_owned() + "_steamid",
+                data: None,
+            };
+        }
         let data = match self.players.get(&entity_id) {
             Some(player_md) => match player_md.steamid {
-                Some(steamid) => Some(Variant::U64(steamid)),
+                Some(steamid) => Some(Variant::String(steamid.to_string())),
                 None => None,
             },
             None => None,
@@ -184,7 +265,7 @@ fn parse_key(key: &Key_t) -> Option<Variant> {
     match key.type_() {
         1 => Some(Variant::String(key.val_string().to_owned())),
         2 => Some(Variant::F32(key.val_float())),
-        // These seem to return a i32
+        // These seem to return an i32
         3 => Some(Variant::I32(key.val_long())),
         4 => Some(Variant::I32(key.val_short().try_into().unwrap())),
         5 => Some(Variant::I32(key.val_byte().try_into().unwrap())),
