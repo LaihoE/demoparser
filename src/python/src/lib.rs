@@ -49,8 +49,10 @@ impl DemoParser {
     pub fn parse_header(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             bytes: &self.bytes,
-            wanted_props: vec![],
-            wanted_prop_og_names: vec![],
+            wanted_player_props: vec![],
+            wanted_player_props_og_names: vec![],
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
             wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
@@ -74,8 +76,10 @@ impl DemoParser {
     pub fn parse_convars(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             bytes: &self.bytes,
-            wanted_props: vec![],
-            wanted_prop_og_names: vec![],
+            wanted_player_props: vec![],
+            wanted_player_props_og_names: vec![],
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
             wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
@@ -100,8 +104,10 @@ impl DemoParser {
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             bytes: &self.bytes,
-            wanted_props: vec![],
-            wanted_prop_og_names: vec![],
+            wanted_player_props: vec![],
+            wanted_player_props_og_names: vec![],
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
             wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
@@ -136,8 +142,10 @@ impl DemoParser {
     pub fn parse_grenades(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             bytes: &self.bytes,
-            wanted_props: vec![],
-            wanted_prop_og_names: vec![],
+            wanted_player_props: vec![],
+            wanted_player_props_og_names: vec![],
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
             wanted_event: None,
             parse_ents: true,
             wanted_ticks: vec![],
@@ -198,8 +206,10 @@ impl DemoParser {
     pub fn parse_chat_messages(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             bytes: &self.bytes,
-            wanted_props: vec![],
-            wanted_prop_og_names: vec![],
+            wanted_player_props: vec![],
+            wanted_player_props_og_names: vec![],
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
             wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
@@ -246,8 +256,10 @@ impl DemoParser {
     pub fn parse_player_info(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             bytes: &self.bytes,
-            wanted_props: vec![],
-            wanted_prop_og_names: vec![],
+            wanted_player_props: vec![],
+            wanted_player_props_og_names: vec![],
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
             wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
@@ -292,8 +304,10 @@ impl DemoParser {
     pub fn parse_item_drops(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             bytes: &self.bytes,
-            wanted_props: vec![],
-            wanted_prop_og_names: vec![],
+            wanted_player_props: vec![],
+            wanted_player_props_og_names: vec![],
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
             wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
@@ -368,8 +382,10 @@ impl DemoParser {
     pub fn parse_skins(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             bytes: &self.bytes,
-            wanted_props: vec![],
-            wanted_prop_og_names: vec![],
+            wanted_player_props: vec![],
+            wanted_player_props_og_names: vec![],
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
             wanted_event: Some("-".to_owned()),
             parse_ents: false,
             wanted_ticks: vec![],
@@ -437,18 +453,26 @@ impl DemoParser {
         event_name: Option<String>,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<Py<PyAny>> {
-        let (_, wanted_props) = parse_kwargs_event(py_kwargs);
-        let real_props = rm_user_friendly_names(&wanted_props);
+        let (wanted_player_props, wanted_other_props) = parse_kwargs_event(py_kwargs);
+        let real_player_props = rm_user_friendly_names(&wanted_player_props);
+        let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
-        let mut real_props = match real_props {
+        let mut real_player_props = match real_player_props {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
+        let mut real_other_props = match real_other_props {
+            Ok(real_props) => real_props,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
+
         let settings = ParserInputs {
             bytes: &self.bytes,
-            wanted_props: vec![],
-            wanted_prop_og_names: vec![],
+            wanted_player_props: real_player_props,
+            wanted_player_props_og_names: wanted_player_props,
             wanted_event: event_name.clone(),
+            wanted_other_props: real_other_props,
+            wanted_other_props_og_names: wanted_other_props,
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -511,8 +535,10 @@ impl DemoParser {
 
         let settings = ParserInputs {
             bytes: &self.bytes,
-            wanted_props: real_props.clone(),
-            wanted_prop_og_names: wanted_props.clone(),
+            wanted_player_props: real_props.clone(),
+            wanted_player_props_og_names: wanted_props.clone(),
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
             wanted_event: None,
             parse_ents: true,
             wanted_ticks: vec![],
@@ -644,26 +670,27 @@ pub fn parse_kwargs_ticks(kwargs: Option<&PyDict>) -> (Vec<u64>, Vec<i32>) {
         None => (vec![], vec![]),
     }
 }
-pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (bool, Vec<String>) {
+pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (Vec<String>, Vec<String>) {
     match kwargs {
         Some(k) => {
-            let mut rounds = false;
-            let mut props: Vec<String> = vec![];
-            match k.get_item("rounds") {
-                Some(p) => {
-                    rounds = p.extract().unwrap();
-                }
-                None => {}
-            }
-            match k.get_item("extra_values") {
+            let mut player_props: Vec<String> = vec![];
+            let mut other_props: Vec<String> = vec![];
+
+            match k.get_item("player_extra") {
                 Some(t) => {
-                    props = t.extract().unwrap();
+                    player_props = t.extract().unwrap();
                 }
                 None => {}
             }
-            (rounds, props)
+            match k.get_item("other_extra") {
+                Some(t) => {
+                    other_props = t.extract().unwrap();
+                }
+                None => {}
+            }
+            (player_props, other_props)
         }
-        None => (false, vec![]),
+        None => (vec![], vec![]),
     }
 }
 fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoParserError> {
@@ -803,6 +830,7 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
             Some(Variant::F32(v)) => Some(Variant::F32(*v)),
             Some(Variant::String(s)) => Some(Variant::String(s.clone())),
             Some(Variant::U64(u)) => Some(Variant::U64(*u)),
+            None => None,
             _ => {
                 return Err(DemoParserError::UnknownGameEventVariant(
                     pair.name.clone(),
