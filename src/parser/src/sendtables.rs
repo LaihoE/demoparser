@@ -537,10 +537,10 @@ impl<'a> Parser<'a> {
                         }
                         fields.insert(*idx, field.clone());
                         my_serializer.fields.push(field);
-                        self.find_prop_name_paths(&my_serializer);
                     }
                 }
             }
+            self.find_prop_name_paths(&my_serializer);
 
             self.serializers
                 .insert(my_serializer.name.clone(), my_serializer);
@@ -575,10 +575,8 @@ impl<'a> Parser<'a> {
                     self.wanted_prop_paths.insert(arr);
                 }
 
-                self.prop_name_to_path
-                    .insert(ser_name.clone() + "." + &f.var_name, arr);
-                self.path_to_prop_name
-                    .insert(arr, ser_name.clone() + "." + &f.var_name);
+                self.prop_name_to_path.insert(full_name.clone(), arr);
+                self.path_to_prop_name.insert(arr, full_name);
             }
         }
     }
