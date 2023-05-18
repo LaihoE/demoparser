@@ -1,10 +1,14 @@
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
+use parser::read_bits::Bitreader;
 use std::fs;
 use std::time::Instant;
 
 fn main() {
-    let wanted_props = vec!["CCSPlayerPawn.m_szLastPlaceName".to_owned()];
+    let wanted_props = vec![
+        "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon".to_owned(),
+        "m_iClip1".to_owned(),
+    ];
     let demo_path = "/home/laiho/Documents/demos/cs2/s2.dem";
     let bytes = fs::read(demo_path).unwrap();
 

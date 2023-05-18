@@ -15,7 +15,7 @@ use ahash::RandomState;
 use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use soa_derive::StructOfArray;
-
+use std::collections::BTreeMap;
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 19) - 1;
 
@@ -29,7 +29,7 @@ pub struct Parser<'a> {
     pub cls_bits: Option<u32>,
     pub entities: AHashMap<i32, Entity, RandomState>,
     pub tick: i32,
-    pub players: AHashMap<i32, PlayerMetaData, RandomState>,
+    pub players: BTreeMap<i32, PlayerMetaData>,
     pub teams: Teams,
     pub prop_name_to_path: AHashMap<String, [i32; 7]>,
     pub path_to_prop_name: AHashMap<[i32; 7], String>,
@@ -194,7 +194,7 @@ impl<'a> Parser<'a> {
             cls_bits: None,
             tick: -99999,
             wanted_player_props: settings.wanted_player_props,
-            players: AHashMap::default(),
+            players: BTreeMap::default(),
             output: AHashMap::default(),
             wanted_ticks: AHashSet::from_iter(settings.wanted_ticks),
             game_events: vec![],

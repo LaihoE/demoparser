@@ -79,6 +79,7 @@ pub enum Decoder {
     BaseDecoder,
     NO,
     X,
+    AmmoDecoder,
 }
 
 pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
@@ -305,6 +306,9 @@ impl Field {
         }
     }
     pub fn match_decoder(&self) -> Decoder {
+        if self.var_name == "m_iClip1" {
+            return Decoder::AmmoDecoder;
+        }
         let dec = match BASETYPE_DECODERS.get(&self.field_type.base_type) {
             Some(decoder) => decoder.clone(),
             None => match self.field_type.base_type.as_str() {
@@ -324,8 +328,8 @@ impl Field {
         dec
     }
     pub fn find_qangle_type(&self) -> Decoder {
-        match self.encoder.as_str() {
-            "qangle_pitch_yaw" => Decoder::QanglePitchYawDecoder,
+        match self.var_name.as_str() {
+            "m_angEyeAngles" => Decoder::QanglePitchYawDecoder,
             _ => {
                 if self.bitcount != 0 {
                     Decoder::Qangle3Decoder
@@ -571,12 +575,18 @@ impl<'a> Parser<'a> {
                 if self.wanted_player_props.contains(&full_name)
                     || full_name.contains("cell")
                     || full_name.contains("m_vec")
+                    || full_name.contains("Weapon")
+                    || full_name.contains("CAK47")
                 {
                     self.wanted_prop_paths.insert(arr);
                 }
 
                 self.prop_name_to_path.insert(full_name.clone(), arr);
                 self.path_to_prop_name.insert(arr, full_name);
+                self.prop_name_to_path.insert(
+                    "CCSPlayerPawn.m_pWeaponServices.m_hActiveWeapon".to_owned(),
+                    [86, 1, 0, 0, 0, 0, 0],
+                );
             }
         }
     }

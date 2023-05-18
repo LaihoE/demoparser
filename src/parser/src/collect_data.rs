@@ -2,6 +2,7 @@ use super::entities::PlayerMetaData;
 use super::variants::Variant;
 use crate::parser_settings::Parser;
 use crate::variants::PropColumn;
+use itertools::Itertools;
 use phf_macros::phf_map;
 use soa_derive::StructOfArray;
 
@@ -45,7 +46,7 @@ impl<'a> Parser<'a> {
         // is just too big to give up. Also I think paths change between demos soo...
         match &self.prop_name_to_path.get(prop_name) {
             Some(path) => {
-                if let Some(ent) = self.entities.get(&entity_id) {
+                if let Some(ent) = self.entities.get(entity_id) {
                     if let Some(prop) = ent.props.get(path.clone()) {
                         return Some(prop.clone());
                     }
@@ -77,6 +78,7 @@ impl<'a> Parser<'a> {
         match TYPEHM.get(prop_name) {
             Some(PropType::Team) => return self.find_team_prop(entity_id, prop_name),
             Some(PropType::Custom) => return self.create_custom_prop(&prop_name, entity_id),
+            Some(PropType::Weapon) => return self.find_weapon_prop(prop_name, &entity_id),
             Some(PropType::Controller) => match player.controller_entid {
                 Some(entid) => return self.get_prop_for_ent(prop_name, &entid),
                 None => return None,
@@ -96,10 +98,29 @@ impl<'a> Parser<'a> {
                     }
                 };
             }
+            Some(PropType::PlayerVec) => {
+                if let Some(e) = player.controller_entid {
+                    let is_alive = self.get_prop_for_ent("CCSPlayerController.m_bPawnIsAlive", &e);
+                    match is_alive {
+                        Some(Variant::Bool(true)) => {
+                            let parts = prop_name.split("@").collect_vec();
+                            let prop_name = parts[0];
+                            let prop_idx = parts[1].parse::<usize>().unwrap();
+
+                            match self.get_prop_for_ent(&prop_name, &entity_id) {
+                                Some(Variant::VecXYZ(v)) => return Some(Variant::F32(v[prop_idx])),
+                                _ => {}
+                            }
+                        }
+                        _ => return None,
+                    }
+                };
+            }
             _ => return None,
         }
         None
     }
+
     pub fn collect_cell_coordinate_player(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
         let offset = self.get_prop_for_ent(
             &("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vec".to_owned() + axis),
@@ -250,15 +271,134 @@ impl<'a> Parser<'a> {
         }
         None
     }
+    pub fn find_weapon_prop(&self, prop: &str, player_entid: &i32) -> Option<Variant> {
+        if let Some(Variant::U32(weap_handle)) = self.get_prop_for_ent(
+            "CCSPlayerPawn.m_pWeaponServices.m_hActiveWeapon",
+            player_entid,
+        ) {
+            let weapon_entity_id = (weap_handle & 0x7FF) as i32;
+            if let Some(e) = self.entities.get(&weapon_entity_id) {
+                if let Some(c) = &self.cls_by_id[e.cls_id as usize] {
+                    let full_name = c.name.clone() + "." + &prop;
+                    return self.get_prop_for_ent(&full_name, &weapon_entity_id);
+                }
+            }
+        }
+        None
+    }
     pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
         match prop_name {
             "X" => self.collect_cell_coordinate_player("X", entity_id),
             "Y" => self.collect_cell_coordinate_player("Y", entity_id),
             "Z" => self.collect_cell_coordinate_player("Z", entity_id),
+            "weapon_name" => self.find_weapon_name(entity_id),
             _ => panic!("unknown custom prop: {}", prop_name),
         }
     }
+    fn find_weapon_name(&self, entity_id: &i32) -> Option<Variant> {
+        let i = self.find_weapon_prop("m_iItemDefinitionIndex", entity_id);
+        if let Some(Variant::U32(def_idx)) = i {
+            match WEAPINDICIES.get(&def_idx) {
+                Some(v) => return Some(Variant::String(v.to_string())),
+                _ => {}
+            }
+        }
+        None
+    }
 }
+// Found in scripts/items/items_game.txt
+pub static WEAPINDICIES: phf::Map<u32, &'static str> = phf_map! {
+    1_u32 => "deagle",
+    2_u32 => "elite",
+    3_u32 => "fiveseven",
+    4_u32 => "glock",
+    7_u32 => "ak47",
+    8_u32 => "aug",
+    9_u32 => "awp",
+    10_u32=> "famas",
+    11_u32 => "g3sg1",
+    13_u32 => "galilar",
+    14_u32 => "m249",
+    16_u32 => "m4a1",
+    17_u32 => "mac10",
+    19_u32 => "p90",
+    20_u32 => "zone_repulsor",
+    23_u32 => "mp5sd",
+    24_u32 => "ump45",
+    25_u32 => "xm1014",
+    26_u32 => "bizon",
+    27_u32 => "mag7",
+    28_u32 => "negev",
+    29_u32=> "sawedoff",
+    30_u32 => "tec9",
+    31_u32 => "taser",
+    32_u32 => "hkp2000",
+    33_u32 => "mp7",
+    34_u32 => "mp9",
+    35_u32 => "nova",
+    36_u32 => "p250",
+    37_u32 => "shield",
+    38_u32 => "scar20",
+    39_u32 => "sg556",
+    40_u32=> "ssg08",
+    41_u32 => "knifegg",
+    42_u32 => "knife",
+    43_u32 => "flashbang",
+    44_u32=> "hegrenade",
+    45_u32 => "smokegrenade",
+    46_u32 => "molotov",
+    47_u32 => "decoy",
+    48_u32 => "incgrenade",
+    49_u32 => "c4",
+    50_u32 => "item_kevlar",
+    51_u32=> "item_assaultsuit",
+    52_u32 => "item_heavyassaultsuit",
+    54_u32 => "item_nvg",
+    55_u32 => "item_defuser",
+    56_u32 => "item_cutters",
+    57_u32 => "healthshot",
+    58_u32 => "musickit_default",
+    59_u32 => "knife_t",
+    60_u32 => "m4a1_silencer",
+    61_u32 => "usp_silencer",
+    62_u32 => "Recipe Trade Up",
+    63_u32 => "cz75a",
+    64_u32 => "revolver",
+    68_u32 => "tagrenade",
+    69_u32 => "fists",
+    70_u32 => "breachcharge",
+    72_u32 => "tablet",
+    74_u32 => "melee",
+    75_u32 => "axe",
+    76_u32 => "hammer",
+    78_u32 => "spanner",
+    80_u32 => "knife_ghost",
+    81_u32 => "firebomb",
+    82_u32 => "diversion",
+    83_u32 => "frag_grenade",
+    84_u32=> "snowball",
+    85_u32 => "bumpmine",
+    500_u32 => "bayonet",
+    503_u32 => "knife_css",
+    505_u32 => "knife_flip",
+    506_u32 => "knife_gut",
+    507_u32 => "knife_karambit",
+    508_u32=> "knife_m9_bayonet",
+    509_u32 => "knife_tactical",
+    512_u32 => "knife_falchion",
+    514_u32 => "knife_survival_bowie",
+    515_u32 => "knife_butterfly",
+    516_u32 => "knife_push",
+    517_u32 => "knife_cord",
+    518_u32 => "knife_canis",
+    519_u32 => "knife_ursus",
+    520_u32 => "knife_gypsy_jackknife",
+    521_u32=> "knife_outdoor",
+    522_u32 => "knife_stiletto",
+    523_u32 => "knife_widowmaker",
+    525_u32 => "knife_skeleton",
+};
+
 fn coord_from_cell(cell: Option<Variant>, offset: Option<Variant>) -> Option<f32> {
     // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
     let cell_bits = 9;
@@ -278,6 +418,8 @@ pub enum PropType {
     Custom,
     Controller,
     Player,
+    PlayerVec,
+    Weapon,
 }
 
 pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
@@ -525,6 +667,9 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_killType" => PropType::Controller,
     "CCSPlayerController.m_iPing"=> PropType::Controller,
 
+    "CCSPlayerPawnBase.m_angEyeAngles@0" => PropType::PlayerVec,
+    "CCSPlayerPawnBase.m_angEyeAngles@1" => PropType::PlayerVec,
+
     "CCSPlayerPawn.m_MoveCollide" => PropType::Player,
     "CCSPlayerPawn.m_MoveType" => PropType::Player,
     "CCSPlayerPawn.m_iTeamNum" => PropType::Player,
@@ -595,4 +740,59 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "X"=> PropType::Custom,
     "Y"=> PropType::Custom,
     "Z"=> PropType::Custom,
+    "weapon_name" => PropType::Custom,
+    // Weapon
+    "m_iClip1"=> PropType::Weapon,
+    "m_iItemDefinitionIndex"=> PropType::Weapon,
+    "m_iEntityQuality"=> PropType::Weapon,
+    "m_iEntityLevel"=> PropType::Weapon,
+    "m_iItemIDHigh"=> PropType::Weapon,
+    "m_iItemIDLow"=> PropType::Weapon,
+    "m_iAccountID"=> PropType::Weapon,
+    "m_iInventoryPosition"=> PropType::Weapon,
+    "m_bInitialized"=> PropType::Weapon,
+    "CEconItemAttribute.m_iAttributeDefinitionIndex"=> PropType::Weapon,
+    "CEconItemAttribute.m_iRawValue32"=> PropType::Weapon,
+    "CEconItemAttribute.m_flInitialValue"=> PropType::Weapon,
+    "CEconItemAttribute.m_nRefundableCurrency"=> PropType::Weapon,
+    "CEconItemAttribute.m_bSetBonus"=> PropType::Weapon,
+    "m_szCustomName"=> PropType::Weapon,
+    "m_OriginalOwnerXuidLow"=> PropType::Weapon,
+    "m_OriginalOwnerXuidHigh"=> PropType::Weapon,
+    "m_nFallbackPaintKit"=> PropType::Weapon,
+    "m_nFallbackSeed"=> PropType::Weapon,
+    "m_flFallbackWear"=> PropType::Weapon,
+    "m_nFallbackStatTrak"=> PropType::Weapon,
+    "m_iState"=> PropType::Weapon,
+    "m_flFireSequenceStartTime"=> PropType::Weapon,
+    "m_nFireSequenceStartTimeChange"=> PropType::Weapon,
+    "m_bPlayerFireEventIsPrimary"=> PropType::Weapon,
+    "m_weaponMode"=> PropType::Weapon,
+    "m_fAccuracyPenalty"=> PropType::Weapon,
+    "m_iRecoilIndex"=> PropType::Weapon,
+    "m_flRecoilIndex"=> PropType::Weapon,
+    "m_bBurstMode"=> PropType::Weapon,
+    "m_flPostponeFireReadyTime"=> PropType::Weapon,
+    "m_bInReload"=> PropType::Weapon,
+    "m_bReloadVisuallyComplete"=> PropType::Weapon,
+    "m_flDroppedAtTime"=> PropType::Weapon,
+    "m_bIsHauledBack"=> PropType::Weapon,
+    "m_bSilencerOn"=> PropType::Weapon,
+    "m_flTimeSilencerSwitchComplete"=> PropType::Weapon,
+    "m_iOriginalTeamNumber"=> PropType::Weapon,
+    "m_hPrevOwner"=> PropType::Weapon,
+    "m_fLastShotTime"=> PropType::Weapon,
+    "m_iIronSightMode"=> PropType::Weapon,
+    "m_iNumEmptyAttacks"=> PropType::Weapon,
+    "m_zoomLevel"=> PropType::Weapon,
+    "m_iBurstShotsRemaining"=> PropType::Weapon,
+    "m_bNeedsBoltAction"=> PropType::Weapon,
+    "m_bvDisabledHitGroups"=> PropType::Weapon,
+    "m_nNextThinkTick"=> PropType::Weapon,
+    "m_nNextPrimaryAttackTick"=> PropType::Weapon,
+    "m_flNextPrimaryAttackTickRatio"=> PropType::Weapon,
+    "m_nNextSecondaryAttackTick"=> PropType::Weapon,
+    "m_flNextSecondaryAttackTickRatio"=> PropType::Weapon,
+    "m_iClip2"=> PropType::Weapon,
+    "m_pReserveAmmo"=> PropType::Weapon,
 };

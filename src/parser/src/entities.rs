@@ -50,6 +50,7 @@ impl<'a> Parser<'a> {
         }
         let packet_ents: CSVCMsg_PacketEntities = Message::parse_from_bytes(&bytes).unwrap();
         let n_updates = packet_ents.updated_entries();
+
         let data = match packet_ents.entity_data {
             Some(data) => data,
             None => return Err(DemoParserError::MalformedMessage),
@@ -59,7 +60,6 @@ impl<'a> Parser<'a> {
         let mut entity_id: i32 = -1;
         for _ in 0..n_updates {
             entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
-
             // Read 2 bits to know which operation should be done to the entity.
             let cmd = match bitreader.read_nbits(2)? {
                 0b01 => EntityCmd::Delete,
@@ -118,16 +118,12 @@ impl<'a> Parser<'a> {
                     class
                         .serializer
                         .debug_find_decoder(&path, 0, class.serializer.name.clone());
-
-                // println!("{:#?} {:?}", debug_field.full_name, result);
             }
-
             if self.wanted_prop_paths.contains(&path.path)
                 || entity.entity_type != EntityType::Normal
             {
                 entity.props.insert(path.path, result);
             }
-            //entity.props.insert(path.path, result);
         }
         Ok(n_paths)
     }
@@ -218,6 +214,7 @@ impl<'a> Parser<'a> {
             if symbol == STOP_READING_SYMBOL {
                 break;
             }
+
             do_op(symbol, bitreader, &mut fp)?;
             // We reuse one big vector for holding paths. Purely for performance.
             // Alternatively we could create a new vector in this function and return it.
@@ -331,6 +328,7 @@ impl<'a> Parser<'a> {
     }
     pub fn check_entity_type(&self, cls_id: &u32) -> EntityType {
         let class = self.cls_by_id[*cls_id as usize].as_ref().unwrap();
+
         match class.name.as_str() {
             "CCSPlayerController" => return EntityType::PlayerController,
             "CCSGameRulesProxy" => return EntityType::Rules,
