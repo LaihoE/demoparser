@@ -728,6 +728,19 @@ fn to_f32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
     }
     Series::new(name, v)
 }
+fn to_u32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(f) => match f {
+                Variant::U32(val) => v.push(Some(*val)),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    Series::new(name, v)
+}
 fn to_i32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
     let mut v = vec![];
     for pair in pairs {
@@ -813,6 +826,7 @@ pub fn series_from_pairs(
         None => to_null_series(pairs, name),
         Some(Variant::Bool(_)) => to_bool_series(pairs, name),
         Some(Variant::F32(_)) => to_f32_series(pairs, name),
+        Some(Variant::U32(_)) => to_u32_series(pairs, name),
         Some(Variant::I32(_)) => to_i32_series(pairs, name),
         Some(Variant::U64(_)) => to_u64_series(pairs, name),
         Some(Variant::String(_)) => to_string_series(pairs, name),
@@ -830,6 +844,7 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
             Some(Variant::F32(v)) => Some(Variant::F32(*v)),
             Some(Variant::String(s)) => Some(Variant::String(s.clone())),
             Some(Variant::U64(u)) => Some(Variant::U64(*u)),
+            Some(Variant::U32(u)) => Some(Variant::U32(*u)),
             None => None,
             _ => {
                 return Err(DemoParserError::UnknownGameEventVariant(
@@ -978,7 +993,6 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "move_type" =>  "CCSPlayerPawn.m_MoveType",
     "team_num" => "CCSPlayerPawn.m_iTeamNum",
     "active_weapon" => "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon",
-    "ammo" => "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo",
     "looking_at_weapon" => "CCSPlayerPawn.CCSPlayer_WeaponServices.m_bIsLookingAtWeapon",
     "holding_look_at_weapon" => "CCSPlayerPawn.CCSPlayer_WeaponServices.m_bIsHoldingLookAtWeapon",
     "next_attack_time" => "CCSPlayerPawn.CCSPlayer_WeaponServices.m_flNextAttack",
@@ -1039,9 +1053,61 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "current_equip_value" => "CCSPlayerPawn.m_unCurrentEquipmentValue",
     "time" => "CCSPlayerPawn.m_flSimulationTime",
     "health" => "CCSPlayerPawn.m_iHealth",
-    // "pitchyaw" => "CCSPlayerPawn.m_angEyeAngles"
     "life_state" => "CCSPlayerPawn.m_lifeState",
     "X"=> "X",
     "Y"=> "Y",
     "Z"=> "Z",
+    "pitch" => "CCSPlayerPawnBase.m_angEyeAngles@0",
+    "yaw" => "CCSPlayerPawnBase.m_angEyeAngles@1",
+    "active_weapon_name" => "weapon_name",
+    "active_weapon_ammo" => "m_iClip1",
+    "total_ammo_left" => "m_pReserveAmmo",
+    "item_def_idx" => "m_iItemDefinitionIndex",
+    "weapon_quality" => "m_iEntityQuality",
+    "entity_lvl" => "m_iEntityLevel",
+    "item_id_high" => "m_iItemIDHigh",
+    "item_id_low" => "m_iItemIDLow",
+    "item_account_id" => "m_iAccountID",
+    "inventory_position" => "m_iInventoryPosition",
+    "is_initialized" => "m_bInitialized",
+    "econ_item_attribute_def_idx" => "CEconItemAttribute.m_iAttributeDefinitionIndex",
+    "econ_raw_val_32" => "CEconItemAttribute.m_iRawValue32",
+    "initial_value" => "CEconItemAttribute.m_flInitialValue",
+    "refundable_currency" => "CEconItemAttribute.m_nRefundableCurrency",
+    "set_bonus"=> "CEconItemAttribute.m_bSetBonus",
+    "custom_name" => "m_szCustomName",
+    "orig_owner_xuid_low" => "m_OriginalOwnerXuidLow",
+    "orig_owner_xuid_high"=> "m_OriginalOwnerXuidHigh",
+    "fall_back_paint_kit" => "m_nFallbackPaintKit",
+    "fall_back_seed"=> "m_nFallbackSeed",
+    "fall_back_wear"=> "m_flFallbackWear",
+    "fall_back_stat_track"=> "m_nFallbackStatTrak",
+    "m_iState"=> "m_iState",
+    "fire_seq_start_time" => "m_flFireSequenceStartTime",
+    "fire_seq_start_time_change" => "m_nFireSequenceStartTimeChange",
+    "is_player_fire_event_primary"=>  "m_bPlayerFireEventIsPrimary",
+    "weapon_mode"=> "m_weaponMode",
+    "accuracy_penalty"=> "m_fAccuracyPenalty",
+    "i_recoil_idx"=> "m_iRecoilIndex",
+    "fl_recoil_idx"=> "m_flRecoilIndex",
+    "is_burst_mode"=> "m_bBurstMode",
+    "post_pone_fire_ready_time"=> "m_flPostponeFireReadyTime",
+    "is_in_reload"=> "m_bInReload",
+    "reload_visually_complete"=> "m_bReloadVisuallyComplete",
+    "dropped_at_time"=> "m_flDroppedAtTime",
+    "is_hauled_back"=> "m_bIsHauledBack",
+    "is_silencer_on"=> "m_bSilencerOn",
+    "time_silencer_switch_complete"=> "m_flTimeSilencerSwitchComplete",
+    "orig_team_number"=> "m_iOriginalTeamNumber",
+    "prev_owner"=> "m_hPrevOwner",
+    "last_shot_time"=> "m_fLastShotTime",
+    "iron_sight_mode"=> "m_iIronSightMode",
+    "num_empty_attacks"=> "m_iNumEmptyAttacks",
+    "zoom_lvl"=> "m_zoomLevel",
+    "burst_shots_remaining"=> "m_iBurstShotsRemaining",
+    "needs_bolt_action"=> "m_bNeedsBoltAction",
+    "next_primary_attack_tick"=> "m_nNextPrimaryAttackTick",
+    "next_primary_attack_tick_ratio"=> "m_flNextPrimaryAttackTickRatio",
+    "next_secondary_attack_tick" => "m_nNextSecondaryAttackTick",
+    "next_secondary_attack_tick_ratio"=> "m_flNextSecondaryAttackTickRatio",
 };
