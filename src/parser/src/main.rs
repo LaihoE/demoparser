@@ -6,7 +6,7 @@ use std::time::Instant;
 
 fn main() {
     let wanted_props = vec![
-        "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon".to_owned(),
+        "CCSPlayerController.m_iPawnHealth".to_owned(),
         "m_iClip1".to_owned(),
     ];
     let demo_path = "/home/laiho/Documents/demos/cs2/s2.dem";
@@ -36,6 +36,9 @@ fn main() {
     };
     let mut parser = Parser::new(settings).unwrap();
     parser.start().unwrap();
+
+    let x = &parser.output["CCSPlayerController.m_iPawnHealth"];
+    println!("{:?}", x);
 
     for event in &parser.game_events {
         for f in &event.fields {
