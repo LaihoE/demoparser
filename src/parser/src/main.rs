@@ -38,11 +38,4 @@ fn main() {
     parser.start().unwrap();
 
     let x = &parser.output["CCSPlayerController.m_iPawnHealth"];
-    println!("{:?}", x);
-
-    for event in &parser.game_events {
-        for f in &event.fields {
-            println!("{} {:?}", f.name, f.data);
-        }
-    }
 }
