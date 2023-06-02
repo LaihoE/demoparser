@@ -306,6 +306,29 @@ impl<'a> Parser<'a> {
         None
     }
 }
+fn coord_from_cell(cell: Option<Variant>, offset: Option<Variant>) -> Option<f32> {
+    // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
+    let cell_bits = 9;
+    let max_coord = (1 << 14) as f32;
+    // Both are cell and offset are needed for calculation
+    if let Some(Variant::U32(cell)) = cell {
+        if let Some(Variant::F32(offset)) = offset {
+            let cell_coord = ((cell as f32 * (1 << cell_bits) as f32) - max_coord) as f32;
+            return Some(cell_coord + offset);
+        }
+    }
+    None
+}
+pub enum PropType {
+    Team,
+    Rules,
+    Custom,
+    Controller,
+    Player,
+    PlayerVec,
+    Weapon,
+}
+
 // Found in scripts/items/items_game.txt
 pub static WEAPINDICIES: phf::Map<u32, &'static str> = phf_map! {
     1_u32 => "deagle",
@@ -398,29 +421,6 @@ pub static WEAPINDICIES: phf::Map<u32, &'static str> = phf_map! {
     523_u32 => "knife_widowmaker",
     525_u32 => "knife_skeleton",
 };
-
-fn coord_from_cell(cell: Option<Variant>, offset: Option<Variant>) -> Option<f32> {
-    // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
-    let cell_bits = 9;
-    let max_coord = (1 << 14) as f32;
-    // Both are cell and offset are needed for calculation
-    if let Some(Variant::U32(cell)) = cell {
-        if let Some(Variant::F32(offset)) = offset {
-            let cell_coord = ((cell as f32 * (1 << cell_bits) as f32) - max_coord) as f32;
-            return Some(cell_coord + offset);
-        }
-    }
-    None
-}
-pub enum PropType {
-    Team,
-    Rules,
-    Custom,
-    Controller,
-    Player,
-    PlayerVec,
-    Weapon,
-}
 
 pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     // TEAM

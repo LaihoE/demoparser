@@ -1,4 +1,3 @@
-use super::class::Class;
 use super::entities_utils::FieldPath;
 use super::game_events::GameEvent;
 use super::read_bits::DemoParserError;
@@ -8,6 +7,7 @@ use super::variants::PropColumn;
 use crate::collect_data::ProjectileRecordVec;
 use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
+use crate::other_netmessages::Class;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;

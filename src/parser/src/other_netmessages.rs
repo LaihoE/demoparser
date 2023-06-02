@@ -1,18 +1,47 @@
+use super::{read_bits::DemoParserError, sendtables::Serializer};
 use crate::parser_settings::ChatMessageRecord;
 use crate::parser_settings::EconItem;
 use crate::parser_settings::Parser;
 use crate::parser_settings::PlayerEndData;
-use crate::read_bits::DemoParserError;
+use ahash::HashSet;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_EndOfMatchAllPlayersData;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_SendPlayerItemDrops;
+use csgoproto::demo::CDemoClassInfo;
 use csgoproto::demo::CDemoFileInfo;
 use csgoproto::networkbasetypes::CNETMsg_SetConVar;
 use csgoproto::usermessages::CUserMessageSayText2;
 use protobuf::Message;
+
 // This file has functions for the simpler netmessages.
 // Don't want to create a new file for each of these.
 
+#[derive(Debug, Clone)]
+pub struct Class {
+    pub class_id: i32,
+    pub name: String,
+    pub serializer: Serializer,
+    pub history: HashSet<u64>,
+}
+
 impl<'a> Parser<'a> {
+    pub fn parse_class_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        if !self.parse_entities {
+            return Ok(());
+        }
+        let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
+        for class_t in msg.classes {
+            let cls_id = class_t.class_id();
+            let network_name = class_t.network_name();
+            self.cls_by_id[cls_id as usize] = Some(Class {
+                class_id: cls_id,
+                name: network_name.to_string(),
+                serializer: self.serializers[network_name].clone(),
+                history: HashSet::default(),
+            });
+        }
+        Ok(())
+    }
+
     pub fn parse_item_drops(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let drops: CCSUsrMsg_SendPlayerItemDrops = Message::parse_from_bytes(&bytes).unwrap();
         for item in &drops.entity_updates {
