@@ -1,5 +1,3 @@
-use crate::game_events::EventField;
-
 #[derive(Debug, Clone)]
 pub enum Variant {
     Bool(bool),
@@ -15,16 +13,6 @@ pub enum Variant {
     Vec(Vec<i32>),
     FloatVec32(Vec<f32>),
 }
-/*
-Str(String),
-Float(f32),
-Long(i32),
-Short(i16),
-Byte(u8),
-Bool(bool),
-Uint64(u64),
-I32(i32),
-*/
 
 #[derive(Debug, Clone)]
 pub enum VarVec {
@@ -74,21 +62,21 @@ impl PropColumn {
                     // push the leading Nones we may have gotten before prop type was known.
                     let mut var_vec = VarVec::new(&p);
                     for _ in 0..self.num_nones {
-                        var_vec.push_Variant(None);
+                        var_vec.push_variant(None);
                     }
                     self.data = Some(var_vec);
                 }
             },
         }
         if let Some(v) = &mut self.data {
-            v.push_Variant(item.clone());
+            v.push_variant(item.clone());
         }
     }
 }
 
 impl VarVec {
     #[inline(always)]
-    pub fn push_Variant(&mut self, item: Option<Variant>) {
+    pub fn push_variant(&mut self, item: Option<Variant>) {
         match item {
             Some(Variant::F32(p)) => match self {
                 VarVec::F32(f) => f.push(Some(p)),
@@ -146,7 +134,7 @@ pub fn filter_to_vec<Wanted>(v: impl IntoIterator<Item = impl TryInto<Wanted>>) 
     v.into_iter().filter_map(|x| x.try_into().ok()).collect()
 }
 
-pub fn eventdata_type_from_Variant(value: &Option<Variant>) -> i32 {
+pub fn eventdata_type_from_variant(value: &Option<Variant>) -> i32 {
     match value {
         Some(Variant::String(_)) => 1,
         Some(Variant::F32(_)) => 2,
