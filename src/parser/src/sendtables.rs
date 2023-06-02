@@ -226,11 +226,7 @@ impl Field {
                 } else {
                     match &self.serializer {
                         Some(ser) => {
-                            return ser.debug_find_decoder(
-                                path,
-                                pos,
-                                prop_name + "." + &self.var_name,
-                            );
+                            return ser.debug_find_decoder(path, pos, prop_name + "." + &ser.name);
                         }
                         None => panic!("no serializer for path"),
                     }
@@ -258,7 +254,7 @@ impl Field {
                             return ser.debug_find_decoder(
                                 path,
                                 pos + 1,
-                                prop_name + "." + &self.var_name,
+                                prop_name + "." + &ser.name,
                             );
                         }
                         None => panic!("no serializer for path"),

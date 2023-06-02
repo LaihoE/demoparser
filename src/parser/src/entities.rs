@@ -130,11 +130,22 @@ impl<'a> Parser<'a> {
                     }
                     Some(_) => {}
                 };
+                if debug_field.full_name != "CCSPlayerPawn.m_szLastPlaceName" {
+                    if !debug_field.full_name.contains("m_szCustomName") {
+                        match result.clone() {
+                            Variant::String(s) => {
+                                // println!("{} {:?}", debug_field.full_name, s);
+                            }
+                            _ => {}
+                        };
+                    }
+                }
 
-                if debug_field.full_name.contains("m_iAccount") {
-                    println!("{} {:?}", debug_field.full_name, result);
+                if debug_field.full_name.contains("CCSPlayerPawn.duration") {
+                    println!("{}@{:?}", debug_field.full_name, result);
                 }
             }
+
             if self.wanted_prop_paths.contains(&path.path)
                 || entity.entity_type != EntityType::Normal
             {
