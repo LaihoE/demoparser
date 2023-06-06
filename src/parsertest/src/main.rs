@@ -56,7 +56,6 @@ mod tests {
     pub fn gt_lt_test(input: Vec<MinMaxTestEntry>, demo_path: &str) -> bool {
         let bytes = fs::read(demo_path).unwrap();
         let wanted_props: Vec<String> = input.iter().map(|x| x.prop_name.to_string()).collect();
-
         let mut parser = get_default_tick_parser(wanted_props.clone(), &bytes);
         parser.start().unwrap();
 
