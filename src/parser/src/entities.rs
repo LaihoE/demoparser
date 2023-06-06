@@ -1,4 +1,5 @@
 use super::read_bits::DemoParserError;
+use crate::collect_data::TYPEHM;
 use crate::entities_utils::*;
 use crate::parser_settings::Parser;
 use crate::read_bits::Bitreader;
@@ -113,12 +114,38 @@ impl<'a> Parser<'a> {
             let decoder = class.serializer.find_decoder(&path, 0);
             let result = bitreader.decode(&decoder)?;
             // Can be used for debugging output
-            if 0 == 1 {
+            if 1 == 1 {
                 let debug_field =
                     class
                         .serializer
                         .debug_find_decoder(&path, 0, class.serializer.name.clone());
+                // CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iAccount
+                match TYPEHM.get(&debug_field.full_name) {
+                    None => {
+                        if !debug_field.full_name.contains("Pred") {
+                            if !debug_field.full_name.contains("Weap") {
+                                //println!("{} {:?}", debug_field.full_name, result)
+                            }
+                        }
+                    }
+                    Some(_) => {}
+                };
+                if debug_field.full_name != "CCSPlayerPawn.m_szLastPlaceName" {
+                    if !debug_field.full_name.contains("m_szCustomName") {
+                        match result.clone() {
+                            Variant::String(s) => {
+                                // println!("{} {:?}", debug_field.full_name, s);
+                            }
+                            _ => {}
+                        };
+                    }
+                }
+
+                if debug_field.full_name.contains("CCSPlayerPawn.duration") {
+                    println!("{}@{:?}", debug_field.full_name, result);
+                }
             }
+
             if self.wanted_prop_paths.contains(&path.path)
                 || entity.entity_type != EntityType::Normal
             {
