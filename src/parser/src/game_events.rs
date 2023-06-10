@@ -10,6 +10,8 @@ use csgoproto::netmessages::CSVCMsg_GameEventList;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
 use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
 use protobuf::Message;
+use serde::ser::SerializeMap;
+use serde::Serialize;
 
 static INTERNALEVENTFIELDS: &'static [&str] = &[
     "userid",
@@ -284,9 +286,20 @@ pub struct EventField {
     pub name: String,
     pub data: Option<Variant>,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GameEvent {
     pub name: String,
     pub fields: Vec<EventField>,
     pub tick: i32,
+}
+
+impl Serialize for EventField {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry(&self.name, &self.data).unwrap();
+        map.end()
+    }
 }

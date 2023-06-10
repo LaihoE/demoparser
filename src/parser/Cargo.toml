@@ -20,6 +20,7 @@ soa_derive = "0.12.0"
 lazy_static = "1.4.0"
 bit_reverse = "0.1.8"
 memmap2 = "0.5.10"
+serde = { version = "1.0.164", features = ["derive"] }
 
 
 
