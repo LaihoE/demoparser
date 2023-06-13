@@ -16,15 +16,20 @@ use EDemoCommands::*;
 impl<'a> Parser<'a> {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
         let file_length = self.bytes.len();
+        println!("{}", self.ptr);
         // Header (there is a longer header as a DEM_FileHeader msg below)
-        let header = self.read_n_bytes(16)?;
-        Parser::handle_short_header(file_length, header)?;
+        //let header = self.read_n_bytes(16)?;
+        //Parser::handle_short_header(file_length, header)?;
         // Outer loop that continues trough the file, until "DEM_Stop" msg
         loop {
+            println!("A");
+
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
             let size = self.read_varint()?;
             self.tick = tick as i32;
+
+            println!("{} {} {} ", cmd, tick, size);
 
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
@@ -40,7 +45,7 @@ impl<'a> Parser<'a> {
                 DEM_FileHeader => self.parse_header(&bytes),
                 DEM_FileInfo => self.parse_file_info(&bytes),
                 DEM_SendTables => self.parse_classes(&bytes),
-                DEM_ClassInfo => self.parse_class_info(&bytes),
+                // DEM_ClassInfo => self.parse_class_info(&bytes),
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_UserCmd => self.parse_user_command_cmd(&bytes),
                 DEM_StringTables => self.parse_stringtable_cmd(&bytes),
@@ -48,7 +53,7 @@ impl<'a> Parser<'a> {
                 _ => Ok(()),
             };
             ok?;
-            self.collect_entities();
+            //self.collect_entities();
         }
         Ok(())
     }
@@ -68,8 +73,8 @@ impl<'a> Parser<'a> {
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
-                GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
-                GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
+                //GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
+                //GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
@@ -103,7 +108,7 @@ impl<'a> Parser<'a> {
     pub fn parse_classes(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if self.parse_entities {
             let tables: CDemoSendTables = Message::parse_from_bytes(bytes).unwrap();
-            self.parse_sendtable(tables)?;
+            //self.parse_sendtable(tables)?;
         }
         Ok(())
     }

@@ -14,9 +14,11 @@ use ahash::HashMap;
 use ahash::RandomState;
 use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
+use dashmap::DashMap;
 use phf_macros::phf_map;
 use soa_derive::StructOfArray;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 19) - 1;
@@ -27,7 +29,7 @@ pub struct Parser<'a> {
     // Parsing state
     pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
-    pub cls_by_id: [Option<Class>; 560],
+    pub cls_by_id: Arc<DashMap<i32, Class>>,
     pub cls_bits: Option<u32>,
     pub entities: AHashMap<i32, Entity, RandomState>,
     pub tick: i32,
@@ -150,48 +152,7 @@ impl<'a> Parser<'a> {
             ge_list: None,
             bytes: settings.bytes,
             // JUST LOL
-            cls_by_id: [
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            ],
+            cls_by_id: Arc::new(DashMap::default()),
             entities: AHashMap::default(),
             cls_bits: None,
             tick: -99999,

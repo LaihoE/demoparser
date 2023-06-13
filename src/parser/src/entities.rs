@@ -1,6 +1,7 @@
 use super::read_bits::DemoParserError;
 use crate::collect_data::TYPEHM;
 use crate::entities_utils::*;
+use crate::other_netmessages::Class;
 use crate::parser_settings::Parser;
 use crate::read_bits::Bitreader;
 use crate::variants::Variant;
@@ -92,7 +93,7 @@ impl<'a> Parser<'a> {
     ) -> Result<(), DemoParserError> {
         let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
         if n_updated_values > 0 {
-            self.gather_extra_info(&entity_id)?;
+            //self.gather_extra_info(&entity_id)?;
         }
         Ok(())
     }
@@ -106,10 +107,13 @@ impl<'a> Parser<'a> {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
+        let class = self.cls_by_id.get(&(entity.cls_id as i32)).unwrap();
+        /*
         let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),
         };
+        */
         for path in &self.paths[..n_paths] {
             let decoder = class.serializer.find_decoder(&path, 0);
             let result = bitreader.decode(&decoder)?;
@@ -224,6 +228,7 @@ impl<'a> Parser<'a> {
         }
         Ok(idx)
     }
+    /*
     pub fn gather_extra_info(&mut self, entity_id: &i32) -> Result<(), DemoParserError> {
         // Boring stuff.. function does some bookkeeping
         let entity = match self.entities.get_mut(entity_id) {
@@ -292,6 +297,7 @@ impl<'a> Parser<'a> {
         );
         Ok(())
     }
+    */
     fn create_new_entity(
         &mut self,
         bitreader: &mut Bitreader,
@@ -328,7 +334,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
     pub fn check_entity_type(&self, cls_id: &u32) -> EntityType {
-        let class = self.cls_by_id[*cls_id as usize].as_ref().unwrap();
+        let class = self.cls_by_id.get(&(*cls_id as i32)).unwrap();
 
         match class.name.as_str() {
             "CCSPlayerController" => return EntityType::PlayerController,
@@ -341,6 +347,16 @@ impl<'a> Parser<'a> {
         }
         return EntityType::Normal;
     }
+    /*
+    pub fn get_cls(&self, cls_id: &u32) -> &Class {
+        loop {
+            match self.cls_by_id.get(&((*cls_id) as i32)) {
+                Some(cls) => return &cls,
+                None => {}
+            }
+        }
+    }
+    */
 }
 
 fn generate_fp() -> FieldPath {

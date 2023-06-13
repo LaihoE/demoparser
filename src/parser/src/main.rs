@@ -1,7 +1,13 @@
+use ahash::AHashMap;
+use dashmap::DashMap;
+use memmap2::MmapOptions;
+use parser::demo_searcher::DemoSearcher;
+use parser::demo_searcher::State;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::read_bits::Bitreader;
 use std::fs;
+use std::fs::File;
 use std::time::Instant;
 
 fn main() {
@@ -9,9 +15,12 @@ fn main() {
         "CCSPlayerController.m_iPawnHealth".to_owned(),
         "m_iClip1".to_owned(),
     ];
-    let demo_path = "/home/laiho/Documents/demos/cs2/s2.dem";
+    let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
     let bytes = fs::read(demo_path).unwrap();
+    //let file = File::open(demo_path).unwrap();
+    //let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
+    /*
     let settings = ParserInputs {
         bytes: &bytes,
         wanted_player_props: wanted_props.clone(),
@@ -38,4 +47,22 @@ fn main() {
     parser.start().unwrap();
 
     let x = &parser.output["CCSPlayerController.m_iPawnHealth"];
+    */
+    use std::sync::Arc;
+
+    let state = State {
+        cls_by_id: Arc::new(DashMap::default()),
+        serializers: Arc::new(DashMap::default()),
+    };
+
+    let mut ds = DemoSearcher {
+        bytes: bytes,
+        fullpacket_offsets: vec![],
+        ptr: 0,
+        tick: 0,
+        cls_by_id: Arc::new(AHashMap::default()),
+        state: state,
+    };
+    ds.front_demo_metadata().unwrap();
+    //println!("{:#?}", ds.state.cls_by_id);
 }

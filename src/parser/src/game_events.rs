@@ -23,6 +23,7 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
 ];
 const ENTITYIDNONE: i32 = 2047;
 
+/*
 impl<'a> Parser<'a> {
     // Message that should come before first game event
     pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
@@ -263,6 +264,7 @@ impl<'a> Parser<'a> {
         }
     }
 }
+*/
 fn parse_key(key: &Key_t) -> Option<Variant> {
     match key.type_() {
         1 => Some(Variant::String(key.val_string().to_owned())),

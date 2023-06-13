@@ -18,8 +18,9 @@ pub struct ProjectileRecord {
 }
 
 // This file collects the data that is converted into a dataframe in the end in parser.parse_ticks()
-
+/*
 impl<'a> Parser<'a> {
+
     pub fn collect_entities(&mut self) {
         if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 {
             return;
@@ -319,6 +320,7 @@ fn coord_from_cell(cell: Option<Variant>, offset: Option<Variant>) -> Option<f32
     }
     None
 }
+*/
 pub enum PropType {
     Team,
     Rules,
