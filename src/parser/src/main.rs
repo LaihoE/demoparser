@@ -95,6 +95,17 @@ fn main() {
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
             cls_by_id: AHashMap::default(),
+            controller_ids: ControllerIDS {
+                teamnum: None,
+                player_name: None,
+                steamid: None,
+                player_pawn: None,
+            },
+            id_to_path: AHashMap::default(),
+            id: 0,
+            player_output_ids: vec![],
+            wanted_prop_ids: vec![],
+            prop_out_id: 0,
         };
         ds.front_demo_metadata().unwrap();
         for handle in ds.handles {

@@ -48,12 +48,6 @@ pub struct Parser<'a> {
     pub paths: Vec<FieldPath>,
     pub projectiles: AHashSet<i32, RandomState>,
 
-    pub id: u32,
-    pub wanted_prop_ids: Vec<u32>,
-    pub controller_ids: ControllerIDS,
-    pub player_output_ids: Vec<u8>,
-    pub prop_out_id: u8,
-
     // Output from parsing
     pub output: AHashMap<String, PropColumn, RandomState>,
     pub header: HashMap<String, String>,
@@ -196,14 +190,6 @@ impl<'a> Parser<'a> {
             wanted_player_props_og_names: settings.wanted_player_props_og_names,
             wanted_other_props: settings.wanted_other_props,
             wanted_other_props_og_names: settings.wanted_other_props_og_names,
-
-            controller_ids: ControllerIDS {
-                teamnum: None,
-                player_name: None,
-                steamid: None,
-                player_pawn: None,
-            },
-            id: 0,
         })
     }
 }

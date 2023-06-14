@@ -10,6 +10,7 @@ use csgoproto::{
     demo::CDemoSendTables,
     netmessages::{CSVCMsg_FlattenedSerializer, ProtoFlattenedSerializerField_t},
 };
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use phf_macros::phf_map;
 use protobuf::Message;

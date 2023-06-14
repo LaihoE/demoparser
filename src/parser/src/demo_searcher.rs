@@ -1,6 +1,7 @@
 use crate::netmessage_types;
 use crate::parser::demo_cmd_type_from_int;
 use crate::parser_settings::create_huffman_lookup_table;
+use crate::parser_settings::ControllerIDS;
 use crate::parser_settings::Parser;
 use crate::parser_settings::ParserInputs;
 use crate::sendtables::Serializer;
@@ -48,6 +49,12 @@ pub struct DemoSearcher {
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
 
     pub cls_by_id: AHashMap<u32, Class>,
+    pub id: u32,
+    pub wanted_prop_ids: Vec<u32>,
+    pub controller_ids: ControllerIDS,
+    pub player_output_ids: Vec<u8>,
+    pub prop_out_id: u8,
+    pub id_to_path: AHashMap<u32, [i32; 7]>,
 }
 
 pub struct State {
