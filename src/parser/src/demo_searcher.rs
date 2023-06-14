@@ -119,7 +119,7 @@ impl DemoSearcher {
         let bef = Instant::now();
         let v: Vec<AHashMap<String, PropColumn>> = self
             .fullpacket_offsets
-            .iter()
+            .par_iter()
             .map(|o| {
                 let mut parser = Parser::new(self.settings.clone(), &self.cls_by_id).unwrap();
                 parser.ptr = *o;
@@ -130,7 +130,7 @@ impl DemoSearcher {
             })
             .collect();
         println!("PAR S{:2?}", bef.elapsed());
-        combine_dfs(v);
+        // combine_dfs(v);
 
         Ok(())
     }

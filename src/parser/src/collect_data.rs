@@ -47,7 +47,7 @@ impl<'a> Parser<'a> {
         match &self.prop_name_to_path.get(prop_name) {
             Some(path) => {
                 if let Some(ent) = self.entities.get(entity_id) {
-                    if let Some(prop) = ent.props.get(path.clone()) {
+                    if let Some(prop) = ent.props.get(&0) {
                         // println!("{:?}", prop);
                         return Some(prop.clone());
                     }

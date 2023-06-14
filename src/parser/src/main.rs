@@ -5,6 +5,7 @@ use memmap2::MmapOptions;
 use parser::demo_searcher::DemoSearcher;
 use parser::demo_searcher::State;
 use parser::parser_settings::create_huffman_lookup_table;
+use parser::parser_settings::ControllerIDS;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::read_bits::Bitreader;
@@ -15,7 +16,7 @@ use std::time::Instant;
 
 fn main() {
     rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
+        .num_threads(12)
         .build_global()
         .unwrap();
 
@@ -112,7 +113,7 @@ fn main() {
             handle.join().unwrap();
         }
         println!("{:?}", before.elapsed());
-        break;
+        // break;
     }
     // println!("{:?}", ds.handles);
     //println!("{:#?}", ds.state.cls_by_id);

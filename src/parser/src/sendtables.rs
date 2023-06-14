@@ -1,4 +1,5 @@
 use super::read_bits::{Bitreader, DemoParserError};
+use crate::collect_data::PropType;
 use crate::collect_data::TYPEHM;
 use crate::demo_searcher::DemoSearcher;
 use crate::entities_utils::FieldPath;
@@ -48,7 +49,6 @@ pub struct FieldInfo {
     pub decoder: Decoder,
     pub should_parse: bool,
     pub df_pos: u32,
-    //pub is_controller_prop: bool,
     pub controller_prop: Option<ControllerProp>,
 }
 #[derive(Debug, Clone, Copy)]
@@ -170,18 +170,40 @@ pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
 };
 
 impl Field {
-    pub fn decoder_from_path(&self, path: &FieldPath, pos: usize) -> Decoder {
+    pub fn decoder_from_path(&self, path: &FieldPath, pos: usize) -> FieldInfo {
         match self.model {
             FieldModelSimple => {
-                return self.decoder;
+                return FieldInfo {
+                    decoder: self.decoder,
+                    should_parse: self.should_parse,
+                    df_pos: self.df_pos as u32,
+                    controller_prop: self.controller_prop,
+                };
             }
-            FieldModelFixedArray => self.decoder,
+            FieldModelFixedArray => {
+                return FieldInfo {
+                    decoder: self.decoder,
+                    should_parse: self.should_parse,
+                    df_pos: self.df_pos as u32,
+                    controller_prop: self.controller_prop,
+                }
+            }
             FieldModelFixedTable => {
                 if path.last == pos - 1 {
                     if self.base_decoder.is_some() {
-                        return self.base_decoder.unwrap();
+                        return FieldInfo {
+                            decoder: self.base_decoder.unwrap(),
+                            should_parse: self.should_parse,
+                            df_pos: self.df_pos as u32,
+                            controller_prop: self.controller_prop,
+                        };
                     }
-                    return self.decoder;
+                    return FieldInfo {
+                        decoder: self.decoder,
+                        should_parse: self.should_parse,
+                        df_pos: self.df_pos as u32,
+                        controller_prop: self.controller_prop,
+                    };
                 } else {
                     match &self.serializer {
                         Some(ser) => {
@@ -193,9 +215,19 @@ impl Field {
             }
             FieldModelVariableArray => {
                 if path.last == pos {
-                    return self.child_decoder.unwrap();
+                    return FieldInfo {
+                        decoder: self.child_decoder.unwrap(),
+                        should_parse: self.should_parse,
+                        df_pos: self.df_pos as u32,
+                        controller_prop: self.controller_prop,
+                    };
                 } else {
-                    return self.base_decoder.unwrap();
+                    return FieldInfo {
+                        decoder: self.base_decoder.unwrap(),
+                        should_parse: self.should_parse,
+                        df_pos: self.df_pos as u32,
+                        controller_prop: self.controller_prop,
+                    };
                 }
             }
             FieldModelVariableTable => {
@@ -207,7 +239,12 @@ impl Field {
                         None => panic!("no serializer for path"),
                     }
                 } else {
-                    return self.base_decoder.unwrap();
+                    return FieldInfo {
+                        decoder: self.base_decoder.unwrap(),
+                        should_parse: self.should_parse,
+                        df_pos: self.df_pos as u32,
+                        controller_prop: self.controller_prop,
+                    };
                 }
             }
             _ => panic!("HUH"),
@@ -460,10 +497,8 @@ pub struct Serializer {
 }
 
 impl Serializer {
-    pub fn find_decoder(&self, path: &FieldPath, pos: usize) -> Decoder {
-        let idx = path.path[pos];
-        let f = &self.fields[idx as usize];
-        f.decoder_from_path(path, pos + 1)
+    pub fn find_decoder(&self, path: &FieldPath, pos: usize) -> FieldInfo {
+        self.fields[path.path[pos] as usize].decoder_from_path(path, pos + 1)
     }
     pub fn debug_find_decoder(
         &self,
@@ -564,14 +599,13 @@ impl DemoSearcher {
                     }
                 }
             }
-            self.find_prop_name_paths(&my_serializer);
-
+            self.find_prop_name_paths(&mut my_serializer);
             self.serializers
                 .insert(my_serializer.name.clone(), my_serializer);
         }
         Ok(())
     }
-    pub fn find_prop_name_paths(&mut self, ser: &Serializer) {
+    pub fn find_prop_name_paths(&mut self, ser: &mut Serializer) {
         // Finds mapping from name to path.
         // Example: "m_iHealth" => [4, 0, 0, 0, 0, 0, 0]
         self.traverse_fields(&mut ser.fields, vec![], ser.name.clone())

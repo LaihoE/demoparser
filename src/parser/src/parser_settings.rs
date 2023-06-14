@@ -8,6 +8,7 @@ use crate::collect_data::ProjectileRecordVec;
 use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
 use crate::other_netmessages::Class;
+use crate::sendtables::FieldInfo;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
@@ -45,7 +46,7 @@ pub struct Parser<'a> {
     pub rules_entity_id: Option<i32>,
     pub game_events_counter: AHashMap<String, i32>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
-    pub paths: Vec<FieldPath>,
+    pub paths: Vec<FieldInfo>,
     pub projectiles: AHashSet<i32, RandomState>,
 
     // Output from parsing
@@ -172,7 +173,15 @@ impl<'a> Parser<'a> {
             projectile_records: ProjectileRecordVec::new(),
             baselines: AHashMap::default(),
             string_tables: vec![],
-            paths: vec![fp_filler; 4096],
+            paths: vec![
+                FieldInfo {
+                    decoder: crate::sendtables::Decoder::NoscaleDecoder,
+                    should_parse: false,
+                    df_pos: 0,
+                    controller_prop: None
+                };
+                4096
+            ],
             teams: Teams::new(),
             game_events_counter: AHashMap::default(),
             parse_projectiles: settings.parse_projectiles,

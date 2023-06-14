@@ -17,7 +17,7 @@ const HUFFMAN_CODE_MAXLEN: u32 = 17;
 pub struct Entity {
     pub cls_id: u32,
     pub entity_id: i32,
-    pub props: HashMap<[i32; 7], Variant>,
+    pub props: HashMap<u32, Variant>,
     pub entity_type: EntityType,
     pub history: HashMap<[i32; 7], Vec<Variant>>,
 }
@@ -101,41 +101,27 @@ impl<'a> Parser<'a> {
         bitreader: &mut Bitreader,
         entity_id: i32,
     ) -> Result<usize, DemoParserError> {
-        let n_paths = self.parse_paths(bitreader)?;
+        let n_paths = self.parse_paths(bitreader, &entity_id)?;
+
         let entity = match self.entities.get_mut(&(entity_id)) {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
-        let class = match self.cls_by_id.get(&entity.cls_id) {
-            Some(cls) => cls,
-            None => return Err(DemoParserError::ClassNotFound),
-        };
-        for path in &self.paths[..n_paths] {
-            let decoder = class.serializer.find_decoder(&path, 0);
-            let result = bitreader.decode(&decoder)?;
-            // Can be used for debugging output
-            if 0 == 1 {
-                let _debug_field =
-                    class
-                        .serializer
-                        .debug_find_decoder(&path, 0, class.serializer.name.clone());
-                if _debug_field
-                    .full_name
-                    .contains("CCSPlayerController.m_hPlayerPawn")
-                {
-                    // println!("{} {:?} {:?}", self.tick, _debug_field.full_name, result);
-                }
-            }
-            if self.wanted_prop_paths.contains(&path.path)
-                || entity.entity_type != EntityType::Normal
-            {
-                entity.props.insert(path.path, result);
+
+        for field_info in &self.paths[..n_paths] {
+            let result = bitreader.decode(&field_info.decoder)?;
+            if field_info.should_parse {
+                entity.props.insert(field_info.df_pos as u32, result);
             }
         }
         Ok(n_paths)
     }
 
-    pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, DemoParserError> {
+    pub fn parse_paths(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: &i32,
+    ) -> Result<usize, DemoParserError> {
         /*
         Create a field path by decoding using a Huffman tree.
         The huffman tree can be found at the bottom of entities_utils.rs
@@ -202,7 +188,14 @@ impl<'a> Parser<'a> {
         Personally I find this path idea horribly complicated. Why is this chosen over
         the way it was done in source 1 demos?
         */
-
+        let entity = match self.entities.get(&(entity_id)) {
+            Some(ent) => ent,
+            None => return Err(DemoParserError::EntityNotFound),
+        };
+        let class = match self.cls_by_id.get(&entity.cls_id) {
+            Some(cls) => cls,
+            None => return Err(DemoParserError::ClassNotFound),
+        };
         // Create an "empty" path ([-1, 0, 0, 0, 0, 0, 0])
         // For perfomance reasons have them always the same len
         let mut fp = generate_fp();
@@ -223,9 +216,11 @@ impl<'a> Parser<'a> {
             }
 
             do_op(symbol, bitreader, &mut fp)?;
+
+            self.paths[idx] = class.serializer.find_decoder(&fp, 0);
             // We reuse one big vector for holding paths. Purely for performance.
             // Alternatively we could create a new vector in this function and return it.
-            self.paths[idx] = fp;
+            // self.paths[idx] = fp;
             idx += 1;
         }
         Ok(idx)
