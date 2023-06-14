@@ -15,6 +15,7 @@ use ahash::RandomState;
 use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use dashmap::DashMap;
+use memmap2::Mmap;
 use phf_macros::phf_map;
 use soa_derive::StructOfArray;
 use std::collections::BTreeMap;
@@ -23,9 +24,9 @@ use std::sync::Arc;
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 19) - 1;
 
-pub struct Parser<'a> {
+pub struct Parser {
     pub ptr: usize,
-    pub bytes: &'a [u8],
+    pub bytes: Arc<Mmap>,
     // Parsing state
     pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
@@ -38,7 +39,7 @@ pub struct Parser<'a> {
     pub prop_name_to_path: AHashMap<String, [i32; 7]>,
     pub path_to_prop_name: AHashMap<[i32; 7], String>,
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
-    pub huffman_lookup_table: &'a Vec<(u32, u8)>,
+    pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
     pub rules_entity_id: Option<i32>,
@@ -117,8 +118,8 @@ pub struct PlayerEndData {
 }
 
 #[derive(Debug, Clone)]
-pub struct ParserInputs<'a> {
-    pub bytes: &'a [u8],
+pub struct ParserInputs {
+    pub bytes: Arc<Mmap>,
 
     pub wanted_player_props: Vec<String>,
     pub wanted_player_props_og_names: Vec<String>,
@@ -132,11 +133,11 @@ pub struct ParserInputs<'a> {
     pub only_header: bool,
     pub count_props: bool,
     pub only_convars: bool,
-    pub huffman_lookup_table: &'a Vec<(u32, u8)>,
+    pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(mut settings: ParserInputs<'a>) -> Result<Self, DemoParserError> {
+impl Parser {
+    pub fn new(mut settings: ParserInputs) -> Result<Self, DemoParserError> {
         let fp_filler = FieldPath {
             last: 0,
             path: [-1, 0, 0, 0, 0, 0, 0],
@@ -146,7 +147,7 @@ impl<'a> Parser<'a> {
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
-        let huffman_table = create_huffman_lookup_table();
+        // let huffman_table = create_huffman_lookup_table();
         Ok(Parser {
             serializers: AHashMap::default(),
             ptr: 0,

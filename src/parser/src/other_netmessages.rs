@@ -22,7 +22,7 @@ pub struct Class {
     pub serializer: Serializer,
 }
 
-impl<'a> Parser<'a> {
+impl Parser {
     pub fn parse_item_drops(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let drops: CCSUsrMsg_SendPlayerItemDrops = Message::parse_from_bytes(&bytes).unwrap();
         for item in &drops.entity_updates {

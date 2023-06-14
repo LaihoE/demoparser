@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use super::netmessage_types;
 use super::read_bits::DemoParserError;
 use crate::netmessage_types::netmessage_type_from_int;
@@ -13,10 +15,11 @@ use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
 // The parser struct is defined in parser_settings.rs
-impl<'a> Parser<'a> {
+impl Parser {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
         let file_length = self.bytes.len();
         println!("P {}", self.ptr);
+        let before = Instant::now();
         // Header (there is a longer header as a DEM_FileHeader msg below)
         // let header = self.read_n_bytes(16)?;
         // Parser::handle_short_header(file_length, header)?;
@@ -61,6 +64,7 @@ impl<'a> Parser<'a> {
             ok?;
             //self.collect_entities();
         }
+        println!("{:2?}", before.elapsed());
         Ok(())
     }
 

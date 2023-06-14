@@ -19,7 +19,7 @@ pub struct StringTableEntry {
     pub value: Vec<u8>,
 }
 
-impl<'a> Parser<'a> {
+impl Parser {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
 

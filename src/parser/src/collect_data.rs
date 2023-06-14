@@ -1,8 +1,3 @@
-use super::entities::PlayerMetaData;
-use super::variants::Variant;
-use crate::parser_settings::Parser;
-use crate::variants::PropColumn;
-use itertools::Itertools;
 use phf_macros::phf_map;
 use soa_derive::StructOfArray;
 

@@ -22,7 +22,6 @@ pub struct Entity {
     pub entity_id: i32,
     pub props: HashMap<[i32; 7], Variant>,
     pub entity_type: EntityType,
-    pub history: HashMap<[i32; 7], Vec<Variant>>,
 }
 
 #[derive(Debug, Clone)]
@@ -47,7 +46,7 @@ enum EntityCmd {
     Update,
 }
 
-impl<'a> Parser<'a> {
+impl Parser {
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
@@ -123,11 +122,13 @@ impl<'a> Parser<'a> {
                                 class.serializer.name.clone(),
                             );
                         }
+                        /*
                         if self.wanted_prop_paths.contains(&path.path)
                             || entity.entity_type != EntityType::Normal
                         {
                             entity.props.insert(path.path, result);
                         }
+                        */
                     }
                     return Ok(n_paths);
                 }
@@ -316,7 +317,7 @@ impl<'a> Parser<'a> {
         let entity_type = self.check_entity_type(&cls_id);
         match entity_type {
             EntityType::Projectile => {
-                self.projectiles.insert(*entity_id);
+                // self.projectiles.insert(*entity_id);
             }
             EntityType::Rules => self.rules_entity_id = Some(*entity_id),
             _ => {}
@@ -327,25 +328,24 @@ impl<'a> Parser<'a> {
             cls_id: cls_id,
             props: HashMap::default(),
             entity_type: entity_type,
-            history: HashMap::default(),
         };
         self.entities.insert(*entity_id, entity);
         // Insert baselines
+        /*
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
             let b = &baseline_bytes.clone();
             let mut br = Bitreader::new(&b);
             self.update_entity(&mut br, *entity_id)?;
         };
+        */
         Ok(())
     }
 
     pub fn check_entity_type(&self, cls_id: &u32) -> EntityType {
-        let mut cnt = 0;
         //let ten_millis = time::Duration::from_millis(10000);
         //thread::sleep(ten_millis);
 
         loop {
-            cnt += 1;
             match self.cls_by_id.get(cls_id) {
                 Some(class) => {
                     // let class = self.cls_by_id.get(&(*cls_id as i32)).unwrap();
@@ -362,10 +362,9 @@ impl<'a> Parser<'a> {
                     return EntityType::Normal;
                 }
                 _ => {
-                    let ten_millis = time::Duration::from_millis(10);
+                    let ten_millis = time::Duration::from_millis(1);
                     thread::sleep(ten_millis);
-                    println!("{:?} {:?} {}", cnt, self.cls_by_id.get(cls_id), cls_id);
-                    continue;
+                    // println!("{:?} {:?} {}", cnt, self.cls_by_id.get(cls_id), cls_id);
                 }
             }
         }

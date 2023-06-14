@@ -481,7 +481,7 @@ const POINTER_TYPES: &'static [&'static str] = &[
     "CPhysicsComponent",
 ];
 
-impl<'a> DemoSearcher<'a> {
+impl DemoSearcher {
     // This part is so insanely complicated. There are multiple versions of each serializer and
     // each serializer is this huge nested struct.
     pub fn parse_sendtable(
