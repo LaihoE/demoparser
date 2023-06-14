@@ -196,10 +196,25 @@ impl<'a> Parser<'a> {
             wanted_player_props_og_names: settings.wanted_player_props_og_names,
             wanted_other_props: settings.wanted_other_props,
             wanted_other_props_og_names: settings.wanted_other_props_og_names,
+
+            controller_ids: ControllerIDS {
+                teamnum: None,
+                player_name: None,
+                steamid: None,
+                player_pawn: None,
+            },
+            id: 0,
         })
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ControllerIDS {
+    pub teamnum: Option<u32>,
+    pub player_name: Option<u32>,
+    pub steamid: Option<u32>,
+    pub player_pawn: Option<u32>,
+}
 fn msb(mut val: u32) -> u32 {
     let mut cnt = 0;
     while val > 0 {
