@@ -34,6 +34,27 @@ pub struct Field {
     pub decoder: Decoder,
     pub base_decoder: Option<Decoder>,
     pub child_decoder: Option<Decoder>,
+
+    pub should_parse: bool,
+    pub df_pos: usize,
+    pub is_controller_prop: bool,
+    pub controller_prop: Option<ControllerProp>,
+    pub idx: u32,
+}
+#[derive(Debug, Clone, Copy)]
+pub struct FieldInfo {
+    pub decoder: Decoder,
+    pub should_parse: bool,
+    pub df_pos: u32,
+    //pub is_controller_prop: bool,
+    pub controller_prop: Option<ControllerProp>,
+}
+#[derive(Debug, Clone, Copy)]
+pub enum ControllerProp {
+    SteamId,
+    Name,
+    TeamNum,
+    PlayerEntityId,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum FieldModel {
@@ -551,14 +572,14 @@ impl DemoSearcher {
     pub fn find_prop_name_paths(&mut self, ser: &Serializer) {
         // Finds mapping from name to path.
         // Example: "m_iHealth" => [4, 0, 0, 0, 0, 0, 0]
-        self.traverse_fields(&ser.fields, vec![], ser.name.clone())
+        self.traverse_fields(&mut ser.fields, vec![], ser.name.clone())
     }
-    pub fn traverse_fields(&mut self, fields: &Vec<Field>, path: Vec<i32>, ser_name: String) {
-        for (idx, f) in fields.iter().enumerate() {
-            if let Some(ser) = &f.serializer {
+    pub fn traverse_fields(&mut self, fields: &mut Vec<Field>, path: Vec<i32>, ser_name: String) {
+        for (idx, f) in fields.iter_mut().enumerate() {
+            if let Some(ser) = &mut f.serializer {
                 let mut tmp = path.clone();
                 tmp.push(idx as i32);
-                self.traverse_fields(&ser.fields, tmp, ser_name.clone() + "." + &ser.name)
+                self.traverse_fields(&mut ser.fields, tmp, ser_name.clone() + "." + &ser.name)
             } else {
                 let mut tmp = path.clone();
                 tmp.push(idx as i32);
@@ -569,23 +590,65 @@ impl DemoSearcher {
                 }
                 let full_name = ser_name.clone() + "." + &f.var_name;
 
-                if self.wanted_player_props.contains(&full_name)
-                    || full_name.contains("cell")
-                    || full_name.contains("m_vec")
-                    || full_name.contains("Weapon")
-                    || full_name.contains("CAK47")
-                {
+                if self.is_wanted_prop(&full_name) {
+                    f.should_parse = true;
                     self.wanted_prop_paths.insert(arr);
+                    if full_name.contains("Controller") {
+                        f.is_controller_prop = true;
+                        f.controller_prop = self.find_controller_prop_type(&full_name);
+                    }
+                    f.df_pos = self.id as usize;
                 }
-
+                if self.wanted_player_props.contains(&full_name) {
+                    self.wanted_prop_ids.push(self.id);
+                }
+                match full_name.as_str() {
+                    "CCSPlayerController.m_iTeamNum" => self.controller_ids.teamnum = Some(self.id),
+                    "CCSPlayerController.m_iszPlayerName" => {
+                        self.controller_ids.player_name = Some(self.id)
+                    }
+                    "CCSPlayerController.m_steamID" => self.controller_ids.steamid = Some(self.id),
+                    "CCSPlayerController.m_hPlayerPawn" => {
+                        self.controller_ids.player_pawn = Some(self.id)
+                    }
+                    _ => {}
+                };
+                self.id_to_path.insert(self.id, arr);
+                self.id += 1;
                 self.prop_name_to_path.insert(full_name.clone(), arr);
                 self.path_to_prop_name.insert(arr, full_name);
-                self.prop_name_to_path.insert(
-                    "CCSPlayerPawn.m_pWeaponServices.m_hActiveWeapon".to_owned(),
-                    [86, 1, 0, 0, 0, 0, 0],
-                );
             }
         }
+    }
+    fn is_wanted_prop(&self, name: &str) -> bool {
+        if self.wanted_player_props.contains(&"X".to_string())
+            || self.wanted_player_props.contains(&"Y".to_string())
+            || self.wanted_player_props.contains(&"Z".to_string())
+        {
+            if name.contains("cell") || name.contains("m_vec") {
+                return true;
+            }
+        }
+        let temp = name.split(".").collect_vec();
+        let weap_prop_part = temp.last().unwrap_or(&"Whatever");
+        match TYPEHM.get(weap_prop_part) {
+            Some(PropType::Weapon) => return true,
+            _ => {}
+        };
+        if name.contains("CCSTeam.m_iTeamNum")
+            || name.contains("CCSPlayerController.m_iTeamNum")
+            || name.contains("CCSPlayerController.m_iszPlayerName")
+            || name.contains("CCSPlayerController.m_steamID")
+            || name.contains("CCSPlayerController.m_hPlayerPawn")
+            || name.contains("CCSPlayerController.m_bPawnIsAlive")
+            || name.contains("m_hActiveWeapon")
+        {
+            return true;
+        }
+        if self.wanted_player_props.contains(&name.to_owned()) {
+            return true;
+        }
+        false
     }
 }
 
