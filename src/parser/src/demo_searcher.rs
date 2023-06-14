@@ -1,5 +1,6 @@
 use crate::netmessage_types;
 use crate::parser::demo_cmd_type_from_int;
+use crate::parser_settings::create_huffman_lookup_table;
 use crate::parser_settings::Parser;
 use crate::parser_settings::ParserInputs;
 use crate::sendtables::Serializer;
@@ -14,24 +15,56 @@ use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 use std::time::Instant;
 
-pub struct DemoSearcher {
+pub struct DemoSearcher<'a> {
     pub fullpacket_offsets: Vec<usize>,
     pub ptr: usize,
-    pub bytes: Vec<u8>,
+    pub bytes: &'a [u8],
     pub tick: i32,
-    pub cls_by_id: Arc<AHashMap<i32, Class>>,
     pub state: State,
+    pub huf: &'a Vec<(u32, u8)>,
+    //pub settings: ParserInputs<'a>,
 }
 pub struct State {
     pub serializers: Arc<DashMap<String, Serializer>>,
     pub cls_by_id: Arc<DashMap<u32, Class>>,
 }
 
-impl DemoSearcher {
+impl<'a> DemoSearcher<'a> {
     pub fn front_demo_metadata(&mut self) -> Result<(), DemoParserError> {
         self.ptr = 16;
+        let mut handles = vec![];
+        let huf = create_huffman_lookup_table();
+        let wanted_props = vec![
+            "CCSPlayerController.m_iPawnHealth".to_owned(),
+            "m_iClip1".to_owned(),
+        ];
+        let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
+        let settings = ParserInputs {
+            bytes: &self.bytes,
+            wanted_player_props: wanted_props.clone(),
+            wanted_player_props_og_names: wanted_props.clone(),
+            wanted_event: Some("bomb_planted".to_string()),
+            wanted_other_props: vec![
+                "CCSTeam.m_iScore".to_string(),
+                "CCSTeam.m_szTeamname".to_string(),
+                "CCSGameRulesProxy.CCSGameRules.m_totalRoundsPlayed".to_string(),
+            ],
+            wanted_other_props_og_names: vec![
+                "score".to_string(),
+                "name".to_string(),
+                "CCSGameRulesProxy.CCSGameRules.m_totalRoundsPlayed".to_string(),
+            ],
+            parse_ents: true,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
+            huffman_lookup_table: &self.huf,
+        };
         loop {
             let before = self.ptr;
             let cmd = self.read_varint()?;
@@ -65,6 +98,7 @@ impl DemoSearcher {
                                 Message::parse_from_bytes(&bytes).unwrap();
                             DemoSearcher::parse_sendtable(tables, ser_arc).unwrap();
                         });
+                        handles.push(handle);
                         Ok(())
                     }
                     DEM_ClassInfo => {
@@ -73,45 +107,18 @@ impl DemoSearcher {
                         let handle = thread::spawn(move || {
                             DemoSearcher::parse_class_info(&bytes, cls_by_id_arc, ser_arc).unwrap();
                         });
+                        handles.push(handle);
                         Ok(())
                     }
                     DEM_FullPacket => {
-                        let wanted_props = vec![
-                            "CCSPlayerController.m_iPawnHealth".to_owned(),
-                            "m_iClip1".to_owned(),
-                        ];
-                        let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
-
                         self.fullpacket_offsets.push(before);
-                        let settings = ParserInputs {
-                            bytes: &bytes,
-                            wanted_player_props: wanted_props.clone(),
-                            wanted_player_props_og_names: wanted_props.clone(),
-                            wanted_event: Some("bomb_planted".to_string()),
-                            wanted_other_props: vec![
-                                "CCSTeam.m_iScore".to_string(),
-                                "CCSTeam.m_szTeamname".to_string(),
-                                "CCSGameRulesProxy.CCSGameRules.m_totalRoundsPlayed".to_string(),
-                            ],
-                            wanted_other_props_og_names: vec![
-                                "score".to_string(),
-                                "name".to_string(),
-                                "CCSGameRulesProxy.CCSGameRules.m_totalRoundsPlayed".to_string(),
-                            ],
-                            parse_ents: true,
-                            wanted_ticks: vec![],
-                            parse_projectiles: false,
-                            only_header: false,
-                            count_props: false,
-                            only_convars: false,
-                        };
-
-                        let mut parser = Parser::new(settings).unwrap();
+                        let mut parser = Parser::new(settings.clone()).unwrap();
                         parser.ptr = before;
-                        // parser.cls_by_id = self.cls_by_id.clone(),
-                        parser.start().unwrap();
-                        self.ptr = before;
-
+                        parser.cls_by_id = self.state.cls_by_id.clone();
+                        let handle = thread::spawn(move || {
+                            //DemoSearcher::parse_class_info(&bytes, cls_by_id_arc, ser_arc).unwrap();
+                            parser.start().unwrap();
+                        });
                         Ok(())
                     }
                     DEM_Stop => {
@@ -132,7 +139,7 @@ impl DemoSearcher {
 
 use csgoproto::demo::CDemoClassInfo;
 
-impl DemoSearcher {
+impl<'a> DemoSearcher<'a> {
     pub fn parse_class_info(
         bytes: &[u8],
         cls_by_id: Arc<DashMap<u32, Class>>,
@@ -146,6 +153,7 @@ impl DemoSearcher {
             loop {
                 match serializers.get(network_name) {
                     Some(ser) => {
+                        println!("CLSID {} DONE", cls_id);
                         cls_by_id.insert(
                             cls_id as u32,
                             Class {
@@ -154,11 +162,17 @@ impl DemoSearcher {
                                 serializer: ser.clone(),
                             },
                         );
+                        break;
                     }
-                    None => {}
+                    None => {
+                        println!("CLSID {} NOT FOUND", cls_id);
+                        let ten_millis = Duration::from_millis(100);
+                        thread::sleep(ten_millis);
+                    }
                 }
             }
         }
+        println!("CLS DONE");
         Ok(())
     }
 }

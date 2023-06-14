@@ -29,7 +29,7 @@ pub struct Parser<'a> {
     // Parsing state
     pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
-    pub cls_by_id: Arc<DashMap<i32, Class>>,
+    pub cls_by_id: Arc<DashMap<u32, Class>>,
     pub cls_bits: Option<u32>,
     pub entities: AHashMap<i32, Entity, RandomState>,
     pub tick: i32,
@@ -38,7 +38,7 @@ pub struct Parser<'a> {
     pub prop_name_to_path: AHashMap<String, [i32; 7]>,
     pub path_to_prop_name: AHashMap<[i32; 7], String>,
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
-    pub huffman_lookup_table: Vec<(u32, u8)>,
+    pub huffman_lookup_table: &'a Vec<(u32, u8)>,
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
     pub rules_entity_id: Option<i32>,
@@ -116,7 +116,7 @@ pub struct PlayerEndData {
     pub team_number: Option<i32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParserInputs<'a> {
     pub bytes: &'a [u8],
 
@@ -132,6 +132,7 @@ pub struct ParserInputs<'a> {
     pub only_header: bool,
     pub count_props: bool,
     pub only_convars: bool,
+    pub huffman_lookup_table: &'a Vec<(u32, u8)>,
 }
 
 impl<'a> Parser<'a> {
@@ -177,7 +178,7 @@ impl<'a> Parser<'a> {
             item_drops: EconItemVec::new(),
             skins: EconItemVec::new(),
             player_end_data: PlayerEndDataVec::new(),
-            huffman_lookup_table: huffman_table,
+            huffman_lookup_table: settings.huffman_lookup_table,
             prop_name_to_path: AHashMap::default(),
             wanted_prop_paths: AHashSet::default(),
             path_to_prop_name: AHashMap::default(),
@@ -198,7 +199,7 @@ fn msb(mut val: u32) -> u32 {
     cnt
 }
 
-fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
+pub fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
     let mut huffman_table = vec![(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
     let mut huffman_rev_table = vec![(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
 

@@ -481,7 +481,7 @@ const POINTER_TYPES: &'static [&'static str] = &[
     "CPhysicsComponent",
 ];
 
-impl DemoSearcher {
+impl<'a> DemoSearcher<'a> {
     // This part is so insanely complicated. There are multiple versions of each serializer and
     // each serializer is this huge nested struct.
     pub fn parse_sendtable(
@@ -496,7 +496,7 @@ impl DemoSearcher {
             Message::parse_from_bytes(&bytes).unwrap();
 
         let mut fields: HashMap<i32, Field> = HashMap::default();
-        for serializer in &serializer_msg.serializers {
+        for (ii, serializer) in serializer_msg.serializers.iter().enumerate() {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
                 fields: vec![],
@@ -547,9 +547,16 @@ impl DemoSearcher {
                     }
                 }
             }
+            println!(
+                "{:?} {} {}",
+                my_serializer.name.clone(),
+                ii,
+                serializer_msg.serializers.len()
+            );
             // self.find_prop_name_paths(&my_serializer);
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
+        println!("SENDTABLE DONE");
         Ok(())
     }
     /*

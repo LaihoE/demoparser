@@ -9,6 +9,8 @@ use ahash::HashMap;
 use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
+use std::thread;
+use std::time;
 
 const NSERIALBITS: u32 = 17;
 const STOP_READING_SYMBOL: u32 = 39;
@@ -107,30 +109,33 @@ impl<'a> Parser<'a> {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
-        let class = self.cls_by_id.get(&(entity.cls_id as i32)).unwrap();
-        /*
-        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
-            Some(cls) => cls,
-            None => return Err(DemoParserError::ClassNotFound),
-        };
-        */
-        for path in &self.paths[..n_paths] {
-            let decoder = class.serializer.find_decoder(&path, 0);
-            let result = bitreader.decode(&decoder)?;
-            // Can be used for debugging output
-            if 0 == 1 {
-                let _debug_field =
-                    class
-                        .serializer
-                        .debug_find_decoder(&path, 0, class.serializer.name.clone());
-            }
-            if self.wanted_prop_paths.contains(&path.path)
-                || entity.entity_type != EntityType::Normal
-            {
-                entity.props.insert(path.path, result);
+        loop {
+            match self.cls_by_id.get(&entity.cls_id) {
+                Some(class) => {
+                    for path in &self.paths[..n_paths] {
+                        let decoder = class.serializer.find_decoder(&path, 0);
+                        let result = bitreader.decode(&decoder)?;
+                        // Can be used for debugging output
+                        if 0 == 1 {
+                            let _debug_field = class.serializer.debug_find_decoder(
+                                &path,
+                                0,
+                                class.serializer.name.clone(),
+                            );
+                        }
+                        if self.wanted_prop_paths.contains(&path.path)
+                            || entity.entity_type != EntityType::Normal
+                        {
+                            entity.props.insert(path.path, result);
+                        }
+                    }
+                    return Ok(n_paths);
+                }
+                _ => {
+                    println!("H");
+                }
             }
         }
-        Ok(n_paths)
     }
 
     pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, DemoParserError> {
@@ -303,7 +308,7 @@ impl<'a> Parser<'a> {
         bitreader: &mut Bitreader,
         entity_id: &i32,
     ) -> Result<(), DemoParserError> {
-        let cls_id: u32 = bitreader.read_nbits(self.cls_bits.unwrap())?;
+        let cls_id: u32 = bitreader.read_nbits(8)?;
         // Both of these are not used. Don't think they are interesting for the parser
         let _serial = bitreader.read_nbits(NSERIALBITS)?;
         let _unknown = bitreader.read_varint();
@@ -333,19 +338,37 @@ impl<'a> Parser<'a> {
         };
         Ok(())
     }
-    pub fn check_entity_type(&self, cls_id: &u32) -> EntityType {
-        let class = self.cls_by_id.get(&(*cls_id as i32)).unwrap();
 
-        match class.name.as_str() {
-            "CCSPlayerController" => return EntityType::PlayerController,
-            "CCSGameRulesProxy" => return EntityType::Rules,
-            "CCSTeam" => return EntityType::Team,
-            _ => {}
+    pub fn check_entity_type(&self, cls_id: &u32) -> EntityType {
+        let mut cnt = 0;
+        //let ten_millis = time::Duration::from_millis(10000);
+        //thread::sleep(ten_millis);
+
+        loop {
+            cnt += 1;
+            match self.cls_by_id.get(cls_id) {
+                Some(class) => {
+                    // let class = self.cls_by_id.get(&(*cls_id as i32)).unwrap();
+
+                    match class.name.as_str() {
+                        "CCSPlayerController" => return EntityType::PlayerController,
+                        "CCSGameRulesProxy" => return EntityType::Rules,
+                        "CCSTeam" => return EntityType::Team,
+                        _ => {}
+                    }
+                    if class.name.contains("Projectile") {
+                        return EntityType::Projectile;
+                    }
+                    return EntityType::Normal;
+                }
+                _ => {
+                    let ten_millis = time::Duration::from_millis(10);
+                    thread::sleep(ten_millis);
+                    println!("{:?} {:?} {}", cnt, self.cls_by_id.get(cls_id), cls_id);
+                    continue;
+                }
+            }
         }
-        if class.name.contains("Projectile") {
-            return EntityType::Projectile;
-        }
-        return EntityType::Normal;
     }
     /*
     pub fn get_cls(&self, cls_id: &u32) -> &Class {

@@ -56,12 +56,13 @@ fn main() {
     };
 
     let mut ds = DemoSearcher {
-        bytes: bytes,
+        bytes: &bytes,
         fullpacket_offsets: vec![],
         ptr: 0,
         tick: 0,
-        cls_by_id: Arc::new(AHashMap::default()),
         state: state,
+        huf: huf,
+        //settings: settings,
     };
     ds.front_demo_metadata().unwrap();
     //println!("{:#?}", ds.state.cls_by_id);

@@ -22,6 +22,7 @@ impl<'a> Parser<'a> {
             if count >= 5 {
                 return Ok(result as u32);
             }
+
             if self.ptr >= self.bytes.len() {
                 return Err(DemoParserError::OutOfBytesError);
             }
@@ -37,7 +38,7 @@ impl<'a> Parser<'a> {
     }
 }
 
-impl DemoSearcher {
+impl<'a> DemoSearcher<'a> {
     #[inline]
     pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], DemoParserError> {
         if self.ptr + n as usize >= self.bytes.len() {

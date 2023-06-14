@@ -16,20 +16,17 @@ use EDemoCommands::*;
 impl<'a> Parser<'a> {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
         let file_length = self.bytes.len();
-        println!("{}", self.ptr);
+        println!("P {}", self.ptr);
         // Header (there is a longer header as a DEM_FileHeader msg below)
-        //let header = self.read_n_bytes(16)?;
-        //Parser::handle_short_header(file_length, header)?;
+        // let header = self.read_n_bytes(16)?;
+        // Parser::handle_short_header(file_length, header)?;
         // Outer loop that continues trough the file, until "DEM_Stop" msg
+        let mut fp_parsed = 0;
         loop {
-            println!("A");
-
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
             let size = self.read_varint()?;
             self.tick = tick as i32;
-
-            println!("{} {} {} ", cmd, tick, size);
 
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
@@ -44,11 +41,20 @@ impl<'a> Parser<'a> {
                 DEM_Packet => self.parse_packet(&bytes),
                 DEM_FileHeader => self.parse_header(&bytes),
                 DEM_FileInfo => self.parse_file_info(&bytes),
-                DEM_SendTables => self.parse_classes(&bytes),
+                // DEM_SendTables => self.parse_classes(&bytes),
                 // DEM_ClassInfo => self.parse_class_info(&bytes),
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_UserCmd => self.parse_user_command_cmd(&bytes),
                 DEM_StringTables => self.parse_stringtable_cmd(&bytes),
+                DEM_FullPacket => {
+                    if fp_parsed == 0 {
+                        self.parse_full_packet(&bytes);
+                        fp_parsed += 1;
+                    } else {
+                        break;
+                    }
+                    Ok(())
+                }
                 DEM_Stop => break,
                 _ => Ok(()),
             };
@@ -71,10 +77,10 @@ impl<'a> Parser<'a> {
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
-                svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
-                svc_UpdateStringTable => self.update_string_table(&msg_bytes),
-                //GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
-                //GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
+                // svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
+                // svc_UpdateStringTable => self.update_string_table(&msg_bytes),
+                // GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
+                // GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
@@ -86,6 +92,46 @@ impl<'a> Parser<'a> {
         }
         Ok(())
     }
+    pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        // Not in use atm
+
+        // A full state dump that happens every ~3000? ticks
+        // dumps all info needed to continue stringtables and entities from this tick forward. For
+        // example you could jump into middle of demo and start from here (assuming you find this).
+        // Leaves the door open for multithreading/ one off stats in end of demo
+        let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
+        for item in &full_packet.string_table.tables {
+            if item.table_name.as_ref().unwrap() == "instancebaseline" {
+                for i in &item.items {
+                    let k = i.str().parse::<u32>().unwrap_or(999999);
+                    self.baselines.insert(k, i.data.as_ref().unwrap().clone());
+                }
+            }
+        }
+        let p = full_packet.packet.0.clone().unwrap();
+        let mut bitreader = Bitreader::new(p.data());
+        // Inner loop
+        while bitreader.reader.bits_remaining().unwrap() > 8 {
+            let msg_type = bitreader.read_u_bit_var().unwrap();
+            let size = bitreader.read_varint().unwrap();
+            let msg_bytes = bitreader.read_n_bytes(size as usize).unwrap();
+            let ok = match netmessage_type_from_int(msg_type as i32) {
+                svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
+                // svc_ServerInfo => self.parse_class_info(&msg_bytes),
+                // svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
+                // svc_UpdateStringTable => self.update_string_table(&msg_bytes),
+                CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
+                CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
+                UM_SayText2 => self.parse_chat_messages(&msg_bytes),
+                net_SetConVar => self.parse_convars(&msg_bytes),
+                CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
+                _ => Ok(()),
+            };
+            ok?
+        }
+        Ok(())
+    }
+
     pub fn parse_stringtable_cmd(&mut self, data: &[u8]) -> Result<(), DemoParserError> {
         // Why do we use this and not just create/update stringtables??
         let tables: CDemoStringTables = Message::parse_from_bytes(data).unwrap();
