@@ -1,4 +1,5 @@
 use super::read_bits::{Bitreader, DemoParserError};
+use crate::collect_data::TYPEHM;
 use crate::demo_searcher::DemoSearcher;
 use crate::entities_utils::FieldPath;
 use crate::parser_settings::Parser;
@@ -621,6 +622,15 @@ impl DemoSearcher {
             }
         }
     }
+    fn find_controller_prop_type(&self, name: &str) -> Option<ControllerProp> {
+        match name {
+            "CCSPlayerController.m_iTeamNum" => Some(ControllerProp::TeamNum),
+            "CCSPlayerController.m_iszPlayerName" => Some(ControllerProp::Name),
+            "CCSPlayerController.m_steamID" => Some(ControllerProp::SteamId),
+            "CCSPlayerController.m_hPlayerPawn" => Some(ControllerProp::PlayerEntityId),
+            _ => None,
+        }
+    }
     fn is_wanted_prop(&self, name: &str) -> bool {
         if self.wanted_player_props.contains(&"X".to_string())
             || self.wanted_player_props.contains(&"Y".to_string())
@@ -690,6 +700,11 @@ fn field_from_msg(
         decoder: BaseDecoder,
         base_decoder: None,
         child_decoder: None,
+        should_parse: false,
+        df_pos: 0,
+        is_controller_prop: false,
+        controller_prop: None,
+        idx: 0,
     };
     f
 }
