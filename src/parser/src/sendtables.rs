@@ -1,7 +1,6 @@
 use super::read_bits::{Bitreader, DemoParserError};
 use crate::demo_searcher::DemoSearcher;
 use crate::entities_utils::FieldPath;
-use crate::other_netmessages::Class;
 use crate::parser_settings::Parser;
 use crate::q_float::QuantalizedFloat;
 use crate::sendtables::Decoder::*;
@@ -11,7 +10,6 @@ use csgoproto::{
     demo::CDemoSendTables,
     netmessages::{CSVCMsg_FlattenedSerializer, ProtoFlattenedSerializerField_t},
 };
-use dashmap::DashMap;
 use lazy_static::lazy_static;
 use phf_macros::phf_map;
 use protobuf::Message;
@@ -47,7 +45,6 @@ pub enum FieldModel {
     FieldModelNOTSET,
 }
 use std::fmt;
-use std::sync::Arc;
 
 impl fmt::Display for Decoder {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -484,10 +481,7 @@ const POINTER_TYPES: &'static [&'static str] = &[
 impl DemoSearcher {
     // This part is so insanely complicated. There are multiple versions of each serializer and
     // each serializer is this huge nested struct.
-    pub fn parse_sendtable(
-        tables: CDemoSendTables,
-        serializers: Arc<DashMap<String, Serializer>>,
-    ) -> Result<(), DemoParserError> {
+    pub fn parse_sendtable(&mut self, tables: CDemoSendTables) -> Result<(), DemoParserError> {
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint()?;
 
@@ -496,7 +490,7 @@ impl DemoSearcher {
             Message::parse_from_bytes(&bytes).unwrap();
 
         let mut fields: HashMap<i32, Field> = HashMap::default();
-        for (ii, serializer) in serializer_msg.serializers.iter().enumerate() {
+        for serializer in &serializer_msg.serializers {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
                 fields: vec![],
@@ -509,7 +503,7 @@ impl DemoSearcher {
                         let field_msg = &serializer_msg.fields[*idx as usize];
                         let mut field = field_from_msg(field_msg, &serializer_msg);
                         match &field.serializer_name {
-                            Some(name) => match serializers.get(name) {
+                            Some(name) => match self.serializers.get(name) {
                                 Some(ser) => {
                                     field.serializer = Some(ser.clone());
                                 }
@@ -547,13 +541,13 @@ impl DemoSearcher {
                     }
                 }
             }
+            self.find_prop_name_paths(&my_serializer);
 
-            // self.find_prop_name_paths(&my_serializer);
-            serializers.insert(my_serializer.name.clone(), my_serializer);
+            self.serializers
+                .insert(my_serializer.name.clone(), my_serializer);
         }
         Ok(())
     }
-    /*
     pub fn find_prop_name_paths(&mut self, ser: &Serializer) {
         // Finds mapping from name to path.
         // Example: "m_iHealth" => [4, 0, 0, 0, 0, 0, 0]
@@ -593,7 +587,6 @@ impl DemoSearcher {
             }
         }
     }
-    */
 }
 
 #[derive(Debug, Clone)]

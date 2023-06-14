@@ -1,7 +1,6 @@
 use super::read_bits::DemoParserError;
 use crate::collect_data::TYPEHM;
 use crate::entities_utils::*;
-use crate::other_netmessages::Class;
 use crate::parser_settings::Parser;
 use crate::read_bits::Bitreader;
 use crate::variants::Variant;
@@ -9,8 +8,6 @@ use ahash::HashMap;
 use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
-use std::thread;
-use std::time;
 
 const NSERIALBITS: u32 = 17;
 const STOP_READING_SYMBOL: u32 = 39;
@@ -22,6 +19,7 @@ pub struct Entity {
     pub entity_id: i32,
     pub props: HashMap<[i32; 7], Variant>,
     pub entity_type: EntityType,
+    pub history: HashMap<[i32; 7], Vec<Variant>>,
 }
 
 #[derive(Debug, Clone)]
@@ -46,7 +44,7 @@ enum EntityCmd {
     Update,
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
@@ -94,7 +92,7 @@ impl Parser {
     ) -> Result<(), DemoParserError> {
         let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
         if n_updated_values > 0 {
-            //self.gather_extra_info(&entity_id)?;
+            self.gather_extra_info(&entity_id)?;
         }
         Ok(())
     }
@@ -108,35 +106,33 @@ impl Parser {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
-        loop {
-            match self.cls_by_id.get(&entity.cls_id) {
-                Some(class) => {
-                    for path in &self.paths[..n_paths] {
-                        let decoder = class.serializer.find_decoder(&path, 0);
-                        let result = bitreader.decode(&decoder)?;
-                        // Can be used for debugging output
-                        if 0 == 1 {
-                            let _debug_field = class.serializer.debug_find_decoder(
-                                &path,
-                                0,
-                                class.serializer.name.clone(),
-                            );
-                        }
-                        /*
-                        if self.wanted_prop_paths.contains(&path.path)
-                            || entity.entity_type != EntityType::Normal
-                        {
-                            entity.props.insert(path.path, result);
-                        }
-                        */
-                    }
-                    return Ok(n_paths);
-                }
-                _ => {
-                    println!("H");
+        let class = match self.cls_by_id.get(&entity.cls_id) {
+            Some(cls) => cls,
+            None => return Err(DemoParserError::ClassNotFound),
+        };
+        for path in &self.paths[..n_paths] {
+            let decoder = class.serializer.find_decoder(&path, 0);
+            let result = bitreader.decode(&decoder)?;
+            // Can be used for debugging output
+            if 0 == 1 {
+                let _debug_field =
+                    class
+                        .serializer
+                        .debug_find_decoder(&path, 0, class.serializer.name.clone());
+                if _debug_field
+                    .full_name
+                    .contains("CCSPlayerController.m_hPlayerPawn")
+                {
+                    // println!("{} {:?} {:?}", self.tick, _debug_field.full_name, result);
                 }
             }
+            if self.wanted_prop_paths.contains(&path.path)
+                || entity.entity_type != EntityType::Normal
+            {
+                entity.props.insert(path.path, result);
+            }
         }
+        Ok(n_paths)
     }
 
     pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, DemoParserError> {
@@ -234,7 +230,6 @@ impl Parser {
         }
         Ok(idx)
     }
-    /*
     pub fn gather_extra_info(&mut self, entity_id: &i32) -> Result<(), DemoParserError> {
         // Boring stuff.. function does some bookkeeping
         let entity = match self.entities.get_mut(entity_id) {
@@ -246,7 +241,7 @@ impl Parser {
         {
             return Ok(());
         }
-        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
+        let class = match self.cls_by_id.get(&entity.cls_id) {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),
         };
@@ -291,19 +286,22 @@ impl Parser {
                 },
                 None => None,
             };
-        self.players.insert(
-            player_entid.unwrap(),
-            PlayerMetaData {
-                name: name,
-                team_num: team_num,
-                player_entity_id: player_entid,
-                steamid: steamid,
-                controller_entid: Some(*entity_id),
-            },
-        );
+
+        if let Some(pl) = player_entid {
+            self.players.insert(
+                pl,
+                PlayerMetaData {
+                    name: name,
+                    team_num: team_num,
+                    player_entity_id: player_entid,
+                    steamid: steamid,
+                    controller_entid: Some(*entity_id),
+                },
+            );
+        }
+
         Ok(())
     }
-    */
     fn create_new_entity(
         &mut self,
         bitreader: &mut Bitreader,
@@ -314,10 +312,10 @@ impl Parser {
         let _serial = bitreader.read_nbits(NSERIALBITS)?;
         let _unknown = bitreader.read_varint();
 
-        let entity_type = self.check_entity_type(&cls_id);
+        let entity_type = self.check_entity_type(&cls_id)?;
         match entity_type {
             EntityType::Projectile => {
-                // self.projectiles.insert(*entity_id);
+                self.projectiles.insert(*entity_id);
             }
             EntityType::Rules => self.rules_entity_id = Some(*entity_id),
             _ => {}
@@ -328,61 +326,34 @@ impl Parser {
             cls_id: cls_id,
             props: HashMap::default(),
             entity_type: entity_type,
+            history: HashMap::default(),
         };
-        //self.entities.insert(*entity_id, entity);
-        self.si(entity);
+        self.entities.insert(*entity_id, entity);
         // Insert baselines
-        /*
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
             let b = &baseline_bytes.clone();
             let mut br = Bitreader::new(&b);
             self.update_entity(&mut br, *entity_id)?;
         };
-        */
         Ok(())
     }
-    pub fn si(&mut self, entity: Entity) {
-        self.entities.insert(entity.entity_id, entity);
-    }
+    pub fn check_entity_type(&self, cls_id: &u32) -> Result<EntityType, DemoParserError> {
+        let class = match self.cls_by_id.get(&cls_id) {
+            Some(cls) => cls,
+            None => return Err(DemoParserError::ClassNotFound),
+        };
 
-    pub fn check_entity_type(&self, cls_id: &u32) -> EntityType {
-        //let ten_millis = time::Duration::from_millis(10000);
-        //thread::sleep(ten_millis);
-
-        loop {
-            match self.cls_by_id.get(cls_id) {
-                Some(class) => {
-                    // let class = self.cls_by_id.get(&(*cls_id as i32)).unwrap();
-
-                    match class.name.as_str() {
-                        "CCSPlayerController" => return EntityType::PlayerController,
-                        "CCSGameRulesProxy" => return EntityType::Rules,
-                        "CCSTeam" => return EntityType::Team,
-                        _ => {}
-                    }
-                    if class.name.contains("Projectile") {
-                        return EntityType::Projectile;
-                    }
-                    return EntityType::Normal;
-                }
-                _ => {
-                    let ten_millis = time::Duration::from_millis(10);
-                    thread::sleep(ten_millis);
-                    // println!("{:?} {:?} {}", cnt, self.cls_by_id.get(cls_id), cls_id);
-                }
-            }
+        match class.name.as_str() {
+            "CCSPlayerController" => return Ok(EntityType::PlayerController),
+            "CCSGameRulesProxy" => return Ok(EntityType::Rules),
+            "CCSTeam" => return Ok(EntityType::Team),
+            _ => {}
         }
-    }
-    /*
-    pub fn get_cls(&self, cls_id: &u32) -> &Class {
-        loop {
-            match self.cls_by_id.get(&((*cls_id) as i32)) {
-                Some(cls) => return &cls,
-                None => {}
-            }
+        if class.name.contains("Projectile") {
+            return Ok(EntityType::Projectile);
         }
+        return Ok(EntityType::Normal);
     }
-    */
 }
 
 fn generate_fp() -> FieldPath {

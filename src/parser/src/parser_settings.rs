@@ -24,13 +24,13 @@ use std::sync::Arc;
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 19) - 1;
 
-pub struct Parser {
+pub struct Parser<'a> {
     pub ptr: usize,
     pub bytes: Arc<Mmap>,
     // Parsing state
     pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
-    pub cls_by_id: Arc<DashMap<u32, Class>>,
+    pub cls_by_id: &'a AHashMap<u32, Class>,
     pub cls_bits: Option<u32>,
     pub entities: AHashMap<i32, Entity, RandomState>,
     pub tick: i32,
@@ -136,8 +136,11 @@ pub struct ParserInputs {
     pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
 }
 
-impl Parser {
-    pub fn new(mut settings: ParserInputs) -> Result<Self, DemoParserError> {
+impl<'a> Parser<'a> {
+    pub fn new(
+        mut settings: ParserInputs,
+        cls_by_id: &'a AHashMap<u32, Class>,
+    ) -> Result<Self, DemoParserError> {
         let fp_filler = FieldPath {
             last: 0,
             path: [-1, 0, 0, 0, 0, 0, 0],
@@ -154,7 +157,7 @@ impl Parser {
             ge_list: None,
             bytes: settings.bytes,
             // JUST LOL
-            cls_by_id: Arc::new(DashMap::default()),
+            cls_by_id: cls_by_id,
             entities: AHashMap::default(),
             cls_bits: None,
             tick: -99999,

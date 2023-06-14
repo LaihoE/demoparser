@@ -2,7 +2,7 @@ use super::read_bits::DemoParserError;
 use crate::demo_searcher::DemoSearcher;
 use crate::parser_settings::Parser;
 
-impl Parser {
+impl<'a> Parser<'a> {
     #[inline]
     pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], DemoParserError> {
         if self.ptr + n as usize >= self.bytes.len() {

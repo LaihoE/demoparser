@@ -15,7 +15,7 @@ use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
 // The parser struct is defined in parser_settings.rs
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
         let file_length = self.bytes.len();
         let before = Instant::now();
@@ -61,7 +61,7 @@ impl Parser {
                 _ => Ok(()),
             };
             ok?;
-            //self.collect_entities();
+            self.collect_entities();
         }
         Ok(())
     }

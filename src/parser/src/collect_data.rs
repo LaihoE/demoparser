@@ -1,3 +1,8 @@
+use super::entities::PlayerMetaData;
+use super::variants::Variant;
+use crate::parser_settings::Parser;
+use crate::variants::PropColumn;
+use itertools::Itertools;
 use phf_macros::phf_map;
 use soa_derive::StructOfArray;
 
@@ -13,9 +18,8 @@ pub struct ProjectileRecord {
 }
 
 // This file collects the data that is converted into a dataframe in the end in parser.parse_ticks()
-/*
-impl<'a> Parser<'a> {
 
+impl<'a> Parser<'a> {
     pub fn collect_entities(&mut self) {
         if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 {
             return;
@@ -44,6 +48,7 @@ impl<'a> Parser<'a> {
             Some(path) => {
                 if let Some(ent) = self.entities.get(entity_id) {
                     if let Some(prop) = ent.props.get(path.clone()) {
+                        // println!("{:?}", prop);
                         return Some(prop.clone());
                     }
                 }
@@ -136,7 +141,8 @@ impl<'a> Parser<'a> {
             Some(ent) => ent,
             None => return None,
         };
-        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
+
+        let class = match self.cls_by_id.get(&entity.cls_id) {
             Some(cls) => cls,
             None => return None,
         };
@@ -158,7 +164,7 @@ impl<'a> Parser<'a> {
             Some(ent) => ent,
             None => return None,
         };
-        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
+        let class = match self.cls_by_id.get(&entity.cls_id) {
             Some(cls) => cls,
             None => return None,
         };
@@ -181,7 +187,7 @@ impl<'a> Parser<'a> {
             Some(ent) => ent,
             None => return None,
         };
-        let class = match self.cls_by_id[entity.cls_id as usize].as_ref() {
+        let class = match self.cls_by_id.get(&entity.cls_id) {
             Some(cls) => cls,
             None => return None,
         };
@@ -201,7 +207,7 @@ impl<'a> Parser<'a> {
     }
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
         if let Some(ent) = self.entities.get(&entity_id) {
-            if let Some(cls) = self.cls_by_id[ent.cls_id as usize].as_ref() {
+            if let Some(cls) = self.cls_by_id.get(&ent.cls_id).as_ref() {
                 // remove extra from name: CSmokeGrenadeProjectile --> SmokeGrenade
                 // Todo maybe make names like this: smoke_grenade or just "smoke"
                 let mut clean_name = cls.name[1..].split_at(cls.name.len() - 11).0;
@@ -274,7 +280,7 @@ impl<'a> Parser<'a> {
         ) {
             let weapon_entity_id = (weap_handle & 0x7FF) as i32;
             if let Some(e) = self.entities.get(&weapon_entity_id) {
-                if let Some(c) = &self.cls_by_id[e.cls_id as usize] {
+                if let Some(c) = &self.cls_by_id.get(&e.cls_id) {
                     let full_name = c.name.clone() + "." + &prop;
                     return self.get_prop_for_ent(&full_name, &weapon_entity_id);
                 }
@@ -315,7 +321,7 @@ fn coord_from_cell(cell: Option<Variant>, offset: Option<Variant>) -> Option<f32
     }
     None
 }
-*/
+
 pub enum PropType {
     Team,
     Rules,
