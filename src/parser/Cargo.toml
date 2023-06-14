@@ -22,6 +22,7 @@ bit_reverse = "0.1.8"
 memmap2 = "0.5.10"
 serde = { version = "1.0.164", features = ["derive"] }
 dashmap = "5.4.0"
+rayon = "1.7.0"
 
 
 

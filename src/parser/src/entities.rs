@@ -366,7 +366,7 @@ impl Parser {
                     return EntityType::Normal;
                 }
                 _ => {
-                    let ten_millis = time::Duration::from_millis(1);
+                    let ten_millis = time::Duration::from_millis(10);
                     thread::sleep(ten_millis);
                     // println!("{:?} {:?} {}", cnt, self.cls_by_id.get(cls_id), cls_id);
                 }

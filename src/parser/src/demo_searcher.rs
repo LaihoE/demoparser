@@ -5,20 +5,16 @@ use crate::parser_settings::Parser;
 use crate::parser_settings::ParserInputs;
 use crate::sendtables::Serializer;
 use crate::{other_netmessages::Class, parser, read_bits::DemoParserError};
-use ahash::AHashMap;
 use csgoproto::demo::CDemoSendTables;
 use csgoproto::demo::EDemoCommands::*;
 use dashmap::DashMap;
 use memmap2::Mmap;
-use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
-use std::time::Instant;
-use thread::scope;
 
 pub struct DemoSearcher {
     pub fullpacket_offsets: Vec<usize>,
@@ -88,6 +84,7 @@ impl DemoSearcher {
                     }
                     DEM_FullPacket => {
                         self.fullpacket_offsets.push(before);
+                        /*
                         let mut parser = Parser::new(self.settings.clone()).unwrap();
                         parser.ptr = before;
                         parser.cls_by_id = self.state.cls_by_id.clone();
@@ -100,7 +97,7 @@ impl DemoSearcher {
 
                             self.handles.push(handle);
                         }
-
+                        */
                         Ok(())
                     }
                     DEM_Stop => {
@@ -114,6 +111,21 @@ impl DemoSearcher {
                 self.ptr += size as usize;
             };
         }
+        for hanle in handles {
+            hanle.join().unwrap();
+        }
+        use rayon::prelude::*;
+
+        let v: Vec<()> = self
+            .fullpacket_offsets
+            .par_iter()
+            .map(|o| {
+                let mut parser = Parser::new(self.settings.clone()).unwrap();
+                parser.ptr = *o;
+                parser.cls_by_id = self.state.cls_by_id.clone();
+                parser.start().unwrap();
+            })
+            .collect();
 
         println!("{:?}", self.fullpacket_offsets);
         Ok(())
