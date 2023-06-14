@@ -51,7 +51,7 @@ impl Parser {
                 DEM_StringTables => self.parse_stringtable_cmd(&bytes),
                 DEM_FullPacket => {
                     if fp_parsed == 0 {
-                        self.parse_full_packet(&bytes);
+                        self.parse_full_packet(&bytes).unwrap();
                         fp_parsed += 1;
                     } else {
                         break;
@@ -64,7 +64,7 @@ impl Parser {
             ok?;
             //self.collect_entities();
         }
-        println!("{:2?}", before.elapsed());
+        println!("Q {:2?}", before.elapsed());
         Ok(())
     }
 

@@ -329,7 +329,8 @@ impl Parser {
             props: HashMap::default(),
             entity_type: entity_type,
         };
-        self.entities.insert(*entity_id, entity);
+        //self.entities.insert(*entity_id, entity);
+        self.si(entity);
         // Insert baselines
         /*
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
@@ -339,6 +340,9 @@ impl Parser {
         };
         */
         Ok(())
+    }
+    pub fn si(&mut self, entity: Entity) {
+        self.entities.insert(entity.entity_id, entity);
     }
 
     pub fn check_entity_type(&self, cls_id: &u32) -> EntityType {

@@ -40,6 +40,7 @@ impl DemoSearcher {
     pub fn front_demo_metadata(&mut self) -> Result<(), DemoParserError> {
         self.ptr = 16;
         let mut handles = vec![];
+        let mut spanwed_threads = 0;
 
         loop {
             let before = self.ptr;
@@ -51,7 +52,6 @@ impl DemoSearcher {
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let cmd = demo_cmd_type_from_int(msg_type as i32);
-
             if cmd == Some(DEM_SendTables)
                 || cmd == Some(DEM_ClassInfo)
                 || cmd == Some(DEM_FullPacket)
@@ -91,11 +91,16 @@ impl DemoSearcher {
                         let mut parser = Parser::new(self.settings.clone()).unwrap();
                         parser.ptr = before;
                         parser.cls_by_id = self.state.cls_by_id.clone();
-                        let handle = thread::spawn(move || {
-                            // DemoSearcher::parse_class_info(&bytes, cls_by_id_arc, ser_arc).unwrap();
-                            parser.start().unwrap();
-                        });
-                        self.handles.push(handle);
+                        if spanwed_threads < 10 {
+                            let handle = thread::spawn(move || {
+                                // DemoSearcher::parse_class_info(&bytes, cls_by_id_arc, ser_arc).unwrap();
+                                parser.start().unwrap();
+                            });
+                            spanwed_threads += 1;
+
+                            self.handles.push(handle);
+                        }
+
                         Ok(())
                     }
                     DEM_Stop => {
