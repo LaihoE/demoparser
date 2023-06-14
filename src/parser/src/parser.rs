@@ -18,7 +18,6 @@ use EDemoCommands::*;
 impl Parser {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
         let file_length = self.bytes.len();
-        println!("P {}", self.ptr);
         let before = Instant::now();
         // Header (there is a longer header as a DEM_FileHeader msg below)
         // let header = self.read_n_bytes(16)?;
@@ -64,7 +63,6 @@ impl Parser {
             ok?;
             //self.collect_entities();
         }
-        println!("Q {:2?}", before.elapsed());
         Ok(())
     }
 

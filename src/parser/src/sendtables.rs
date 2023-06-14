@@ -547,16 +547,10 @@ impl DemoSearcher {
                     }
                 }
             }
-            println!(
-                "{:?} {} {}",
-                my_serializer.name.clone(),
-                ii,
-                serializer_msg.serializers.len()
-            );
+
             // self.find_prop_name_paths(&my_serializer);
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
-        println!("SENDTABLE DONE");
         Ok(())
     }
     /*

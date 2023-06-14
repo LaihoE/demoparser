@@ -101,7 +101,6 @@ impl DemoSearcher {
                         Ok(())
                     }
                     DEM_Stop => {
-                        println!("STOP");
                         break;
                     }
                     _ => Ok(()),
@@ -126,8 +125,6 @@ impl DemoSearcher {
                 parser.start().unwrap();
             })
             .collect();
-
-        println!("{:?}", self.fullpacket_offsets);
         Ok(())
     }
 }
@@ -148,7 +145,6 @@ impl DemoSearcher {
             loop {
                 match serializers.get(network_name) {
                     Some(ser) => {
-                        println!("CLSID {} DONE", cls_id);
                         cls_by_id.insert(
                             cls_id as u32,
                             Class {
@@ -160,14 +156,12 @@ impl DemoSearcher {
                         break;
                     }
                     None => {
-                        println!("CLSID {} NOT FOUND", cls_id);
-                        let ten_millis = Duration::from_millis(100);
+                        let ten_millis = Duration::from_millis(1);
                         thread::sleep(ten_millis);
                     }
                 }
             }
         }
-        println!("CLS DONE");
         Ok(())
     }
 }
