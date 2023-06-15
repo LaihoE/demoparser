@@ -32,15 +32,19 @@ fn main() {
     //let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
     //let huf = create_huffman_lookup_table();
-    let huf = vec![];
     let wanted_props = vec![
         "CCSPlayerController.m_iPawnHealth".to_owned(),
         "m_iClip1".to_owned(),
     ];
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test/").unwrap();
+    let huf = vec![];
     let arc_huf = Arc::new(huf);
-
+    let mut c = 0;
     for path in dir {
+        if c > 20 {
+            break;
+        }
+        c += 1;
         println!("{:?}", path.as_ref().unwrap().path());
         let before = Instant::now();
         let state = State {
@@ -111,13 +115,13 @@ fn main() {
             wanted_prop_ids: vec![],
             prop_out_id: 0,
             prop_infos: vec![],
+            header: AHashMap::default(),
         };
         ds.front_demo_metadata().unwrap();
         for handle in ds.handles {
             handle.join().unwrap();
         }
         println!("{:?}", before.elapsed());
-        break;
     }
     // println!("{:?}", ds.handles);
     //println!("{:#?}", ds.state.cls_by_id);

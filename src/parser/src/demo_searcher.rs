@@ -34,6 +34,8 @@ pub struct DemoSearcher {
     pub settings: ParserInputs,
     pub handles: Vec<JoinHandle<()>>,
     pub serializers: AHashMap<String, Serializer>,
+    pub cls_by_id: AHashMap<u32, Class>,
+
     pub wanted_player_props: Vec<String>,
 
     pub wanted_ticks: AHashSet<i32, RandomState>,
@@ -49,7 +51,6 @@ pub struct DemoSearcher {
     pub path_to_prop_name: AHashMap<[i32; 7], String>,
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
 
-    pub cls_by_id: AHashMap<u32, Class>,
     pub id: u32,
     pub wanted_prop_ids: Vec<u32>,
     pub controller_ids: ControllerIDS,
@@ -57,6 +58,8 @@ pub struct DemoSearcher {
     pub prop_out_id: u8,
     pub id_to_path: AHashMap<u32, [i32; 7]>,
     pub prop_infos: Vec<PropInfo>,
+
+    pub header: AHashMap<String, String>,
 }
 
 pub struct State {
@@ -70,10 +73,20 @@ impl DemoSearcher {
 
         loop {
             let before = self.ptr;
+            if self.tick < 100 {
+                let b = &self.bytes[self.ptr..self.ptr + 12];
+                for bb in b {
+                    println!("{:#08b}", bb);
+                }
+            }
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
             let size = self.read_varint()?;
             self.tick = tick as i32;
+
+            if tick < 100 {
+                println!("{:#032b} {:#032b} {:#032b}", cmd, tick, size);
+            }
 
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
@@ -82,22 +95,30 @@ impl DemoSearcher {
                 || cmd == Some(DEM_ClassInfo)
                 || cmd == Some(DEM_FullPacket)
                 || cmd == Some(DEM_Stop)
+                || cmd == Some(DEM_FileHeader)
             {
+                /*
                 let bytes = match is_compressed {
                     true => SnapDecoder::new()
                         .decompress_vec(self.read_n_bytes(size)?)
                         .unwrap(),
                     false => self.read_n_bytes(size)?.to_vec(),
                 };
+                */
+                self.ptr += size as usize;
                 let ok: Result<(), DemoParserError> =
                     match demo_cmd_type_from_int(msg_type as i32).unwrap() {
                         DEM_SendTables => {
-                            self.parse_sendtable(Message::parse_from_bytes(&bytes).unwrap())
-                                .unwrap();
+                            // self.parse_sendtable(Message::parse_from_bytes(&bytes).unwrap())
+                            //    .unwrap();
+                            Ok(())
+                        }
+                        DEM_FileHeader => {
+                            // self.parse_header(&bytes).unwrap();
                             Ok(())
                         }
                         DEM_ClassInfo => {
-                            self.parse_class_info(&bytes).unwrap();
+                            // self.parse_class_info(&bytes).unwrap();
                             Ok(())
                         }
                         DEM_FullPacket => {
@@ -114,7 +135,7 @@ impl DemoSearcher {
                 self.ptr += size as usize;
             };
         }
-
+        /*
         use rayon::prelude::*;
         let bef = Instant::now();
         let v: Vec<AHashMap<u32, PropColumn>> = self
@@ -127,6 +148,7 @@ impl DemoSearcher {
                 parser.prop_name_to_path = self.prop_name_to_path.clone();
                 parser.prop_infos = self.prop_infos.clone();
                 parser.controller_ids = self.controller_ids.clone();
+                parser.parse_entities = false;
                 parser.start().unwrap();
                 parser.output
             })
@@ -134,7 +156,11 @@ impl DemoSearcher {
         println!("PAR S{:2?}", bef.elapsed());
         let before = Instant::now();
         combine_dfs(v);
+
         println!("C {:2?}", before.elapsed());
+        */
+        println!("C {:2?}", self.header);
+
         Ok(())
     }
 }
@@ -188,8 +214,60 @@ fn insert_df(v: &Option<VarVec>, prop_id: u32, map: &mut AHashMap<u32, PropColum
 }
 
 use csgoproto::demo::CDemoClassInfo;
+use csgoproto::demo::CDemoFileHeader;
 
 impl DemoSearcher {
+    pub fn parse_header(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        let header: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
+        self.header.insert(
+            "demo_file_stamp".to_string(),
+            header.demo_file_stamp().to_string(),
+        );
+        self.header.insert(
+            "demo_version_guid".to_string(),
+            header.demo_version_guid().to_string(),
+        );
+        self.header.insert(
+            "network_protocol".to_string(),
+            header.network_protocol().to_string(),
+        );
+        self.header
+            .insert("server_name".to_string(), header.server_name().to_string());
+        self.header
+            .insert("client_name".to_string(), header.client_name().to_string());
+        self.header
+            .insert("map_name".to_string(), header.map_name().to_string());
+        self.header.insert(
+            "game_directory".to_string(),
+            header.game_directory().to_string(),
+        );
+        self.header.insert(
+            "fullpackets_version".to_string(),
+            header.fullpackets_version().to_string(),
+        );
+        self.header.insert(
+            "allow_clientside_entities".to_string(),
+            header.allow_clientside_entities().to_string(),
+        );
+        self.header.insert(
+            "allow_clientside_particles".to_string(),
+            header.allow_clientside_particles().to_string(),
+        );
+        self.header.insert(
+            "allow_clientside_particles".to_string(),
+            header.allow_clientside_particles().to_string(),
+        );
+        self.header
+            .insert("addons".to_string(), header.addons().to_string());
+        self.header.insert(
+            "demo_version_name".to_string(),
+            header.demo_version_name().to_string(),
+        );
+        self.header
+            .insert("addons".to_string(), header.addons().to_string());
+        Ok(())
+    }
+
     pub fn parse_class_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());

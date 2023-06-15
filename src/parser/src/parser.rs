@@ -41,7 +41,6 @@ impl<'a> Parser<'a> {
 
             let ok = match demo_cmd_type_from_int(msg_type as i32).unwrap() {
                 DEM_Packet => self.parse_packet(&bytes),
-                DEM_FileHeader => self.parse_header(&bytes),
                 DEM_FileInfo => self.parse_file_info(&bytes),
                 // DEM_SendTables => self.parse_classes(&bytes),
                 // DEM_ClassInfo => self.parse_class_info(&bytes),
@@ -149,6 +148,7 @@ impl<'a> Parser<'a> {
     }
     pub fn parse_server_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let server_info: CSVCMsg_ServerInfo = Message::parse_from_bytes(bytes).unwrap();
+        println!("{:?}", server_info);
         let class_count = server_info.max_classes();
         self.cls_bits = Some((class_count as f32 + 1.).log2().ceil() as u32);
         Ok(())
@@ -191,56 +191,6 @@ impl<'a> Parser<'a> {
     }
     pub fn parse_user_command_cmd(&mut self, _data: &[u8]) -> Result<(), DemoParserError> {
         // Only in pov demos. Maybe implement sometime. Includes buttons etc.
-        Ok(())
-    }
-    pub fn parse_header(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let header: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
-        self.header.insert(
-            "demo_file_stamp".to_string(),
-            header.demo_file_stamp().to_string(),
-        );
-        self.header.insert(
-            "demo_version_guid".to_string(),
-            header.demo_version_guid().to_string(),
-        );
-        self.header.insert(
-            "network_protocol".to_string(),
-            header.network_protocol().to_string(),
-        );
-        self.header
-            .insert("server_name".to_string(), header.server_name().to_string());
-        self.header
-            .insert("client_name".to_string(), header.client_name().to_string());
-        self.header
-            .insert("map_name".to_string(), header.map_name().to_string());
-        self.header.insert(
-            "game_directory".to_string(),
-            header.game_directory().to_string(),
-        );
-        self.header.insert(
-            "fullpackets_version".to_string(),
-            header.fullpackets_version().to_string(),
-        );
-        self.header.insert(
-            "allow_clientside_entities".to_string(),
-            header.allow_clientside_entities().to_string(),
-        );
-        self.header.insert(
-            "allow_clientside_particles".to_string(),
-            header.allow_clientside_particles().to_string(),
-        );
-        self.header.insert(
-            "allow_clientside_particles".to_string(),
-            header.allow_clientside_particles().to_string(),
-        );
-        self.header
-            .insert("addons".to_string(), header.addons().to_string());
-        self.header.insert(
-            "demo_version_name".to_string(),
-            header.demo_version_name().to_string(),
-        );
-        self.header
-            .insert("addons".to_string(), header.addons().to_string());
         Ok(())
     }
 }

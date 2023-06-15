@@ -25,7 +25,6 @@ pub struct Field {
     pub var_type: String,
     pub send_node: String,
     pub serializer_name: Option<String>,
-    pub serializer_version: i32,
     pub encoder: String,
     pub encode_flags: i32,
     pub bitcount: i32,
@@ -101,8 +100,6 @@ pub enum Decoder {
     Qangle3Decoder,
     QangleVarDecoder,
     BaseDecoder,
-    NO,
-    X,
     AmmoDecoder,
 }
 
@@ -766,7 +763,6 @@ fn field_from_msg(
         var_type: serializer_msg.symbols[field.var_type_sym() as usize].clone(),
         send_node: serializer_msg.symbols[field.send_node_sym() as usize].clone(),
         serializer_name: ser_name,
-        serializer_version: field.field_serializer_version().clone(),
         encoder: enc_name,
         encode_flags: field.encode_flags(),
         low_value: field.low_value(),
