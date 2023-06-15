@@ -16,11 +16,12 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn main() {
+    /*
     rayon::ThreadPoolBuilder::new()
         .num_threads(24)
         .build_global()
         .unwrap();
-
+    */
     let wanted_props = vec![
         "CCSPlayerController.m_iPawnHealth".to_owned(),
         "m_iClip1".to_owned(),
@@ -30,7 +31,8 @@ fn main() {
     //let file = File::open(demo_path).unwrap();
     //let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
-    let huf = create_huffman_lookup_table();
+    //let huf = create_huffman_lookup_table();
+    let huf = vec![];
     let wanted_props = vec![
         "CCSPlayerController.m_iPawnHealth".to_owned(),
         "m_iClip1".to_owned(),
@@ -87,7 +89,7 @@ fn main() {
             parse_entities: true,
             serializers: AHashMap::default(),
             parse_projectiles: false,
-            wanted_player_props: vec!["CCSPlayerController.m_iPawnHealth".to_owned()],
+            wanted_player_props: vec!["CCSPlayerPawn.m_iHealth".to_owned()],
             wanted_ticks: AHashSet::default(),
             wanted_prop_paths: AHashSet::default(),
             path_to_prop_name: AHashMap::default(),
@@ -115,7 +117,7 @@ fn main() {
             handle.join().unwrap();
         }
         println!("{:?}", before.elapsed());
-        // break;
+        break;
     }
     // println!("{:?}", ds.handles);
     //println!("{:#?}", ds.state.cls_by_id);

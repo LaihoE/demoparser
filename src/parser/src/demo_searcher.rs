@@ -117,7 +117,7 @@ impl DemoSearcher {
 
         use rayon::prelude::*;
         let bef = Instant::now();
-        let v: Vec<AHashMap<String, PropColumn>> = self
+        let v: Vec<AHashMap<u32, PropColumn>> = self
             .fullpacket_offsets
             .par_iter()
             .map(|o| {
@@ -126,30 +126,32 @@ impl DemoSearcher {
                 parser.cls_by_id = &self.cls_by_id;
                 parser.prop_name_to_path = self.prop_name_to_path.clone();
                 parser.prop_infos = self.prop_infos.clone();
+                parser.controller_ids = self.controller_ids.clone();
                 parser.start().unwrap();
                 parser.output
             })
             .collect();
         println!("PAR S{:2?}", bef.elapsed());
-        // combine_dfs(v);
-
+        let before = Instant::now();
+        combine_dfs(v);
+        println!("C {:2?}", before.elapsed());
         Ok(())
     }
 }
 
-fn combine_dfs(v: Vec<AHashMap<String, PropColumn>>) {
-    let mut big: AHashMap<String, PropColumn> = v[0].clone();
+fn combine_dfs(v: Vec<AHashMap<u32, PropColumn>>) {
+    let mut big: AHashMap<u32, PropColumn> = v[0].clone();
     let before = Instant::now();
     for part in &v[1..] {
         for (name, col) in part {
-            insert_df(&col.data, name.clone(), &mut big);
+            insert_df(&col.data, *name, &mut big);
         }
     }
     println!("{:2?}", before.elapsed());
 }
-fn insert_df(v: &Option<VarVec>, prop_name: String, map: &mut AHashMap<String, PropColumn>) {
+fn insert_df(v: &Option<VarVec>, prop_id: u32, map: &mut AHashMap<u32, PropColumn>) {
     match v {
-        Some(VarVec::I32(i)) => match map.get_mut(&prop_name) {
+        Some(VarVec::I32(i)) => match map.get_mut(&prop_id) {
             Some(p) => {
                 if let Some(VarVec::I32(ii)) = &mut p.data {
                     ii.extend(i);
@@ -157,7 +159,7 @@ fn insert_df(v: &Option<VarVec>, prop_name: String, map: &mut AHashMap<String, P
             }
             _ => {}
         },
-        Some(VarVec::U64(i)) => match map.get_mut(&prop_name) {
+        Some(VarVec::U64(i)) => match map.get_mut(&prop_id) {
             Some(p) => {
                 if let Some(VarVec::U64(ii)) = &mut p.data {
                     ii.extend(i);
@@ -165,7 +167,7 @@ fn insert_df(v: &Option<VarVec>, prop_name: String, map: &mut AHashMap<String, P
             }
             _ => {}
         },
-        Some(VarVec::String(i)) => match map.get_mut(&prop_name) {
+        Some(VarVec::String(i)) => match map.get_mut(&prop_id) {
             Some(p) => {
                 if let Some(VarVec::String(ii)) = &mut p.data {
                     ii.extend_from_slice(i);
@@ -173,7 +175,7 @@ fn insert_df(v: &Option<VarVec>, prop_name: String, map: &mut AHashMap<String, P
             }
             _ => {}
         },
-        Some(VarVec::U32(i)) => match map.get_mut(&prop_name) {
+        Some(VarVec::U32(i)) => match map.get_mut(&prop_id) {
             Some(p) => {
                 if let Some(VarVec::U32(ii)) = &mut p.data {
                     ii.extend(i);

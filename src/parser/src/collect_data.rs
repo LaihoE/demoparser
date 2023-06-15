@@ -34,8 +34,9 @@ impl<'a> Parser<'a> {
             for prop_info in &self.prop_infos {
                 // returns none if missing
                 let prop = self.find_prop(prop_info, entity_id, player);
+                // println!("{:?}", prop);
                 self.output
-                    .entry(prop_info.id.to_string())
+                    .entry(prop_info.id)
                     .or_insert_with(|| PropColumn::new())
                     .push(prop);
             }
@@ -56,6 +57,7 @@ impl<'a> Parser<'a> {
         player: &PlayerMetaData,
     ) -> Option<Variant> {
         // Early exit these metadata props
+        /*
         match prop_info.prop_name.as_str() {
             "tick" => return Some(Variant::I32(self.tick)),
             "steamid" => match player.steamid {
@@ -68,6 +70,7 @@ impl<'a> Parser<'a> {
             },
             _ => {}
         }
+        */
         match prop_info.prop_type {
             /*
             Some(PropType::Team) => {

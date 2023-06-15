@@ -50,9 +50,10 @@ pub struct Parser<'a> {
     pub paths: Vec<FieldInfo>,
     pub projectiles: AHashSet<i32, RandomState>,
     pub prop_infos: Vec<PropInfo>,
+    pub controller_ids: ControllerIDS,
 
     // Output from parsing
-    pub output: AHashMap<String, PropColumn, RandomState>,
+    pub output: AHashMap<u32, PropColumn, RandomState>,
     pub header: HashMap<String, String>,
     pub skins: EconItemVec,
     pub item_drops: EconItemVec,
@@ -155,6 +156,12 @@ impl<'a> Parser<'a> {
         ]);
         // let huffman_table = create_huffman_lookup_table();
         Ok(Parser {
+            controller_ids: ControllerIDS {
+                teamnum: None,
+                player_name: None,
+                steamid: None,
+                player_pawn: None,
+            },
             serializers: AHashMap::default(),
             ptr: 0,
             ge_list: None,

@@ -227,7 +227,7 @@ impl<'a> Parser<'a> {
     }
     pub fn gather_extra_info(&mut self, entity_id: &i32) -> Result<(), DemoParserError> {
         // Boring stuff.. function does some bookkeeping
-        let entity = match self.entities.get_mut(entity_id) {
+        let entity = match self.entities.get(&(entity_id)) {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
@@ -236,10 +236,7 @@ impl<'a> Parser<'a> {
         {
             return Ok(());
         }
-        let class = match self.cls_by_id.get(&entity.cls_id) {
-            Some(cls) => cls,
-            None => return Err(DemoParserError::ClassNotFound),
-        };
+        /*
         if class.name == "CCSTeam" {
             if let Some(Variant::U32(t)) = self.get_prop_for_ent("CCSTeam.m_iTeamNum", entity_id) {
                 match t {
@@ -251,50 +248,59 @@ impl<'a> Parser<'a> {
             }
             return Ok(());
         }
-        let team_num = match self.get_prop_for_ent("CCSPlayerController.m_iTeamNum", entity_id) {
-            Some(team_num) => match team_num {
-                Variant::U32(team_num) => Some(team_num),
-                // Signals that something went very wrong
-                _ => return Err(DemoParserError::IncorrectMetaDataProp),
-            },
-            None => None,
-        };
-        let name = match self.get_prop_for_ent("CCSPlayerController.m_iszPlayerName", entity_id) {
+        */
+        let team_num =
+            match self.get_prop_for_ent(self.controller_ids.teamnum.as_ref().unwrap(), entity_id) {
+                Some(team_num) => match team_num {
+                    Variant::U32(team_num) => Some(team_num),
+                    // Signals that something went very wrong
+                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
+                },
+                None => None,
+            };
+        let name = match self
+            .get_prop_for_ent(self.controller_ids.player_name.as_ref().unwrap(), entity_id)
+        {
             Some(name) => match name {
                 Variant::String(name) => Some(name),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
             None => None,
         };
-        let steamid = match self.get_prop_for_ent("CCSPlayerController.m_steamID", entity_id) {
-            Some(steamid) => match steamid {
-                Variant::U64(steamid) => Some(steamid),
-                _ => return Err(DemoParserError::IncorrectMetaDataProp),
-            },
-            None => None,
-        };
-        let player_entid =
-            match self.get_prop_for_ent("CCSPlayerController.m_hPlayerPawn", entity_id) {
-                Some(player_entid) => match player_entid {
-                    Variant::U32(handle) => Some((handle & 0x7FF) as i32),
+        let steamid =
+            match self.get_prop_for_ent(self.controller_ids.steamid.as_ref().unwrap(), entity_id) {
+                Some(steamid) => match steamid {
+                    Variant::U64(steamid) => Some(steamid),
                     _ => return Err(DemoParserError::IncorrectMetaDataProp),
                 },
                 None => None,
             };
-
-        if let Some(pl) = player_entid {
-            self.players.insert(
-                pl,
-                PlayerMetaData {
-                    name: name,
-                    team_num: team_num,
-                    player_entity_id: player_entid,
-                    steamid: steamid,
-                    controller_entid: Some(*entity_id),
-                },
-            );
+        let player_entid = match self
+            .get_prop_for_ent(self.controller_ids.player_pawn.as_ref().unwrap(), entity_id)
+        {
+            Some(player_entid) => match player_entid {
+                Variant::U32(handle) => Some((handle & 0x7FF) as i32),
+                _ => return Err(DemoParserError::IncorrectMetaDataProp),
+            },
+            None => None,
+        };
+        match player_entid {
+            Some(e) => {
+                if e != 2047 {
+                    self.players.insert(
+                        e,
+                        PlayerMetaData {
+                            name: name,
+                            team_num: team_num,
+                            player_entity_id: player_entid,
+                            steamid: steamid,
+                            controller_entid: Some(*entity_id),
+                        },
+                    );
+                }
+            }
+            _ => {}
         }
-
         Ok(())
     }
     fn create_new_entity(

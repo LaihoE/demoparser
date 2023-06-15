@@ -599,10 +599,27 @@ impl DemoSearcher {
                     }
                 }
             }
-            self.find_prop_name_paths(&mut my_serializer);
+            if my_serializer.name.contains("Player") {
+                self.find_prop_name_paths(&mut my_serializer);
+            }
             self.serializers
                 .insert(my_serializer.name.clone(), my_serializer);
         }
+        self.prop_infos.push(PropInfo {
+            id: 9999997,
+            prop_type: None,
+            prop_name: "name".to_string(),
+        });
+        self.prop_infos.push(PropInfo {
+            id: 9999998,
+            prop_type: None,
+            prop_name: "steamid".to_string(),
+        });
+        self.prop_infos.push(PropInfo {
+            id: 9999999,
+            prop_type: None,
+            prop_name: "tick".to_string(),
+        });
         Ok(())
     }
     pub fn find_prop_name_paths(&mut self, ser: &mut Serializer) {
@@ -635,6 +652,7 @@ impl DemoSearcher {
                     }
                     f.df_pos = self.id as usize;
                 }
+
                 if self.wanted_player_props.contains(&full_name) {
                     self.wanted_prop_ids.push(self.id);
                     match TYPEHM.get(&full_name) {
