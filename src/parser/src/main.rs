@@ -9,6 +9,7 @@ use parser::parser_settings::ControllerIDS;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::read_bits::Bitreader;
+use parser::sendtables::PropInfo;
 use std::fs;
 use std::fs::File;
 use std::sync::Arc;
@@ -16,7 +17,7 @@ use std::time::Instant;
 
 fn main() {
     rayon::ThreadPoolBuilder::new()
-        .num_threads(12)
+        .num_threads(24)
         .build_global()
         .unwrap();
 
@@ -107,6 +108,7 @@ fn main() {
             player_output_ids: vec![],
             wanted_prop_ids: vec![],
             prop_out_id: 0,
+            prop_infos: vec![],
         };
         ds.front_demo_metadata().unwrap();
         for handle in ds.handles {

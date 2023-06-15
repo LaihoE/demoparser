@@ -637,7 +637,25 @@ impl DemoSearcher {
                 }
                 if self.wanted_player_props.contains(&full_name) {
                     self.wanted_prop_ids.push(self.id);
+                    match TYPEHM.get(&full_name) {
+                        Some(t) => self.prop_infos.push(PropInfo {
+                            id: self.id,
+                            prop_type: Some(t.clone()),
+                            prop_name: full_name.clone(),
+                        }),
+                        None => {
+                            self.prop_infos.push(
+                                PropInfo {
+                                    id: self.id,
+                                    prop_type: None,
+                                    prop_name: full_name.clone(),
+                                }
+                                .clone(),
+                            );
+                        }
+                    }
                 }
+                // println!("{:?} {}", x, full_name);
                 match full_name.as_str() {
                     "CCSPlayerController.m_iTeamNum" => self.controller_ids.teamnum = Some(self.id),
                     "CCSPlayerController.m_iszPlayerName" => {
@@ -651,6 +669,7 @@ impl DemoSearcher {
                 };
                 self.id_to_path.insert(self.id, arr);
                 self.id += 1;
+
                 self.prop_name_to_path.insert(full_name.clone(), arr);
                 self.path_to_prop_name.insert(arr, full_name);
             }
@@ -695,6 +714,12 @@ impl DemoSearcher {
         }
         false
     }
+}
+#[derive(Debug, Clone)]
+pub struct PropInfo {
+    pub id: u32,
+    pub prop_type: Option<PropType>,
+    pub prop_name: String,
 }
 
 #[derive(Debug, Clone)]

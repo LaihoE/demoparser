@@ -1,6 +1,7 @@
 use super::entities::PlayerMetaData;
 use super::variants::Variant;
 use crate::parser_settings::Parser;
+use crate::sendtables::PropInfo;
 use crate::variants::PropColumn;
 use itertools::Itertools;
 use phf_macros::phf_map;
@@ -25,46 +26,37 @@ impl<'a> Parser<'a> {
             return;
         }
         if self.parse_projectiles {
-            self.collect_projectiles();
+            // self.collect_projectiles();
         }
         // iterate every player and every wanted prop name
         // if either one is missing then push None to output
         for (entity_id, player) in &self.players {
-            for prop_name in &self.wanted_player_props {
+            for prop_info in &self.prop_infos {
                 // returns none if missing
-                let prop = self.find_prop(prop_name, entity_id, player);
+                let prop = self.find_prop(prop_info, entity_id, player);
                 self.output
-                    .entry(prop_name.to_string())
+                    .entry(prop_info.id.to_string())
                     .or_insert_with(|| PropColumn::new())
                     .push(prop);
             }
         }
     }
-    pub fn get_prop_for_ent(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
-        // Function that allows you to use string name for the prop and the function
-        // translates it to a path. This costs a bit but the elegance of using string names
-        // is just too big to give up. Also I think paths change between demos soo...
-        match &self.prop_name_to_path.get(prop_name) {
-            Some(path) => {
-                if let Some(ent) = self.entities.get(entity_id) {
-                    if let Some(prop) = ent.props.get(&0) {
-                        // println!("{:?}", prop);
-                        return Some(prop.clone());
-                    }
-                }
+    pub fn get_prop_for_ent(&self, prop_id: &u32, entity_id: &i32) -> Option<Variant> {
+        if let Some(ent) = self.entities.get(entity_id) {
+            if let Some(prop) = ent.props.get(&prop_id) {
+                return Some(prop.clone());
             }
-            None => return None,
         }
         None
     }
     pub fn find_prop(
         &self,
-        prop_name: &str,
+        prop_info: &PropInfo,
         entity_id: &i32,
         player: &PlayerMetaData,
     ) -> Option<Variant> {
         // Early exit these metadata props
-        match prop_name {
+        match prop_info.prop_name.as_str() {
             "tick" => return Some(Variant::I32(self.tick)),
             "steamid" => match player.steamid {
                 Some(steamid) => return Some(Variant::U64(steamid)),
@@ -76,29 +68,32 @@ impl<'a> Parser<'a> {
             },
             _ => {}
         }
-        match TYPEHM.get(prop_name) {
-            Some(PropType::Team) => return self.find_team_prop(entity_id, prop_name),
-            Some(PropType::Custom) => return self.create_custom_prop(&prop_name, entity_id),
-            Some(PropType::Weapon) => return self.find_weapon_prop(prop_name, &entity_id),
+        match prop_info.prop_type {
+            /*
+            Some(PropType::Team) => {
+                return self.find_team_prop(entity_id, prop_info.prop_name.as_str())
+            }
+            Some(PropType::Custom) => {
+                return self.create_custom_prop(prop_info.prop_name.as_str(), entity_id)
+            }
+            Some(PropType::Weapon) => {
+                return self.find_weapon_prop(prop_info.prop_name.as_str(), &entity_id)
+            }
+            */
             Some(PropType::Controller) => match player.controller_entid {
-                Some(entid) => return self.get_prop_for_ent(prop_name, &entid),
+                Some(entid) => return self.get_prop_for_ent(&prop_info.id, &entid),
                 None => return None,
             },
             Some(PropType::Rules) => match self.rules_entity_id {
-                Some(rules_entid) => return self.get_prop_for_ent(prop_name, &rules_entid),
+                Some(rules_entid) => return self.get_prop_for_ent(&prop_info.id, &rules_entid),
                 None => return None,
             },
             Some(PropType::Player) => {
                 if let Some(e) = player.controller_entid {
-                    let is_alive = self.get_prop_for_ent("CCSPlayerController.m_bPawnIsAlive", &e);
-                    match is_alive {
-                        Some(Variant::Bool(true)) => {
-                            return self.get_prop_for_ent(&prop_name, &entity_id)
-                        }
-                        _ => return None,
-                    }
+                    return self.get_prop_for_ent(&prop_info.id, &entity_id);
                 };
             }
+            /*
             Some(PropType::PlayerVec) => {
                 if let Some(e) = player.controller_entid {
                     let is_alive = self.get_prop_for_ent("CCSPlayerController.m_bPawnIsAlive", &e);
@@ -117,11 +112,12 @@ impl<'a> Parser<'a> {
                     }
                 };
             }
+            */
             _ => return None,
         }
         None
     }
-
+    /*
     pub fn collect_cell_coordinate_player(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
         let offset = self.get_prop_for_ent(
             &("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vec".to_owned() + axis),
@@ -307,6 +303,7 @@ impl<'a> Parser<'a> {
         }
         None
     }
+    */
 }
 fn coord_from_cell(cell: Option<Variant>, offset: Option<Variant>) -> Option<f32> {
     // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
@@ -321,7 +318,7 @@ fn coord_from_cell(cell: Option<Variant>, offset: Option<Variant>) -> Option<f32
     }
     None
 }
-
+#[derive(Debug, Clone, Copy)]
 pub enum PropType {
     Team,
     Rules,
@@ -739,6 +736,8 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_flSimulationTime" => PropType::Player,
     "CCSPlayerPawn.m_iHealth" => PropType::Player,
     "CCSPlayerPawn.m_lifeState" => PropType::Player,
+    "CCSPlayerPawn.m_flLowerBodyYawTarget" => PropType::Player,
+    "CCSPlayerPawn.m_flDeathTime" => PropType::Player,
     // Custom
     "X"=> PropType::Custom,
     "Y"=> PropType::Custom,

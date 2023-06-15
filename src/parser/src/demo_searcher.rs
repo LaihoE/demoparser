@@ -4,6 +4,7 @@ use crate::parser_settings::create_huffman_lookup_table;
 use crate::parser_settings::ControllerIDS;
 use crate::parser_settings::Parser;
 use crate::parser_settings::ParserInputs;
+use crate::sendtables::PropInfo;
 use crate::sendtables::Serializer;
 use crate::variants::PropColumn;
 use crate::variants::VarVec;
@@ -55,6 +56,7 @@ pub struct DemoSearcher {
     pub player_output_ids: Vec<u8>,
     pub prop_out_id: u8,
     pub id_to_path: AHashMap<u32, [i32; 7]>,
+    pub prop_infos: Vec<PropInfo>,
 }
 
 pub struct State {
@@ -87,11 +89,9 @@ impl DemoSearcher {
                         .unwrap(),
                     false => self.read_n_bytes(size)?.to_vec(),
                 };
-
                 let ok: Result<(), DemoParserError> =
                     match demo_cmd_type_from_int(msg_type as i32).unwrap() {
                         DEM_SendTables => {
-                            //let tables: CDemoSendTables = ;
                             self.parse_sendtable(Message::parse_from_bytes(&bytes).unwrap())
                                 .unwrap();
                             Ok(())
@@ -125,6 +125,7 @@ impl DemoSearcher {
                 parser.ptr = *o;
                 parser.cls_by_id = &self.cls_by_id;
                 parser.prop_name_to_path = self.prop_name_to_path.clone();
+                parser.prop_infos = self.prop_infos.clone();
                 parser.start().unwrap();
                 parser.output
             })
