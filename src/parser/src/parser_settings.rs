@@ -52,6 +52,7 @@ pub struct Parser<'a> {
     pub prop_infos: Vec<PropInfo>,
     pub controller_ids: SpecialIDs,
     pub fullpackets_parsed: u32,
+    pub packets_parsed: u32,
 
     // Output from parsing
     pub output: AHashMap<u32, PropColumn, RandomState>,
@@ -158,12 +159,21 @@ impl<'a> Parser<'a> {
         // let huffman_table = create_huffman_lookup_table();
         Ok(Parser {
             fullpackets_parsed: 0,
+            packets_parsed: 0,
             controller_ids: SpecialIDs {
+                team_team_num: None,
                 teamnum: None,
                 player_name: None,
                 steamid: None,
                 player_pawn: None,
                 player_team_pointer: None,
+                weapon_owner_pointer: None,
+                cell_x_offset_player: None,
+                cell_x_player: None,
+                cell_y_player: None,
+                cell_y_offset_player: None,
+                cell_z_offset_player: None,
+                cell_z_player: None,
             },
             serializers: AHashMap::default(),
             ptr: 0,
@@ -224,7 +234,18 @@ pub struct SpecialIDs {
     pub player_pawn: Option<u32>,
 
     pub player_team_pointer: Option<u32>,
+    pub weapon_owner_pointer: Option<u32>,
+    pub team_team_num: Option<u32>,
+
+    pub cell_x_player: Option<u32>,
+    pub cell_y_player: Option<u32>,
+    pub cell_z_player: Option<u32>,
+
+    pub cell_x_offset_player: Option<u32>,
+    pub cell_y_offset_player: Option<u32>,
+    pub cell_z_offset_player: Option<u32>,
 }
+
 fn msb(mut val: u32) -> u32 {
     let mut cnt = 0;
     while val > 0 {

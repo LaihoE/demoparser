@@ -231,14 +231,26 @@ impl<'a> Parser<'a> {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
+
         if !(entity.entity_type == EntityType::PlayerController
             || entity.entity_type == EntityType::Team)
         {
             return Ok(());
         }
-        /*
-        if class.name == "CCSTeam" {
-            if let Some(Variant::U32(t)) = self.get_prop_for_ent("CCSTeam.m_iTeamNum", entity_id) {
+
+        if entity.entity_type == EntityType::Team {
+            if let Some(Variant::U32(t)) = self.get_prop_for_ent(
+                self.controller_ids.team_team_num.as_ref().unwrap(),
+                entity_id,
+            ) {
+                /*
+                let x = match t {
+                    1 => println!("{} {}", 1, entity_id),
+                    2 => println!("{} {}", 2, entity_id),
+                    3 => println!("{} {}", 3, entity_id),
+                    _ => {}
+                };
+                */
                 match t {
                     1 => self.teams.team1_entid = Some(*entity_id),
                     2 => self.teams.team2_entid = Some(*entity_id),
@@ -248,7 +260,7 @@ impl<'a> Parser<'a> {
             }
             return Ok(());
         }
-        */
+
         let team_num =
             match self.get_prop_for_ent(self.controller_ids.teamnum.as_ref().unwrap(), entity_id) {
                 Some(team_num) => match team_num {

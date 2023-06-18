@@ -596,7 +596,7 @@ impl DemoSearcher {
                     }
                 }
             }
-            if my_serializer.name.contains("Player") {
+            if my_serializer.name.contains("Player") || my_serializer.name.contains("Team") {
                 self.find_prop_name_paths(&mut my_serializer);
             }
             self.serializers
@@ -670,11 +670,21 @@ impl DemoSearcher {
                         }
                     }
                 }
-                if full_name.contains("m_nOwnerId") {
-                    println!("{:?} {:?}", full_name, arr);
+                if full_name.contains("CCSTeam.m_iTeamNum") {
+                    println!("{:?}", full_name);
                 }
-                // println!("{:?} {}", x, full_name);
+
                 match full_name.as_str() {
+                    "CCSTeam.m_iTeamNum" => self.controller_ids.team_team_num = Some(self.id),
+                    "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX" => {
+                        self.controller_ids.cell_x_player = Some(self.id)
+                    }
+                    "CCSPlayerPawn.m_iTeamNum" => {
+                        self.controller_ids.player_team_pointer = Some(self.id)
+                    }
+                    "CBasePlayerWeapon.m_nOwnerId" => {
+                        self.controller_ids.weapon_owner_pointer = Some(self.id)
+                    }
                     "CCSPlayerController.m_iTeamNum" => self.controller_ids.teamnum = Some(self.id),
                     "CCSPlayerController.m_iszPlayerName" => {
                         self.controller_ids.player_name = Some(self.id)

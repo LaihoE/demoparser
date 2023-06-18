@@ -54,16 +54,42 @@ impl PropColumn {
             num_nones: 0,
         }
     }
+    pub fn get_type(v: &Option<VarVec>) -> Option<u32> {
+        match v {
+            Some(VarVec::Bool(_)) => Some(0),
+            Some(VarVec::F32(_)) => Some(1),
+            Some(VarVec::I32(_)) => Some(2),
+            Some(VarVec::String(_)) => Some(3),
+            Some(VarVec::U32(_)) => Some(4),
+            Some(VarVec::U64(_)) => Some(5),
+            None => None,
+        }
+    }
+    pub fn resolve_vec_type(&mut self, v_type: Option<u32>) {
+        if self.data.is_some() {
+            return;
+        }
+        match v_type {
+            Some(0) => self.data = Some(VarVec::Bool(vec![])),
+            Some(1) => self.data = Some(VarVec::Bool(vec![])),
+            Some(2) => self.data = Some(VarVec::Bool(vec![])),
+            Some(3) => self.data = Some(VarVec::Bool(vec![])),
+            Some(4) => self.data = Some(VarVec::Bool(vec![])),
+            Some(5) => self.data = Some(VarVec::Bool(vec![])),
+            _ => panic!("NONE OR > 5 TYPE FOR VEC RESOLUTION"),
+        }
+        for _ in 0..self.num_nones {
+            self.push(None);
+        }
+    }
     #[inline(always)]
     pub fn push(&mut self, item: Option<Variant>) {
-        match &item {
-            // If we dont know what type the column is (prop has not been parsed yet)
-            None => self.num_nones += 1,
-            Some(p) => match &self.data {
-                Some(_) => {}
-                None => {
-                    // First time a new prop is pushed we get the type for the vec and
-                    // push the leading Nones we may have gotten before prop type was known.
+        match &self.data {
+            Some(_) => {}
+            None => match &item {
+                None => self.num_nones += 1,
+                Some(p) => {
+                    println!("RESOLVING NONES {}", self.num_nones);
                     let mut var_vec = VarVec::new(&p);
                     for _ in 0..self.num_nones {
                         var_vec.push_variant(None);
@@ -71,7 +97,7 @@ impl PropColumn {
                     self.data = Some(var_vec);
                 }
             },
-        }
+        };
         if let Some(v) = &mut self.data {
             v.push_variant(item.clone());
         }

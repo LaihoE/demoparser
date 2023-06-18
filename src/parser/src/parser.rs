@@ -28,6 +28,7 @@ impl<'a> Parser<'a> {
             let tick = self.read_varint()?;
             let size = self.read_varint()?;
             self.tick = tick as i32;
+            self.packets_parsed += 1;
 
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
@@ -77,7 +78,7 @@ impl<'a> Parser<'a> {
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
-                // svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
+                svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 // svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 // GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
                 // GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
@@ -153,8 +154,8 @@ impl<'a> Parser<'a> {
     }
     pub fn parse_classes(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if self.parse_entities {
-            let tables: CDemoSendTables = Message::parse_from_bytes(bytes).unwrap();
-            //self.parse_sendtable(tables)?;
+            // let tables: CDemoSendTables = Message::parse_from_bytes(bytes).unwrap();
+            // self.parse_sendtable(tables)?;
         }
         Ok(())
     }

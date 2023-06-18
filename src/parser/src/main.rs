@@ -22,20 +22,14 @@ fn main() {
         .build_global()
         .unwrap();
     */
-    let wanted_props = vec![
-        "CCSPlayerController.m_iPawnHealth".to_owned(),
-        "m_iClip1".to_owned(),
-    ];
+    let wanted_props = vec!["CCSTeam.m_iScore".to_owned(), "m_iClip1".to_owned()];
     let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
     //let bytes = fs::read(demo_path).unwrap();
     //let file = File::open(demo_path).unwrap();
     //let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
     let huf = create_huffman_lookup_table();
-    let wanted_props = vec![
-        "CCSPlayerController.m_iPawnHealth".to_owned(),
-        "m_iClip1".to_owned(),
-    ];
+
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test/").unwrap();
     //let huf = vec![];
 
@@ -54,8 +48,9 @@ fn main() {
         };
         let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-        let arc_bytes = Arc::new(mmap);
+        println!("{:?}", &mmap[..mmap.len() - 1]);
 
+        let arc_bytes = Arc::new(mmap);
         let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
 
         let settings = ParserInputs {
@@ -93,7 +88,7 @@ fn main() {
             parse_entities: true,
             serializers: AHashMap::default(),
             parse_projectiles: false,
-            wanted_player_props: vec!["CCSPlayerPawn.m_iHealth".to_owned()],
+            wanted_player_props: wanted_props.clone(),
             wanted_ticks: AHashSet::default(),
             wanted_prop_paths: AHashSet::default(),
             path_to_prop_name: AHashMap::default(),
@@ -109,6 +104,14 @@ fn main() {
                 steamid: None,
                 player_pawn: None,
                 player_team_pointer: None,
+                weapon_owner_pointer: None,
+                cell_x_offset_player: None,
+                cell_x_player: None,
+                cell_y_offset_player: None,
+                cell_y_player: None,
+                cell_z_offset_player: None,
+                cell_z_player: None,
+                team_team_num: None,
             },
             id_to_path: AHashMap::default(),
             id: 0,

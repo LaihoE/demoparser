@@ -1,4 +1,6 @@
+use crate::collect_data::TYPEHM;
 use crate::netmessage_types;
+use crate::netmessage_types::netmessage_type_from_int;
 use crate::parser::demo_cmd_type_from_int;
 use crate::parser_settings::create_huffman_lookup_table;
 use crate::parser_settings::Parser;
@@ -95,8 +97,6 @@ impl DemoSearcher {
                         .unwrap(),
                     false => self.read_n_bytes(size)?.to_vec(),
                 };
-
-                // self.ptr += size as usize;
                 let ok: Result<(), DemoParserError> =
                     match demo_cmd_type_from_int(msg_type as i32).unwrap() {
                         DEM_SendTables => {
@@ -127,7 +127,7 @@ impl DemoSearcher {
             };
         }
 
-        let v: Vec<AHashMap<u32, PropColumn>> = self
+        let mut v: Vec<AHashMap<u32, PropColumn>> = self
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
@@ -142,24 +142,84 @@ impl DemoSearcher {
                 parser.controller_ids = self.controller_ids.clone();
                 parser.parse_entities = true;
                 parser.start().unwrap();
+                println!("packets: {}", parser.packets_parsed);
+                if offset == &18031815 {
+                    println!("{:?}", parser.output.get(&1769));
+                }
+                // println!("{:?}", parser.output.get(&1769));
+                match parser.output.get(&1769) {
+                    Some(o) => match &o.data {
+                        Some(VarVec::Bool(v)) => println!("{:?} {}", &v[..2], offset),
+                        Some(VarVec::F32(v)) => println!("{:?} {}", &v[..2], offset),
+                        Some(VarVec::I32(v)) => println!("{:?} {}", &v[..2], offset),
+                        Some(VarVec::U32(v)) => println!("{:?} {}", &v[..2], offset),
+                        Some(VarVec::U64(v)) => println!("{:?} {}", &v[..2], offset),
+                        Some(VarVec::String(v)) => println!("{:?} {}", &v[..2], offset),
+                        _ => {}
+                    }, //println!("{:?}", o.data),
+                    None => println!("NONNNN"),
+                }
                 parser.output
             })
             .collect();
-        Ok(combine_dfs(v))
+        Ok(self.combine_dfs(&mut v))
+    }
+
+    fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
+        /*
+        for p in &self.prop_infos {
+            let typ = self.resolve_type(v, &p.id);
+            self.insert_type(v, &p.id, typ);
+            println!("{:?} {:?}", p.prop_name, typ);
+        }
+        */
+        let mut big: AHashMap<u32, PropColumn> = v[0].clone();
+        let before = Instant::now();
+        for part in &v[1..] {
+            for (name, col) in part {
+                insert_df(&col.data, *name, &mut big);
+            }
+        }
+        println!("{:2?}", before.elapsed());
+        big
+    }
+    fn insert_type(&self, v: &mut Vec<AHashMap<u32, PropColumn>>, prop_id: &u32, typ: Option<u32>) {
+        for part in v {
+            for (prop_id_inner, col) in part.iter_mut() {
+                if prop_id == prop_id_inner {
+                    col.resolve_vec_type(typ);
+                }
+                //insert_df(&col.data, *name, &mut big);
+            }
+        }
+    }
+    fn resolve_type(&self, v: &mut Vec<AHashMap<u32, PropColumn>>, prop_id: &u32) -> Option<u32> {
+        let mut cor_type = None;
+        for part in v {
+            for (prop_id_inner, col) in part.iter_mut() {
+                if prop_id == prop_id_inner {
+                    let this_type = PropColumn::get_type(&col.data);
+                    println!("{:?} {:?}", cor_type, this_type);
+
+                    if cor_type != None && this_type != None && this_type != cor_type {
+                        panic!("ILLEGAL PROP TYPES")
+                    }
+                    cor_type = this_type;
+                }
+                //insert_df(&col.data, *name, &mut big);
+            }
+        }
+        cor_type
+        /*
+        for part in v {
+            for (name, col) in part.iter_mut() {
+                col.resolve_vec_type(cor_type);
+            }
+        }
+        */
     }
 }
 
-fn combine_dfs(v: Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
-    let mut big: AHashMap<u32, PropColumn> = v[0].clone();
-    let before = Instant::now();
-    for part in &v[1..] {
-        for (name, col) in part {
-            insert_df(&col.data, *name, &mut big);
-        }
-    }
-    println!("{:2?}", before.elapsed());
-    big
-}
 fn insert_df(v: &Option<VarVec>, prop_id: u32, map: &mut AHashMap<u32, PropColumn>) {
     match v {
         Some(VarVec::I32(i)) => match map.get_mut(&prop_id) {
