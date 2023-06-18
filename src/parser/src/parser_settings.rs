@@ -24,7 +24,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 // Wont fit in L1, evaluate if worth to use pointer method
-const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 19) - 1;
+const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 
 pub struct Parser<'a> {
     pub ptr: usize,
@@ -277,7 +277,7 @@ pub fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
     huffman_table[15] = (11, 4);
     huffman_table[0] = (999999, 255);
 
-    const RIGHTSHIFT_BITORDER: u32 = 45;
+    const RIGHTSHIFT_BITORDER: u32 = 64 - 17;
     let mut v: Vec<u32> = vec![];
     for (idx, x) in huffman_table.iter().enumerate() {
         if x.0 != 999999 {

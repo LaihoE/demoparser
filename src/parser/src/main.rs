@@ -31,13 +31,14 @@ fn main() {
     //let file = File::open(demo_path).unwrap();
     //let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
-    //let huf = create_huffman_lookup_table();
+    let huf = create_huffman_lookup_table();
     let wanted_props = vec![
         "CCSPlayerController.m_iPawnHealth".to_owned(),
         "m_iClip1".to_owned(),
     ];
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test/").unwrap();
-    let huf = vec![];
+    //let huf = vec![];
+
     let arc_huf = Arc::new(huf);
     let mut c = 0;
     for path in dir {
@@ -123,6 +124,7 @@ fn main() {
         }
         println!("{:?}", before.elapsed());
     }
+
     // println!("{:?}", ds.handles);
     //println!("{:#?}", ds.state.cls_by_id);
 }
