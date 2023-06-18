@@ -23,7 +23,6 @@ impl<'a> Parser<'a> {
         // let header = self.read_n_bytes(16)?;
         // Parser::handle_short_header(file_length, header)?;
         // Outer loop that continues trough the file, until "DEM_Stop" msg
-        let mut fp_parsed = 0;
         loop {
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
@@ -48,9 +47,9 @@ impl<'a> Parser<'a> {
                 DEM_UserCmd => self.parse_user_command_cmd(&bytes),
                 DEM_StringTables => self.parse_stringtable_cmd(&bytes),
                 DEM_FullPacket => {
-                    if fp_parsed == 0 {
+                    if self.fullpackets_parsed == 0 {
                         self.parse_full_packet(&bytes).unwrap();
-                        fp_parsed += 1;
+                        self.fullpackets_parsed += 1;
                     } else {
                         break;
                     }
@@ -148,7 +147,6 @@ impl<'a> Parser<'a> {
     }
     pub fn parse_server_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let server_info: CSVCMsg_ServerInfo = Message::parse_from_bytes(bytes).unwrap();
-        println!("{:?}", server_info);
         let class_count = server_info.max_classes();
         self.cls_bits = Some((class_count as f32 + 1.).log2().ceil() as u32);
         Ok(())

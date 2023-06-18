@@ -1,9 +1,9 @@
 use crate::netmessage_types;
 use crate::parser::demo_cmd_type_from_int;
 use crate::parser_settings::create_huffman_lookup_table;
-use crate::parser_settings::ControllerIDS;
 use crate::parser_settings::Parser;
 use crate::parser_settings::ParserInputs;
+use crate::parser_settings::SpecialIDs;
 use crate::sendtables::PropInfo;
 use crate::sendtables::Serializer;
 use crate::variants::PropColumn;
@@ -17,6 +17,7 @@ use csgoproto::demo::EDemoCommands::*;
 use dashmap::DashMap;
 use memmap2::Mmap;
 use protobuf::Message;
+use rayon::prelude::*;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 use std::thread;
@@ -29,7 +30,6 @@ pub struct DemoSearcher {
     pub ptr: usize,
     pub bytes: Arc<Mmap>,
     pub tick: i32,
-    pub state: State,
     pub huf: Arc<Vec<(u32, u8)>>,
     pub settings: ParserInputs,
     pub handles: Vec<JoinHandle<()>>,
@@ -53,7 +53,7 @@ pub struct DemoSearcher {
 
     pub id: u32,
     pub wanted_prop_ids: Vec<u32>,
-    pub controller_ids: ControllerIDS,
+    pub controller_ids: SpecialIDs,
     pub player_output_ids: Vec<u8>,
     pub prop_out_id: u8,
     pub id_to_path: AHashMap<u32, [i32; 7]>,
@@ -68,25 +68,17 @@ pub struct State {
 }
 
 impl DemoSearcher {
-    pub fn front_demo_metadata(&mut self) -> Result<(), DemoParserError> {
+    pub fn front_demo_metadata(&mut self) -> Result<AHashMap<u32, PropColumn>, DemoParserError> {
         self.ptr = 16;
+        self.fullpacket_offsets.push(16);
 
         loop {
             let before = self.ptr;
-            if self.tick < 100 {
-                let b = &self.bytes[self.ptr..self.ptr + 12];
-                for bb in b {
-                    println!("{:#08b}", bb);
-                }
-            }
+
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
             let size = self.read_varint()?;
             self.tick = tick as i32;
-
-            if tick < 100 {
-                println!("{:#032b} {:#032b} {:#032b}", cmd, tick, size);
-            }
 
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
@@ -97,28 +89,27 @@ impl DemoSearcher {
                 || cmd == Some(DEM_Stop)
                 || cmd == Some(DEM_FileHeader)
             {
-                /*
                 let bytes = match is_compressed {
                     true => SnapDecoder::new()
                         .decompress_vec(self.read_n_bytes(size)?)
                         .unwrap(),
                     false => self.read_n_bytes(size)?.to_vec(),
                 };
-                */
-                self.ptr += size as usize;
+
+                // self.ptr += size as usize;
                 let ok: Result<(), DemoParserError> =
                     match demo_cmd_type_from_int(msg_type as i32).unwrap() {
                         DEM_SendTables => {
-                            // self.parse_sendtable(Message::parse_from_bytes(&bytes).unwrap())
-                            //    .unwrap();
+                            self.parse_sendtable(Message::parse_from_bytes(&bytes).unwrap())
+                                .unwrap();
                             Ok(())
                         }
                         DEM_FileHeader => {
-                            // self.parse_header(&bytes).unwrap();
+                            self.parse_header(&bytes).unwrap();
                             Ok(())
                         }
                         DEM_ClassInfo => {
-                            // self.parse_class_info(&bytes).unwrap();
+                            self.parse_class_info(&bytes).unwrap();
                             Ok(())
                         }
                         DEM_FullPacket => {
@@ -135,37 +126,30 @@ impl DemoSearcher {
                 self.ptr += size as usize;
             };
         }
-        /*
-        use rayon::prelude::*;
-        let bef = Instant::now();
+
         let v: Vec<AHashMap<u32, PropColumn>> = self
             .fullpacket_offsets
             .par_iter()
-            .map(|o| {
+            .map(|offset| {
                 let mut parser = Parser::new(self.settings.clone(), &self.cls_by_id).unwrap();
-                parser.ptr = *o;
+                if offset == &16 {
+                    parser.fullpackets_parsed = 1;
+                }
+                parser.ptr = *offset;
                 parser.cls_by_id = &self.cls_by_id;
                 parser.prop_name_to_path = self.prop_name_to_path.clone();
                 parser.prop_infos = self.prop_infos.clone();
                 parser.controller_ids = self.controller_ids.clone();
-                parser.parse_entities = false;
+                parser.parse_entities = true;
                 parser.start().unwrap();
                 parser.output
             })
             .collect();
-        println!("PAR S{:2?}", bef.elapsed());
-        let before = Instant::now();
-        combine_dfs(v);
-
-        println!("C {:2?}", before.elapsed());
-        */
-        println!("C {:2?}", self.header);
-
-        Ok(())
+        Ok(combine_dfs(v))
     }
 }
 
-fn combine_dfs(v: Vec<AHashMap<u32, PropColumn>>) {
+fn combine_dfs(v: Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
     let mut big: AHashMap<u32, PropColumn> = v[0].clone();
     let before = Instant::now();
     for part in &v[1..] {
@@ -174,6 +158,7 @@ fn combine_dfs(v: Vec<AHashMap<u32, PropColumn>>) {
         }
     }
     println!("{:2?}", before.elapsed());
+    big
 }
 fn insert_df(v: &Option<VarVec>, prop_id: u32, map: &mut AHashMap<u32, PropColumn>) {
     match v {

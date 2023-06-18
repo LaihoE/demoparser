@@ -57,12 +57,12 @@ impl<'a> Parser<'a> {
         player: &PlayerMetaData,
     ) -> Option<Variant> {
         // Early exit these metadata props
-        /*
+
         match prop_info.prop_name.as_str() {
             "tick" => return Some(Variant::I32(self.tick)),
             "steamid" => match player.steamid {
                 Some(steamid) => return Some(Variant::U64(steamid)),
-                _ => return None,
+                _ => return Some(Variant::U64(0)),
             },
             "name" => match &player.name {
                 Some(name) => return Some(Variant::String(name.to_string())),
@@ -70,12 +70,12 @@ impl<'a> Parser<'a> {
             },
             _ => {}
         }
-        */
+
         match prop_info.prop_type {
-            /*
             Some(PropType::Team) => {
-                return self.find_team_prop(entity_id, prop_info.prop_name.as_str())
+                // return self.find_team_prop(entity_id, prop_info.prop_name.as_str())
             }
+            /*
             Some(PropType::Custom) => {
                 return self.create_custom_prop(prop_info.prop_name.as_str(), entity_id)
             }

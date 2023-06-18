@@ -50,7 +50,8 @@ pub struct Parser<'a> {
     pub paths: Vec<FieldInfo>,
     pub projectiles: AHashSet<i32, RandomState>,
     pub prop_infos: Vec<PropInfo>,
-    pub controller_ids: ControllerIDS,
+    pub controller_ids: SpecialIDs,
+    pub fullpackets_parsed: u32,
 
     // Output from parsing
     pub output: AHashMap<u32, PropColumn, RandomState>,
@@ -156,11 +157,13 @@ impl<'a> Parser<'a> {
         ]);
         // let huffman_table = create_huffman_lookup_table();
         Ok(Parser {
-            controller_ids: ControllerIDS {
+            fullpackets_parsed: 0,
+            controller_ids: SpecialIDs {
                 teamnum: None,
                 player_name: None,
                 steamid: None,
                 player_pawn: None,
+                player_team_pointer: None,
             },
             serializers: AHashMap::default(),
             ptr: 0,
@@ -214,11 +217,13 @@ impl<'a> Parser<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ControllerIDS {
+pub struct SpecialIDs {
     pub teamnum: Option<u32>,
     pub player_name: Option<u32>,
     pub steamid: Option<u32>,
     pub player_pawn: Option<u32>,
+
+    pub player_team_pointer: Option<u32>,
 }
 fn msb(mut val: u32) -> u32 {
     let mut cnt = 0;

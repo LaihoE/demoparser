@@ -5,9 +5,9 @@ use memmap2::MmapOptions;
 use parser::demo_searcher::DemoSearcher;
 use parser::demo_searcher::State;
 use parser::parser_settings::create_huffman_lookup_table;
-use parser::parser_settings::ControllerIDS;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
+use parser::parser_settings::SpecialIDs;
 use parser::read_bits::Bitreader;
 use parser::sendtables::PropInfo;
 use std::fs;
@@ -42,7 +42,7 @@ fn main() {
     let arc_huf = Arc::new(huf);
     let mut c = 0;
     for path in dir {
-        if c > 20 {
+        if c > 1 {
             break;
         }
         c += 1;
@@ -87,7 +87,6 @@ fn main() {
             fullpacket_offsets: vec![],
             ptr: 0,
             tick: 0,
-            state: state,
             huf: arc_huf.clone(),
             settings: settings,
             handles: vec![],
@@ -104,11 +103,12 @@ fn main() {
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
             cls_by_id: AHashMap::default(),
-            controller_ids: ControllerIDS {
+            controller_ids: SpecialIDs {
                 teamnum: None,
                 player_name: None,
                 steamid: None,
                 player_pawn: None,
+                player_team_pointer: None,
             },
             id_to_path: AHashMap::default(),
             id: 0,
@@ -118,11 +118,8 @@ fn main() {
             prop_infos: vec![],
             header: AHashMap::default(),
         };
-        ds.front_demo_metadata().unwrap();
-        for handle in ds.handles {
-            handle.join().unwrap();
-        }
-        println!("{:?}", before.elapsed());
+        let d = ds.front_demo_metadata().unwrap();
+        println!("{:?}", d.keys());
     }
 
     // println!("{:?}", ds.handles);

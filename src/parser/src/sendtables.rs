@@ -670,6 +670,9 @@ impl DemoSearcher {
                         }
                     }
                 }
+                if full_name.contains("m_nOwnerId") {
+                    println!("{:?} {:?}", full_name, arr);
+                }
                 // println!("{:?} {}", x, full_name);
                 match full_name.as_str() {
                     "CCSPlayerController.m_iTeamNum" => self.controller_ids.teamnum = Some(self.id),
@@ -715,6 +718,7 @@ impl DemoSearcher {
             _ => {}
         };
         if name.contains("CCSTeam.m_iTeamNum")
+            || name.contains("CCSPlayerPawn.m_iTeamNum")
             || name.contains("CCSPlayerController.m_iTeamNum")
             || name.contains("CCSPlayerController.m_iszPlayerName")
             || name.contains("CCSPlayerController.m_steamID")
