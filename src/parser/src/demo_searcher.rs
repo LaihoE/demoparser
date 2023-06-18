@@ -129,7 +129,7 @@ impl DemoSearcher {
 
         let mut v: Vec<AHashMap<u32, PropColumn>> = self
             .fullpacket_offsets
-            .par_iter()
+            .iter()
             .map(|offset| {
                 let mut parser = Parser::new(self.settings.clone(), &self.cls_by_id).unwrap();
                 if offset == &16 {
@@ -142,23 +142,8 @@ impl DemoSearcher {
                 parser.controller_ids = self.controller_ids.clone();
                 parser.parse_entities = true;
                 parser.start().unwrap();
-                println!("packets: {}", parser.packets_parsed);
-                if offset == &18031815 {
-                    println!("{:?}", parser.output.get(&1769));
-                }
-                // println!("{:?}", parser.output.get(&1769));
-                match parser.output.get(&1769) {
-                    Some(o) => match &o.data {
-                        Some(VarVec::Bool(v)) => println!("{:?} {}", &v[..2], offset),
-                        Some(VarVec::F32(v)) => println!("{:?} {}", &v[..2], offset),
-                        Some(VarVec::I32(v)) => println!("{:?} {}", &v[..2], offset),
-                        Some(VarVec::U32(v)) => println!("{:?} {}", &v[..2], offset),
-                        Some(VarVec::U64(v)) => println!("{:?} {}", &v[..2], offset),
-                        Some(VarVec::String(v)) => println!("{:?} {}", &v[..2], offset),
-                        _ => {}
-                    }, //println!("{:?}", o.data),
-                    None => println!("NONNNN"),
-                }
+                //println!("{:?}", self.controller_ids.team_team_num.as_ref().unwrap());
+                println!("{:?}", parser.controller_ids.player_team_pointer);
                 parser.output
             })
             .collect();
@@ -166,21 +151,38 @@ impl DemoSearcher {
     }
 
     fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
-        /*
-        for p in &self.prop_infos {
-            let typ = self.resolve_type(v, &p.id);
-            self.insert_type(v, &p.id, typ);
-            println!("{:?} {:?}", p.prop_name, typ);
+        let mut big: AHashMap<u32, PropColumn> = AHashMap::default();
+        for part_df in v {
+            for (k, v) in part_df {
+                big.entry(*k).or_insert(v.clone()).extend_from(v)
+            }
         }
-        */
-        let mut big: AHashMap<u32, PropColumn> = v[0].clone();
+
+        // println!("{:?}", big);
+
+        /*
         let before = Instant::now();
         for part in &v[1..] {
             for (name, col) in part {
                 insert_df(&col.data, *name, &mut big);
             }
         }
+        for x in &mut *v {
+            println!("***");
+            for (k, v) in x {
+                println!("{} {}", k, v.data.is_some());
+                match &v.data {
+                    Some(VarVec::I32(i)) => println!("{:?}", i.len()),
+                    Some(VarVec::String(i)) => println!("{:?}", i.len()),
+                    Some(VarVec::U64(i)) => println!("{:?}", i.len()),
+                    Some(VarVec::U32(i)) => println!("{:?}", i.len()),
+                    // None => println!("NONONNONONOOENNEONEONEONE {:?}", v),
+                    _ => {}
+                }
+            }
+        }
         println!("{:2?}", before.elapsed());
+        */
         big
     }
     fn insert_type(&self, v: &mut Vec<AHashMap<u32, PropColumn>>, prop_id: &u32, typ: Option<u32>) {
@@ -199,7 +201,6 @@ impl DemoSearcher {
             for (prop_id_inner, col) in part.iter_mut() {
                 if prop_id == prop_id_inner {
                     let this_type = PropColumn::get_type(&col.data);
-                    println!("{:?} {:?}", cor_type, this_type);
 
                     if cor_type != None && this_type != None && this_type != cor_type {
                         panic!("ILLEGAL PROP TYPES")
@@ -226,33 +227,49 @@ fn insert_df(v: &Option<VarVec>, prop_id: u32, map: &mut AHashMap<u32, PropColum
             Some(p) => {
                 if let Some(VarVec::I32(ii)) = &mut p.data {
                     ii.extend(i);
+                } else {
+                    panic!("INSERT {:?}", v);
                 }
             }
-            _ => {}
+            _ => {
+                panic!("INSERT {:?}", v);
+            }
         },
         Some(VarVec::U64(i)) => match map.get_mut(&prop_id) {
             Some(p) => {
                 if let Some(VarVec::U64(ii)) = &mut p.data {
                     ii.extend(i);
+                } else {
+                    panic!("INSERT {:?}", v);
                 }
             }
-            _ => {}
+            _ => {
+                panic!("INSERT {:?}", v);
+            }
         },
         Some(VarVec::String(i)) => match map.get_mut(&prop_id) {
             Some(p) => {
                 if let Some(VarVec::String(ii)) = &mut p.data {
                     ii.extend_from_slice(i);
+                } else {
+                    panic!("INSERT {:?}", v);
                 }
             }
-            _ => {}
+            _ => {
+                panic!("INSERT {:?}", v);
+            }
         },
         Some(VarVec::U32(i)) => match map.get_mut(&prop_id) {
             Some(p) => {
                 if let Some(VarVec::U32(ii)) = &mut p.data {
                     ii.extend(i);
+                } else {
+                    panic!("INSERT {:?}", v);
                 }
             }
-            _ => {}
+            _ => {
+                panic!("INSERT {:?}", v);
+            }
         },
         _ => {}
     }

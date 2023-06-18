@@ -110,9 +110,9 @@ impl<'a> Parser<'a> {
 
         for field_info in &self.paths[..n_paths] {
             let result = bitreader.decode(&field_info.decoder)?;
-            if field_info.should_parse {
-                entity.props.insert(field_info.df_pos as u32, result);
-            }
+            //if field_info.should_parse {
+            entity.props.insert(field_info.df_pos as u32, result);
+            //}
         }
         Ok(n_paths)
     }
@@ -196,6 +196,7 @@ impl<'a> Parser<'a> {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),
         };
+
         // Create an "empty" path ([-1, 0, 0, 0, 0, 0, 0])
         // For perfomance reasons have them always the same len
         let mut fp = generate_fp();
@@ -243,14 +244,6 @@ impl<'a> Parser<'a> {
                 self.controller_ids.team_team_num.as_ref().unwrap(),
                 entity_id,
             ) {
-                /*
-                let x = match t {
-                    1 => println!("{} {}", 1, entity_id),
-                    2 => println!("{} {}", 2, entity_id),
-                    3 => println!("{} {}", 3, entity_id),
-                    _ => {}
-                };
-                */
                 match t {
                     1 => self.teams.team1_entid = Some(*entity_id),
                     2 => self.teams.team2_entid = Some(*entity_id),

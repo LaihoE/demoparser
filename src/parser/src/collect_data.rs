@@ -34,7 +34,7 @@ impl<'a> Parser<'a> {
             for prop_info in &self.prop_infos {
                 // returns none if missing
                 let prop = self.find_prop(prop_info, entity_id, player);
-
+                // println!("{:?} {}", prop, prop_info.prop_name);
                 self.output
                     .entry(prop_info.id)
                     .or_insert_with(|| PropColumn::new())
@@ -288,7 +288,10 @@ impl<'a> Parser<'a> {
     */
     pub fn find_team_prop(&self, prop: &u32, player_entid: &i32) -> Option<Variant> {
         match self.controller_ids.player_team_pointer {
-            None => return None,
+            None => {
+                println!("VERY RARE");
+                return None;
+            }
             Some(p) => {
                 if let Some(Variant::U32(team_num)) = self.get_prop_for_ent(&p, player_entid) {
                     let team_entid = match team_num {
@@ -298,6 +301,7 @@ impl<'a> Parser<'a> {
                         3 => self.teams.team3_entid,
                         _ => None,
                     };
+                    println!("{:?}", team_entid);
                     // Get prop from team entity
                     if let Some(entid) = team_entid {
                         if let Some(p) = self.get_prop_for_ent(prop, &entid) {

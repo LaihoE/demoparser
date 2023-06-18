@@ -54,6 +54,124 @@ impl PropColumn {
             num_nones: 0,
         }
     }
+    pub fn len(&self) -> usize {
+        match &self.data {
+            Some(VarVec::Bool(b)) => b.len(),
+            Some(VarVec::I32(b)) => b.len(),
+            Some(VarVec::F32(b)) => b.len(),
+            Some(VarVec::String(b)) => b.len(),
+            Some(VarVec::U32(b)) => b.len(),
+            Some(VarVec::U64(b)) => b.len(),
+            None => self.num_nones,
+        }
+    }
+    pub fn extend_from(&mut self, other: &mut PropColumn) {
+        match &mut self.data {
+            Some(VarVec::Bool(v)) => match &other.data {
+                Some(VarVec::Bool(v_other)) => {
+                    v.extend_from_slice(&v_other);
+                }
+                _ => {
+                    panic!("illegal 1");
+                }
+            },
+            Some(VarVec::I32(v)) => match &other.data {
+                Some(VarVec::I32(v_other)) => {
+                    v.extend_from_slice(&v_other);
+                }
+                None => {
+                    for i in 0..other.num_nones {
+                        v.push(None);
+                    }
+                }
+                _ => {
+                    panic!("illegal 2 {:?}", other);
+                }
+            },
+            Some(VarVec::F32(v)) => match &other.data {
+                Some(VarVec::F32(v_other)) => {
+                    v.extend_from_slice(&v_other);
+                }
+                None => {
+                    for i in 0..other.num_nones {
+                        v.push(None);
+                    }
+                }
+                _ => {
+                    panic!("illegal 3");
+                }
+            },
+            Some(VarVec::String(v)) => match &other.data {
+                Some(VarVec::String(v_other)) => {
+                    v.extend_from_slice(&v_other);
+                }
+                None => {
+                    for i in 0..other.num_nones {
+                        v.push(None);
+                    }
+                }
+                _ => {
+                    panic!("illegal 4");
+                }
+            },
+            Some(VarVec::U32(v)) => match &other.data {
+                Some(VarVec::U32(v_other)) => {
+                    v.extend_from_slice(&v_other);
+                }
+                None => {
+                    for i in 0..other.num_nones {
+                        v.push(None);
+                    }
+                }
+                _ => {
+                    panic!("illegal 5");
+                }
+            },
+            Some(VarVec::U64(v)) => match &other.data {
+                Some(VarVec::U64(v_other)) => {
+                    v.extend_from_slice(&v_other);
+                }
+                None => {
+                    for i in 0..other.num_nones {
+                        v.push(None);
+                    }
+                }
+                _ => {
+                    panic!("illegal 6");
+                }
+            },
+            None => match &other.data {
+                Some(VarVec::Bool(inner)) => {
+                    self.resolve_vec_type(PropColumn::get_type(&other.data));
+                    self.extend_from(other);
+                }
+                Some(VarVec::I32(inner)) => {
+                    self.resolve_vec_type(PropColumn::get_type(&other.data));
+                    self.extend_from(other);
+                }
+                Some(VarVec::U32(inner)) => {
+                    self.resolve_vec_type(PropColumn::get_type(&other.data));
+                    self.extend_from(other);
+                }
+                Some(VarVec::U64(inner)) => {
+                    self.resolve_vec_type(PropColumn::get_type(&other.data));
+                    self.extend_from(other);
+                }
+                Some(VarVec::String(inner)) => {
+                    self.resolve_vec_type(PropColumn::get_type(&other.data));
+                    self.extend_from(other);
+                }
+                Some(VarVec::F32(inner)) => {
+                    self.resolve_vec_type(PropColumn::get_type(&other.data));
+                    self.extend_from(other);
+                }
+                None => {
+                    self.num_nones += other.num_nones;
+                }
+            },
+        }
+    }
+
     pub fn get_type(v: &Option<VarVec>) -> Option<u32> {
         match v {
             Some(VarVec::Bool(_)) => Some(0),
@@ -76,7 +194,7 @@ impl PropColumn {
             Some(3) => self.data = Some(VarVec::Bool(vec![])),
             Some(4) => self.data = Some(VarVec::Bool(vec![])),
             Some(5) => self.data = Some(VarVec::Bool(vec![])),
-            _ => panic!("NONE OR > 5 TYPE FOR VEC RESOLUTION"),
+            _ => panic!("NONE OR > 5 TYPE FOR VEC RESOLUTION : {:?}", v_type),
         }
         for _ in 0..self.num_nones {
             self.push(None);
@@ -89,11 +207,11 @@ impl PropColumn {
             None => match &item {
                 None => self.num_nones += 1,
                 Some(p) => {
-                    println!("RESOLVING NONES {}", self.num_nones);
                     let mut var_vec = VarVec::new(&p);
                     for _ in 0..self.num_nones {
                         var_vec.push_variant(None);
                     }
+                    self.num_nones = 0;
                     self.data = Some(var_vec);
                 }
             },

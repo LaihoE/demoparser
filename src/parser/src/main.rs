@@ -16,12 +16,11 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn main() {
-    /*
     rayon::ThreadPoolBuilder::new()
         .num_threads(24)
         .build_global()
         .unwrap();
-    */
+
     let wanted_props = vec!["CCSTeam.m_iScore".to_owned(), "m_iClip1".to_owned()];
     let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
     //let bytes = fs::read(demo_path).unwrap();
@@ -48,7 +47,6 @@ fn main() {
         };
         let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-        println!("{:?}", &mmap[..mmap.len() - 1]);
 
         let arc_bytes = Arc::new(mmap);
         let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
