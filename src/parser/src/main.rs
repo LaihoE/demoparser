@@ -78,6 +78,10 @@ fn main() {
             ptr: 0,
             tick: 0,
             huf: arc_huf.clone(),
+            qf_mapper: parser::decoder::QfMapper {
+                idx: 0,
+                map: AHashMap::default(),
+            },
             settings: settings,
             handles: vec![],
             parse_entities: true,

@@ -3,7 +3,16 @@ use super::{
     sendtables::Decoder,
     variants::Variant,
 };
+
+use crate::q_float::QuantalizedFloat;
 use crate::sendtables::Decoder::*;
+use ahash::AHashMap;
+
+#[derive(Debug, Clone)]
+pub struct QfMapper {
+    pub idx: u32,
+    pub map: AHashMap<u32, QuantalizedFloat>,
+}
 
 impl<'a> Bitreader<'a> {
     #[inline(always)]

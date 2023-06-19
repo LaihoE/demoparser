@@ -1,6 +1,7 @@
 use super::read_bits::{Bitreader, DemoParserError};
 use crate::collect_data::PropType;
 use crate::collect_data::TYPEHM;
+use crate::decoder::QfMapper;
 use crate::demo_searcher::DemoSearcher;
 use crate::entities_utils::FieldPath;
 use crate::parser_settings::Parser;
@@ -329,11 +330,11 @@ impl Field {
         }
     }
 
-    pub fn find_decoder(&mut self, model: FieldModel) {
+    pub fn find_decoder(&mut self, model: FieldModel, qf_map: &mut QfMapper) {
         self.model = model.clone();
         match model {
-            FieldModelFixedArray => self.decoder = self.match_decoder(),
-            FieldModelSimple => self.decoder = self.match_decoder(),
+            FieldModelFixedArray => self.decoder = self.match_decoder(qf_map),
+            FieldModelSimple => self.decoder = self.match_decoder(qf_map),
             FieldModelFixedTable => self.decoder = Decoder::BooleanDecoder,
             FieldModelVariableTable => self.base_decoder = Some(Decoder::UnsignedDecoder),
             FieldModelVariableArray => {
@@ -359,21 +360,21 @@ impl Field {
             FieldModelNOTSET => panic!("Field model not set??"),
         }
     }
-    pub fn match_decoder(&self) -> Decoder {
+    pub fn match_decoder(&self, qf_map: &mut QfMapper) -> Decoder {
         if self.var_name == "m_iClip1" {
             return Decoder::AmmoDecoder;
         }
         let dec = match BASETYPE_DECODERS.get(&self.field_type.base_type) {
             Some(decoder) => decoder.clone(),
             None => match self.field_type.base_type.as_str() {
-                "float32" => self.find_float_type(),
-                "Vector" => self.find_vector_type(3),
-                "Vector2D" => self.find_vector_type(2),
-                "Vector4D" => self.find_vector_type(4),
+                "float32" => self.find_float_type(qf_map),
+                "Vector" => self.find_vector_type(3, qf_map),
+                "Vector2D" => self.find_vector_type(2, qf_map),
+                "Vector4D" => self.find_vector_type(4, qf_map),
                 "uint64" => self.find_uint_type(),
                 "QAngle" => self.find_qangle_type(),
                 "CHandle" => UnsignedDecoder,
-                "CNetworkedQuantizedFloat" => self.find_float_type(),
+                "CNetworkedQuantizedFloat" => self.find_float_type(qf_map),
                 "CStrongHandle" => self.find_uint_type(),
                 "CEntityHandle" => self.find_uint_type(),
                 _ => Decoder::UnsignedDecoder,
@@ -393,7 +394,7 @@ impl Field {
             }
         }
     }
-    pub fn find_float_type(&self) -> Decoder {
+    pub fn find_float_type(&self, qf_map: &mut QfMapper) -> Decoder {
         match self.var_name.as_str() {
             "m_flSimulationTime" => return Decoder::FloatSimulationTimeDecoder,
             "m_flAnimTime" => return Decoder::FloatSimulationTimeDecoder,
@@ -412,22 +413,26 @@ impl Field {
                         Some(self.low_value),
                         Some(self.high_value),
                     );
-                    return Decoder::QuantalizedFloatDecoder(qf);
+                    let idx = qf_map.idx;
+                    qf_map.map.insert(idx, qf);
+                    qf_map.idx += 1;
+                    return Decoder::QuantalizedFloatDecoder(idx as u8);
                 }
             }
         }
     }
+
     pub fn find_uint_type(&self) -> Decoder {
         match self.encoder.as_str() {
             "fixed64" => Decoder::Fixed64Decoder,
             _ => Decoder::Unsigned64Decoder,
         }
     }
-    pub fn find_vector_type(&self, n: u32) -> Decoder {
+    pub fn find_vector_type(&self, n: u32, qf_map: &mut QfMapper) -> Decoder {
         if n == 3 && self.encoder == "normal" {
             return Decoder::VectorNormalDecoder;
         }
-        let float_type = self.find_float_type();
+        let float_type = self.find_float_type(qf_map);
         match float_type {
             NoscaleDecoder => return VectorNoscaleDecoder,
             FloatCoordDecoder => return VectorFloatCoordDecoder,
@@ -572,22 +577,22 @@ impl DemoSearcher {
                                 if field.field_type.pointer
                                     || POINTER_TYPES.contains(&field.field_type.base_type.as_str())
                                 {
-                                    field.find_decoder(FieldModelFixedTable)
+                                    field.find_decoder(FieldModelFixedTable, &mut self.qf_mapper)
                                 } else {
-                                    field.find_decoder(FieldModelVariableTable)
+                                    field.find_decoder(FieldModelVariableTable, &mut self.qf_mapper)
                                 }
                             }
                             None => {
                                 if field.field_type.count > 0
                                     && field.field_type.base_type != "char"
                                 {
-                                    field.find_decoder(FieldModelFixedArray)
+                                    field.find_decoder(FieldModelFixedArray, &mut self.qf_mapper)
                                 } else if field.field_type.base_type == "CUtlVector"
                                     || field.field_type.base_type == "CNetworkUtlVectorBase"
                                 {
-                                    field.find_decoder(FieldModelVariableArray)
+                                    field.find_decoder(FieldModelVariableArray, &mut self.qf_mapper)
                                 } else {
-                                    field.find_decoder(FieldModelSimple)
+                                    field.find_decoder(FieldModelSimple, &mut self.qf_mapper)
                                 }
                             }
                         }

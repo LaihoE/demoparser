@@ -1,4 +1,5 @@
 use crate::collect_data::TYPEHM;
+use crate::decoder::QfMapper;
 use crate::netmessage_types;
 use crate::netmessage_types::netmessage_type_from_int;
 use crate::parser::demo_cmd_type_from_int;
@@ -50,6 +51,8 @@ pub struct DemoSearcher {
     pub path_to_prop_name: AHashMap<[i32; 7], String>,
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
     pub name_to_id: AHashMap<String, u32>,
+
+    pub qf_mapper: QfMapper,
 
     pub id: u32,
     pub wanted_prop_ids: Vec<u32>,
