@@ -78,7 +78,7 @@ impl fmt::Display for Decoder {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Decoder {
-    QuantalizedFloatDecoder(QuantalizedFloat),
+    QuantalizedFloatDecoder(u8),
     VectorNormalDecoder,
     VectorNoscaleDecoder,
     VectorFloatCoordDecoder,
