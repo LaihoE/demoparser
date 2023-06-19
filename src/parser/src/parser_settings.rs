@@ -174,6 +174,7 @@ impl<'a> Parser<'a> {
                 cell_y_offset_player: None,
                 cell_z_offset_player: None,
                 cell_z_player: None,
+                active_weapon: None,
             },
             serializers: AHashMap::default(),
             ptr: 0,
@@ -244,6 +245,7 @@ pub struct SpecialIDs {
     pub cell_x_offset_player: Option<u32>,
     pub cell_y_offset_player: Option<u32>,
     pub cell_z_offset_player: Option<u32>,
+    pub active_weapon: Option<u32>,
 }
 
 fn msb(mut val: u32) -> u32 {

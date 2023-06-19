@@ -72,6 +72,7 @@ impl PropColumn {
                     v.extend_from_slice(&v_other);
                 }
                 _ => {
+                    println!("{:?}", self);
                     panic!("illegal 1");
                 }
             },
@@ -189,11 +190,11 @@ impl PropColumn {
         }
         match v_type {
             Some(0) => self.data = Some(VarVec::Bool(vec![])),
-            Some(1) => self.data = Some(VarVec::Bool(vec![])),
-            Some(2) => self.data = Some(VarVec::Bool(vec![])),
-            Some(3) => self.data = Some(VarVec::Bool(vec![])),
-            Some(4) => self.data = Some(VarVec::Bool(vec![])),
-            Some(5) => self.data = Some(VarVec::Bool(vec![])),
+            Some(1) => self.data = Some(VarVec::F32(vec![])),
+            Some(2) => self.data = Some(VarVec::I32(vec![])),
+            Some(3) => self.data = Some(VarVec::String(vec![])),
+            Some(4) => self.data = Some(VarVec::U32(vec![])),
+            Some(5) => self.data = Some(VarVec::U64(vec![])),
             _ => panic!("NONE OR > 5 TYPE FOR VEC RESOLUTION : {:?}", v_type),
         }
         for _ in 0..self.num_nones {

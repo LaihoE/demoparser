@@ -596,12 +596,17 @@ impl DemoSearcher {
                     }
                 }
             }
-            if my_serializer.name.contains("Player") || my_serializer.name.contains("Team") {
+            if my_serializer.name.contains("Player")
+                || my_serializer.name.contains("Team")
+                || my_serializer.name.contains("Weapon")
+                || my_serializer.name.contains("AK")
+            {
                 self.find_prop_name_paths(&mut my_serializer);
             }
             self.serializers
                 .insert(my_serializer.name.clone(), my_serializer);
         }
+
         self.prop_infos.push(PropInfo {
             id: 9999997,
             prop_type: None,
@@ -649,6 +654,8 @@ impl DemoSearcher {
                     }
                     f.df_pos = self.id as usize;
                 }
+                let split_at_dot: Vec<&str> = full_name.split(".").collect();
+                let weap_prop = split_at_dot.last().unwrap();
 
                 if self.wanted_player_props.contains(&full_name) {
                     self.wanted_prop_ids.push(self.id);
@@ -670,20 +677,73 @@ impl DemoSearcher {
                         }
                     }
                 }
-                if full_name.contains("CCSTeam.m_iTeamNum") {
-                    println!("{:?}", full_name);
+                if self.wanted_player_props.contains(&weap_prop.to_string()) {
+                    self.wanted_prop_ids.push(self.id);
+                    self.prop_name_to_path.insert(full_name.clone(), arr);
+                    self.path_to_prop_name.insert(arr, full_name.clone());
+
+                    let id = match self.name_to_id.get(weap_prop.to_owned()) {
+                        Some(i) => {}
+                        None => match TYPEHM.get(&weap_prop) {
+                            Some(t) => self.prop_infos.push(PropInfo {
+                                id: self.id,
+                                prop_type: Some(t.clone()),
+                                prop_name: weap_prop.to_string(),
+                            }),
+                            None => {
+                                self.prop_infos.push(
+                                    PropInfo {
+                                        id: self.id,
+                                        prop_type: None,
+                                        prop_name: weap_prop.to_string(),
+                                    }
+                                    .clone(),
+                                );
+                            }
+                        },
+                    };
+                    self.name_to_id.insert(weap_prop.to_string(), self.id);
+                    self.id_to_path.insert(self.id, arr);
+                    self.id += 1;
+                    continue;
                 }
 
                 match full_name.as_str() {
                     "CCSTeam.m_iTeamNum" => self.controller_ids.team_team_num = Some(self.id),
                     "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX" => {
-                        self.controller_ids.cell_x_player = Some(self.id)
+                        self.controller_ids.cell_x_player = Some(self.id);
+                    }
+                    "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX" => {
+                        self.controller_ids.cell_x_offset_player = Some(self.id);
+                        if self.wanted_player_props.contains(&"X".to_string()) {
+                            self.prop_infos.push(PropInfo {
+                                id: 9999907,
+                                prop_type: Some(PropType::Custom),
+                                prop_name: "X".to_string(),
+                            });
+                        }
+                    }
+                    "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellY" => {
+                        self.controller_ids.cell_y_player = Some(self.id);
+                    }
+                    "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY" => {
+                        self.controller_ids.cell_y_offset_player = Some(self.id);
+                        if self.wanted_player_props.contains(&"Y".to_string()) {
+                            self.prop_infos.push(PropInfo {
+                                id: 9999902,
+                                prop_type: Some(PropType::Custom),
+                                prop_name: "Y".to_string(),
+                            });
+                        }
                     }
                     "CCSPlayerPawn.m_iTeamNum" => {
                         self.controller_ids.player_team_pointer = Some(self.id)
                     }
                     "CBasePlayerWeapon.m_nOwnerId" => {
                         self.controller_ids.weapon_owner_pointer = Some(self.id)
+                    }
+                    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => {
+                        self.controller_ids.active_weapon = Some(self.id)
                     }
                     "CCSPlayerController.m_iTeamNum" => self.controller_ids.teamnum = Some(self.id),
                     "CCSPlayerController.m_iszPlayerName" => {

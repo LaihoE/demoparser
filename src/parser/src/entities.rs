@@ -72,7 +72,7 @@ impl<'a> Parser<'a> {
             match cmd {
                 EntityCmd::Delete => {
                     self.projectiles.remove(&entity_id);
-                    self.entities.remove(&entity_id);
+                    // self.entities.remove(&entity_id);
                 }
                 EntityCmd::CreateAndUpdate => {
                     self.create_new_entity(&mut bitreader, &entity_id)?;
@@ -110,9 +110,10 @@ impl<'a> Parser<'a> {
 
         for field_info in &self.paths[..n_paths] {
             let result = bitreader.decode(&field_info.decoder)?;
-            //if field_info.should_parse {
-            entity.props.insert(field_info.df_pos as u32, result);
-            //}
+            if field_info.should_parse {
+                //println!("{:?}", result);
+                entity.props.insert(field_info.df_pos as u32, result);
+            }
         }
         Ok(n_paths)
     }
@@ -334,12 +335,28 @@ impl<'a> Parser<'a> {
             entity_type: entity_type,
             history: HashMap::default(),
         };
+        let cls = self.cls_by_id.get(&cls_id);
         self.entities.insert(*entity_id, entity);
         // Insert baselines
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
+            /*
+            println!(
+                "FOUND INSTANCEBASELINE {:?} {}",
+                cls.as_ref().unwrap().class_id,
+                self.tick,
+            );
+            */
             let b = &baseline_bytes.clone();
             let mut br = Bitreader::new(&b);
             self.update_entity(&mut br, *entity_id)?;
+        } else {
+            /*
+            println!(
+                "NOT FOUND INSTANCEBASELINE {:?} {}",
+                cls.as_ref().unwrap().class_id,
+                self.tick,
+            );
+            */
         };
         Ok(())
     }

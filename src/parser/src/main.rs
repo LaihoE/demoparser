@@ -3,7 +3,6 @@ use ahash::AHashSet;
 use dashmap::DashMap;
 use memmap2::MmapOptions;
 use parser::demo_searcher::DemoSearcher;
-use parser::demo_searcher::State;
 use parser::parser_settings::create_huffman_lookup_table;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
@@ -21,30 +20,27 @@ fn main() {
         .build_global()
         .unwrap();
 
-    let wanted_props = vec!["CCSTeam.m_iScore".to_owned(), "m_iClip1".to_owned()];
+    let wanted_props = vec!["X".to_owned(), "Y".to_owned()];
     let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
     //let bytes = fs::read(demo_path).unwrap();
     //let file = File::open(demo_path).unwrap();
     //let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
     let huf = create_huffman_lookup_table();
-
+    let before = Instant::now();
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test/").unwrap();
     //let huf = vec![];
 
     let arc_huf = Arc::new(huf);
     let mut c = 0;
     for path in dir {
-        if c > 1 {
+        if c > 1000 {
             break;
         }
         c += 1;
         println!("{:?}", path.as_ref().unwrap().path());
         let before = Instant::now();
-        let state = State {
-            cls_by_id: Arc::new(DashMap::default()),
-            serializers: Arc::new(DashMap::default()),
-        };
+
         let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
@@ -76,6 +72,7 @@ fn main() {
         };
 
         let mut ds = DemoSearcher {
+            name_to_id: AHashMap::default(),
             bytes: arc_bytes.clone(),
             fullpacket_offsets: vec![],
             ptr: 0,
@@ -110,6 +107,7 @@ fn main() {
                 cell_z_offset_player: None,
                 cell_z_player: None,
                 team_team_num: None,
+                active_weapon: None,
             },
             id_to_path: AHashMap::default(),
             id: 0,
@@ -122,7 +120,7 @@ fn main() {
         let d = ds.front_demo_metadata().unwrap();
         println!("{:?}", d.keys());
     }
-
+    println!("{:?}", before.elapsed());
     // println!("{:?}", ds.handles);
     //println!("{:#?}", ds.state.cls_by_id);
 }

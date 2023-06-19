@@ -14,18 +14,15 @@ use crate::{other_netmessages::Class, parser, read_bits::DemoParserError};
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
-use csgoproto::demo::CDemoSendTables;
 use csgoproto::demo::EDemoCommands::*;
 use dashmap::DashMap;
 use memmap2::Mmap;
 use protobuf::Message;
-use rayon::prelude::*;
+use rayon::iter::ParallelIterator;
+use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
-use std::thread;
 use std::thread::JoinHandle;
-use std::time::Duration;
-use std::time::Instant;
 
 pub struct DemoSearcher {
     pub fullpacket_offsets: Vec<usize>,
@@ -52,6 +49,7 @@ pub struct DemoSearcher {
     pub prop_name_to_path: AHashMap<String, [i32; 7]>,
     pub path_to_prop_name: AHashMap<[i32; 7], String>,
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
+    pub name_to_id: AHashMap<String, u32>,
 
     pub id: u32,
     pub wanted_prop_ids: Vec<u32>,
@@ -62,11 +60,6 @@ pub struct DemoSearcher {
     pub prop_infos: Vec<PropInfo>,
 
     pub header: AHashMap<String, String>,
-}
-
-pub struct State {
-    pub serializers: Arc<DashMap<String, Serializer>>,
-    pub cls_by_id: Arc<DashMap<u32, Class>>,
 }
 
 impl DemoSearcher {
@@ -126,10 +119,9 @@ impl DemoSearcher {
                 self.ptr += size as usize;
             };
         }
-
-        let mut v: Vec<AHashMap<u32, PropColumn>> = self
+        let mut outputs: Vec<AHashMap<u32, PropColumn>> = self
             .fullpacket_offsets
-            .iter()
+            .par_iter()
             .map(|offset| {
                 let mut parser = Parser::new(self.settings.clone(), &self.cls_by_id).unwrap();
                 if offset == &16 {
@@ -142,12 +134,10 @@ impl DemoSearcher {
                 parser.controller_ids = self.controller_ids.clone();
                 parser.parse_entities = true;
                 parser.start().unwrap();
-                //println!("{:?}", self.controller_ids.team_team_num.as_ref().unwrap());
-                println!("{:?}", parser.controller_ids.player_team_pointer);
                 parser.output
             })
             .collect();
-        Ok(self.combine_dfs(&mut v))
+        Ok(self.combine_dfs(&mut outputs))
     }
 
     fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
@@ -157,32 +147,6 @@ impl DemoSearcher {
                 big.entry(*k).or_insert(v.clone()).extend_from(v)
             }
         }
-
-        // println!("{:?}", big);
-
-        /*
-        let before = Instant::now();
-        for part in &v[1..] {
-            for (name, col) in part {
-                insert_df(&col.data, *name, &mut big);
-            }
-        }
-        for x in &mut *v {
-            println!("***");
-            for (k, v) in x {
-                println!("{} {}", k, v.data.is_some());
-                match &v.data {
-                    Some(VarVec::I32(i)) => println!("{:?}", i.len()),
-                    Some(VarVec::String(i)) => println!("{:?}", i.len()),
-                    Some(VarVec::U64(i)) => println!("{:?}", i.len()),
-                    Some(VarVec::U32(i)) => println!("{:?}", i.len()),
-                    // None => println!("NONONNONONOOENNEONEONEONE {:?}", v),
-                    _ => {}
-                }
-            }
-        }
-        println!("{:2?}", before.elapsed());
-        */
         big
     }
     fn insert_type(&self, v: &mut Vec<AHashMap<u32, PropColumn>>, prop_id: &u32, typ: Option<u32>) {

@@ -32,9 +32,8 @@ impl<'a> Parser<'a> {
         // if either one is missing then push None to output
         for (entity_id, player) in &self.players {
             for prop_info in &self.prop_infos {
-                // returns none if missing
+                // All values come trough here. None if cant be found.
                 let prop = self.find_prop(prop_info, entity_id, player);
-                // println!("{:?} {}", prop, prop_info.prop_name);
                 self.output
                     .entry(prop_info.id)
                     .or_insert_with(|| PropColumn::new())
@@ -70,17 +69,15 @@ impl<'a> Parser<'a> {
             },
             _ => {}
         }
-        // println!("{:?} {}", prop_info.prop_type, prop_info.prop_name);
+
         match prop_info.prop_type {
             Some(PropType::Team) => return self.find_team_prop(&prop_info.id, &entity_id),
-            /*
             Some(PropType::Custom) => {
                 return self.create_custom_prop(prop_info.prop_name.as_str(), entity_id)
             }
-            Some(PropType::Weapon) => {
-                return self.find_weapon_prop(prop_info.prop_name.as_str(), &entity_id)
-            }
-            */
+
+            Some(PropType::Weapon) => return self.find_weapon_prop(&prop_info.id, &entity_id),
+
             Some(PropType::Controller) => match player.controller_entid {
                 Some(entid) => return self.get_prop_for_ent(&prop_info.id, &entid),
                 None => return None,
@@ -251,21 +248,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn find_weapon_prop(&self, prop: &str, player_entid: &i32) -> Option<Variant> {
-        if let Some(Variant::U32(weap_handle)) = self.get_prop_for_ent(
-            "CCSPlayerPawn.m_pWeaponServices.m_hActiveWeapon",
-            player_entid,
-        ) {
-            let weapon_entity_id = (weap_handle & 0x7FF) as i32;
-            if let Some(e) = self.entities.get(&weapon_entity_id) {
-                if let Some(c) = &self.cls_by_id.get(&e.cls_id) {
-                    let full_name = c.name.clone() + "." + &prop;
-                    return self.get_prop_for_ent(&full_name, &weapon_entity_id);
-                }
-            }
-        }
-        None
-    }
+
     pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
         match prop_name {
             "X" => self.collect_cell_coordinate_player("X", entity_id),
@@ -286,10 +269,85 @@ impl<'a> Parser<'a> {
         None
     }
     */
+    pub fn collect_cell_coordinate_player(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
+        match axis {
+            "X" => {
+                let x_prop_id = match self.controller_ids.cell_x_player {
+                    Some(x) => x,
+                    None => return None,
+                };
+                let x_offset_id = match self.controller_ids.cell_x_offset_player {
+                    Some(x) => x,
+                    None => return None,
+                };
+                let offset = self.get_prop_for_ent(&x_offset_id, entity_id);
+                let cell = self.get_prop_for_ent(&x_prop_id, entity_id);
+                if let Some(coord) = coord_from_cell(cell, offset) {
+                    return Some(Variant::F32(coord));
+                }
+            }
+            "Y" => {
+                let y_prop_id = match self.controller_ids.cell_y_player {
+                    Some(y) => y,
+                    None => return None,
+                };
+                let y_offset_id = match self.controller_ids.cell_y_offset_player {
+                    Some(y) => y,
+                    None => return None,
+                };
+
+                let offset = self.get_prop_for_ent(&y_offset_id, entity_id);
+                let cell = self.get_prop_for_ent(&y_prop_id, entity_id);
+                if let Some(coord) = coord_from_cell(cell, offset) {
+                    return Some(Variant::F32(coord));
+                }
+            }
+            "Z" => {
+                let z_prop_id = match self.controller_ids.cell_z_player {
+                    Some(z) => z,
+                    None => return None,
+                };
+                let z_offset_id = match self.controller_ids.cell_z_offset_player {
+                    Some(z) => z,
+                    None => return None,
+                };
+                let offset = self.get_prop_for_ent(&z_offset_id, entity_id);
+                let cell = self.get_prop_for_ent(&z_prop_id, entity_id);
+                if let Some(coord) = coord_from_cell(cell, offset) {
+                    return Some(Variant::F32(coord));
+                }
+            }
+            _ => panic!("Unknown axis: {}", axis),
+        }
+
+        None
+    }
+
+    pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
+        match prop_name {
+            "X" => self.collect_cell_coordinate_player("X", entity_id),
+            "Y" => self.collect_cell_coordinate_player("Y", entity_id),
+            "Z" => self.collect_cell_coordinate_player("Z", entity_id),
+            // "weapon_name" => self.find_weapon_name(entity_id),
+            _ => panic!("unknown custom prop: {}", prop_name),
+        }
+    }
+
+    pub fn find_weapon_prop(&self, prop: &u32, player_entid: &i32) -> Option<Variant> {
+        let p = match self.controller_ids.active_weapon {
+            Some(p) => p,
+            None => return None,
+        };
+        if let Some(Variant::U32(weap_handle)) = self.get_prop_for_ent(&p, player_entid) {
+            let weapon_entity_id = (weap_handle & 0x7FF) as i32;
+            let pp = self.get_prop_for_ent(&prop, &weapon_entity_id);
+            return pp;
+        }
+        None
+    }
     pub fn find_team_prop(&self, prop: &u32, player_entid: &i32) -> Option<Variant> {
         match self.controller_ids.player_team_pointer {
             None => {
-                println!("VERY RARE");
                 return None;
             }
             Some(p) => {
@@ -301,7 +359,6 @@ impl<'a> Parser<'a> {
                         3 => self.teams.team3_entid,
                         _ => None,
                     };
-                    println!("{:?}", team_entid);
                     // Get prop from team entity
                     if let Some(entid) = team_entid {
                         if let Some(p) = self.get_prop_for_ent(prop, &entid) {
