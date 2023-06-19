@@ -81,7 +81,7 @@ impl<'a> Parser<'a> {
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 // svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 // GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
-                // GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
+                GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
@@ -117,6 +117,7 @@ impl<'a> Parser<'a> {
             let msg_type = bitreader.read_u_bit_var().unwrap();
             let size = bitreader.read_varint().unwrap();
             let msg_bytes = bitreader.read_n_bytes(size as usize).unwrap();
+
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 // svc_ServerInfo => self.parse_class_info(&msg_bytes),

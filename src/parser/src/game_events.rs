@@ -1,7 +1,11 @@
+use std::time::Instant;
+
 use crate::collect_data::PropType;
 use crate::collect_data::TYPEHM;
+use crate::demo_searcher::DemoSearcher;
 use crate::parser_settings::Parser;
 use crate::read_bits::DemoParserError;
+use crate::sendtables::PropInfo;
 use crate::variants::*;
 use ahash::AHashMap;
 use ahash::RandomState;
@@ -23,7 +27,25 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
 ];
 const ENTITYIDNONE: i32 = 2047;
 
-/*
+impl DemoSearcher {
+    // Message that should come before first game event
+    pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        let bef = Instant::now();
+        let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
+
+        let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
+        for event_desc in event_list.descriptors {
+            if event_desc.name == Some("player_death".to_string()) {
+                hm.insert(event_desc.eventid(), event_desc);
+            }
+        }
+        self.ge_list = Some(hm);
+        println!("SEW {:2?}", bef.elapsed());
+
+        Ok(())
+    }
+}
+
 impl<'a> Parser<'a> {
     // Message that should come before first game event
     pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
@@ -49,9 +71,10 @@ impl<'a> Parser<'a> {
         let event_desc = match ge_list.get(&event.eventid()) {
             Some(desc) => desc,
             None => {
+                return Ok(());
                 return Err(DemoParserError::GameEventUnknownId(
                     event.eventid().to_string(),
-                ))
+                ));
             }
         };
         // Used to count how many of each event in this demo. Cheap so do it always
@@ -70,7 +93,6 @@ impl<'a> Parser<'a> {
             let ge = &event.keys[i];
             let desc = &event_desc.keys[i];
             let val = parse_key(ge);
-
             event_fields.push(EventField {
                 name: desc.name().to_owned(),
                 data: val,
@@ -124,10 +146,10 @@ impl<'a> Parser<'a> {
             }
         }
         // Values from Teams and Rules entity. Not bound to any player so can be added to any event.
-        extra_fields.extend(self.find_non_player_props());
+        //extra_fields.extend(self.find_non_player_props());
         Ok(extra_fields)
     }
-
+    /*
     fn find_non_player_props(&self) -> Vec<EventField> {
         let mut extra_fields = vec![];
         for (prop_name, og_name) in self
@@ -144,10 +166,11 @@ impl<'a> Parser<'a> {
         }
         extra_fields
     }
-    fn find_other_rules_props(&self, prop_name: &String, og_name: &String) -> Vec<EventField> {
+    */
+    fn find_other_rules_props(&self, prop_info: &PropInfo, og_name: &String) -> Vec<EventField> {
         let mut extra_fields = vec![];
         let prop = match self.rules_entity_id {
-            Some(entid) => self.get_prop_for_ent(prop_name, &entid),
+            Some(entid) => self.get_prop_for_ent(&prop_info.id, &entid),
             None => None,
         };
         extra_fields.push(EventField {
@@ -156,16 +179,16 @@ impl<'a> Parser<'a> {
         });
         extra_fields
     }
-    fn find_other_team_props(&self, prop_name: &String, og_name: &String) -> Vec<EventField> {
+    fn find_other_team_props(&self, prop_info: &PropInfo, og_name: &String) -> Vec<EventField> {
         let mut extra_fields = vec![];
         let t = self.teams.team2_entid;
         let ct = self.teams.team3_entid;
         let t_prop = match t {
-            Some(entid) => self.get_prop_for_ent(prop_name, &entid),
+            Some(entid) => self.get_prop_for_ent(&prop_info.id, &entid),
             None => None,
         };
         let ct_prop = match ct {
-            Some(entid) => self.get_prop_for_ent(prop_name, &entid),
+            Some(entid) => self.get_prop_for_ent(&prop_info.id, &entid),
             None => None,
         };
         extra_fields.push(EventField {
@@ -187,13 +210,16 @@ impl<'a> Parser<'a> {
         let mut extra_pairs = vec![];
 
         // prop name:
-        for (prop_name, og_name) in self
-            .wanted_player_props
+        for (prop_info, og_name) in self
+            .prop_infos
             .iter()
             .zip(&self.wanted_player_props_og_names)
         {
             // These are meant for entities not used here
-            if prop_name == "tick" || prop_name == "name" || prop_name == "steamid" {
+            if prop_info.prop_name == "tick"
+                || prop_info.prop_name == "name"
+                || prop_info.prop_name == "steamid"
+            {
                 continue;
             }
             if entity_id == ENTITYIDNONE {
@@ -205,7 +231,7 @@ impl<'a> Parser<'a> {
             }
 
             let prop = match self.players.get(&entity_id) {
-                Some(player_md) => self.find_prop(prop_name, &entity_id, player_md),
+                Some(player_md) => self.find_prop(&prop_info, &entity_id, player_md),
                 None => None,
             };
             match prop {
@@ -264,7 +290,7 @@ impl<'a> Parser<'a> {
         }
     }
 }
-*/
+
 fn parse_key(key: &Key_t) -> Option<Variant> {
     match key.type_() {
         1 => Some(Variant::String(key.val_string().to_owned())),

@@ -12,6 +12,7 @@ use parser::sendtables::PropInfo;
 use std::fs;
 use std::fs::File;
 use std::sync::Arc;
+use std::thread;
 use std::time::Instant;
 
 fn main() {
@@ -34,7 +35,7 @@ fn main() {
     let arc_huf = Arc::new(huf);
     let mut c = 0;
     for path in dir {
-        if c > 1 {
+        if c > 10000 {
             break;
         }
         c += 1;
@@ -43,8 +44,17 @@ fn main() {
 
         let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-
         let arc_bytes = Arc::new(mmap);
+        let mc = arc_bytes.clone();
+
+        thread::spawn(move || {
+            let mut y = vec![];
+            for b in mc.iter() {
+                y.push(b);
+            }
+            println!("{:?}", y.last());
+        });
+
         let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
 
         let settings = ParserInputs {
@@ -83,6 +93,8 @@ fn main() {
                 map: AHashMap::default(),
             },
             settings: settings,
+            ge_list: None,
+            start: Instant::now(),
             handles: vec![],
             parse_entities: true,
             serializers: AHashMap::default(),

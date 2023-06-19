@@ -1,5 +1,6 @@
 use crate::collect_data::TYPEHM;
 use crate::decoder::QfMapper;
+use crate::game_events::GameEvent;
 use crate::netmessage_types;
 use crate::netmessage_types::netmessage_type_from_int;
 use crate::parser::demo_cmd_type_from_int;
@@ -16,6 +17,7 @@ use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
 use csgoproto::demo::EDemoCommands::*;
+use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use dashmap::DashMap;
 use memmap2::Mmap;
 use protobuf::Message;
@@ -24,6 +26,7 @@ use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 use std::thread::JoinHandle;
+use std::time::Instant;
 
 pub struct DemoSearcher {
     pub fullpacket_offsets: Vec<usize>,
@@ -35,6 +38,8 @@ pub struct DemoSearcher {
     pub handles: Vec<JoinHandle<()>>,
     pub serializers: AHashMap<String, Serializer>,
     pub cls_by_id: AHashMap<u32, Class>,
+    pub start: Instant,
+    pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
 
     pub wanted_player_props: Vec<String>,
 
@@ -81,48 +86,44 @@ impl DemoSearcher {
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let cmd = demo_cmd_type_from_int(msg_type as i32);
-            if cmd == Some(DEM_SendTables)
-                || cmd == Some(DEM_ClassInfo)
-                || cmd == Some(DEM_FullPacket)
-                || cmd == Some(DEM_Stop)
-                || cmd == Some(DEM_FileHeader)
-            {
-                let bytes = match is_compressed {
-                    true => SnapDecoder::new()
-                        .decompress_vec(self.read_n_bytes(size)?)
-                        .unwrap(),
-                    false => self.read_n_bytes(size)?.to_vec(),
-                };
-                let ok: Result<(), DemoParserError> =
-                    match demo_cmd_type_from_int(msg_type as i32).unwrap() {
-                        DEM_SendTables => {
-                            self.parse_sendtable(Message::parse_from_bytes(&bytes).unwrap())
-                                .unwrap();
-                            Ok(())
-                        }
-                        DEM_FileHeader => {
-                            self.parse_header(&bytes).unwrap();
-                            Ok(())
-                        }
-                        DEM_ClassInfo => {
-                            self.parse_class_info(&bytes).unwrap();
-                            Ok(())
-                        }
-                        DEM_FullPacket => {
-                            self.fullpacket_offsets.push(before);
-                            Ok(())
-                        }
-                        DEM_Stop => {
-                            break;
-                        }
-                        _ => Ok(()),
-                    };
-                ok?;
-            } else {
-                self.ptr += size as usize;
+
+            let bytes = match is_compressed {
+                true => SnapDecoder::new()
+                    .decompress_vec(self.read_n_bytes(size)?)
+                    .unwrap(),
+                false => self.read_n_bytes(size)?.to_vec(),
             };
+            let ok: Result<(), DemoParserError> =
+                match demo_cmd_type_from_int(msg_type as i32).unwrap() {
+                    DEM_SendTables => {
+                        self.parse_sendtable(Message::parse_from_bytes(&bytes).unwrap())
+                            .unwrap();
+                        Ok(())
+                    }
+                    DEM_FileHeader => {
+                        self.parse_header(&bytes).unwrap();
+                        Ok(())
+                    }
+                    DEM_ClassInfo => {
+                        self.parse_class_info(&bytes).unwrap();
+                        Ok(())
+                    }
+                    DEM_FullPacket => {
+                        self.fullpacket_offsets.push(before);
+                        Ok(())
+                    }
+                    DEM_SignonPacket => {
+                        self.parse_packet(&bytes).unwrap();
+                        Ok(())
+                    }
+                    DEM_Stop => {
+                        break;
+                    }
+                    _ => Ok(()),
+                };
+            ok?;
         }
-        let mut outputs: Vec<AHashMap<u32, PropColumn>> = self
+        let mut outputs: Vec<Parser> = self
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
@@ -135,12 +136,18 @@ impl DemoSearcher {
                 parser.prop_name_to_path = self.prop_name_to_path.clone();
                 parser.prop_infos = self.prop_infos.clone();
                 parser.controller_ids = self.controller_ids.clone();
-                parser.parse_entities = true;
+                parser.parse_entities = false;
+                parser.qf_map = self.qf_mapper.clone();
+                parser.ge_list = self.ge_list.clone();
+                parser.wanted_event = Some("player_death".to_string());
                 parser.start().unwrap();
-                parser.output
+                parser
             })
             .collect();
-        Ok(self.combine_dfs(&mut outputs))
+        let bef = Instant::now();
+        let evs: Vec<GameEvent> = outputs.iter().flat_map(|p| p.game_events.clone()).collect();
+        //let big = self.combine_dfs(&mut outputs);
+        Ok(AHashMap::default())
     }
 
     fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
@@ -242,10 +249,37 @@ fn insert_df(v: &Option<VarVec>, prop_id: u32, map: &mut AHashMap<u32, PropColum
     }
 }
 
+use crate::read_bits::Bitreader;
+use bitter::BitReader;
 use csgoproto::demo::CDemoClassInfo;
 use csgoproto::demo::CDemoFileHeader;
+use csgoproto::demo::CDemoPacket;
+
+use csgoproto::demo::*;
+use csgoproto::netmessages::*;
+use netmessage_types::NetmessageType::*;
 
 impl DemoSearcher {
+    pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
+        let packet_data = packet.data.unwrap();
+        let mut bitreader = Bitreader::new(&packet_data);
+        // Inner loop
+        while bitreader.reader.has_bits_remaining(8) {
+            let msg_type = bitreader.read_u_bit_var()?;
+            let size = bitreader.read_varint()?;
+            let msg_bytes = bitreader.read_n_bytes(size as usize)?;
+
+            let ok = match netmessage_type_from_int(msg_type as i32) {
+                GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
+                //GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
+                _ => Ok(()),
+            };
+            ok?
+        }
+        Ok(())
+    }
+
     pub fn parse_header(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let header: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
         self.header.insert(
@@ -315,6 +349,7 @@ impl DemoSearcher {
                 },
             );
         }
+        println!("{:2?}", self.start.elapsed());
         Ok(())
     }
 }

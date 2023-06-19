@@ -5,6 +5,7 @@ use super::sendtables::Serializer;
 use super::stringtables::StringTable;
 use super::variants::PropColumn;
 use crate::collect_data::ProjectileRecordVec;
+use crate::decoder::QfMapper;
 use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
 use crate::other_netmessages::Class;
@@ -55,6 +56,7 @@ pub struct Parser<'a> {
     pub fullpackets_parsed: u32,
     pub packets_parsed: u32,
     pub cnt: AHashMap<FieldModel, u32>,
+    pub qf_map: QfMapper,
 
     // Output from parsing
     pub output: AHashMap<u32, PropColumn, RandomState>,
@@ -160,6 +162,10 @@ impl<'a> Parser<'a> {
         ]);
         // let huffman_table = create_huffman_lookup_table();
         Ok(Parser {
+            qf_map: QfMapper {
+                idx: 0,
+                map: AHashMap::default(),
+            },
             fullpackets_parsed: 0,
             packets_parsed: 0,
             controller_ids: SpecialIDs {
