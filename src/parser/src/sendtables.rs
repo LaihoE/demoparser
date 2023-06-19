@@ -611,7 +611,7 @@ impl DemoSearcher {
             self.serializers
                 .insert(my_serializer.name.clone(), my_serializer);
         }
-        println!("{}", self.id);
+
         self.prop_infos.push(PropInfo {
             id: 9999997,
             prop_type: None,

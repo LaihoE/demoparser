@@ -136,7 +136,7 @@ impl DemoSearcher {
                 parser.prop_name_to_path = self.prop_name_to_path.clone();
                 parser.prop_infos = self.prop_infos.clone();
                 parser.controller_ids = self.controller_ids.clone();
-                parser.parse_entities = false;
+                parser.parse_entities = true;
                 parser.qf_map = self.qf_mapper.clone();
                 parser.ge_list = self.ge_list.clone();
                 parser.wanted_event = Some("player_death".to_string());
@@ -146,8 +146,8 @@ impl DemoSearcher {
             .collect();
         let bef = Instant::now();
         let evs: Vec<GameEvent> = outputs.iter().flat_map(|p| p.game_events.clone()).collect();
-        //let big = self.combine_dfs(&mut outputs);
-        Ok(AHashMap::default())
+        let big = self.combine_dfs(&mut outputs);
+        Ok(big)
     }
 
     fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {

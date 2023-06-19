@@ -2,6 +2,7 @@ use ahash::AHashMap;
 use ahash::AHashSet;
 use dashmap::DashMap;
 use memmap2::MmapOptions;
+use mimalloc::MiMalloc;
 use parser::demo_searcher::DemoSearcher;
 use parser::parser_settings::create_huffman_lookup_table;
 use parser::parser_settings::Parser;
@@ -14,6 +15,9 @@ use std::fs::File;
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
+
+//#[global_allocator]
+//static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
     rayon::ThreadPoolBuilder::new()
@@ -35,7 +39,7 @@ fn main() {
     let arc_huf = Arc::new(huf);
     let mut c = 0;
     for path in dir {
-        if c > 10000 {
+        if c > 1 {
             break;
         }
         c += 1;
@@ -46,14 +50,6 @@ fn main() {
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         let arc_bytes = Arc::new(mmap);
         let mc = arc_bytes.clone();
-
-        thread::spawn(move || {
-            let mut y = vec![];
-            for b in mc.iter() {
-                y.push(b);
-            }
-            println!("{:?}", y.last());
-        });
 
         let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
 
