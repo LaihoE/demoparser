@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
-                //svc_UpdateStringTable => self.update_string_table(&msg_bytes),
+                // svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 // GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
                 // GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),

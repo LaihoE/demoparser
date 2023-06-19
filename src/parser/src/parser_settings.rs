@@ -9,6 +9,7 @@ use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
 use crate::other_netmessages::Class;
 use crate::sendtables::FieldInfo;
+use crate::sendtables::FieldModel;
 use crate::sendtables::PropInfo;
 use ahash::AHashMap;
 use ahash::AHashSet;
@@ -53,6 +54,7 @@ pub struct Parser<'a> {
     pub controller_ids: SpecialIDs,
     pub fullpackets_parsed: u32,
     pub packets_parsed: u32,
+    pub cnt: AHashMap<FieldModel, u32>,
 
     // Output from parsing
     pub output: AHashMap<u32, PropColumn, RandomState>,
@@ -176,6 +178,7 @@ impl<'a> Parser<'a> {
                 cell_z_player: None,
                 active_weapon: None,
             },
+            cnt: AHashMap::default(),
             serializers: AHashMap::default(),
             ptr: 0,
             ge_list: None,

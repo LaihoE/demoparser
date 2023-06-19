@@ -34,7 +34,7 @@ fn main() {
     let arc_huf = Arc::new(huf);
     let mut c = 0;
     for path in dir {
-        if c > 1000 {
+        if c > 1 {
             break;
         }
         c += 1;
