@@ -4,6 +4,7 @@ use super::{
     variants::Variant,
 };
 use crate::sendtables::Decoder::*;
+use bitter::BitReader;
 
 impl<'a> Bitreader<'a> {
     #[inline(always)]
@@ -30,10 +31,39 @@ impl<'a> Bitreader<'a> {
             Fixed64Decoder => Ok(Variant::U64(self.decode_uint64()?)),
             VectorFloatCoordDecoder => Ok(Variant::FloatVec32(self.decode_vector_float_coord()?)),
             AmmoDecoder => Ok(Variant::U32(self.decode_ammo()?)),
+            QanglePres => Ok(Variant::VecXYZ(self.decode_qangle_variant_pres()?)),
             _ => panic!("huh {:?}", decoder),
         }
     }
+    pub fn decode_qangle_variant_pres(&mut self) -> Result<[f32; 3], DemoParserError> {
+        let mut v = [0.0; 3];
+        let has_x = self.read_boolean()?;
+        let has_y = self.read_boolean()?;
+        let has_z = self.read_boolean()?;
+        if has_x {
+            v[0] = self.read_bit_coord_pres()?;
+        }
+        if has_y {
+            v[1] = self.read_bit_coord_pres()?;
+        }
+        if has_z {
+            v[2] = self.read_bit_coord_pres()?;
+        }
+        Ok(v)
+    }
+    pub fn read_bit_coord_pres(&mut self) -> Result<f32, DemoParserError> {
+        let sign = self.read_boolean()?;
+        let int_val = self.reader.read_bits(5).unwrap();
+        let frac_val = self.read_nbits(14)?;
 
+        let resol: f64 = 1.0 / (1 << 5) as f64;
+        let result: f32 = (int_val as f64 + (frac_val as f64 * resol) as f64) as f32;
+        if sign {
+            Ok(-result)
+        } else {
+            Ok(result)
+        }
+    }
     pub fn decode_vector_float_coord(&mut self) -> Result<Vec<f32>, DemoParserError> {
         let mut v = vec![];
         for _ in 0..3 {

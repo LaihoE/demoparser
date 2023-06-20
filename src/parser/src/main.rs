@@ -9,7 +9,7 @@ fn main() {
         "CCSPlayerController.m_iPawnHealth".to_owned(),
         "m_iClip1".to_owned(),
     ];
-    let demo_path = "/home/laiho/Documents/demos/cs2/s2.dem";
+    let demo_path = "/home/laiho/Documents/demos/cs2/mirage.dem";
     let bytes = fs::read(demo_path).unwrap();
 
     let settings = ParserInputs {

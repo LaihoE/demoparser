@@ -80,6 +80,7 @@ pub enum Decoder {
     NO,
     X,
     AmmoDecoder,
+    QanglePres,
 }
 
 pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
@@ -534,6 +535,9 @@ impl<'a> Parser<'a> {
                                     field.find_decoder(FieldModelSimple)
                                 }
                             }
+                        }
+                        if field.encoder == "qangle_precise" {
+                            field.decoder = QanglePres;
                         }
                         fields.insert(*idx, field.clone());
                         my_serializer.fields.push(field);
