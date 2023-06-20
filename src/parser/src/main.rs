@@ -33,18 +33,18 @@ fn main() {
 
     let huf = create_huffman_lookup_table();
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test2/").unwrap();
     //let huf = vec![];
 
     let arc_huf = Arc::new(huf);
     let mut c = 0;
     for path in dir {
-        if c > 1 {
+        if c > 1000 {
             break;
         }
         c += 1;
         println!("{:?}", path.as_ref().unwrap().path());
-        let before = Instant::now();
+        let before1 = Instant::now();
 
         let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
@@ -131,6 +131,7 @@ fn main() {
         };
         let d = ds.front_demo_metadata().unwrap();
         println!("{:?}", d.keys());
+        println!("{:?}", before1.elapsed());
     }
     println!("{:?}", before.elapsed());
     // println!("{:?}", ds.handles);

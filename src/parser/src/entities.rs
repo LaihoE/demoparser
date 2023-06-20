@@ -111,7 +111,6 @@ impl<'a> Parser<'a> {
         for field_info in &self.paths[..n_paths] {
             let result = bitreader.decode(&field_info.decoder, &self.qf_map)?;
             if field_info.should_parse {
-                //println!("{:?}", result);
                 entity.props.insert(field_info.df_pos as u32, result);
             }
         }

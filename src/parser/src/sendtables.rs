@@ -102,6 +102,7 @@ pub enum Decoder {
     QangleVarDecoder,
     BaseDecoder,
     AmmoDecoder,
+    QanglePresDecoder,
 }
 
 pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
@@ -595,6 +596,9 @@ impl DemoSearcher {
                                     field.find_decoder(FieldModelSimple, &mut self.qf_mapper)
                                 }
                             }
+                        }
+                        if field.encoder == "qangle_precise" {
+                            field.decoder = QanglePresDecoder;
                         }
                         fields.insert(*idx, field.clone());
                         my_serializer.fields.push(field);

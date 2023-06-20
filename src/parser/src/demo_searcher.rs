@@ -82,7 +82,9 @@ impl DemoSearcher {
             let tick = self.read_varint()?;
             let size = self.read_varint()?;
             self.tick = tick as i32;
-
+            if self.tick > 180000 {
+                break;
+            }
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let cmd = demo_cmd_type_from_int(msg_type as i32);
@@ -144,10 +146,9 @@ impl DemoSearcher {
                 parser
             })
             .collect();
-        let bef = Instant::now();
         let evs: Vec<GameEvent> = outputs.iter().flat_map(|p| p.game_events.clone()).collect();
-        let big = self.combine_dfs(&mut outputs);
-        Ok(big)
+        //let big = self.combine_dfs(&mut outputs);
+        Ok(AHashMap::default())
     }
 
     fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
