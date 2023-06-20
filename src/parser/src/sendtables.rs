@@ -3,7 +3,7 @@ use crate::collect_data::PropType;
 use crate::collect_data::TYPEHM;
 use crate::decoder::QfMapper;
 use crate::entities_utils::FieldPath;
-use crate::parser::Parser;
+use crate::parser_settings::Parser;
 use crate::q_float::QuantalizedFloat;
 use crate::sendtables::Decoder::*;
 use crate::sendtables::FieldModel::*;

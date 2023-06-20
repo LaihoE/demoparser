@@ -1,5 +1,5 @@
 use super::read_bits::DemoParserError;
-use crate::parser::Parser;
+use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
 
 impl<'a> ParserThread<'a> {

@@ -3,6 +3,7 @@ use crate::decoder::QfMapper;
 use crate::game_events::GameEvent;
 use crate::netmessage_types;
 use crate::netmessage_types::netmessage_type_from_int;
+use crate::parser_settings::Parser;
 use crate::parser_thread_settings::create_huffman_lookup_table;
 use crate::parser_thread_settings::ParserInputs;
 use crate::parser_thread_settings::ParserThread;
@@ -21,52 +22,13 @@ use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use dashmap::DashMap;
 use memmap2::Mmap;
 use protobuf::Message;
+use rayon::iter::ParallelIterator;
+use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Instant;
 
-pub struct Parser {
-    pub fullpacket_offsets: Vec<usize>,
-    pub ptr: usize,
-    pub bytes: Arc<Mmap>,
-    pub tick: i32,
-    pub huf: Arc<Vec<(u32, u8)>>,
-    pub settings: ParserInputs,
-    pub handles: Vec<JoinHandle<()>>,
-    pub serializers: AHashMap<String, Serializer>,
-    pub cls_by_id: AHashMap<u32, Class>,
-    pub start: Instant,
-    pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
-
-    pub wanted_player_props: Vec<String>,
-
-    pub wanted_ticks: AHashSet<i32, RandomState>,
-    pub wanted_player_props_og_names: Vec<String>,
-    // Team and rules props
-    pub wanted_other_props: Vec<String>,
-    pub wanted_other_props_og_names: Vec<String>,
-    pub wanted_event: Option<String>,
-    pub parse_entities: bool,
-    pub parse_projectiles: bool,
-
-    pub prop_name_to_path: AHashMap<String, [i32; 7]>,
-    pub path_to_prop_name: AHashMap<[i32; 7], String>,
-    pub wanted_prop_paths: AHashSet<[i32; 7]>,
-    pub name_to_id: AHashMap<String, u32>,
-
-    pub qf_mapper: QfMapper,
-
-    pub id: u32,
-    pub wanted_prop_ids: Vec<u32>,
-    pub controller_ids: SpecialIDs,
-    pub player_output_ids: Vec<u8>,
-    pub prop_out_id: u8,
-    pub id_to_path: AHashMap<u32, [i32; 7]>,
-    pub prop_infos: Vec<PropInfo>,
-
-    pub header: AHashMap<String, String>,
-}
 #[derive(Debug)]
 pub struct DemoOutput {
     pub df: AHashMap<u32, PropColumn>,
@@ -130,7 +92,7 @@ impl Parser {
         }
         let mut outputs: Vec<ParserThread> = self
             .fullpacket_offsets
-            .iter()
+            .par_iter()
             .map(|offset| {
                 let mut parser = ParserThread::new(self.settings.clone(), &self.cls_by_id).unwrap();
                 if offset == &16 {
@@ -358,7 +320,6 @@ impl Parser {
                 },
             );
         }
-        println!("{:2?}", self.start.elapsed());
         Ok(())
     }
 }

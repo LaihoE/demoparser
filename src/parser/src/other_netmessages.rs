@@ -1,5 +1,4 @@
 use super::{read_bits::DemoParserError, sendtables::Serializer};
-use crate::parser::Parser;
 use crate::parser_thread_settings::ChatMessageRecord;
 use crate::parser_thread_settings::EconItem;
 use crate::parser_thread_settings::ParserThread;

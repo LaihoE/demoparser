@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use crate::collect_data::PropType;
 use crate::collect_data::TYPEHM;
-use crate::parser::Parser;
+use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::DemoParserError;
 use crate::sendtables::PropInfo;
@@ -40,8 +40,6 @@ impl Parser {
             }
         }
         self.ge_list = Some(hm);
-        println!("SEW {:2?}", bef.elapsed());
-
         Ok(())
     }
 }

@@ -1,13 +1,18 @@
 use std::fs;
 
 use crate::arrow::array::*;
+use ahash::AHashMap;
+use ahash::AHashSet;
 use ahash::HashMap;
 use arrow::ffi;
 use itertools::Itertools;
+use memmap2::MmapOptions;
 use parser::game_events::EventField;
 use parser::game_events::GameEvent;
 use parser::parser_settings::Parser;
-use parser::parser_settings::ParserInputs;
+use parser::parser_thread_settings::create_huffman_lookup_table;
+use parser::parser_thread_settings::ParserInputs;
+use parser::parser_thread_settings::SpecialIDs;
 use parser::read_bits::DemoParserError;
 use parser::variants::VarVec;
 use parser::variants::Variant;
@@ -25,20 +30,21 @@ use pyo3::types::IntoPyDict;
 use pyo3::types::PyDict;
 use pyo3::Python;
 use pyo3::{PyAny, PyObject, PyResult};
+use std::fs::File;
 
 #[pymethods]
 impl DemoParser {
     #[new]
     pub fn py_new(demo_path: String) -> PyResult<Self> {
-        let bytes = match fs::read(&demo_path) {
-            Ok(bytes) => bytes,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
-        };
+        let file = File::open(demo_path.clone()).unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+        let huf = create_huffman_lookup_table();
         Ok(DemoParser {
             path: demo_path,
-            bytes: bytes,
+            bytes: mmap,
         })
     }
+    /*
     /// Parses header message (different from the first 16 bytes of the file)
     /// Should have the following fields:
     ///
@@ -446,6 +452,8 @@ impl DemoParser {
             Ok(pandas_df.to_object(py))
         })
     }
+    */
+
     #[args(py_kwargs = "**")]
     pub fn parse_events(
         &self,
@@ -466,30 +474,35 @@ impl DemoParser {
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
 
+        use std::sync::Arc;
+        let file = File::open(self.path.clone()).unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+
+        let huf = create_huffman_lookup_table();
+        let arc_huf = Arc::new(huf);
+        let b = Arc::new(mmap);
+
         let settings = ParserInputs {
-            bytes: &self.bytes,
-            wanted_player_props: real_player_props,
-            wanted_player_props_og_names: wanted_player_props,
+            bytes: b.clone(),
+            wanted_player_props: real_player_props.clone(),
+            wanted_player_props_og_names: wanted_player_props.clone(),
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
             wanted_event: event_name.clone(),
-            wanted_other_props: real_other_props,
-            wanted_other_props_og_names: wanted_other_props,
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
             only_header: true,
             count_props: false,
             only_convars: false,
+            huffman_lookup_table: arc_huf.clone(),
+            //huf: huf,
         };
 
-        let mut parser = match Parser::new(settings) {
-            Ok(parser) => parser,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
-        };
-        match parser.start() {
-            Ok(_) => {}
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
-        };
-        let event_series = match series_from_events(&parser.game_events) {
+        let mut parser = Parser::new(settings);
+        let output = parser.front_demo_metadata().unwrap();
+
+        let event_series = match series_from_events(&output.game_events) {
             Ok(ser) => ser,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
@@ -532,9 +545,16 @@ impl DemoParser {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
+        use std::sync::Arc;
+        let file = File::open(self.path.clone()).unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+
+        let huf = create_huffman_lookup_table();
+        let arc_huf = Arc::new(huf);
+        let b = Arc::new(mmap);
 
         let settings = ParserInputs {
-            bytes: &self.bytes,
+            bytes: b.clone(),
             wanted_player_props: real_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
             wanted_other_props: vec![],
@@ -546,8 +566,14 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
+            huffman_lookup_table: arc_huf.clone(),
+            //huf: huf,
         };
 
+        let mut ds = Parser::new(settings);
+
+        let output = ds.front_demo_metadata().unwrap();
+        /*
         let mut parser = match Parser::new(settings) {
             Ok(parser) => parser,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -556,18 +582,37 @@ impl DemoParser {
             Ok(_) => {}
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        let mut all_series = vec![];
+        */
 
+        let mut all_series = vec![];
+        /*
         real_props.push("tick".to_owned());
         real_props.push("steamid".to_owned());
         real_props.push("name".to_owned());
         wanted_props.push("tick".to_owned());
         wanted_props.push("steamid".to_owned());
         wanted_props.push("name".to_owned());
+        parser.out_idx.push(10000);
+        parser.out_idx.push(10001);
+        parser.out_idx.push(10002);
+        parser.out_idx = vec![0, 10000, 10001, 10002];
+        println!("{:?}", parser.out_idx);
+        println!("{:?}", real_props);
+        println!("{:?}", parser.output.keys());
+        */
+        wanted_props.push("tick".to_owned());
+        wanted_props.push("steamid".to_owned());
+        wanted_props.push("name".to_owned());
 
-        for prop_name in &real_props {
-            if parser.output.contains_key(prop_name) {
-                match &parser.output[prop_name].data {
+        real_props.push("tick".to_owned());
+        real_props.push("steamid".to_owned());
+        real_props.push("name".to_owned());
+
+        let df = output.df;
+
+        for (prop_name, prop_info) in real_props.iter().zip(ds.prop_infos) {
+            if df.contains_key(&prop_info.id) {
+                match &df[&prop_info.id].data {
                     Some(VarVec::F32(data)) => {
                         all_series.push(arr_to_py(Box::new(Float32Array::from(data))).unwrap());
                     }
@@ -645,7 +690,7 @@ pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
 #[pyclass]
 struct DemoParser {
     path: String,
-    bytes: Vec<u8>,
+    bytes: memmap2::Mmap,
 }
 
 pub fn parse_kwargs_ticks(kwargs: Option<&PyDict>) -> (Vec<u64>, Vec<i32>) {

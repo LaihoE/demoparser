@@ -6,6 +6,7 @@ pub mod game_events;
 pub mod netmessage_types;
 pub mod other_netmessages;
 pub mod parser;
+pub mod parser_settings;
 pub mod parser_thread_settings;
 pub mod parser_threads;
 pub mod q_float;

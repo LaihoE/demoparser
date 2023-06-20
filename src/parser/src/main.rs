@@ -3,7 +3,7 @@ use ahash::AHashSet;
 use dashmap::DashMap;
 use memmap2::MmapOptions;
 use mimalloc::MiMalloc;
-use parser::parser::Parser;
+use parser::parser_settings::Parser;
 use parser::parser_thread_settings::create_huffman_lookup_table;
 use parser::parser_thread_settings::ParserInputs;
 use parser::parser_thread_settings::SpecialIDs;
@@ -76,60 +76,10 @@ fn main() {
             huffman_lookup_table: arc_huf.clone(),
         };
 
-        let mut ds = Parser {
-            name_to_id: AHashMap::default(),
-            bytes: arc_bytes.clone(),
-            fullpacket_offsets: vec![],
-            ptr: 0,
-            tick: 0,
-            huf: arc_huf.clone(),
-            qf_mapper: parser::decoder::QfMapper {
-                idx: 0,
-                map: AHashMap::default(),
-            },
-            settings: settings,
-            ge_list: None,
-            start: Instant::now(),
-            handles: vec![],
-            parse_entities: true,
-            serializers: AHashMap::default(),
-            parse_projectiles: false,
-            wanted_player_props: wanted_props.clone(),
-            wanted_ticks: AHashSet::default(),
-            wanted_prop_paths: AHashSet::default(),
-            path_to_prop_name: AHashMap::default(),
-            prop_name_to_path: AHashMap::default(),
-            wanted_event: None,
-            wanted_player_props_og_names: vec![],
-            wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
-            cls_by_id: AHashMap::default(),
-            controller_ids: SpecialIDs {
-                teamnum: None,
-                player_name: None,
-                steamid: None,
-                player_pawn: None,
-                player_team_pointer: None,
-                weapon_owner_pointer: None,
-                cell_x_offset_player: None,
-                cell_x_player: None,
-                cell_y_offset_player: None,
-                cell_y_player: None,
-                cell_z_offset_player: None,
-                cell_z_player: None,
-                team_team_num: None,
-                active_weapon: None,
-            },
-            id_to_path: AHashMap::default(),
-            id: 0,
-            player_output_ids: vec![],
-            wanted_prop_ids: vec![],
-            prop_out_id: 0,
-            prop_infos: vec![],
-            header: AHashMap::default(),
-        };
+        let mut ds = Parser::new(settings);
+
         let d = ds.front_demo_metadata().unwrap();
-        println!("{:?}", d);
+        println!("{:?}", d.game_events);
     }
     println!("{:?}", before.elapsed());
     // println!("{:?}", ds.handles);
