@@ -3,11 +3,10 @@ use ahash::AHashSet;
 use dashmap::DashMap;
 use memmap2::MmapOptions;
 use mimalloc::MiMalloc;
-use parser::demo_searcher::DemoSearcher;
-use parser::parser_settings::create_huffman_lookup_table;
-use parser::parser_settings::Parser;
-use parser::parser_settings::ParserInputs;
-use parser::parser_settings::SpecialIDs;
+use parser::parser::Parser;
+use parser::parser_thread_settings::create_huffman_lookup_table;
+use parser::parser_thread_settings::ParserInputs;
+use parser::parser_thread_settings::SpecialIDs;
 use parser::read_bits::Bitreader;
 use parser::sendtables::PropInfo;
 use std::fs;
@@ -77,7 +76,7 @@ fn main() {
             huffman_lookup_table: arc_huf.clone(),
         };
 
-        let mut ds = DemoSearcher {
+        let mut ds = Parser {
             name_to_id: AHashMap::default(),
             bytes: arc_bytes.clone(),
             fullpacket_offsets: vec![],
@@ -130,8 +129,7 @@ fn main() {
             header: AHashMap::default(),
         };
         let d = ds.front_demo_metadata().unwrap();
-        println!("{:?}", d.keys());
-        println!("{:?}", before1.elapsed());
+        println!("{:?}", d);
     }
     println!("{:?}", before.elapsed());
     // println!("{:?}", ds.handles);

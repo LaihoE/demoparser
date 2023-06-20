@@ -2,9 +2,8 @@ use super::read_bits::{Bitreader, DemoParserError};
 use crate::collect_data::PropType;
 use crate::collect_data::TYPEHM;
 use crate::decoder::QfMapper;
-use crate::demo_searcher::DemoSearcher;
 use crate::entities_utils::FieldPath;
-use crate::parser_settings::Parser;
+use crate::parser::Parser;
 use crate::q_float::QuantalizedFloat;
 use crate::sendtables::Decoder::*;
 use crate::sendtables::FieldModel::*;
@@ -539,7 +538,7 @@ const POINTER_TYPES: &'static [&'static str] = &[
     "CPhysicsComponent",
 ];
 
-impl DemoSearcher {
+impl Parser {
     // This part is so insanely complicated. There are multiple versions of each serializer and
     // each serializer is this huge nested struct.
     pub fn parse_sendtable(&mut self, tables: CDemoSendTables) -> Result<(), DemoParserError> {

@@ -28,7 +28,7 @@ use std::sync::Arc;
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 
-pub struct Parser<'a> {
+pub struct ParserThread<'a> {
     pub ptr: usize,
     pub bytes: Arc<Mmap>,
     // Parsing state
@@ -146,7 +146,7 @@ pub struct ParserInputs {
     pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
 }
 
-impl<'a> Parser<'a> {
+impl<'a> ParserThread<'a> {
     pub fn new(
         mut settings: ParserInputs,
         cls_by_id: &'a AHashMap<u32, Class>,
@@ -161,7 +161,7 @@ impl<'a> Parser<'a> {
             "name".to_owned(),
         ]);
         // let huffman_table = create_huffman_lookup_table();
-        Ok(Parser {
+        Ok(ParserThread {
             qf_map: QfMapper {
                 idx: 0,
                 map: AHashMap::default(),

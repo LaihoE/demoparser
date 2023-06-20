@@ -1,13 +1,13 @@
 pub mod collect_data;
 pub mod decoder;
-pub mod demo_searcher;
 pub mod entities;
 pub mod entities_utils;
 pub mod game_events;
 pub mod netmessage_types;
 pub mod other_netmessages;
 pub mod parser;
-pub mod parser_settings;
+pub mod parser_thread_settings;
+pub mod parser_threads;
 pub mod q_float;
 pub mod read_bits;
 pub mod read_bytes;

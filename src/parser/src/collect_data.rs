@@ -1,6 +1,6 @@
 use super::entities::PlayerMetaData;
 use super::variants::Variant;
-use crate::parser_settings::Parser;
+use crate::parser_thread_settings::ParserThread;
 use crate::sendtables::PropInfo;
 use crate::variants::PropColumn;
 use itertools::Itertools;
@@ -20,7 +20,7 @@ pub struct ProjectileRecord {
 
 // This file collects the data that is converted into a dataframe in the end in parser.parse_ticks()
 
-impl<'a> Parser<'a> {
+impl<'a> ParserThread<'a> {
     pub fn collect_entities(&mut self) {
         if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 {
             return;

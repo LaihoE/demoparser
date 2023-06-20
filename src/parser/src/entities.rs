@@ -1,7 +1,7 @@
 use super::read_bits::DemoParserError;
 use crate::collect_data::TYPEHM;
 use crate::entities_utils::*;
-use crate::parser_settings::Parser;
+use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
 use crate::variants::Variant;
 use ahash::HashMap;
@@ -44,7 +44,7 @@ enum EntityCmd {
     Update,
 }
 
-impl<'a> Parser<'a> {
+impl<'a> ParserThread<'a> {
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());

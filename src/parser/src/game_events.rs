@@ -2,8 +2,8 @@ use std::time::Instant;
 
 use crate::collect_data::PropType;
 use crate::collect_data::TYPEHM;
-use crate::demo_searcher::DemoSearcher;
-use crate::parser_settings::Parser;
+use crate::parser::Parser;
+use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::DemoParserError;
 use crate::sendtables::PropInfo;
 use crate::variants::*;
@@ -27,7 +27,7 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
 ];
 const ENTITYIDNONE: i32 = 2047;
 
-impl DemoSearcher {
+impl Parser {
     // Message that should come before first game event
     pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let bef = Instant::now();
@@ -46,7 +46,7 @@ impl DemoSearcher {
     }
 }
 
-impl<'a> Parser<'a> {
+impl<'a> ParserThread<'a> {
     // Message that should come before first game event
     pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();

@@ -1,12 +1,11 @@
 use super::{read_bits::DemoParserError, sendtables::Serializer};
-use crate::parser_settings::ChatMessageRecord;
-use crate::parser_settings::EconItem;
-use crate::parser_settings::Parser;
-use crate::parser_settings::PlayerEndData;
-use ahash::HashSet;
+use crate::parser::Parser;
+use crate::parser_thread_settings::ChatMessageRecord;
+use crate::parser_thread_settings::EconItem;
+use crate::parser_thread_settings::ParserThread;
+use crate::parser_thread_settings::PlayerEndData;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_EndOfMatchAllPlayersData;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_SendPlayerItemDrops;
-use csgoproto::demo::CDemoClassInfo;
 use csgoproto::demo::CDemoFileInfo;
 use csgoproto::networkbasetypes::CNETMsg_SetConVar;
 use csgoproto::usermessages::CUserMessageSayText2;
@@ -22,7 +21,7 @@ pub struct Class {
     pub serializer: Serializer,
 }
 
-impl<'a> Parser<'a> {
+impl<'a> ParserThread<'a> {
     pub fn parse_item_drops(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let drops: CCSUsrMsg_SendPlayerItemDrops = Message::parse_from_bytes(&bytes).unwrap();
         for item in &drops.entity_updates {
