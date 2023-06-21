@@ -38,6 +38,20 @@ impl<'a> ParserThread<'a> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::read_bits::Bitreader;
+
+    #[test]
+    fn test_variant() {
+        let bytes = vec![71, 149, 254, 10, 131, 15, 172, 16, 244, 142, 2, 26];
+        let mut bitreader = Bitreader::new(&bytes);
+        assert_eq!(bitreader.read_varint().unwrap(), 71);
+        assert_eq!(bitreader.read_varint().unwrap(), 179989);
+        assert_eq!(bitreader.read_varint().unwrap(), 1923);
+    }
+}
+
 impl Parser {
     #[inline]
     pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], DemoParserError> {

@@ -1,44 +1,50 @@
-use crate::collect_data::TYPEHM;
-use crate::decoder::QfMapper;
 use crate::game_events::GameEvent;
 use crate::netmessage_types;
 use crate::netmessage_types::netmessage_type_from_int;
 use crate::parser_settings::Parser;
-use crate::parser_thread_settings::create_huffman_lookup_table;
-use crate::parser_thread_settings::ParserInputs;
+use crate::parser_thread_settings::ChatMessageRecord;
+use crate::parser_thread_settings::EconItem;
 use crate::parser_thread_settings::ParserThread;
-use crate::parser_thread_settings::SpecialIDs;
+use crate::parser_thread_settings::PlayerEndMetaData;
 use crate::parser_threads::demo_cmd_type_from_int;
-use crate::sendtables::PropInfo;
-use crate::sendtables::Serializer;
+use crate::read_bits::Bitreader;
 use crate::variants::PropColumn;
 use crate::variants::VarVec;
-use crate::{other_netmessages::Class, parser_threads, read_bits::DemoParserError};
+use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
-use ahash::AHashSet;
-use ahash::RandomState;
+use bitter::BitReader;
+use csgoproto::demo::CDemoClassInfo;
+use csgoproto::demo::CDemoFileHeader;
+use csgoproto::demo::CDemoPacket;
+use csgoproto::demo::CDemoSendTables;
 use csgoproto::demo::EDemoCommands::*;
-use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use dashmap::DashMap;
-use memmap2::Mmap;
+use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
-use std::sync::Arc;
-use std::thread::JoinHandle;
+use std::thread;
 use std::time::Instant;
 
 #[derive(Debug)]
 pub struct DemoOutput {
     pub df: AHashMap<u32, PropColumn>,
     pub game_events: Vec<GameEvent>,
+    pub skins: Vec<EconItem>,
+    pub item_drops: Vec<EconItem>,
+    pub chat_messages: Vec<ChatMessageRecord>,
+    pub convars: AHashMap<String, String>,
+    pub header: AHashMap<String, String>,
+    pub player_md: Vec<PlayerEndMetaData>,
+    pub game_events_counter: AHashMap<String, i32>,
 }
 
 impl Parser {
-    pub fn front_demo_metadata(&mut self) -> Result<DemoOutput, DemoParserError> {
+    pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
         self.ptr = 16;
         self.fullpacket_offsets.push(16);
+
+        let mut sendtable: Option<CDemoSendTables> = None;
 
         loop {
             let before = self.ptr;
@@ -46,13 +52,13 @@ impl Parser {
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
             let size = self.read_varint()?;
+
             self.tick = tick as i32;
             if self.tick > 180000 {
                 break;
             }
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
-            let cmd = demo_cmd_type_from_int(msg_type as i32);
 
             let bytes = match is_compressed {
                 true => SnapDecoder::new()
@@ -60,37 +66,34 @@ impl Parser {
                     .unwrap(),
                 false => self.read_n_bytes(size)?.to_vec(),
             };
-            let ok: Result<(), DemoParserError> =
-                match demo_cmd_type_from_int(msg_type as i32).unwrap() {
-                    DEM_SendTables => {
-                        self.parse_sendtable(Message::parse_from_bytes(&bytes).unwrap())
-                            .unwrap();
-                        Ok(())
-                    }
-                    DEM_FileHeader => {
-                        self.parse_header(&bytes).unwrap();
-                        Ok(())
-                    }
-                    DEM_ClassInfo => {
-                        self.parse_class_info(&bytes).unwrap();
-                        Ok(())
-                    }
-                    DEM_FullPacket => {
-                        self.fullpacket_offsets.push(before);
-                        Ok(())
-                    }
-                    DEM_SignonPacket => {
-                        self.parse_packet(&bytes).unwrap();
-                        Ok(())
-                    }
-                    DEM_Stop => {
-                        break;
-                    }
-                    _ => Ok(()),
-                };
+
+            let ok: Result<(), DemoParserError> = match demo_cmd_type_from_int(msg_type as i32)
+                .unwrap()
+            {
+                DEM_SendTables => {
+                    let before = Instant::now();
+                    sendtable = Some(Message::parse_from_bytes(&bytes).unwrap());
+                    // self.parse_sendtable(&bytes)
+                    Ok(())
+                }
+                DEM_FileHeader => self.parse_header(&bytes),
+                DEM_ClassInfo => {
+                    let my_s = sendtable.clone();
+                    let my_b = bytes.clone();
+                    let handle = thread::spawn(move || self.parse_class_info(&my_b, my_s.unwrap()));
+                    Ok(())
+                }
+                DEM_SignonPacket => self.parse_packet(&bytes),
+                DEM_Stop => break,
+                DEM_FullPacket => {
+                    self.fullpacket_offsets.push(before);
+                    Ok(())
+                }
+                _ => Ok(()),
+            };
             ok?;
         }
-        let mut outputs: Vec<ParserThread> = self
+        let outputs: Vec<ParserThread> = self
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
@@ -106,7 +109,8 @@ impl Parser {
                 parser.parse_entities = true;
                 parser.qf_map = self.qf_mapper.clone();
                 parser.ge_list = self.ge_list.clone();
-                parser.wanted_event = Some("player_death".to_string());
+                parser.wanted_event = self.wanted_event.clone();
+                parser.baselines = self.baselines.clone();
                 parser.start().unwrap();
                 parser
             })
@@ -114,9 +118,24 @@ impl Parser {
         let mut p = outputs.iter().map(|x| x.output.clone()).collect();
         let evs: Vec<GameEvent> = outputs.iter().flat_map(|p| p.game_events.clone()).collect();
         let df = self.combine_dfs(&mut p);
+        let chat_msgs: Vec<ChatMessageRecord> = outputs
+            .iter()
+            .flat_map(|p| p.chat_messages.clone())
+            .collect();
+        let item_drops: Vec<EconItem> = outputs.iter().flat_map(|p| p.item_drops.clone()).collect();
+        let skins: Vec<EconItem> = outputs.iter().flat_map(|p| p.skins.clone()).collect();
+
         let out = DemoOutput {
             df: df,
             game_events: evs,
+            chat_messages: chat_msgs,
+            item_drops: item_drops,
+            skins: skins,
+            convars: self.convars.clone(),
+            header: self.header.clone(),
+            player_md: self.player_md.clone(),
+            // fix
+            game_events_counter: AHashMap::default(),
         };
         Ok(out)
     }
@@ -220,16 +239,6 @@ fn insert_df(v: &Option<VarVec>, prop_id: u32, map: &mut AHashMap<u32, PropColum
     }
 }
 
-use crate::read_bits::Bitreader;
-use bitter::BitReader;
-use csgoproto::demo::CDemoClassInfo;
-use csgoproto::demo::CDemoFileHeader;
-use csgoproto::demo::CDemoPacket;
-
-use csgoproto::demo::*;
-use csgoproto::netmessages::*;
-use netmessage_types::NetmessageType::*;
-
 impl Parser {
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
@@ -244,6 +253,8 @@ impl Parser {
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
                 //GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
+                svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
+                svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 _ => Ok(()),
             };
             ok?
@@ -302,10 +313,15 @@ impl Parser {
         Ok(())
     }
 
-    pub fn parse_class_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+    pub fn parse_class_info(
+        &mut self,
+        bytes: &[u8],
+        sendtables: CDemoSendTables,
+    ) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
         }
+        self.parse_sendtable(sendtables);
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
         for class_t in msg.classes {
             let cls_id = class_t.class_id();

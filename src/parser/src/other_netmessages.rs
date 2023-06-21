@@ -2,7 +2,7 @@ use super::{read_bits::DemoParserError, sendtables::Serializer};
 use crate::parser_thread_settings::ChatMessageRecord;
 use crate::parser_thread_settings::EconItem;
 use crate::parser_thread_settings::ParserThread;
-use crate::parser_thread_settings::PlayerEndData;
+use crate::parser_thread_settings::PlayerEndMetaData;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_EndOfMatchAllPlayersData;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_SendPlayerItemDrops;
 use csgoproto::demo::CDemoFileInfo;
@@ -56,6 +56,7 @@ impl<'a> ParserThread<'a> {
     }
     pub fn parse_convars(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let convar: CNETMsg_SetConVar = Message::parse_from_bytes(bytes).unwrap();
+
         for cv in &convar.convars {
             for var in &cv.cvars {
                 self.convars
@@ -86,7 +87,7 @@ impl<'a> ParserThread<'a> {
         }
         */
         for player in &end_data.allplayerdata {
-            self.player_end_data.push(PlayerEndData {
+            self.player_end_data.push(PlayerEndMetaData {
                 name: player.name.clone(),
                 steamid: player.xuid,
                 team_number: player.teamnumber,

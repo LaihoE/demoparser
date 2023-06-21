@@ -61,11 +61,11 @@ pub struct ParserThread<'a> {
     // Output from parsing
     pub output: AHashMap<u32, PropColumn, RandomState>,
     pub header: HashMap<String, String>,
-    pub skins: EconItemVec,
-    pub item_drops: EconItemVec,
+    pub skins: Vec<EconItem>,
+    pub item_drops: Vec<EconItem>,
     pub convars: AHashMap<String, String>,
-    pub chat_messages: ChatMessageRecordVec,
-    pub player_end_data: PlayerEndDataVec,
+    pub chat_messages: Vec<ChatMessageRecord>,
+    pub player_end_data: Vec<PlayerEndMetaData>,
     pub projectile_records: ProjectileRecordVec,
 
     // Settings
@@ -95,7 +95,7 @@ impl Teams {
     }
 }
 
-#[derive(Debug, StructOfArray)]
+#[derive(Debug, Clone)]
 pub struct ChatMessageRecord {
     pub entity_idx: Option<i32>,
     pub param1: Option<String>,
@@ -103,7 +103,7 @@ pub struct ChatMessageRecord {
     pub param3: Option<String>,
     pub param4: Option<String>,
 }
-#[derive(Debug, StructOfArray)]
+#[derive(Debug, Clone)]
 pub struct EconItem {
     pub account_id: Option<u32>,
     pub item_id: Option<u64>,
@@ -120,8 +120,8 @@ pub struct EconItem {
     pub ent_idx: Option<i32>,
     pub steamid: Option<u64>,
 }
-#[derive(Debug, StructOfArray)]
-pub struct PlayerEndData {
+#[derive(Debug, Clone)]
+pub struct PlayerEndMetaData {
     pub steamid: Option<u64>,
     pub name: Option<String>,
     pub team_number: Option<i32>,
@@ -220,10 +220,10 @@ impl<'a> ParserThread<'a> {
             parse_projectiles: settings.parse_projectiles,
             rules_entity_id: None,
             convars: AHashMap::default(),
-            chat_messages: ChatMessageRecordVec::new(),
-            item_drops: EconItemVec::new(),
-            skins: EconItemVec::new(),
-            player_end_data: PlayerEndDataVec::new(),
+            chat_messages: vec![],
+            item_drops: vec![],
+            skins: vec![],
+            player_end_data: vec![],
             huffman_lookup_table: settings.huffman_lookup_table,
             prop_name_to_path: AHashMap::default(),
             wanted_prop_paths: AHashSet::default(),

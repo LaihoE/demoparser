@@ -11,6 +11,7 @@ use crate::entities::PlayerMetaData;
 use crate::other_netmessages::Class;
 use crate::parser_thread_settings::ParserInputs;
 use crate::parser_thread_settings::ParserThread;
+use crate::parser_thread_settings::PlayerEndMetaData;
 use crate::parser_thread_settings::SpecialIDs;
 use crate::sendtables::PropInfo;
 use ahash::AHashMap;
@@ -30,6 +31,10 @@ pub struct Parser {
     pub serializers: AHashMap<String, Serializer>,
     pub cls_by_id: AHashMap<u32, Class>,
     pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
+    pub string_tables: Vec<StringTable>,
+    pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
+    pub convars: AHashMap<String, String>,
+    pub player_md: Vec<PlayerEndMetaData>,
 
     pub wanted_player_props: Vec<String>,
 
@@ -65,10 +70,14 @@ impl Parser {
         let arc_bytes = inputs.bytes.clone();
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
+            player_md: vec![],
             name_to_id: AHashMap::default(),
+            convars: AHashMap::default(),
             bytes: arc_bytes.clone(),
+            string_tables: vec![],
             fullpacket_offsets: vec![],
             ptr: 0,
+            baselines: AHashMap::default(),
             tick: 0,
             huf: arc_huf.clone(),
             qf_mapper: QfMapper {
@@ -80,12 +89,12 @@ impl Parser {
             serializers: AHashMap::default(),
             parse_projectiles: false,
             wanted_player_props: inputs.wanted_player_props.clone(),
+            wanted_event: inputs.wanted_event.clone(),
             settings: inputs,
             wanted_ticks: AHashSet::default(),
             wanted_prop_paths: AHashSet::default(),
             path_to_prop_name: AHashMap::default(),
             prop_name_to_path: AHashMap::default(),
-            wanted_event: None,
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],

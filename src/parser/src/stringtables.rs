@@ -1,5 +1,5 @@
 use super::read_bits::{Bitreader, DemoParserError};
-use crate::parser_thread_settings::ParserThread;
+use crate::{parser_settings::Parser, parser_thread_settings::ParserThread};
 use csgoproto::netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable};
 use protobuf::Message;
 use snap::raw::Decoder;
@@ -11,6 +11,7 @@ pub struct StringTable {
     #[allow(dead_code)]
     data: Vec<StringTableEntry>,
     flags: i32,
+    var_bit_counts: bool,
 }
 #[derive(Clone, Debug)]
 pub struct StringTableEntry {
@@ -19,7 +20,7 @@ pub struct StringTableEntry {
     pub value: Vec<u8>,
 }
 
-impl<'a> ParserThread<'a> {
+impl Parser {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
 
@@ -31,6 +32,7 @@ impl<'a> ParserThread<'a> {
                 st.user_data_fixed,
                 st.user_data_size,
                 st.flags,
+                st.var_bit_counts,
             )?,
             None => return Err(DemoParserError::StringTableNotFound),
         }
@@ -52,6 +54,7 @@ impl<'a> ParserThread<'a> {
             table.user_data_fixed_size(),
             table.user_data_size(),
             table.flags(),
+            table.using_varint_bitcounts(),
         )?;
         Ok(())
     }
@@ -63,6 +66,7 @@ impl<'a> ParserThread<'a> {
         udf: bool,
         user_data_size: i32,
         flags: i32,
+        variant_bit_count: bool,
     ) -> Result<(), DemoParserError> {
         let mut bitreader = Bitreader::new(&bytes);
         let mut idx = -1;
@@ -111,16 +115,20 @@ impl<'a> ParserThread<'a> {
                 keys.push(key.clone());
                 // Does the entry have a value
                 if bitreader.read_boolean()? {
-                    let bits: i32;
+                    let bits: u32;
                     let mut is_compressed = false;
 
                     match udf {
-                        true => bits = user_data_size,
+                        true => bits = user_data_size as u32,
                         false => {
                             if (flags & 0x1) != 0 {
                                 is_compressed = bitreader.read_boolean()?;
                             }
-                            bits = (bitreader.read_nbits(17)? * 8) as i32;
+                            if variant_bit_count {
+                                bits = bitreader.read_u_bit_var()? * 8;
+                            } else {
+                                bits = bitreader.read_nbits(17)? * 8;
+                            }
                         }
                     }
                     value = bitreader.read_n_bytes((bits / 8) as usize)?;
@@ -136,7 +144,6 @@ impl<'a> ParserThread<'a> {
                     let k = key.parse::<u32>().unwrap_or(999999);
                     self.baselines.insert(k, value.clone());
                 }
-
                 items.push(StringTableEntry {
                     idx: idx,
                     key: key,
@@ -150,6 +157,7 @@ impl<'a> ParserThread<'a> {
             user_data_size: user_data_size,
             user_data_fixed: udf,
             flags: flags,
+            var_bit_counts: variant_bit_count,
         });
         Ok(())
     }

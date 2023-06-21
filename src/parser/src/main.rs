@@ -38,7 +38,7 @@ fn main() {
     let arc_huf = Arc::new(huf);
     let mut c = 0;
     for path in dir {
-        if c > 1000 {
+        if c > 0 {
             break;
         }
         c += 1;
@@ -46,11 +46,12 @@ fn main() {
         let before1 = Instant::now();
 
         let file = File::open(path.unwrap().path()).unwrap();
+        //let file = File::open("/home/laiho/Documents/demos/cs2/s2.dem").unwrap();
+
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         let arc_bytes = Arc::new(mmap);
         let mc = arc_bytes.clone();
-
-        let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
+        let demo_path = "/home/laiho/Documents/demos/cs2/test2/66.dem";
 
         let settings = ParserInputs {
             bytes: arc_bytes.clone(),
@@ -77,9 +78,7 @@ fn main() {
         };
 
         let mut ds = Parser::new(settings);
-
-        let d = ds.front_demo_metadata().unwrap();
-        println!("{:?}", d.game_events);
+        let d = ds.parse_demo().unwrap();
     }
     println!("{:?}", before.elapsed());
     // println!("{:?}", ds.handles);

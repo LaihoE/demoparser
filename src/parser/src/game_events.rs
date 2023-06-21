@@ -30,12 +30,11 @@ const ENTITYIDNONE: i32 = 2047;
 impl Parser {
     // Message that should come before first game event
     pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let bef = Instant::now();
         let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
 
         let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
         for event_desc in event_list.descriptors {
-            if event_desc.name == Some("player_death".to_string()) {
+            if event_desc.name == self.wanted_event {
                 hm.insert(event_desc.eventid(), event_desc);
             }
         }
@@ -45,17 +44,6 @@ impl Parser {
 }
 
 impl<'a> ParserThread<'a> {
-    // Message that should come before first game event
-    pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
-        let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
-        for event_desc in event_list.descriptors {
-            hm.insert(event_desc.eventid(), event_desc);
-        }
-        self.ge_list = Some(hm);
-        Ok(())
-    }
-
     pub fn parse_event(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if self.wanted_event.is_none() {
             return Ok(());
@@ -70,9 +58,6 @@ impl<'a> ParserThread<'a> {
             Some(desc) => desc,
             None => {
                 return Ok(());
-                return Err(DemoParserError::GameEventUnknownId(
-                    event.eventid().to_string(),
-                ));
             }
         };
         // Used to count how many of each event in this demo. Cheap so do it always
