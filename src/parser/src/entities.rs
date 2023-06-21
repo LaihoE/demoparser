@@ -334,29 +334,13 @@ impl<'a> ParserThread<'a> {
             entity_type: entity_type,
             history: HashMap::default(),
         };
-        let cls = self.cls_by_id.get(&cls_id);
         self.entities.insert(*entity_id, entity);
         // Insert baselines
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
-            /*
-            println!(
-                "FOUND INSTANCEBASELINE {:?} {}",
-                cls.as_ref().unwrap().class_id,
-                self.tick,
-            );
-            */
             let b = &baseline_bytes.clone();
             let mut br = Bitreader::new(&b);
             self.update_entity(&mut br, *entity_id)?;
-        } else {
-            /*
-            println!(
-                "NOT FOUND INSTANCEBASELINE {:?} {}",
-                cls.as_ref().unwrap().class_id,
-                self.tick,
-            );
-            */
-        };
+        }
         Ok(())
     }
     pub fn check_entity_type(&self, cls_id: &u32) -> Result<EntityType, DemoParserError> {
