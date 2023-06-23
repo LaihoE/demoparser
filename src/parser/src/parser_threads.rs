@@ -16,7 +16,7 @@ use EDemoCommands::*;
 
 // The parser struct is defined in parser_settings.rs
 impl<'a> ParserThread<'a> {
-    pub fn start(&mut self) -> Result<(), DemoParserError> {
+    pub fn start(&mut self) -> Result<i32, DemoParserError> {
         let file_length = self.bytes.len();
         let before = Instant::now();
         // Header (there is a longer header as a DEM_FileHeader msg below)
@@ -64,7 +64,7 @@ impl<'a> ParserThread<'a> {
             ok?;
             self.collect_entities();
         }
-        Ok(())
+        Ok(frames_parsed)
     }
 
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
@@ -96,12 +96,6 @@ impl<'a> ParserThread<'a> {
         Ok(())
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        // Not in use atm
-
-        // A full state dump that happens every ~3000? ticks
-        // dumps all info needed to continue stringtables and entities from this tick forward. For
-        // example you could jump into middle of demo and start from here (assuming you find this).
-        // Leaves the door open for multithreading/ one off stats in end of demo
         let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
         for item in &full_packet.string_table.tables {
             if item.table_name.as_ref().unwrap() == "instancebaseline" {
@@ -138,6 +132,7 @@ impl<'a> ParserThread<'a> {
     }
 
     pub fn parse_stringtable_cmd(&mut self, data: &[u8]) -> Result<(), DemoParserError> {
+        return Ok(());
         // Why do we use this and not just create/update stringtables??
         let tables: CDemoStringTables = Message::parse_from_bytes(data).unwrap();
         for item in &tables.tables {

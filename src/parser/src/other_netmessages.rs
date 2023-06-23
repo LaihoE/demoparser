@@ -56,7 +56,6 @@ impl<'a> ParserThread<'a> {
     }
     pub fn parse_convars(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let convar: CNETMsg_SetConVar = Message::parse_from_bytes(bytes).unwrap();
-
         for cv in &convar.convars {
             for var in &cv.cvars {
                 self.convars

@@ -4,9 +4,12 @@ use crate::collect_data::TYPEHM;
 use crate::decoder::QfMapper;
 use crate::entities_utils::FieldPath;
 use crate::parser_settings::Parser;
+use crate::parser_thread_settings::SpecialIDs;
 use crate::q_float::QuantalizedFloat;
 use crate::sendtables::Decoder::*;
 use crate::sendtables::FieldModel::*;
+use ahash::AHashMap;
+use ahash::AHashSet;
 use ahash::HashMap;
 use csgoproto::{
     demo::CDemoSendTables,
@@ -17,6 +20,7 @@ use lazy_static::lazy_static;
 use phf_macros::phf_map;
 use protobuf::Message;
 use regex::Regex;
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub struct Field {
@@ -537,20 +541,45 @@ const POINTER_TYPES: &'static [&'static str] = &[
     "CRenderComponent",
     "CPhysicsComponent",
 ];
+#[derive(Clone, Debug)]
+pub struct PropController {
+    pub wanted_prop_paths: AHashSet<[i32; 7]>,
+    pub id: u32,
+    pub wanted_player_props: Vec<String>,
+    pub wanted_prop_ids: Vec<u32>,
+    pub prop_infos: Vec<PropInfo>,
+    pub prop_name_to_path: AHashMap<String, [i32; 7]>,
+    pub path_to_prop_name: AHashMap<[i32; 7], String>,
+    pub name_to_id: AHashMap<String, u32>,
+    pub id_to_path: AHashMap<u32, [i32; 7]>,
+    pub special_ids: SpecialIDs,
+    pub wanted_player_og_props: Vec<String>,
+}
 
 impl Parser {
     // This part is so insanely complicated. There are multiple versions of each serializer and
     // each serializer is this huge nested struct.
-    pub fn parse_sendtable(&mut self, tables: CDemoSendTables) -> Result<(), DemoParserError> {
+    pub fn parse_sendtable(
+        tables: CDemoSendTables,
+        wanted_props: Vec<String>,
+        wanted_props_og_names: Vec<String>,
+    ) -> Result<(AHashMap<String, Serializer>, QfMapper, PropController), DemoParserError> {
+        let before = Instant::now();
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint()?;
 
         let bytes = bitreader.read_n_bytes(n_bytes as usize)?;
         let serializer_msg: CSVCMsg_FlattenedSerializer =
             Message::parse_from_bytes(&bytes).unwrap();
+        let mut serializers: AHashMap<String, Serializer> = AHashMap::default();
+        let mut qf_mapper = QfMapper {
+            idx: 0,
+            map: AHashMap::default(),
+        };
 
         let mut fields: HashMap<i32, Field> = HashMap::default();
-        for serializer in &serializer_msg.serializers {
+        let mut prop_controller = PropController::new(wanted_props, wanted_props_og_names);
+        for (ii, serializer) in serializer_msg.serializers.iter().enumerate() {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
                 fields: vec![],
@@ -563,7 +592,7 @@ impl Parser {
                         let field_msg = &serializer_msg.fields[*idx as usize];
                         let mut field = field_from_msg(field_msg, &serializer_msg);
                         match &field.serializer_name {
-                            Some(name) => match self.serializers.get(name) {
+                            Some(name) => match serializers.get(name) {
                                 Some(ser) => {
                                     field.serializer = Some(ser.clone());
                                 }
@@ -577,22 +606,22 @@ impl Parser {
                                 if field.field_type.pointer
                                     || POINTER_TYPES.contains(&field.field_type.base_type.as_str())
                                 {
-                                    field.find_decoder(FieldModelFixedTable, &mut self.qf_mapper)
+                                    field.find_decoder(FieldModelFixedTable, &mut qf_mapper)
                                 } else {
-                                    field.find_decoder(FieldModelVariableTable, &mut self.qf_mapper)
+                                    field.find_decoder(FieldModelVariableTable, &mut qf_mapper)
                                 }
                             }
                             None => {
                                 if field.field_type.count > 0
                                     && field.field_type.base_type != "char"
                                 {
-                                    field.find_decoder(FieldModelFixedArray, &mut self.qf_mapper)
+                                    field.find_decoder(FieldModelFixedArray, &mut qf_mapper)
                                 } else if field.field_type.base_type == "CUtlVector"
                                     || field.field_type.base_type == "CNetworkUtlVectorBase"
                                 {
-                                    field.find_decoder(FieldModelVariableArray, &mut self.qf_mapper)
+                                    field.find_decoder(FieldModelVariableArray, &mut qf_mapper)
                                 } else {
-                                    field.find_decoder(FieldModelSimple, &mut self.qf_mapper)
+                                    field.find_decoder(FieldModelSimple, &mut qf_mapper)
                                 }
                             }
                         }
@@ -609,35 +638,60 @@ impl Parser {
                 || my_serializer.name.contains("Weapon")
                 || my_serializer.name.contains("AK")
             {
-                self.find_prop_name_paths(&mut my_serializer);
+                prop_controller.find_prop_name_paths(&mut my_serializer);
             }
-            self.serializers
-                .insert(my_serializer.name.clone(), my_serializer);
+            serializers.insert(my_serializer.name.clone(), my_serializer);
         }
-
-        self.prop_infos.push(PropInfo {
+        prop_controller.prop_infos.push(PropInfo {
+            id: 9997997,
+            prop_type: None,
+            prop_name: "weapon_name".to_string(),
+        });
+        prop_controller.prop_infos.push(PropInfo {
             id: 9999997,
             prop_type: None,
             prop_name: "name".to_string(),
         });
-        self.prop_infos.push(PropInfo {
+        prop_controller.prop_infos.push(PropInfo {
             id: 9999998,
             prop_type: None,
             prop_name: "steamid".to_string(),
         });
-        self.prop_infos.push(PropInfo {
+        prop_controller.prop_infos.push(PropInfo {
             id: 9999999,
             prop_type: None,
             prop_name: "tick".to_string(),
         });
-        Ok(())
+        Ok((serializers, qf_mapper, prop_controller))
     }
+}
+impl PropController {
+    pub fn new(
+        wanted_player_props: Vec<String>,
+        wanted_player_props_og_names: Vec<String>,
+    ) -> Self {
+        PropController {
+            wanted_prop_paths: AHashSet::default(),
+            id: 0,
+            wanted_player_props: wanted_player_props,
+            wanted_prop_ids: vec![],
+            prop_infos: vec![],
+            prop_name_to_path: AHashMap::default(),
+            path_to_prop_name: AHashMap::default(),
+            name_to_id: AHashMap::default(),
+            id_to_path: AHashMap::default(),
+            special_ids: SpecialIDs::new(),
+            wanted_player_og_props: wanted_player_props_og_names,
+        }
+    }
+
     pub fn find_prop_name_paths(&mut self, ser: &mut Serializer) {
         // Finds mapping from name to path.
         // Example: "m_iHealth" => [4, 0, 0, 0, 0, 0, 0]
         self.traverse_fields(&mut ser.fields, vec![], ser.name.clone())
     }
-    pub fn traverse_fields(&mut self, fields: &mut Vec<Field>, path: Vec<i32>, ser_name: String) {
+
+    fn traverse_fields(&mut self, fields: &mut Vec<Field>, path: Vec<i32>, ser_name: String) {
         for (idx, f) in fields.iter_mut().enumerate() {
             if let Some(ser) = &mut f.serializer {
                 let mut tmp = path.clone();
@@ -717,12 +771,12 @@ impl Parser {
                 }
 
                 match full_name.as_str() {
-                    "CCSTeam.m_iTeamNum" => self.controller_ids.team_team_num = Some(self.id),
+                    "CCSTeam.m_iTeamNum" => self.special_ids.team_team_num = Some(self.id),
                     "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX" => {
-                        self.controller_ids.cell_x_player = Some(self.id);
+                        self.special_ids.cell_x_player = Some(self.id);
                     }
                     "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX" => {
-                        self.controller_ids.cell_x_offset_player = Some(self.id);
+                        self.special_ids.cell_x_offset_player = Some(self.id);
                         if self.wanted_player_props.contains(&"X".to_string()) {
                             self.prop_infos.push(PropInfo {
                                 id: 9999907,
@@ -732,10 +786,10 @@ impl Parser {
                         }
                     }
                     "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellY" => {
-                        self.controller_ids.cell_y_player = Some(self.id);
+                        self.special_ids.cell_y_player = Some(self.id);
                     }
                     "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY" => {
-                        self.controller_ids.cell_y_offset_player = Some(self.id);
+                        self.special_ids.cell_y_offset_player = Some(self.id);
                         if self.wanted_player_props.contains(&"Y".to_string()) {
                             self.prop_infos.push(PropInfo {
                                 id: 9999902,
@@ -745,21 +799,21 @@ impl Parser {
                         }
                     }
                     "CCSPlayerPawn.m_iTeamNum" => {
-                        self.controller_ids.player_team_pointer = Some(self.id)
+                        self.special_ids.player_team_pointer = Some(self.id)
                     }
                     "CBasePlayerWeapon.m_nOwnerId" => {
-                        self.controller_ids.weapon_owner_pointer = Some(self.id)
+                        self.special_ids.weapon_owner_pointer = Some(self.id)
                     }
                     "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => {
-                        self.controller_ids.active_weapon = Some(self.id)
+                        self.special_ids.active_weapon = Some(self.id)
                     }
-                    "CCSPlayerController.m_iTeamNum" => self.controller_ids.teamnum = Some(self.id),
+                    "CCSPlayerController.m_iTeamNum" => self.special_ids.teamnum = Some(self.id),
                     "CCSPlayerController.m_iszPlayerName" => {
-                        self.controller_ids.player_name = Some(self.id)
+                        self.special_ids.player_name = Some(self.id)
                     }
-                    "CCSPlayerController.m_steamID" => self.controller_ids.steamid = Some(self.id),
+                    "CCSPlayerController.m_steamID" => self.special_ids.steamid = Some(self.id),
                     "CCSPlayerController.m_hPlayerPawn" => {
-                        self.controller_ids.player_pawn = Some(self.id)
+                        self.special_ids.player_pawn = Some(self.id)
                     }
                     _ => {}
                 };
@@ -812,6 +866,7 @@ impl Parser {
         false
     }
 }
+
 #[derive(Debug, Clone)]
 pub struct PropInfo {
     pub id: u32,

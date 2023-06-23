@@ -113,6 +113,7 @@ impl DemoParser {
     /// Returns the names and frequencies of game events during the game.
     ///
     /// Example: {"player_death": 43, "bomb_planted": 4 ...}
+    /*
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
         let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
@@ -146,6 +147,7 @@ impl DemoParser {
         let dict = pyo3::Python::with_gil(|py| h.to_object(py));
         Ok(dict)
     }
+    */
     /// Returns all coordinates of all grenades along with info about thrower.
     ///
     /// Example:
@@ -247,11 +249,26 @@ impl DemoParser {
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
         let entids: Vec<Option<i32>> = output.chat_messages.iter().map(|x| x.entity_idx).collect();
-        let param1: Vec<Option<String>> = output.chat_messages.iter().map(|x| x.param1).collect();
-        let param2: Vec<Option<String>> = output.chat_messages.iter().map(|x| x.param2).collect();
-        let param3: Vec<Option<String>> = output.chat_messages.iter().map(|x| x.param3).collect();
-        let param4: Vec<Option<String>> = output.chat_messages.iter().map(|x| x.param4).collect();
-
+        let param1: Vec<Option<String>> = output
+            .chat_messages
+            .iter()
+            .map(|x| x.param1.clone())
+            .collect();
+        let param2: Vec<Option<String>> = output
+            .chat_messages
+            .iter()
+            .map(|x| x.param2.clone())
+            .collect();
+        let param3: Vec<Option<String>> = output
+            .chat_messages
+            .iter()
+            .map(|x| x.param3.clone())
+            .collect();
+        let param4: Vec<Option<String>> = output
+            .chat_messages
+            .iter()
+            .map(|x| x.param4.clone())
+            .collect();
         let entids = arr_to_py(Box::new(Int32Array::from(entids))).unwrap();
         let param1 = rust_series_to_py_series(&Series::new("param1", param1)).unwrap();
         let param2 = rust_series_to_py_series(&Series::new("param2", param2)).unwrap();
@@ -344,7 +361,6 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        let account_id: Vec<Option<u32>> = output.item_drops.iter().map(|x| x.account_id).collect();
         let def_index: Vec<Option<u32>> = output.item_drops.iter().map(|x| x.def_index).collect();
         let account_id: Vec<Option<u32>> = output.item_drops.iter().map(|x| x.account_id).collect();
         let dropreason: Vec<Option<u32>> = output.item_drops.iter().map(|x| x.dropreason).collect();
@@ -359,7 +375,6 @@ impl DemoParser {
             .iter()
             .map(|x| x.custom_name.clone())
             .collect();
-
         // SoA form
         let account_id = arr_to_py(Box::new(UInt32Array::from(account_id))).unwrap();
         let def_index = arr_to_py(Box::new(UInt32Array::from(def_index))).unwrap();
@@ -438,7 +453,8 @@ impl DemoParser {
         let paint_seed: Vec<Option<u32>> = output.skins.iter().map(|s| s.paint_seed).collect();
         let paint_wear: Vec<Option<u32>> = output.skins.iter().map(|s| s.paint_wear).collect();
         let steamid: Vec<Option<u64>> = output.skins.iter().map(|s| s.steamid).collect();
-        let custom_name: Vec<Option<String>> = output.skins.iter().map(|s| s.custom_name).collect();
+        let custom_name: Vec<Option<String>> =
+            output.skins.iter().map(|s| s.custom_name.clone()).collect();
 
         // Projectile records are in SoA form
         let def_index = arr_to_py(Box::new(UInt32Array::from(def_idx_vec))).unwrap();
@@ -607,8 +623,16 @@ impl DemoParser {
         real_props.push("tick".to_owned());
         real_props.push("steamid".to_owned());
         real_props.push("name".to_owned());
+        real_props.sort();
 
-        for (prop_name, prop_info) in real_props.iter().zip(parser.prop_infos) {
+        println!("{:?}", output.df.keys());
+        let mut prop_controller = output.prop_info.unwrap();
+        prop_controller
+            .prop_infos
+            .sort_by_key(|x| x.prop_name.clone());
+        println!("{:#?}", prop_controller.prop_infos);
+
+        for (prop_name, prop_info) in real_props.iter().zip(prop_controller.prop_infos) {
             if output.df.contains_key(&prop_info.id) {
                 match &output.df[&prop_info.id].data {
                     Some(VarVec::F32(data)) => {

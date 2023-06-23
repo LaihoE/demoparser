@@ -4,7 +4,6 @@ use super::read_bits::DemoParserError;
 use super::sendtables::Serializer;
 use super::stringtables::StringTable;
 use super::variants::PropColumn;
-use crate::collect_data::ProjectileRecordVec;
 use crate::decoder::QfMapper;
 use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
@@ -35,6 +34,7 @@ pub struct Parser {
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub convars: AHashMap<String, String>,
     pub player_md: Vec<PlayerEndMetaData>,
+    pub maps_ready: bool,
 
     pub wanted_player_props: Vec<String>,
 
@@ -71,6 +71,7 @@ impl Parser {
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
             player_md: vec![],
+            maps_ready: false,
             name_to_id: AHashMap::default(),
             convars: AHashMap::default(),
             bytes: arc_bytes.clone(),
@@ -114,6 +115,7 @@ impl Parser {
                 cell_z_player: None,
                 team_team_num: None,
                 active_weapon: None,
+                item_def: None,
             },
             id_to_path: AHashMap::default(),
             id: 0,

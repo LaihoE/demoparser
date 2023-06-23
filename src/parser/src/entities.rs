@@ -110,9 +110,8 @@ impl<'a> ParserThread<'a> {
 
         for field_info in &self.paths[..n_paths] {
             let result = bitreader.decode(&field_info.decoder, &self.qf_map)?;
-            if field_info.should_parse {
-                entity.props.insert(field_info.df_pos as u32, result);
-            }
+            if field_info.should_parse {}
+            entity.props.insert(field_info.df_pos as u32, result);
         }
         Ok(n_paths)
     }
@@ -192,6 +191,12 @@ impl<'a> ParserThread<'a> {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
+        /*
+        let cls_by_id = match self.cls_by_id.get() {
+            Some(c) => c,
+            None => panic!("boo"),
+        };
+        */
         let class = match self.cls_by_id.get(&entity.cls_id) {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),
@@ -228,6 +233,7 @@ impl<'a> ParserThread<'a> {
     }
     pub fn gather_extra_info(&mut self, entity_id: &i32) -> Result<(), DemoParserError> {
         // Boring stuff.. function does some bookkeeping
+
         let entity = match self.entities.get(&(entity_id)) {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
@@ -241,7 +247,11 @@ impl<'a> ParserThread<'a> {
 
         if entity.entity_type == EntityType::Team {
             if let Some(Variant::U32(t)) = self.get_prop_for_ent(
-                self.controller_ids.team_team_num.as_ref().unwrap(),
+                self.prop_controller
+                    .special_ids
+                    .team_team_num
+                    .as_ref()
+                    .unwrap(),
                 entity_id,
             ) {
                 match t {
@@ -254,35 +264,49 @@ impl<'a> ParserThread<'a> {
             return Ok(());
         }
 
-        let team_num =
-            match self.get_prop_for_ent(self.controller_ids.teamnum.as_ref().unwrap(), entity_id) {
-                Some(team_num) => match team_num {
-                    Variant::U32(team_num) => Some(team_num),
-                    // Signals that something went very wrong
-                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
-                },
-                None => None,
-            };
-        let name = match self
-            .get_prop_for_ent(self.controller_ids.player_name.as_ref().unwrap(), entity_id)
-        {
+        let team_num = match self.get_prop_for_ent(
+            self.prop_controller.special_ids.teamnum.as_ref().unwrap(),
+            entity_id,
+        ) {
+            Some(team_num) => match team_num {
+                Variant::U32(team_num) => Some(team_num),
+                // Signals that something went very wrong
+                _ => return Err(DemoParserError::IncorrectMetaDataProp),
+            },
+            None => None,
+        };
+        let name = match self.get_prop_for_ent(
+            self.prop_controller
+                .special_ids
+                .player_name
+                .as_ref()
+                .unwrap(),
+            entity_id,
+        ) {
             Some(name) => match name {
                 Variant::String(name) => Some(name),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
             None => None,
         };
-        let steamid =
-            match self.get_prop_for_ent(self.controller_ids.steamid.as_ref().unwrap(), entity_id) {
-                Some(steamid) => match steamid {
-                    Variant::U64(steamid) => Some(steamid),
-                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
-                },
-                None => None,
-            };
-        let player_entid = match self
-            .get_prop_for_ent(self.controller_ids.player_pawn.as_ref().unwrap(), entity_id)
-        {
+        let steamid = match self.get_prop_for_ent(
+            self.prop_controller.special_ids.steamid.as_ref().unwrap(),
+            entity_id,
+        ) {
+            Some(steamid) => match steamid {
+                Variant::U64(steamid) => Some(steamid),
+                _ => return Err(DemoParserError::IncorrectMetaDataProp),
+            },
+            None => None,
+        };
+        let player_entid = match self.get_prop_for_ent(
+            self.prop_controller
+                .special_ids
+                .player_pawn
+                .as_ref()
+                .unwrap(),
+            entity_id,
+        ) {
             Some(player_entid) => match player_entid {
                 Variant::U32(handle) => Some((handle & 0x7FF) as i32),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),

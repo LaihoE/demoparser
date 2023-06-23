@@ -1,8 +1,6 @@
 use ahash::AHashMap;
 use ahash::AHashSet;
-use dashmap::DashMap;
 use memmap2::MmapOptions;
-use mimalloc::MiMalloc;
 use parser::parser_settings::Parser;
 use parser::parser_thread_settings::create_huffman_lookup_table;
 use parser::parser_thread_settings::ParserInputs;
@@ -19,26 +17,21 @@ use std::time::Instant;
 //static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(24)
-        .build_global()
-        .unwrap();
-
     let wanted_props = vec!["X".to_owned(), "Y".to_owned()];
     let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
-    //let bytes = fs::read(demo_path).unwrap();
-    //let file = File::open(demo_path).unwrap();
-    //let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-
-    let huf = create_huffman_lookup_table();
+    // let bytes = fs::read(demo_path).unwrap();
+    // let file = File::open(demo_path).unwrap();
+    // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let before = Instant::now();
+    let huf = create_huffman_lookup_table();
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test2/").unwrap();
-    //let huf = vec![];
 
     let arc_huf = Arc::new(huf);
     let mut c = 0;
     for path in dir {
-        if c > 0 {
+        let before = Instant::now();
+
+        if c > 1000 {
             break;
         }
         c += 1;
@@ -46,7 +39,7 @@ fn main() {
         let before1 = Instant::now();
 
         let file = File::open(path.unwrap().path()).unwrap();
-        //let file = File::open("/home/laiho/Documents/demos/cs2/s2.dem").unwrap();
+        // let file = File::open("/home/laiho/Documents/demos/cs2/1.dem").unwrap();
 
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         let arc_bytes = Arc::new(mmap);
@@ -57,7 +50,7 @@ fn main() {
             bytes: arc_bytes.clone(),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            wanted_event: Some("bomb_planted".to_string()),
+            wanted_event: Some("player_death".to_string()),
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
                 "CCSTeam.m_szTeamname".to_string(),
@@ -79,8 +72,9 @@ fn main() {
 
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
+        // println!("{:?}", d.df);
+        // println!("{:?}", before.elapsed());
     }
-    println!("{:?}", before.elapsed());
     // println!("{:?}", ds.handles);
     //println!("{:#?}", ds.state.cls_by_id);
 }

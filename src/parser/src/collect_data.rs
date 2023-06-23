@@ -5,9 +5,8 @@ use crate::sendtables::PropInfo;
 use crate::variants::PropColumn;
 use itertools::Itertools;
 use phf_macros::phf_map;
-use soa_derive::StructOfArray;
 
-#[derive(Debug, StructOfArray)]
+#[derive(Debug)]
 pub struct ProjectileRecord {
     pub steamid: Option<u64>,
     pub name: Option<String>,
@@ -31,7 +30,7 @@ impl<'a> ParserThread<'a> {
         // iterate every player and every wanted prop name
         // if either one is missing then push None to output
         for (entity_id, player) in &self.players {
-            for prop_info in &self.prop_infos {
+            for prop_info in &self.prop_controller.prop_infos {
                 // All values come trough here. None if cant be found.
                 let prop = self.find_prop(prop_info, entity_id, player);
                 self.output
@@ -75,9 +74,7 @@ impl<'a> ParserThread<'a> {
             Some(PropType::Custom) => {
                 return self.create_custom_prop(prop_info.prop_name.as_str(), entity_id)
             }
-
             Some(PropType::Weapon) => return self.find_weapon_prop(&prop_info.id, &entity_id),
-
             Some(PropType::Controller) => match player.controller_entid {
                 Some(entid) => return self.get_prop_for_ent(&prop_info.id, &entid),
                 None => return None,
@@ -269,14 +266,28 @@ impl<'a> ParserThread<'a> {
         None
     }
     */
+    fn find_weapon_name(&self, entity_id: &i32) -> Option<Variant> {
+        let item_def_id = match self.prop_controller.special_ids.item_def {
+            Some(x) => x,
+            None => return None,
+        };
+        let i = self.find_weapon_prop(&item_def_id, entity_id);
+        if let Some(Variant::U32(def_idx)) = i {
+            match WEAPINDICIES.get(&def_idx) {
+                Some(v) => return Some(Variant::String(v.to_string())),
+                _ => {}
+            }
+        }
+        None
+    }
     pub fn collect_cell_coordinate_player(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
         match axis {
             "X" => {
-                let x_prop_id = match self.controller_ids.cell_x_player {
+                let x_prop_id = match self.prop_controller.special_ids.cell_x_player {
                     Some(x) => x,
                     None => return None,
                 };
-                let x_offset_id = match self.controller_ids.cell_x_offset_player {
+                let x_offset_id = match self.prop_controller.special_ids.cell_x_offset_player {
                     Some(x) => x,
                     None => return None,
                 };
@@ -287,11 +298,11 @@ impl<'a> ParserThread<'a> {
                 }
             }
             "Y" => {
-                let y_prop_id = match self.controller_ids.cell_y_player {
+                let y_prop_id = match self.prop_controller.special_ids.cell_y_player {
                     Some(y) => y,
                     None => return None,
                 };
-                let y_offset_id = match self.controller_ids.cell_y_offset_player {
+                let y_offset_id = match self.prop_controller.special_ids.cell_y_offset_player {
                     Some(y) => y,
                     None => return None,
                 };
@@ -303,11 +314,11 @@ impl<'a> ParserThread<'a> {
                 }
             }
             "Z" => {
-                let z_prop_id = match self.controller_ids.cell_z_player {
+                let z_prop_id = match self.prop_controller.special_ids.cell_z_player {
                     Some(z) => z,
                     None => return None,
                 };
-                let z_offset_id = match self.controller_ids.cell_z_offset_player {
+                let z_offset_id = match self.prop_controller.special_ids.cell_z_offset_player {
                     Some(z) => z,
                     None => return None,
                 };
@@ -328,13 +339,13 @@ impl<'a> ParserThread<'a> {
             "X" => self.collect_cell_coordinate_player("X", entity_id),
             "Y" => self.collect_cell_coordinate_player("Y", entity_id),
             "Z" => self.collect_cell_coordinate_player("Z", entity_id),
-            // "weapon_name" => self.find_weapon_name(entity_id),
+            "weapon_name" => self.find_weapon_name(entity_id),
             _ => panic!("unknown custom prop: {}", prop_name),
         }
     }
 
     pub fn find_weapon_prop(&self, prop: &u32, player_entid: &i32) -> Option<Variant> {
-        let p = match self.controller_ids.active_weapon {
+        let p = match self.prop_controller.special_ids.active_weapon {
             Some(p) => p,
             None => return None,
         };
@@ -346,7 +357,7 @@ impl<'a> ParserThread<'a> {
         None
     }
     pub fn find_team_prop(&self, prop: &u32, player_entid: &i32) -> Option<Variant> {
-        match self.controller_ids.player_team_pointer {
+        match self.prop_controller.special_ids.player_team_pointer {
             None => {
                 return None;
             }

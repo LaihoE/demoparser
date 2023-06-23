@@ -557,19 +557,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dashmap"
-version = "5.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "907076dfda823b0b36d2a1bb5f90c96660a5bbcd7729e10727f07858f22c4edc"
-dependencies = [
- "cfg-if",
- "hashbrown 0.12.3",
- "lock_api",
- "once_cell",
- "parking_lot_core",
-]
-
-[[package]]
 name = "demoparser2"
 version = "0.0.9"
 dependencies = [
@@ -1276,21 +1263,16 @@ dependencies = [
  "bit_reverse",
  "bitter",
  "csgoproto",
- "dashmap",
  "derive_more",
  "itertools",
  "lazy_static",
  "memmap2",
- "mimalloc",
  "phf",
  "phf_macros",
  "protobuf",
- "rayon",
  "regex",
  "serde",
- "smallvec",
  "snap",
- "soa_derive",
 ]
 
 [[package]]

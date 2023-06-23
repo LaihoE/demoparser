@@ -4,24 +4,21 @@ use super::read_bits::DemoParserError;
 use super::sendtables::Serializer;
 use super::stringtables::StringTable;
 use super::variants::PropColumn;
-use crate::collect_data::ProjectileRecordVec;
 use crate::decoder::QfMapper;
 use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
 use crate::other_netmessages::Class;
 use crate::sendtables::FieldInfo;
 use crate::sendtables::FieldModel;
-use crate::sendtables::PropInfo;
+use crate::sendtables::PropController;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
 use ahash::RandomState;
 use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use dashmap::DashMap;
 use memmap2::Mmap;
 use phf_macros::phf_map;
-use soa_derive::StructOfArray;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -32,7 +29,8 @@ pub struct ParserThread<'a> {
     pub ptr: usize,
     pub bytes: Arc<Mmap>,
     // Parsing state
-    pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
+    pub prop_controller: &'a PropController,
+    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_by_id: &'a AHashMap<u32, Class>,
     pub cls_bits: Option<u32>,
@@ -40,9 +38,6 @@ pub struct ParserThread<'a> {
     pub tick: i32,
     pub players: BTreeMap<i32, PlayerMetaData>,
     pub teams: Teams,
-    pub prop_name_to_path: AHashMap<String, [i32; 7]>,
-    pub path_to_prop_name: AHashMap<[i32; 7], String>,
-    pub wanted_prop_paths: AHashSet<[i32; 7]>,
     pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
@@ -51,12 +46,11 @@ pub struct ParserThread<'a> {
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub paths: Vec<FieldInfo>,
     pub projectiles: AHashSet<i32, RandomState>,
-    pub prop_infos: Vec<PropInfo>,
-    pub controller_ids: SpecialIDs,
     pub fullpackets_parsed: u32,
     pub packets_parsed: u32,
     pub cnt: AHashMap<FieldModel, u32>,
-    pub qf_map: QfMapper,
+    pub qf_map: &'a QfMapper,
+    pub wanted_ticks: AHashSet<i32>,
 
     // Output from parsing
     pub output: AHashMap<u32, PropColumn, RandomState>,
@@ -66,15 +60,9 @@ pub struct ParserThread<'a> {
     pub convars: AHashMap<String, String>,
     pub chat_messages: Vec<ChatMessageRecord>,
     pub player_end_data: Vec<PlayerEndMetaData>,
-    pub projectile_records: ProjectileRecordVec,
+    // pub projectile_records: ProjectileRecordVec,
 
     // Settings
-    pub wanted_ticks: AHashSet<i32, RandomState>,
-    pub wanted_player_props: Vec<String>,
-    pub wanted_player_props_og_names: Vec<String>,
-    // Team and rules props
-    pub wanted_other_props: Vec<String>,
-    pub wanted_other_props_og_names: Vec<String>,
     pub wanted_event: Option<String>,
     pub parse_entities: bool,
     pub parse_projectiles: bool,
@@ -150,6 +138,10 @@ impl<'a> ParserThread<'a> {
     pub fn new(
         mut settings: ParserInputs,
         cls_by_id: &'a AHashMap<u32, Class>,
+        qfmap: &'a QfMapper,
+        ge_list: &'a AHashMap<i32, Descriptor_t>,
+        prop_controller: &'a PropController,
+        ptr: Arc<usize>,
     ) -> Result<Self, DemoParserError> {
         let fp_filler = FieldPath {
             last: 0,
@@ -162,47 +154,28 @@ impl<'a> ParserThread<'a> {
         ]);
         // let huffman_table = create_huffman_lookup_table();
         Ok(ParserThread {
-            qf_map: QfMapper {
-                idx: 0,
-                map: AHashMap::default(),
-            },
+            wanted_ticks: AHashSet::default(),
+            prop_controller: prop_controller,
+            qf_map: qfmap,
             fullpackets_parsed: 0,
             packets_parsed: 0,
-            controller_ids: SpecialIDs {
-                team_team_num: None,
-                teamnum: None,
-                player_name: None,
-                steamid: None,
-                player_pawn: None,
-                player_team_pointer: None,
-                weapon_owner_pointer: None,
-                cell_x_offset_player: None,
-                cell_x_player: None,
-                cell_y_player: None,
-                cell_y_offset_player: None,
-                cell_z_offset_player: None,
-                cell_z_player: None,
-                active_weapon: None,
-            },
             cnt: AHashMap::default(),
             serializers: AHashMap::default(),
-            ptr: 0,
-            ge_list: None,
+            ptr: *ptr,
+            ge_list: ge_list,
             bytes: settings.bytes,
             // JUST LOL
             cls_by_id: cls_by_id,
             entities: AHashMap::default(),
             cls_bits: None,
             tick: -99999,
-            wanted_player_props: settings.wanted_player_props,
             players: BTreeMap::default(),
             output: AHashMap::default(),
-            wanted_ticks: AHashSet::from_iter(settings.wanted_ticks),
             game_events: vec![],
             wanted_event: settings.wanted_event,
             parse_entities: settings.parse_ents,
             projectiles: AHashSet::default(),
-            projectile_records: ProjectileRecordVec::new(),
+            // projectile_records: ProjectileRecordVec::new(),
             baselines: AHashMap::default(),
             string_tables: vec![],
             paths: vec![
@@ -214,7 +187,6 @@ impl<'a> ParserThread<'a> {
                 };
                 4096
             ],
-            prop_infos: vec![],
             teams: Teams::new(),
             game_events_counter: AHashMap::default(),
             parse_projectiles: settings.parse_projectiles,
@@ -225,13 +197,7 @@ impl<'a> ParserThread<'a> {
             skins: vec![],
             player_end_data: vec![],
             huffman_lookup_table: settings.huffman_lookup_table,
-            prop_name_to_path: AHashMap::default(),
-            wanted_prop_paths: AHashSet::default(),
-            path_to_prop_name: AHashMap::default(),
             header: HashMap::default(),
-            wanted_player_props_og_names: settings.wanted_player_props_og_names,
-            wanted_other_props: settings.wanted_other_props,
-            wanted_other_props_og_names: settings.wanted_other_props_og_names,
         })
     }
 }
@@ -255,6 +221,28 @@ pub struct SpecialIDs {
     pub cell_y_offset_player: Option<u32>,
     pub cell_z_offset_player: Option<u32>,
     pub active_weapon: Option<u32>,
+    pub item_def: Option<u32>,
+}
+impl SpecialIDs {
+    pub fn new() -> Self {
+        SpecialIDs {
+            teamnum: None,
+            player_name: None,
+            steamid: None,
+            player_pawn: None,
+            player_team_pointer: None,
+            weapon_owner_pointer: None,
+            team_team_num: None,
+            cell_x_player: None,
+            cell_y_player: None,
+            cell_z_player: None,
+            cell_x_offset_player: None,
+            cell_y_offset_player: None,
+            cell_z_offset_player: None,
+            active_weapon: None,
+            item_def: None,
+        }
+    }
 }
 
 fn msb(mut val: u32) -> u32 {

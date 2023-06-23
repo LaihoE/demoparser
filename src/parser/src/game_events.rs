@@ -29,7 +29,10 @@ const ENTITYIDNONE: i32 = 2047;
 
 impl Parser {
     // Message that should come before first game event
-    pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+    pub fn parse_game_event_list(
+        &mut self,
+        bytes: &[u8],
+    ) -> Result<AHashMap<i32, Descriptor_t>, DemoParserError> {
         let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
 
         let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
@@ -38,8 +41,7 @@ impl Parser {
                 hm.insert(event_desc.eventid(), event_desc);
             }
         }
-        self.ge_list = Some(hm);
-        Ok(())
+        Ok(hm)
     }
 }
 
@@ -49,12 +51,9 @@ impl<'a> ParserThread<'a> {
             return Ok(());
         }
         let event: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
-        let ge_list = match &self.ge_list {
-            Some(gel) => gel,
-            None => return Err(DemoParserError::GameEventListNotSet),
-        };
+
         // Check if this events id is found in our game event list
-        let event_desc = match ge_list.get(&event.eventid()) {
+        let event_desc = match self.ge_list.get(&event.eventid()) {
             Some(desc) => desc,
             None => {
                 return Ok(());
@@ -194,9 +193,10 @@ impl<'a> ParserThread<'a> {
 
         // prop name:
         for (prop_info, og_name) in self
+            .prop_controller
             .prop_infos
             .iter()
-            .zip(&self.wanted_player_props_og_names)
+            .zip(&self.prop_controller.wanted_player_og_props)
         {
             // These are meant for entities not used here
             if prop_info.prop_name == "tick"
