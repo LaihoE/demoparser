@@ -107,29 +107,12 @@ impl<'a> ParserThread<'a> {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
-        let class = match self.cls_by_id.get(&entity.cls_id) {
-            Some(cls) => cls,
-            None => return Err(DemoParserError::ClassNotFound),
-        };
 
         for field_info in &self.paths[..n_paths] {
             let result = bitreader.decode(&field_info.decoder, &self.qf_map)?;
-            let pn = self
-                .prop_controller
-                .path_to_prop_name
-                .get(&self.prop_controller.id_to_path[&field_info.df_pos]);
-            match pn {
-                Some(p) => {
-                    if p.contains("Butt") {
-                        println!(
-                            "{:?} {:?} {:?} {:?}",
-                            class.name, result, pn, field_info.df_pos
-                        );
-                    }
-                }
-                _ => {}
+            if field_info.should_parse {
+                //entity.props.insert(field_info.df_pos as u32, result);
             }
-
             entity.props.insert(field_info.df_pos as u32, result);
         }
         Ok(n_paths)

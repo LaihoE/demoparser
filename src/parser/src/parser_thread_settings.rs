@@ -29,7 +29,7 @@ pub struct ParserThread<'a> {
     pub ptr: usize,
     pub bytes: Arc<Mmap>,
     // Parsing state
-    pub prop_controller: &'a PropController,
+    pub prop_controller: PropController,
     pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_by_id: &'a AHashMap<u32, Class>,
@@ -140,7 +140,7 @@ impl<'a> ParserThread<'a> {
         cls_by_id: &'a AHashMap<u32, Class>,
         qfmap: &'a QfMapper,
         ge_list: &'a AHashMap<i32, Descriptor_t>,
-        prop_controller: &'a PropController,
+        prop_controller: PropController,
         ptr: Arc<usize>,
     ) -> Result<Self, DemoParserError> {
         let fp_filler = FieldPath {

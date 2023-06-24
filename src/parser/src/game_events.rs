@@ -37,9 +37,9 @@ impl Parser {
 
         let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
         for event_desc in event_list.descriptors {
-            if event_desc.name == self.wanted_event {
-                hm.insert(event_desc.eventid(), event_desc);
-            }
+            //if event_desc.name == self.wanted_event {
+            hm.insert(event_desc.eventid(), event_desc);
+            //}
         }
         Ok(hm)
     }

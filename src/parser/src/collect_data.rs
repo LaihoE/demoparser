@@ -27,13 +27,13 @@ impl<'a> ParserThread<'a> {
         if self.parse_projectiles {
             // self.collect_projectiles();
         }
+        // println!("{:#?}", self.prop_controller.prop_infos);
         // iterate every player and every wanted prop name
         // if either one is missing then push None to output
         for (entity_id, player) in &self.players {
             for prop_info in &self.prop_controller.prop_infos {
                 // All values come trough here. None if cant be found.
                 let prop = self.find_prop(prop_info, entity_id, player);
-                // println!("{:?} {:?}", prop, prop_info.prop_name);
                 self.output
                     .entry(prop_info.id)
                     .or_insert_with(|| PropColumn::new())

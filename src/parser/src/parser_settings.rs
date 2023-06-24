@@ -12,6 +12,7 @@ use crate::parser_thread_settings::ParserInputs;
 use crate::parser_thread_settings::ParserThread;
 use crate::parser_thread_settings::PlayerEndMetaData;
 use crate::parser_thread_settings::SpecialIDs;
+use crate::sendtables::PropController;
 use crate::sendtables::PropInfo;
 use ahash::AHashMap;
 use ahash::AHashSet;
@@ -37,6 +38,7 @@ pub struct Parser {
     pub player_md: Vec<PlayerEndMetaData>,
     pub maps_ready: bool,
     pub start: Instant,
+    pub prop_controller: Option<PropController>,
 
     pub wanted_player_props: Vec<String>,
 
@@ -72,6 +74,7 @@ impl Parser {
         let arc_bytes = inputs.bytes.clone();
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
+            prop_controller: None,
             start: Instant::now(),
             player_md: vec![],
             maps_ready: false,

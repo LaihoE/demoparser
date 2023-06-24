@@ -634,12 +634,14 @@ impl Parser {
                 }
             }
             if my_serializer.name.contains("Player")
+                || my_serializer.name.contains("Controller")
                 || my_serializer.name.contains("Team")
                 || my_serializer.name.contains("Weapon")
                 || my_serializer.name.contains("AK")
             {
                 prop_controller.find_prop_name_paths(&mut my_serializer);
             }
+            prop_controller.find_prop_name_paths(&mut my_serializer);
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
         if wanted_props.contains(&("weapon_name".to_string())) {
@@ -786,7 +788,7 @@ impl PropController {
                     self.id_to_path.insert(self.id, arr);
                     self.id_to_name.insert(self.id, full_name.clone());
                     self.id += 1;
-                    continue;
+                    // continue;
                 }
 
                 match full_name.as_str() {

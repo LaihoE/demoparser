@@ -541,6 +541,7 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
+        println!("{:?}", parser.wanted_event);
 
         let event_series = match series_from_events(&output.game_events) {
             Ok(ser) => ser,

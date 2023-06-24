@@ -23,6 +23,7 @@ use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
+use std::sync::Arc;
 use std::sync::OnceLock;
 use std::thread;
 
@@ -44,8 +45,6 @@ static QFMAPPER: OnceLock<QfMapper> = OnceLock::new();
 static GE_LIST: OnceLock<AHashMap<i32, Descriptor_t>> = OnceLock::new();
 static PROPCONTROLLER: OnceLock<PropController> = OnceLock::new();
 
-use std::sync::Arc;
-
 impl Parser {
     pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
         self.ptr = 16;
@@ -53,20 +52,31 @@ impl Parser {
 
         let mut sendtable: Option<CDemoSendTables> = None;
         let mut handle = None;
+        self.prop_controller = None;
 
         let out = thread::scope(|s| {
             let mut handles = vec![];
             loop {
                 if self.fullpacket_offsets.len() > 0 {
+                    /*
+                    println!(
+                        "HERE {} {} {} {}",
+                        QFMAPPER.get().is_some(),
+                        CLSBYID.get().is_some(),
+                        GE_LIST.get().is_some(),
+                        self.prop_controller.is_some()
+                    );
+                    */
                     if QFMAPPER.get().is_some()
                         && CLSBYID.get().is_some()
                         && GE_LIST.get().is_some()
+                        && self.prop_controller.is_some()
                     {
                         let p = self.fullpacket_offsets.pop().unwrap();
                         let a = Arc::new(p);
                         let ss = self.settings.clone();
                         let b = self.baselines.clone();
-
+                        let pc = self.prop_controller.as_ref().unwrap().clone();
                         let we = self.wanted_event.clone();
                         handles.push(s.spawn(|| {
                             let mut parser = ParserThread::new(
@@ -74,7 +84,7 @@ impl Parser {
                                 CLSBYID.get().unwrap(),
                                 QFMAPPER.get().unwrap(),
                                 GE_LIST.get().unwrap(),
-                                PROPCONTROLLER.get().unwrap(),
+                                pc,
                                 a,
                             )
                             .unwrap();
@@ -139,11 +149,14 @@ impl Parser {
                             Parser::parse_class_info(&my_b, my_s.unwrap(), want_prop, want_prop_og)
                         }));
                         let (c, q, mut p) = handle.unwrap().join().unwrap().unwrap();
-                        QFMAPPER.set(q).unwrap();
-                        CLSBYID.set(c).unwrap();
                         p.wanted_player_props = self.wanted_player_props.clone();
                         p.wanted_player_og_props = self.wanted_player_props_og_names.clone();
-                        PROPCONTROLLER.set(p).unwrap();
+                        println!("SETTING PROPCONTROLLER");
+                        self.prop_controller = Some(p);
+
+                        QFMAPPER.set(q);
+                        CLSBYID.set(c);
+                        //PROPCONTROLLER.set(p).unwrap();
                         Ok(())
                     }
                     DEM_SignonPacket => self.parse_packet(&bytes),
@@ -161,6 +174,7 @@ impl Parser {
                 outputs.push(handle.join().unwrap());
             }
             let mut dfs = outputs.iter().map(|x| x.df.clone()).collect();
+            println!("{:?}", dfs);
             let all_dfs_combined = self.combine_dfs(&mut dfs);
             DemoOutput {
                 chat_messages: outputs
@@ -175,7 +189,7 @@ impl Parser {
                 df: all_dfs_combined,
                 header: Some(self.header.clone()),
                 game_events_counter: AHashMap::default(),
-                prop_info: Some(PROPCONTROLLER.get().unwrap().clone()),
+                prop_info: Some(self.prop_controller.as_ref().unwrap().clone()),
             }
         });
         Ok(out)
@@ -207,9 +221,11 @@ impl Parser {
                 GE_Source1LegacyGameEventList => {
                     let hm = self.parse_game_event_list(&msg_bytes)?;
                     GE_LIST.set(hm);
+
+                    println!("{:?}", GE_LIST);
                     Ok(())
                 }
-                //GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
+                // GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 _ => Ok(()),

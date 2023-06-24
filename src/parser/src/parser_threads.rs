@@ -28,6 +28,7 @@ impl<'a> ParserThread<'a> {
             }
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
+
             let bytes = match is_compressed {
                 true => SnapDecoder::new()
                     .decompress_vec(self.read_n_bytes(size)?)
