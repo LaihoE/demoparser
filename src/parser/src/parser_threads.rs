@@ -16,14 +16,7 @@ use EDemoCommands::*;
 
 // The parser struct is defined in parser_settings.rs
 impl<'a> ParserThread<'a> {
-    pub fn start(&mut self) -> Result<i32, DemoParserError> {
-        let file_length = self.bytes.len();
-        let before = Instant::now();
-        // Header (there is a longer header as a DEM_FileHeader msg below)
-        // let header = self.read_n_bytes(16)?;
-        // Parser::handle_short_header(file_length, header)?;
-        // Outer loop that continues trough the file, until "DEM_Stop" msg
-        let mut frames_parsed = 0;
+    pub fn start(&mut self) -> Result<(), DemoParserError> {
         loop {
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
@@ -33,7 +26,6 @@ impl<'a> ParserThread<'a> {
             if self.bytes.len() < self.ptr + size as usize {
                 break;
             }
-            frames_parsed += 1;
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let bytes = match is_compressed {
@@ -64,7 +56,7 @@ impl<'a> ParserThread<'a> {
             ok?;
             self.collect_entities();
         }
-        Ok(frames_parsed)
+        Ok(())
     }
 
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {

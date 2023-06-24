@@ -33,6 +33,7 @@ impl<'a> ParserThread<'a> {
             for prop_info in &self.prop_controller.prop_infos {
                 // All values come trough here. None if cant be found.
                 let prop = self.find_prop(prop_info, entity_id, player);
+                // println!("{:?} {:?}", prop, prop_info.prop_name);
                 self.output
                     .entry(prop_info.id)
                     .or_insert_with(|| PropColumn::new())
@@ -333,8 +334,8 @@ impl<'a> ParserThread<'a> {
 
         None
     }
-
     pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
+        // println!("{:?}", prop_name);
         match prop_name {
             "X" => self.collect_cell_coordinate_player("X", entity_id),
             "Y" => self.collect_cell_coordinate_player("Y", entity_id),
@@ -343,15 +344,16 @@ impl<'a> ParserThread<'a> {
             _ => panic!("unknown custom prop: {}", prop_name),
         }
     }
-
     pub fn find_weapon_prop(&self, prop: &u32, player_entid: &i32) -> Option<Variant> {
         let p = match self.prop_controller.special_ids.active_weapon {
             Some(p) => p,
             None => return None,
         };
+        // println!("ACT W {:?}", p);
         if let Some(Variant::U32(weap_handle)) = self.get_prop_for_ent(&p, player_entid) {
             let weapon_entity_id = (weap_handle & 0x7FF) as i32;
             let pp = self.get_prop_for_ent(&prop, &weapon_entity_id);
+            // println!("PP {:?}", pp);
             return pp;
         }
         None

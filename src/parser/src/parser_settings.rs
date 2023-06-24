@@ -19,6 +19,7 @@ use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use memmap2::Mmap;
 use std::sync::Arc;
+use std::time::Instant;
 
 pub struct Parser {
     pub fullpacket_offsets: Vec<usize>,
@@ -35,6 +36,7 @@ pub struct Parser {
     pub convars: AHashMap<String, String>,
     pub player_md: Vec<PlayerEndMetaData>,
     pub maps_ready: bool,
+    pub start: Instant,
 
     pub wanted_player_props: Vec<String>,
 
@@ -70,6 +72,7 @@ impl Parser {
         let arc_bytes = inputs.bytes.clone();
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
+            start: Instant::now(),
             player_md: vec![],
             maps_ready: false,
             name_to_id: AHashMap::default(),

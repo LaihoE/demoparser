@@ -79,6 +79,21 @@ impl fmt::Display for Decoder {
         // fmt::Debug::fmt(self, f)
     }
 }
+#[derive(Clone, Debug)]
+pub struct PropController {
+    pub wanted_prop_paths: AHashSet<[i32; 7]>,
+    pub id: u32,
+    pub wanted_player_props: Vec<String>,
+    pub wanted_prop_ids: Vec<u32>,
+    pub prop_infos: Vec<PropInfo>,
+    pub prop_name_to_path: AHashMap<String, [i32; 7]>,
+    pub path_to_prop_name: AHashMap<[i32; 7], String>,
+    pub name_to_id: AHashMap<String, u32>,
+    pub id_to_path: AHashMap<u32, [i32; 7]>,
+    pub id_to_name: AHashMap<u32, String>,
+    pub special_ids: SpecialIDs,
+    pub wanted_player_og_props: Vec<String>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Decoder {
@@ -541,20 +556,6 @@ const POINTER_TYPES: &'static [&'static str] = &[
     "CRenderComponent",
     "CPhysicsComponent",
 ];
-#[derive(Clone, Debug)]
-pub struct PropController {
-    pub wanted_prop_paths: AHashSet<[i32; 7]>,
-    pub id: u32,
-    pub wanted_player_props: Vec<String>,
-    pub wanted_prop_ids: Vec<u32>,
-    pub prop_infos: Vec<PropInfo>,
-    pub prop_name_to_path: AHashMap<String, [i32; 7]>,
-    pub path_to_prop_name: AHashMap<[i32; 7], String>,
-    pub name_to_id: AHashMap<String, u32>,
-    pub id_to_path: AHashMap<u32, [i32; 7]>,
-    pub special_ids: SpecialIDs,
-    pub wanted_player_og_props: Vec<String>,
-}
 
 impl Parser {
     // This part is so insanely complicated. There are multiple versions of each serializer and
@@ -567,7 +568,6 @@ impl Parser {
         let before = Instant::now();
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint()?;
-
         let bytes = bitreader.read_n_bytes(n_bytes as usize)?;
         let serializer_msg: CSVCMsg_FlattenedSerializer =
             Message::parse_from_bytes(&bytes).unwrap();
@@ -578,7 +578,7 @@ impl Parser {
         };
 
         let mut fields: HashMap<i32, Field> = HashMap::default();
-        let mut prop_controller = PropController::new(wanted_props, wanted_props_og_names);
+        let mut prop_controller = PropController::new(wanted_props.clone(), wanted_props_og_names);
         for (ii, serializer) in serializer_msg.serializers.iter().enumerate() {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
@@ -642,15 +642,17 @@ impl Parser {
             }
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
+        if wanted_props.contains(&("weapon_name".to_string())) {
+            prop_controller.prop_infos.push(PropInfo {
+                id: 9999992,
+                prop_type: Some(PropType::Custom),
+                prop_name: "weapon_name".to_string(),
+            });
+        }
         prop_controller.prop_infos.push(PropInfo {
-            id: 9997997,
+            id: 9999999,
             prop_type: None,
-            prop_name: "weapon_name".to_string(),
-        });
-        prop_controller.prop_infos.push(PropInfo {
-            id: 9999997,
-            prop_type: None,
-            prop_name: "name".to_string(),
+            prop_name: "tick".to_string(),
         });
         prop_controller.prop_infos.push(PropInfo {
             id: 9999998,
@@ -658,10 +660,11 @@ impl Parser {
             prop_name: "steamid".to_string(),
         });
         prop_controller.prop_infos.push(PropInfo {
-            id: 9999999,
+            id: 9999997,
             prop_type: None,
-            prop_name: "tick".to_string(),
+            prop_name: "name".to_string(),
         });
+        println!("{}", prop_controller.id);
         Ok((serializers, qf_mapper, prop_controller))
     }
 }
@@ -682,6 +685,7 @@ impl PropController {
             id_to_path: AHashMap::default(),
             special_ids: SpecialIDs::new(),
             wanted_player_og_props: wanted_player_props_og_names,
+            id_to_name: AHashMap::default(),
         }
     }
 
@@ -706,6 +710,7 @@ impl PropController {
                     arr[idx] = *val;
                 }
                 let full_name = ser_name.clone() + "." + &f.var_name;
+                self.id_to_name.insert(self.id, full_name.clone());
 
                 if self.is_wanted_prop(&full_name) {
                     f.should_parse = true;
@@ -739,13 +744,25 @@ impl PropController {
                         }
                     }
                 }
+                if arr == [78, 0, 0, 0, 0, 0, 0] && full_name.contains("m_iItemDefinitionIndex") {
+                    f.df_pos = 69999;
+                    self.special_ids.item_def = Some(69999);
+                    continue;
+                }
+
+                // println!("{:?}", self.name_to_id.get());
+
                 if self.wanted_player_props.contains(&weap_prop.to_string()) {
+                    f.should_parse = true;
                     self.wanted_prop_ids.push(self.id);
                     self.prop_name_to_path.insert(full_name.clone(), arr);
                     self.path_to_prop_name.insert(arr, full_name.clone());
 
-                    let id = match self.name_to_id.get(weap_prop.to_owned()) {
-                        Some(i) => {}
+                    match self.name_to_id.get(weap_prop.to_owned()) {
+                        Some(i) => {
+                            f.df_pos = *i as usize;
+                            continue;
+                        }
                         None => match TYPEHM.get(&weap_prop) {
                             Some(t) => self.prop_infos.push(PropInfo {
                                 id: self.id,
@@ -764,8 +781,10 @@ impl PropController {
                             }
                         },
                     };
+                    f.df_pos = self.id as usize;
                     self.name_to_id.insert(weap_prop.to_string(), self.id);
                     self.id_to_path.insert(self.id, arr);
+                    self.id_to_name.insert(self.id, full_name.clone());
                     self.id += 1;
                     continue;
                 }
@@ -817,9 +836,10 @@ impl PropController {
                     }
                     _ => {}
                 };
+                self.id_to_name.insert(self.id, full_name.clone());
+
                 self.id_to_path.insert(self.id, arr);
                 self.id += 1;
-
                 self.prop_name_to_path.insert(full_name.clone(), arr);
                 self.path_to_prop_name.insert(arr, full_name);
             }

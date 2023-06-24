@@ -623,14 +623,8 @@ impl DemoParser {
         real_props.push("tick".to_owned());
         real_props.push("steamid".to_owned());
         real_props.push("name".to_owned());
-        real_props.sort();
 
-        println!("{:?}", output.df.keys());
-        let mut prop_controller = output.prop_info.unwrap();
-        prop_controller
-            .prop_infos
-            .sort_by_key(|x| x.prop_name.clone());
-        println!("{:#?}", prop_controller.prop_infos);
+        let prop_controller = output.prop_info.unwrap();
 
         for (prop_name, prop_info) in real_props.iter().zip(prop_controller.prop_infos) {
             if output.df.contains_key(&prop_info.id) {

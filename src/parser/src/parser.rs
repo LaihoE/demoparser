@@ -65,6 +65,7 @@ impl Parser {
                         let p = self.fullpacket_offsets.pop().unwrap();
                         let a = Arc::new(p);
                         let ss = self.settings.clone();
+                        let b = self.baselines.clone();
 
                         let we = self.wanted_event.clone();
                         handles.push(s.spawn(|| {
@@ -77,9 +78,8 @@ impl Parser {
                                 a,
                             )
                             .unwrap();
-                            parser.parse_entities = true;
                             parser.wanted_event = we;
-                            parser.baselines = AHashMap::default();
+                            parser.baselines = b;
                             parser.start().unwrap();
                             DemoOutput {
                                 chat_messages: parser.chat_messages,
@@ -139,11 +139,11 @@ impl Parser {
                             Parser::parse_class_info(&my_b, my_s.unwrap(), want_prop, want_prop_og)
                         }));
                         let (c, q, mut p) = handle.unwrap().join().unwrap().unwrap();
-                        QFMAPPER.set(q);
-                        CLSBYID.set(c);
+                        QFMAPPER.set(q).unwrap();
+                        CLSBYID.set(c).unwrap();
                         p.wanted_player_props = self.wanted_player_props.clone();
                         p.wanted_player_og_props = self.wanted_player_props_og_names.clone();
-                        PROPCONTROLLER.set(p);
+                        PROPCONTROLLER.set(p).unwrap();
                         Ok(())
                     }
                     DEM_SignonPacket => self.parse_packet(&bytes),
