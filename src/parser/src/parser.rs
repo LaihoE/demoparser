@@ -14,7 +14,6 @@ use crate::variants::PropColumn;
 use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
 use bitter::BitReader;
-use csgoproto::demo::CDemoAnimationData;
 use csgoproto::demo::CDemoClassInfo;
 use csgoproto::demo::CDemoFileHeader;
 use csgoproto::demo::CDemoPacket;
@@ -158,16 +157,9 @@ impl Parser {
                 let gel = self.ge_list.clone();
 
                 handles.push(s.spawn(|| {
-                    let mut parser = ParserThread::new(
-                        settings,
-                        cid,
-                        qm,
-                        gel,
-                        prop_controller,
-                        offset,
-                        false,
-                    )
-                    .unwrap();
+                    let mut parser =
+                        ParserThread::new(settings, cid, qm, gel, prop_controller, offset, false)
+                            .unwrap();
                     parser.baselines = baselines;
                     parser.start().unwrap();
                     parser.create_output()
@@ -212,16 +204,13 @@ impl Parser {
 
 impl Parser {
     pub fn is_ready_to_spawn_thread(&self) -> bool {
-        /* 
+        /*
         println!("{} {} {} {}",         self.qf_map_set,
         && self.cls_by_id_set,
         && self.ge_list_set,
         && self.prop_controller_is_set);
         */
-        self.qf_map_set
-            && self.cls_by_id_set
-            && self.ge_list_set
-            && self.prop_controller_is_set
+        self.qf_map_set && self.cls_by_id_set && self.ge_list_set && self.prop_controller_is_set
     }
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();

@@ -244,6 +244,14 @@ pub struct SpecialIDs {
     pub cell_z_offset_player: Option<u32>,
     pub active_weapon: Option<u32>,
     pub item_def: Option<u32>,
+
+    pub m_vecX_grenade: Option<u32>,
+    pub m_vecY_greande: Option<u32>,
+    pub m_vecZ_grenade: Option<u32>,
+
+    pub m_cellX_grenade: Option<u32>,
+    pub m_cellY_greande: Option<u32>,
+    pub m_cellZ_grenade: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -263,6 +271,12 @@ impl SpecialIDs {
             cell_z_offset_player: None,
             active_weapon: None,
             item_def: None,
+            m_cellX_grenade: None,
+            m_cellY_greande: None,
+            m_cellZ_grenade: None,
+            m_vecX_grenade: None,
+            m_vecY_greande: None,
+            m_vecZ_grenade: None,
         }
     }
 }

@@ -640,9 +640,9 @@ impl Parser {
                 || my_serializer.name.contains("Weapon")
                 || my_serializer.name.contains("AK")
             {
-                prop_controller.find_prop_name_paths(&mut my_serializer);
+                // prop_controller.find_prop_name_paths(&mut my_serializer);
             }
-            // prop_controller.find_prop_name_paths(&mut my_serializer);
+            prop_controller.find_prop_name_paths(&mut my_serializer);
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
         if wanted_props.contains(&("weapon_name".to_string())) {
@@ -812,6 +812,16 @@ impl PropController {
                     self.id += 1;
                     // continue;
                 }
+                if full_name.contains("renadeProjectile.CBodyComponentBaseAnimGraph.m_vec") {
+                    let x: Vec<&str> = full_name.split(".").collect();
+                    let y = x[1].to_owned() + "." + x[2];
+                    println!("{:?}", y);
+
+                    println!("{:?} {:?}", full_name, arr);
+                };
+                if full_name.contains("renadeProjectile.CBodyComponentBaseAnimGraph.m_cell") {
+                    println!("{:?} {:?}", full_name, arr);
+                };
 
                 match full_name.as_str() {
                     "CCSTeam.m_iTeamNum" => self.special_ids.team_team_num = Some(self.id),
