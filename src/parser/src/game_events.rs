@@ -43,13 +43,13 @@ impl Parser {
     }
 }
 
-impl<'a> ParserThread<'a> {
+impl ParserThread {
     pub fn parse_event(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if self.wanted_event.is_none() {
             return Ok(());
         }
         let event: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
-
+        //let g = self.ge_list.unwrap();
         // Check if this events id is found in our game event list
         let event_desc = match self.ge_list.get(&event.eventid()) {
             Some(desc) => desc,
@@ -57,6 +57,7 @@ impl<'a> ParserThread<'a> {
                 return Ok(());
             }
         };
+
         // Used to count how many of each event in this demo. Cheap so do it always
         self.game_events_counter
             .entry(event_desc.name.as_ref().unwrap().clone())

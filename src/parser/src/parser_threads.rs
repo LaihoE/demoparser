@@ -15,7 +15,7 @@ use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
 // The parser struct is defined in parser_settings.rs
-impl<'a> ParserThread<'a> {
+impl ParserThread {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
         loop {
             let cmd = self.read_varint()?;

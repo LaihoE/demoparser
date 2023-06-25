@@ -26,15 +26,17 @@ use std::sync::Arc;
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 
-pub struct ParserThread<'a> {
+pub struct ParserThread {
     pub ptr: usize,
     pub bytes: Arc<Mmap>,
     pub parse_all_packets: bool,
     // Parsing state
+    pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,
+    pub qf_mapper: Arc<QfMapper>,
     pub prop_controller: Arc<PropController>,
-    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
+    //pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
-    pub cls_by_id: &'a AHashMap<u32, Class>,
+    pub cls_by_id: Arc<AHashMap<u32, Class>>,
     pub cls_bits: Option<u32>,
     pub entities: AHashMap<i32, Entity, RandomState>,
     pub tick: i32,
@@ -51,7 +53,7 @@ pub struct ParserThread<'a> {
     pub fullpackets_parsed: u32,
     pub packets_parsed: u32,
     pub cnt: AHashMap<FieldModel, u32>,
-    pub qf_map: &'a QfMapper,
+    //pub qf_map: &'a QfMapper,
     pub wanted_ticks: AHashSet<i32>,
 
     // Output from parsing
@@ -137,7 +139,7 @@ pub struct ParserInputs {
     pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
 }
 
-impl<'a> ParserThread<'a> {
+impl ParserThread {
     pub fn create_output(self) -> DemoOutput {
         DemoOutput {
             chat_messages: self.chat_messages,
@@ -154,9 +156,9 @@ impl<'a> ParserThread<'a> {
     }
     pub fn new(
         mut settings: ParserInputs,
-        cls_by_id: &'a AHashMap<u32, Class>,
-        qfmap: &'a QfMapper,
-        ge_list: &'a AHashMap<i32, Descriptor_t>,
+        cls_by_id: Arc<AHashMap<u32, Class>>,
+        qfmap: Arc<QfMapper>,
+        ge_list: Arc<AHashMap<i32, Descriptor_t>>,
         prop_controller: Arc<PropController>,
         ptr: Arc<usize>,
         parse_all_packets: bool,
@@ -176,13 +178,13 @@ impl<'a> ParserThread<'a> {
             parse_all_packets: parse_all_packets,
             wanted_ticks: AHashSet::default(),
             prop_controller: prop_controller,
-            qf_map: qfmap,
+            qf_mapper: qfmap,
             fullpackets_parsed: 0,
             packets_parsed: 0,
             cnt: AHashMap::default(),
             serializers: AHashMap::default(),
             ptr: *ptr,
-            ge_list: ge_list,
+            ge_list: ge_list.clone(),
             bytes: settings.bytes,
             // JUST LOL
             cls_by_id: cls_by_id,
@@ -205,7 +207,7 @@ impl<'a> ParserThread<'a> {
                     df_pos: 0,
                     controller_prop: None
                 };
-                4096
+                8192
             ],
             teams: Teams::new(),
             game_events_counter: AHashMap::default(),

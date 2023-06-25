@@ -31,8 +31,7 @@ pub struct Parser {
     pub huf: Arc<Vec<(u32, u8)>>,
     pub settings: ParserInputs,
     pub serializers: AHashMap<String, Serializer>,
-    pub cls_by_id: AHashMap<u32, Class>,
-    pub ge_list: Option<AHashMap<i32, Descriptor_t>>,
+    pub cls_by_id: Arc<AHashMap<u32, Class>>,
     pub string_tables: Vec<StringTable>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub convars: AHashMap<String, String>,
@@ -41,6 +40,12 @@ pub struct Parser {
     pub start: Instant,
     pub prop_controller: Arc<PropController>,
     pub prop_controller_is_set: bool,
+    pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,
+    pub qf_mapper: Arc<QfMapper>,
+
+    pub qf_map_set: bool,
+    pub ge_list_set: bool,
+    pub cls_by_id_set: bool,
 
     pub wanted_player_props: Vec<String>,
 
@@ -58,7 +63,7 @@ pub struct Parser {
     pub wanted_prop_paths: AHashSet<[i32; 7]>,
     pub name_to_id: AHashMap<String, u32>,
 
-    pub qf_mapper: QfMapper,
+    // pub qf_mapper: QfMapper,
 
     pub id: u32,
     pub wanted_prop_ids: Vec<u32>,
@@ -76,10 +81,14 @@ impl Parser {
         let arc_bytes = inputs.bytes.clone();
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
+            ge_list_set: false,
+            cls_by_id_set: false,
+            qf_map_set: false,
             real_name_to_og_name: inputs.real_name_to_og_name.clone(),
             prop_controller: Arc::new(PropController::new(vec![], vec![])),
             prop_controller_is_set: false,
             start: Instant::now(),
+            cls_by_id: Arc::new(AHashMap::default()),
             player_md: vec![],
             maps_ready: false,
             name_to_id: AHashMap::default(),
@@ -91,11 +100,11 @@ impl Parser {
             baselines: AHashMap::default(),
             tick: 0,
             huf: arc_huf.clone(),
-            qf_mapper: QfMapper {
+            qf_mapper: Arc::new(QfMapper {
                 idx: 0,
                 map: AHashMap::default(),
-            },
-            ge_list: None,
+            }),
+            ge_list: Arc::new(AHashMap::default()),
             parse_entities: true,
             serializers: AHashMap::default(),
             parse_projectiles: false,
@@ -109,7 +118,6 @@ impl Parser {
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            cls_by_id: AHashMap::default(),
             controller_ids: SpecialIDs {
                 teamnum: None,
                 player_name: None,

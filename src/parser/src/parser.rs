@@ -25,7 +25,6 @@ use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
-use std::sync::OnceLock;
 use std::thread;
 
 #[derive(Debug)]
@@ -41,9 +40,9 @@ pub struct DemoOutput {
     pub game_events_counter: AHashMap<String, i32>,
     pub prop_info: Arc<PropController>,
 }
-static CLSBYID: OnceLock<AHashMap<u32, Class>> = OnceLock::new();
-static QFMAPPER: OnceLock<QfMapper> = OnceLock::new();
-static GE_LIST: OnceLock<AHashMap<i32, Descriptor_t>> = OnceLock::new();
+//static CLSBYID: OnceLock<AHashMap<u32, Class>> = OnceLock::new();
+//static QFMAPPER: OnceLock<QfMapper> = OnceLock::new();
+//static GE_LIST: OnceLock<AHashMap<i32, Descriptor_t>> = OnceLock::new();
 
 impl Parser {
     pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
@@ -62,12 +61,15 @@ impl Parser {
                     let settings = self.settings.clone();
                     let baselines = self.baselines.clone();
                     let prop_controller = self.prop_controller.clone();
+                    let cid = self.cls_by_id.clone();
+                    let qm = self.qf_mapper.clone();
+                    let gel = self.ge_list.clone();
                     handles.push(s.spawn(|| {
                         let mut parser = ParserThread::new(
                             settings,
-                            CLSBYID.get().unwrap(),
-                            QFMAPPER.get().unwrap(),
-                            GE_LIST.get().unwrap(),
+                            cid,
+                            qm,
+                            gel,
                             prop_controller,
                             offset,
                             false,
@@ -129,9 +131,11 @@ impl Parser {
                         p.real_name_to_og_name = self.real_name_to_og_name.clone();
                         self.prop_controller = Arc::new(p);
                         self.prop_controller_is_set = true;
+                        self.qf_mapper = Arc::new(q);
+                        self.cls_by_id = Arc::new(c);
                         // this can fail if user re-uses the same parser for multiple funcs
-                        QFMAPPER.set(q);
-                        CLSBYID.set(c);
+                        // QFMAPPER.set(q);
+                        // CLSBYID.set(c);
                         Ok(())
                     }
                     DEM_SignonPacket => self.parse_packet(&bytes),
@@ -149,15 +153,19 @@ impl Parser {
                 let settings = self.settings.clone();
                 let baselines = self.baselines.clone();
                 let prop_controller = self.prop_controller.clone();
+                let cid = self.cls_by_id.clone();
+                let qm = self.qf_mapper.clone();
+                let gel = self.ge_list.clone();
+
                 handles.push(s.spawn(|| {
                     let mut parser = ParserThread::new(
                         settings,
-                        CLSBYID.get().unwrap(),
-                        QFMAPPER.get().unwrap(),
-                        GE_LIST.get().unwrap(),
+                        cid,
+                        qm,
+                        gel,
                         prop_controller,
                         offset,
-                        true,
+                        false,
                     )
                     .unwrap();
                     parser.baselines = baselines;
@@ -204,9 +212,9 @@ impl Parser {
 
 impl Parser {
     pub fn is_ready_to_spawn_thread(&self) -> bool {
-        QFMAPPER.get().is_some()
-            && CLSBYID.get().is_some()
-            && GE_LIST.get().is_some()
+        self.qf_map_set
+            && self.cls_by_id_set
+            && self.ge_list_set
             && self.prop_controller_is_set
     }
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
@@ -223,7 +231,9 @@ impl Parser {
                 GE_Source1LegacyGameEventList => {
                     let hm = self.parse_game_event_list(&msg_bytes)?;
                     // this can fail if user re-uses the same parser for multiple funcs
-                    GE_LIST.set(hm);
+                    self.ge_list = Arc::new(hm);
+                    self.ge_list_set = true;
+                    //GE_LIST.set(hm);
                     Ok(())
                 }
                 // GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),

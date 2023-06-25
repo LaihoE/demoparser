@@ -19,7 +19,7 @@ pub struct ProjectileRecord {
 
 // This file collects the data that is converted into a dataframe in the end in parser.parse_ticks()
 
-impl<'a> ParserThread<'a> {
+impl ParserThread {
     pub fn collect_entities(&mut self) {
         if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0
             || self.wanted_event.is_some()

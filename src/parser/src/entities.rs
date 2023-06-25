@@ -44,7 +44,7 @@ enum EntityCmd {
     Update,
 }
 
-impl<'a> ParserThread<'a> {
+impl ParserThread {
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
@@ -109,7 +109,7 @@ impl<'a> ParserThread<'a> {
         };
 
         for field_info in &self.paths[..n_paths] {
-            let result = bitreader.decode(&field_info.decoder, &self.qf_map)?;
+            let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
             if field_info.should_parse {
                 entity.props.insert(field_info.df_pos as u32, result);
             }
