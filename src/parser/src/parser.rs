@@ -57,6 +57,7 @@ impl Parser {
             loop {
                 if self.fullpacket_offsets.len() > 0 && self.is_ready_to_spawn_thread() {
                     threads_spawned += 1;
+                    // println!("SPAWNING TH {}", threads_spawned);
                     let offset = Arc::new(self.fullpacket_offsets.pop().unwrap());
                     let settings = self.settings.clone();
                     let baselines = self.baselines.clone();
@@ -88,8 +89,8 @@ impl Parser {
                 let size = self.read_varint().unwrap();
 
                 self.tick = tick as i32;
-
                 if self.ptr + size as usize >= self.bytes.len() {
+                    // println!("{} >= {}", self.ptr + size as usize, self.bytes.len());
                     break;
                 }
 
@@ -129,13 +130,12 @@ impl Parser {
                         p.wanted_player_props = self.wanted_player_props.clone();
                         p.wanted_player_og_props = self.wanted_player_props_og_names.clone();
                         p.real_name_to_og_name = self.real_name_to_og_name.clone();
+                        self.qf_map_set = true;
+                        self.cls_by_id_set = true;
                         self.prop_controller = Arc::new(p);
                         self.prop_controller_is_set = true;
                         self.qf_mapper = Arc::new(q);
                         self.cls_by_id = Arc::new(c);
-                        // this can fail if user re-uses the same parser for multiple funcs
-                        // QFMAPPER.set(q);
-                        // CLSBYID.set(c);
                         Ok(())
                     }
                     DEM_SignonPacket => self.parse_packet(&bytes),
@@ -212,6 +212,12 @@ impl Parser {
 
 impl Parser {
     pub fn is_ready_to_spawn_thread(&self) -> bool {
+        /* 
+        println!("{} {} {} {}",         self.qf_map_set,
+        && self.cls_by_id_set,
+        && self.ge_list_set,
+        && self.prop_controller_is_set);
+        */
         self.qf_map_set
             && self.cls_by_id_set
             && self.ge_list_set

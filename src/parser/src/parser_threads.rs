@@ -23,7 +23,9 @@ impl ParserThread {
             let size = self.read_varint()?;
             self.tick = tick as i32;
             self.packets_parsed += 1;
+            // println!("Q {} {} {}", cmd, tick, size);
             if self.ptr + size as usize >= self.bytes.len() {
+                // println!("EXIT {} {} {}", cmd, tick, size);
                 break;
             }
             let msg_type = cmd & !64;
@@ -43,7 +45,11 @@ impl ParserThread {
                 DEM_UserCmd => self.parse_user_command_cmd(&bytes),
                 DEM_StringTables => self.parse_stringtable_cmd(&bytes),
                 DEM_FullPacket => {
-                    if self.fullpackets_parsed == 0 {
+                    if self.parse_all_packets{
+                        self.parse_full_packet(&bytes).unwrap();
+                        continue;
+                    }
+                    if self.fullpackets_parsed == 0  {
                         self.parse_full_packet(&bytes).unwrap();
                         self.fullpackets_parsed += 1;
                     } else {
