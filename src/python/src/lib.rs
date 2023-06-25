@@ -59,6 +59,7 @@ impl DemoParser {
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
             bytes: arc_mmap.clone(),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
@@ -88,6 +89,7 @@ impl DemoParser {
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
             bytes: arc_mmap.clone(),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
@@ -229,6 +231,7 @@ impl DemoParser {
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
             bytes: arc_mmap.clone(),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
@@ -294,6 +297,7 @@ impl DemoParser {
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
             bytes: arc_mmap.clone(),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
@@ -342,6 +346,7 @@ impl DemoParser {
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
             bytes: arc_mmap.clone(),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
@@ -427,6 +432,7 @@ impl DemoParser {
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
             bytes: arc_mmap.clone(),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
@@ -516,12 +522,17 @@ impl DemoParser {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
+        let mut real_name_to_og_name = AHashMap::default();
+        for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
+            real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+        }
 
         let file = File::open(self.path.clone())?;
         let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
+            real_name_to_og_name: real_name_to_og_name,
             bytes: arc_mmap.clone(),
             wanted_player_props: real_player_props.clone(),
             wanted_player_props_og_names: wanted_player_props.clone(),
@@ -541,8 +552,6 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        println!("{:?}", parser.wanted_event);
-
         let event_series = match series_from_events(&output.game_events) {
             Ok(ser) => ser,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -593,8 +602,13 @@ impl DemoParser {
         let huf = create_huffman_lookup_table();
         let arc_huf = Arc::new(huf);
         let b = Arc::new(mmap);
+        let mut real_name_to_og_name = AHashMap::default();
+        for (real_name, user_friendly_name) in real_props.iter().zip(&wanted_props) {
+            real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+        }
 
         let settings = ParserInputs {
+            real_name_to_og_name: real_name_to_og_name,
             bytes: b.clone(),
             wanted_player_props: real_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
@@ -625,9 +639,9 @@ impl DemoParser {
         real_props.push("steamid".to_owned());
         real_props.push("name".to_owned());
 
-        let prop_controller = output.prop_info.unwrap();
+        let prop_infos = output.prop_info.prop_infos.clone();
 
-        for (prop_name, prop_info) in real_props.iter().zip(prop_controller.prop_infos) {
+        for (prop_name, prop_info) in real_props.iter().zip(prop_infos) {
             if output.df.contains_key(&prop_info.id) {
                 match &output.df[&prop_info.id].data {
                     Some(VarVec::F32(data)) => {

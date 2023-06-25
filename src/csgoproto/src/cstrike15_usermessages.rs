@@ -5197,8 +5197,8 @@ pub struct CCSUsrMsg_WeaponSound {
     pub origin_z: ::std::option::Option<f32>,
     // @@protoc_insertion_point(field:CCSUsrMsg_WeaponSound.sound)
     pub sound: ::std::option::Option<::std::string::String>,
-    // @@protoc_insertion_point(field:CCSUsrMsg_WeaponSound.timestamp)
-    pub timestamp: ::std::option::Option<f32>,
+    // @@protoc_insertion_point(field:CCSUsrMsg_WeaponSound.game_timestamp)
+    pub game_timestamp: ::std::option::Option<f32>,
     // @@protoc_insertion_point(field:CCSUsrMsg_WeaponSound.source_soundscapeid)
     pub source_soundscapeid: ::std::option::Option<u32>,
     // special fields
@@ -5329,23 +5329,23 @@ impl CCSUsrMsg_WeaponSound {
         self.sound.take().unwrap_or_else(|| ::std::string::String::new())
     }
 
-    // optional float timestamp = 6;
+    // optional float game_timestamp = 6;
 
-    pub fn timestamp(&self) -> f32 {
-        self.timestamp.unwrap_or(0.)
+    pub fn game_timestamp(&self) -> f32 {
+        self.game_timestamp.unwrap_or(0.)
     }
 
-    pub fn clear_timestamp(&mut self) {
-        self.timestamp = ::std::option::Option::None;
+    pub fn clear_game_timestamp(&mut self) {
+        self.game_timestamp = ::std::option::Option::None;
     }
 
-    pub fn has_timestamp(&self) -> bool {
-        self.timestamp.is_some()
+    pub fn has_game_timestamp(&self) -> bool {
+        self.game_timestamp.is_some()
     }
 
     // Param is passed by value, moved
-    pub fn set_timestamp(&mut self, v: f32) {
-        self.timestamp = ::std::option::Option::Some(v);
+    pub fn set_game_timestamp(&mut self, v: f32) {
+        self.game_timestamp = ::std::option::Option::Some(v);
     }
 
     // optional fixed32 source_soundscapeid = 7;
@@ -5396,9 +5396,9 @@ impl CCSUsrMsg_WeaponSound {
             |m: &mut CCSUsrMsg_WeaponSound| { &mut m.sound },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
-            "timestamp",
-            |m: &CCSUsrMsg_WeaponSound| { &m.timestamp },
-            |m: &mut CCSUsrMsg_WeaponSound| { &mut m.timestamp },
+            "game_timestamp",
+            |m: &CCSUsrMsg_WeaponSound| { &m.game_timestamp },
+            |m: &mut CCSUsrMsg_WeaponSound| { &mut m.game_timestamp },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "source_soundscapeid",
@@ -5439,7 +5439,7 @@ impl ::protobuf::Message for CCSUsrMsg_WeaponSound {
                     self.sound = ::std::option::Option::Some(is.read_string()?);
                 },
                 53 => {
-                    self.timestamp = ::std::option::Option::Some(is.read_float()?);
+                    self.game_timestamp = ::std::option::Option::Some(is.read_float()?);
                 },
                 61 => {
                     self.source_soundscapeid = ::std::option::Option::Some(is.read_fixed32()?);
@@ -5471,7 +5471,7 @@ impl ::protobuf::Message for CCSUsrMsg_WeaponSound {
         if let Some(v) = self.sound.as_ref() {
             my_size += ::protobuf::rt::string_size(5, &v);
         }
-        if let Some(v) = self.timestamp {
+        if let Some(v) = self.game_timestamp {
             my_size += 1 + 4;
         }
         if let Some(v) = self.source_soundscapeid {
@@ -5498,7 +5498,7 @@ impl ::protobuf::Message for CCSUsrMsg_WeaponSound {
         if let Some(v) = self.sound.as_ref() {
             os.write_string(5, v)?;
         }
-        if let Some(v) = self.timestamp {
+        if let Some(v) = self.game_timestamp {
             os.write_float(6, v)?;
         }
         if let Some(v) = self.source_soundscapeid {
@@ -5526,7 +5526,7 @@ impl ::protobuf::Message for CCSUsrMsg_WeaponSound {
         self.origin_y = ::std::option::Option::None;
         self.origin_z = ::std::option::Option::None;
         self.sound = ::std::option::Option::None;
-        self.timestamp = ::std::option::Option::None;
+        self.game_timestamp = ::std::option::Option::None;
         self.source_soundscapeid = ::std::option::Option::None;
         self.special_fields.clear();
     }
@@ -5538,7 +5538,7 @@ impl ::protobuf::Message for CCSUsrMsg_WeaponSound {
             origin_y: ::std::option::Option::None,
             origin_z: ::std::option::Option::None,
             sound: ::std::option::Option::None,
-            timestamp: ::std::option::Option::None,
+            game_timestamp: ::std::option::Option::None,
             source_soundscapeid: ::std::option::Option::None,
             special_fields: ::protobuf::SpecialFields::new(),
         };
@@ -18452,54 +18452,54 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x05:\x02-1R\x06entidx\x12\x18\n\x07actanim\x18\x02\x20\x01(\x05R\x07act\
     anim\x12\x19\n\x08origin_x\x18\x03\x20\x01(\x02R\x07originX\x12\x19\n\
     \x08origin_y\x18\x04\x20\x01(\x02R\x07originY\x12\x19\n\x08origin_z\x18\
-    \x05\x20\x01(\x02R\x07originZ\"\xe9\x01\n\x15CCSUsrMsg_WeaponSound\x12\
+    \x05\x20\x01(\x02R\x07originZ\"\xf2\x01\n\x15CCSUsrMsg_WeaponSound\x12\
     \x1a\n\x06entidx\x18\x01\x20\x01(\x05:\x02-1R\x06entidx\x12\x19\n\x08ori\
     gin_x\x18\x02\x20\x01(\x02R\x07originX\x12\x19\n\x08origin_y\x18\x03\x20\
     \x01(\x02R\x07originY\x12\x19\n\x08origin_z\x18\x04\x20\x01(\x02R\x07ori\
-    ginZ\x12\x14\n\x05sound\x18\x05\x20\x01(\tR\x05sound\x12\x1c\n\ttimestam\
-    p\x18\x06\x20\x01(\x02R\ttimestamp\x12/\n\x13source_soundscapeid\x18\x07\
-    \x20\x01(\x07R\x12sourceSoundscapeid\"\xa5\x01\n\x1fCCSUsrMsg_UpdateScre\
-    enHealthBar\x12\x1a\n\x06entidx\x18\x01\x20\x01(\x05:\x02-1R\x06entidx\
-    \x12'\n\x0fhealthratio_old\x18\x02\x20\x01(\x02R\x0ehealthratioOld\x12'\
-    \n\x0fhealthratio_new\x18\x03\x20\x01(\x02R\x0ehealthratioNew\x12\x14\n\
-    \x05style\x18\x04\x20\x01(\x05R\x05style\"h\n\x20CCSUsrMsg_EntityOutline\
-    Highlight\x12\x1a\n\x06entidx\x18\x01\x20\x01(\x05:\x02-1R\x06entidx\x12\
-    (\n\x0fremovehighlight\x18\x02\x20\x01(\x08R\x0fremovehighlight\"/\n\x15\
-    CCSUsrMsg_AdjustMoney\x12\x16\n\x06amount\x18\x01\x20\x01(\x05R\x06amoun\
-    t\"r\n\x13CCSUsrMsg_ReportHit\x12\x13\n\x05pos_x\x18\x01\x20\x01(\x02R\
-    \x04posX\x12\x13\n\x05pos_y\x18\x02\x20\x01(\x02R\x04posY\x12\x1c\n\ttim\
-    estamp\x18\x04\x20\x01(\x02R\ttimestamp\x12\x13\n\x05pos_z\x18\x03\x20\
-    \x01(\x02R\x04posZ\"~\n\x11CCSUsrMsg_KillCam\x12\x19\n\x08obs_mode\x18\
-    \x01\x20\x01(\x05R\x07obsMode\x12%\n\x0cfirst_target\x18\x02\x20\x01(\
-    \x05:\x02-1R\x0bfirstTarget\x12'\n\rsecond_target\x18\x03\x20\x01(\x05:\
-    \x02-1R\x0csecondTarget\"\xd4\x01\n\x1aCCSUsrMsg_DesiredTimescale\x12+\n\
-    \x11desired_timescale\x18\x01\x20\x01(\x02R\x10desiredTimescale\x122\n\
-    \x15duration_realtime_sec\x18\x02\x20\x01(\x02R\x13durationRealtimeSec\
-    \x12+\n\x11interpolator_type\x18\x03\x20\x01(\x05R\x10interpolatorType\
-    \x12(\n\x10start_blend_time\x18\x04\x20\x01(\x02R\x0estartBlendTime\"A\n\
-    \x1aCCSUsrMsg_CurrentTimescale\x12#\n\rcur_timescale\x18\x01\x20\x01(\
-    \x02R\x0ccurTimescale\"m\n\x1aCCSUsrMsg_AchievementEvent\x12\x20\n\x0bac\
-    hievement\x18\x01\x20\x01(\x05R\x0bachievement\x12\x14\n\x05count\x18\
-    \x02\x20\x01(\x05R\x05count\x12\x17\n\x07user_id\x18\x03\x20\x01(\x05R\
-    \x06userId\"\xa3\x01\n\x1cCCSUsrMsg_MatchEndConditions\x12\x1c\n\tfragli\
-    mit\x18\x01\x20\x01(\x05R\tfraglimit\x12!\n\x0cmp_maxrounds\x18\x02\x20\
-    \x01(\x05R\x0bmpMaxrounds\x12\x1f\n\x0bmp_winlimit\x18\x03\x20\x01(\x05R\
-    \nmpWinlimit\x12!\n\x0cmp_timelimit\x18\x04\x20\x01(\x02R\x0bmpTimelimit\
-    \"\xcc\x01\n\x1bCCSUsrMsg_PlayerStatsUpdate\x12\x18\n\x07version\x18\x01\
-    \x20\x01(\x05R\x07version\x127\n\x05stats\x18\x04\x20\x03(\x0b2!.CCSUsrM\
-    sg_PlayerStatsUpdate.StatR\x05stats\x12\x18\n\x07ehandle\x18\x05\x20\x01\
-    (\rR\x07ehandle\x12\x10\n\x03crc\x18\x06\x20\x01(\x05R\x03crc\x1a.\n\x04\
-    Stat\x12\x10\n\x03idx\x18\x01\x20\x01(\x05R\x03idx\x12\x14\n\x05delta\
-    \x18\x02\x20\x01(\x05R\x05delta\"\xa2\x01\n\x17CCSUsrMsg_QuestProgress\
-    \x12\x19\n\x08quest_id\x18\x01\x20\x01(\rR\x07questId\x12#\n\rnormal_poi\
-    nts\x18\x02\x20\x01(\rR\x0cnormalPoints\x12!\n\x0cbonus_points\x18\x03\
-    \x20\x01(\rR\x0bbonusPoints\x12$\n\x0eis_event_quest\x18\x04\x20\x01(\
-    \x08R\x0cisEventQuest\"K\n\x1eCCSUsrMsg_ScoreLeaderboardData\x12)\n\x04d\
-    ata\x18\x01\x20\x01(\x0b2\x15.ScoreLeaderboardDataR\x04data\"Y\n%CCSUsrM\
-    sg_PlayerDecalDigitalSignature\x120\n\x04data\x18\x01\x20\x01(\x0b2\x1c.\
-    PlayerDecalDigitalSignatureR\x04data\"O\n\x12CCSUsrMsg_XRankGet\x12\x19\
-    \n\x08mode_idx\x18\x01\x20\x01(\x05R\x07modeIdx\x12\x1e\n\ncontroller\
-    \x18\x02\x20\x01(\x05R\ncontroller\"i\n\x12CCSUsrMsg_XRankUpd\x12\x19\n\
+    ginZ\x12\x14\n\x05sound\x18\x05\x20\x01(\tR\x05sound\x12%\n\x0egame_time\
+    stamp\x18\x06\x20\x01(\x02R\rgameTimestamp\x12/\n\x13source_soundscapeid\
+    \x18\x07\x20\x01(\x07R\x12sourceSoundscapeid\"\xa5\x01\n\x1fCCSUsrMsg_Up\
+    dateScreenHealthBar\x12\x1a\n\x06entidx\x18\x01\x20\x01(\x05:\x02-1R\x06\
+    entidx\x12'\n\x0fhealthratio_old\x18\x02\x20\x01(\x02R\x0ehealthratioOld\
+    \x12'\n\x0fhealthratio_new\x18\x03\x20\x01(\x02R\x0ehealthratioNew\x12\
+    \x14\n\x05style\x18\x04\x20\x01(\x05R\x05style\"h\n\x20CCSUsrMsg_EntityO\
+    utlineHighlight\x12\x1a\n\x06entidx\x18\x01\x20\x01(\x05:\x02-1R\x06enti\
+    dx\x12(\n\x0fremovehighlight\x18\x02\x20\x01(\x08R\x0fremovehighlight\"/\
+    \n\x15CCSUsrMsg_AdjustMoney\x12\x16\n\x06amount\x18\x01\x20\x01(\x05R\
+    \x06amount\"r\n\x13CCSUsrMsg_ReportHit\x12\x13\n\x05pos_x\x18\x01\x20\
+    \x01(\x02R\x04posX\x12\x13\n\x05pos_y\x18\x02\x20\x01(\x02R\x04posY\x12\
+    \x1c\n\ttimestamp\x18\x04\x20\x01(\x02R\ttimestamp\x12\x13\n\x05pos_z\
+    \x18\x03\x20\x01(\x02R\x04posZ\"~\n\x11CCSUsrMsg_KillCam\x12\x19\n\x08ob\
+    s_mode\x18\x01\x20\x01(\x05R\x07obsMode\x12%\n\x0cfirst_target\x18\x02\
+    \x20\x01(\x05:\x02-1R\x0bfirstTarget\x12'\n\rsecond_target\x18\x03\x20\
+    \x01(\x05:\x02-1R\x0csecondTarget\"\xd4\x01\n\x1aCCSUsrMsg_DesiredTimesc\
+    ale\x12+\n\x11desired_timescale\x18\x01\x20\x01(\x02R\x10desiredTimescal\
+    e\x122\n\x15duration_realtime_sec\x18\x02\x20\x01(\x02R\x13durationRealt\
+    imeSec\x12+\n\x11interpolator_type\x18\x03\x20\x01(\x05R\x10interpolator\
+    Type\x12(\n\x10start_blend_time\x18\x04\x20\x01(\x02R\x0estartBlendTime\
+    \"A\n\x1aCCSUsrMsg_CurrentTimescale\x12#\n\rcur_timescale\x18\x01\x20\
+    \x01(\x02R\x0ccurTimescale\"m\n\x1aCCSUsrMsg_AchievementEvent\x12\x20\n\
+    \x0bachievement\x18\x01\x20\x01(\x05R\x0bachievement\x12\x14\n\x05count\
+    \x18\x02\x20\x01(\x05R\x05count\x12\x17\n\x07user_id\x18\x03\x20\x01(\
+    \x05R\x06userId\"\xa3\x01\n\x1cCCSUsrMsg_MatchEndConditions\x12\x1c\n\tf\
+    raglimit\x18\x01\x20\x01(\x05R\tfraglimit\x12!\n\x0cmp_maxrounds\x18\x02\
+    \x20\x01(\x05R\x0bmpMaxrounds\x12\x1f\n\x0bmp_winlimit\x18\x03\x20\x01(\
+    \x05R\nmpWinlimit\x12!\n\x0cmp_timelimit\x18\x04\x20\x01(\x02R\x0bmpTime\
+    limit\"\xcc\x01\n\x1bCCSUsrMsg_PlayerStatsUpdate\x12\x18\n\x07version\
+    \x18\x01\x20\x01(\x05R\x07version\x127\n\x05stats\x18\x04\x20\x03(\x0b2!\
+    .CCSUsrMsg_PlayerStatsUpdate.StatR\x05stats\x12\x18\n\x07ehandle\x18\x05\
+    \x20\x01(\rR\x07ehandle\x12\x10\n\x03crc\x18\x06\x20\x01(\x05R\x03crc\
+    \x1a.\n\x04Stat\x12\x10\n\x03idx\x18\x01\x20\x01(\x05R\x03idx\x12\x14\n\
+    \x05delta\x18\x02\x20\x01(\x05R\x05delta\"\xa2\x01\n\x17CCSUsrMsg_QuestP\
+    rogress\x12\x19\n\x08quest_id\x18\x01\x20\x01(\rR\x07questId\x12#\n\rnor\
+    mal_points\x18\x02\x20\x01(\rR\x0cnormalPoints\x12!\n\x0cbonus_points\
+    \x18\x03\x20\x01(\rR\x0bbonusPoints\x12$\n\x0eis_event_quest\x18\x04\x20\
+    \x01(\x08R\x0cisEventQuest\"K\n\x1eCCSUsrMsg_ScoreLeaderboardData\x12)\n\
+    \x04data\x18\x01\x20\x01(\x0b2\x15.ScoreLeaderboardDataR\x04data\"Y\n%CC\
+    SUsrMsg_PlayerDecalDigitalSignature\x120\n\x04data\x18\x01\x20\x01(\x0b2\
+    \x1c.PlayerDecalDigitalSignatureR\x04data\"O\n\x12CCSUsrMsg_XRankGet\x12\
+    \x19\n\x08mode_idx\x18\x01\x20\x01(\x05R\x07modeIdx\x12\x1e\n\ncontrolle\
+    r\x18\x02\x20\x01(\x05R\ncontroller\"i\n\x12CCSUsrMsg_XRankUpd\x12\x19\n\
     \x08mode_idx\x18\x01\x20\x01(\x05R\x07modeIdx\x12\x1e\n\ncontroller\x18\
     \x02\x20\x01(\x05R\ncontroller\x12\x18\n\x07ranking\x18\x03\x20\x01(\x05\
     R\x07ranking\"F\n\x18CCSUsrMsg_CallVoteFailed\x12\x16\n\x06reason\x18\
@@ -19150,14 +19150,14 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x04\x12\x04\xed\x01\x08\x10\n\r\n\x05\x04\x15\x02\x04\x05\x12\x04\xed\
     \x01\x11\x17\n\r\n\x05\x04\x15\x02\x04\x01\x12\x04\xed\x01\x18\x1d\n\r\n\
     \x05\x04\x15\x02\x04\x03\x12\x04\xed\x01\x20!\n\x0c\n\x04\x04\x15\x02\
-    \x05\x12\x04\xee\x01\x08%\n\r\n\x05\x04\x15\x02\x05\x04\x12\x04\xee\x01\
+    \x05\x12\x04\xee\x01\x08*\n\r\n\x05\x04\x15\x02\x05\x04\x12\x04\xee\x01\
     \x08\x10\n\r\n\x05\x04\x15\x02\x05\x05\x12\x04\xee\x01\x11\x16\n\r\n\x05\
-    \x04\x15\x02\x05\x01\x12\x04\xee\x01\x17\x20\n\r\n\x05\x04\x15\x02\x05\
-    \x03\x12\x04\xee\x01#$\n\x0c\n\x04\x04\x15\x02\x06\x12\x04\xef\x01\x081\
-    \n\r\n\x05\x04\x15\x02\x06\x04\x12\x04\xef\x01\x08\x10\n\r\n\x05\x04\x15\
-    \x02\x06\x05\x12\x04\xef\x01\x11\x18\n\r\n\x05\x04\x15\x02\x06\x01\x12\
-    \x04\xef\x01\x19,\n\r\n\x05\x04\x15\x02\x06\x03\x12\x04\xef\x01/0\n\x0c\
-    \n\x02\x04\x16\x12\x06\xf2\x01\0\xf7\x01\x01\n\x0b\n\x03\x04\x16\x01\x12\
+    \x04\x15\x02\x05\x01\x12\x04\xee\x01\x17%\n\r\n\x05\x04\x15\x02\x05\x03\
+    \x12\x04\xee\x01()\n\x0c\n\x04\x04\x15\x02\x06\x12\x04\xef\x01\x081\n\r\
+    \n\x05\x04\x15\x02\x06\x04\x12\x04\xef\x01\x08\x10\n\r\n\x05\x04\x15\x02\
+    \x06\x05\x12\x04\xef\x01\x11\x18\n\r\n\x05\x04\x15\x02\x06\x01\x12\x04\
+    \xef\x01\x19,\n\r\n\x05\x04\x15\x02\x06\x03\x12\x04\xef\x01/0\n\x0c\n\
+    \x02\x04\x16\x12\x06\xf2\x01\0\xf7\x01\x01\n\x0b\n\x03\x04\x16\x01\x12\
     \x04\xf2\x01\x08'\n\x0c\n\x04\x04\x16\x02\0\x12\x04\xf3\x01\x081\n\r\n\
     \x05\x04\x16\x02\0\x04\x12\x04\xf3\x01\x08\x10\n\r\n\x05\x04\x16\x02\0\
     \x05\x12\x04\xf3\x01\x11\x16\n\r\n\x05\x04\x16\x02\0\x01\x12\x04\xf3\x01\

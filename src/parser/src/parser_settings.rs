@@ -23,6 +23,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 pub struct Parser {
+    pub real_name_to_og_name: AHashMap<String, String>,
     pub fullpacket_offsets: Vec<usize>,
     pub ptr: usize,
     pub bytes: Arc<Mmap>,
@@ -38,7 +39,8 @@ pub struct Parser {
     pub player_md: Vec<PlayerEndMetaData>,
     pub maps_ready: bool,
     pub start: Instant,
-    pub prop_controller: Option<PropController>,
+    pub prop_controller: Arc<PropController>,
+    pub prop_controller_is_set: bool,
 
     pub wanted_player_props: Vec<String>,
 
@@ -74,7 +76,9 @@ impl Parser {
         let arc_bytes = inputs.bytes.clone();
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
-            prop_controller: None,
+            real_name_to_og_name: inputs.real_name_to_og_name.clone(),
+            prop_controller: Arc::new(PropController::new(vec![], vec![])),
+            prop_controller_is_set: false,
             start: Instant::now(),
             player_md: vec![],
             maps_ready: false,

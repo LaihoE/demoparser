@@ -23,7 +23,7 @@ impl<'a> ParserThread<'a> {
             let size = self.read_varint()?;
             self.tick = tick as i32;
             self.packets_parsed += 1;
-            if self.bytes.len() < self.ptr + size as usize {
+            if self.ptr + size as usize >= self.bytes.len() {
                 break;
             }
             let msg_type = cmd & !64;
@@ -181,7 +181,6 @@ impl<'a> ParserThread<'a> {
         Ok(())
     }
     pub fn parse_user_command_cmd(&mut self, _data: &[u8]) -> Result<(), DemoParserError> {
-        println!("USERCMD");
         // Only in pov demos. Maybe implement sometime. Includes buttons etc.
         Ok(())
     }

@@ -93,6 +93,7 @@ pub struct PropController {
     pub id_to_name: AHashMap<u32, String>,
     pub special_ids: SpecialIDs,
     pub wanted_player_og_props: Vec<String>,
+    pub real_name_to_og_name: AHashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -641,7 +642,7 @@ impl Parser {
             {
                 prop_controller.find_prop_name_paths(&mut my_serializer);
             }
-            prop_controller.find_prop_name_paths(&mut my_serializer);
+            // prop_controller.find_prop_name_paths(&mut my_serializer);
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
         if wanted_props.contains(&("weapon_name".to_string())) {
@@ -649,24 +650,27 @@ impl Parser {
                 id: 9999992,
                 prop_type: Some(PropType::Custom),
                 prop_name: "weapon_name".to_string(),
+                prop_friendly_name: "weapon_name".to_string(),
             });
         }
         prop_controller.prop_infos.push(PropInfo {
             id: 9999999,
             prop_type: None,
             prop_name: "tick".to_string(),
+            prop_friendly_name: "tick".to_string(),
         });
         prop_controller.prop_infos.push(PropInfo {
             id: 9999998,
             prop_type: None,
             prop_name: "steamid".to_string(),
+            prop_friendly_name: "steamid".to_string(),
         });
         prop_controller.prop_infos.push(PropInfo {
             id: 9999997,
             prop_type: None,
             prop_name: "name".to_string(),
+            prop_friendly_name: "name".to_string(),
         });
-        println!("{}", prop_controller.id);
         Ok((serializers, qf_mapper, prop_controller))
     }
 }
@@ -688,6 +692,7 @@ impl PropController {
             special_ids: SpecialIDs::new(),
             wanted_player_og_props: wanted_player_props_og_names,
             id_to_name: AHashMap::default(),
+            real_name_to_og_name: AHashMap::default(),
         }
     }
 
@@ -733,6 +738,11 @@ impl PropController {
                             id: self.id,
                             prop_type: Some(t.clone()),
                             prop_name: full_name.clone(),
+                            prop_friendly_name: self
+                                .real_name_to_og_name
+                                .get(&full_name.to_string())
+                                .unwrap_or(&full_name.to_string())
+                                .to_string(),
                         }),
                         None => {
                             self.prop_infos.push(
@@ -740,6 +750,11 @@ impl PropController {
                                     id: self.id,
                                     prop_type: None,
                                     prop_name: full_name.clone(),
+                                    prop_friendly_name: self
+                                        .real_name_to_og_name
+                                        .get(&full_name.to_string())
+                                        .unwrap_or(&full_name.to_string())
+                                        .to_string(),
                                 }
                                 .clone(),
                             );
@@ -751,9 +766,6 @@ impl PropController {
                     self.special_ids.item_def = Some(69999);
                     continue;
                 }
-
-                // println!("{:?}", self.name_to_id.get());
-
                 if self.wanted_player_props.contains(&weap_prop.to_string()) {
                     f.should_parse = true;
                     self.wanted_prop_ids.push(self.id);
@@ -770,6 +782,11 @@ impl PropController {
                                 id: self.id,
                                 prop_type: Some(t.clone()),
                                 prop_name: weap_prop.to_string(),
+                                prop_friendly_name: self
+                                    .real_name_to_og_name
+                                    .get(&full_name.to_string())
+                                    .unwrap_or(&full_name.to_string())
+                                    .to_string(),
                             }),
                             None => {
                                 self.prop_infos.push(
@@ -777,6 +794,11 @@ impl PropController {
                                         id: self.id,
                                         prop_type: None,
                                         prop_name: weap_prop.to_string(),
+                                        prop_friendly_name: self
+                                            .real_name_to_og_name
+                                            .get(&full_name.to_string())
+                                            .unwrap_or(&full_name.to_string())
+                                            .to_string(),
                                     }
                                     .clone(),
                                 );
@@ -799,10 +821,16 @@ impl PropController {
                     "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX" => {
                         self.special_ids.cell_x_offset_player = Some(self.id);
                         if self.wanted_player_props.contains(&"X".to_string()) {
+                            // self.real_name_to_og_name.insert("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX", v)
                             self.prop_infos.push(PropInfo {
                                 id: 9999907,
                                 prop_type: Some(PropType::Custom),
                                 prop_name: "X".to_string(),
+                                prop_friendly_name: self
+                                    .real_name_to_og_name
+                                    .get(&"X".to_string())
+                                    .unwrap_or(&"X".to_string())
+                                    .to_string(),
                             });
                         }
                     }
@@ -816,6 +844,11 @@ impl PropController {
                                 id: 9999902,
                                 prop_type: Some(PropType::Custom),
                                 prop_name: "Y".to_string(),
+                                prop_friendly_name: self
+                                    .real_name_to_og_name
+                                    .get(&"Y".to_string())
+                                    .unwrap_or(&"Y".to_string())
+                                    .to_string(),
                             });
                         }
                     }
@@ -894,6 +927,7 @@ pub struct PropInfo {
     pub id: u32,
     pub prop_type: Option<PropType>,
     pub prop_name: String,
+    pub prop_friendly_name: String,
 }
 
 #[derive(Debug, Clone)]

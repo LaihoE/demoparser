@@ -37,9 +37,7 @@ impl Parser {
 
         let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
         for event_desc in event_list.descriptors {
-            //if event_desc.name == self.wanted_event {
             hm.insert(event_desc.eventid(), event_desc);
-            //}
         }
         Ok(hm)
     }
@@ -190,14 +188,8 @@ impl<'a> ParserThread<'a> {
         prefix: &str,
     ) -> Result<Vec<EventField>, DemoParserError> {
         let mut extra_pairs = vec![];
-
         // prop name:
-        for (prop_info, og_name) in self
-            .prop_controller
-            .prop_infos
-            .iter()
-            .zip(&self.prop_controller.wanted_player_og_props)
-        {
+        for prop_info in &self.prop_controller.prop_infos {
             // These are meant for entities not used here
             if prop_info.prop_name == "tick"
                 || prop_info.prop_name == "name"
@@ -207,7 +199,7 @@ impl<'a> ParserThread<'a> {
             }
             if entity_id == ENTITYIDNONE {
                 extra_pairs.push(EventField {
-                    name: prefix.to_owned() + "_" + og_name,
+                    name: prefix.to_owned() + "_" + &prop_info.prop_friendly_name,
                     data: None,
                 });
                 continue;
@@ -220,13 +212,13 @@ impl<'a> ParserThread<'a> {
             match prop {
                 Some(kd) => {
                     extra_pairs.push(EventField {
-                        name: prefix.to_owned() + "_" + og_name,
+                        name: prefix.to_owned() + "_" + &prop_info.prop_friendly_name,
                         data: Some(kd),
                     });
                 }
                 None => {
                     extra_pairs.push(EventField {
-                        name: prefix.to_owned() + "_" + og_name,
+                        name: prefix.to_owned() + "_" + &prop_info.prop_friendly_name,
                         data: None,
                     });
                 }

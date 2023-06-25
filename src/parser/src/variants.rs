@@ -72,7 +72,6 @@ impl PropColumn {
                     v.extend_from_slice(&v_other);
                 }
                 _ => {
-                    println!("{:?}", self);
                     panic!("illegal 1");
                 }
             },

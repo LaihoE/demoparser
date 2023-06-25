@@ -111,9 +111,9 @@ impl<'a> ParserThread<'a> {
         for field_info in &self.paths[..n_paths] {
             let result = bitreader.decode(&field_info.decoder, &self.qf_map)?;
             if field_info.should_parse {
-                //entity.props.insert(field_info.df_pos as u32, result);
+                entity.props.insert(field_info.df_pos as u32, result);
             }
-            entity.props.insert(field_info.df_pos as u32, result);
+            // entity.props.insert(field_info.df_pos as u32, result);
         }
         Ok(n_paths)
     }
@@ -317,7 +317,7 @@ impl<'a> ParserThread<'a> {
         };
         match player_entid {
             Some(e) => {
-                if e != 2047 {
+                if e != 2047 && steamid != Some(0) {
                     self.players.insert(
                         e,
                         PlayerMetaData {

@@ -17,7 +17,7 @@ use std::time::Instant;
 //static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
-    let wanted_props = vec!["X".to_owned(), "Y".to_owned()];
+    let wanted_props = vec!["CCSPlayerPawn.m_iHealth".to_owned()];
     let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
     // let bytes = fs::read(demo_path).unwrap();
     // let file = File::open(demo_path).unwrap();
@@ -31,7 +31,7 @@ fn main() {
     for path in dir {
         let before = Instant::now();
 
-        if c > 1000 {
+        if c > 0 {
             break;
         }
         c += 1;
@@ -47,10 +47,12 @@ fn main() {
         let demo_path = "/home/laiho/Documents/demos/cs2/test2/66.dem";
 
         let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
             bytes: arc_bytes.clone(),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            wanted_event: Some("player_death".to_string()),
+            //wanted_event: Some("player_death".to_string()),
+            wanted_event: None,
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
                 "CCSTeam.m_szTeamname".to_string(),
@@ -73,7 +75,7 @@ fn main() {
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
         // println!("{:?}", d.df);
-        // println!("{:?}", before.elapsed());
+        println!("{:?}", before.elapsed());
     }
     // println!("{:?}", ds.handles);
     //println!("{:#?}", ds.state.cls_by_id);

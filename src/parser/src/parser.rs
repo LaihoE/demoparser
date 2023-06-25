@@ -14,6 +14,7 @@ use crate::variants::PropColumn;
 use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
 use bitter::BitReader;
+use csgoproto::demo::CDemoAnimationData;
 use csgoproto::demo::CDemoClassInfo;
 use csgoproto::demo::CDemoFileHeader;
 use csgoproto::demo::CDemoPacket;
@@ -38,12 +39,11 @@ pub struct DemoOutput {
     pub header: Option<AHashMap<String, String>>,
     pub player_md: Vec<PlayerEndMetaData>,
     pub game_events_counter: AHashMap<String, i32>,
-    pub prop_info: Option<PropController>,
+    pub prop_info: Arc<PropController>,
 }
 static CLSBYID: OnceLock<AHashMap<u32, Class>> = OnceLock::new();
 static QFMAPPER: OnceLock<QfMapper> = OnceLock::new();
 static GE_LIST: OnceLock<AHashMap<i32, Descriptor_t>> = OnceLock::new();
-static PROPCONTROLLER: OnceLock<PropController> = OnceLock::new();
 
 impl Parser {
     pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
@@ -52,59 +52,31 @@ impl Parser {
 
         let mut sendtable: Option<CDemoSendTables> = None;
         let mut handle = None;
-        self.prop_controller = None;
-
+        let mut threads_spawned = 0;
         let out = thread::scope(|s| {
             let mut handles = vec![];
             loop {
-                if self.fullpacket_offsets.len() > 0 {
-                    /*
-                    println!(
-                        "HERE {} {} {} {}",
-                        QFMAPPER.get().is_some(),
-                        CLSBYID.get().is_some(),
-                        GE_LIST.get().is_some(),
-                        self.prop_controller.is_some()
-                    );
-                    */
-                    if QFMAPPER.get().is_some()
-                        && CLSBYID.get().is_some()
-                        && GE_LIST.get().is_some()
-                        && self.prop_controller.is_some()
-                    {
-                        let p = self.fullpacket_offsets.pop().unwrap();
-                        let a = Arc::new(p);
-                        let ss = self.settings.clone();
-                        let b = self.baselines.clone();
-                        let pc = self.prop_controller.as_ref().unwrap().clone();
-                        let we = self.wanted_event.clone();
-                        handles.push(s.spawn(|| {
-                            let mut parser = ParserThread::new(
-                                ss,
-                                CLSBYID.get().unwrap(),
-                                QFMAPPER.get().unwrap(),
-                                GE_LIST.get().unwrap(),
-                                pc,
-                                a,
-                            )
-                            .unwrap();
-                            parser.wanted_event = we;
-                            parser.baselines = b;
-                            parser.start().unwrap();
-                            DemoOutput {
-                                chat_messages: parser.chat_messages,
-                                convars: parser.convars,
-                                df: parser.output,
-                                game_events: parser.game_events,
-                                skins: parser.skins,
-                                item_drops: parser.item_drops,
-                                header: None,
-                                player_md: parser.player_end_data,
-                                game_events_counter: parser.game_events_counter,
-                                prop_info: None,
-                            }
-                        }));
-                    }
+                if self.fullpacket_offsets.len() > 0 && self.is_ready_to_spawn_thread() {
+                    threads_spawned += 1;
+                    let offset = Arc::new(self.fullpacket_offsets.pop().unwrap());
+                    let settings = self.settings.clone();
+                    let baselines = self.baselines.clone();
+                    let prop_controller = self.prop_controller.clone();
+                    handles.push(s.spawn(|| {
+                        let mut parser = ParserThread::new(
+                            settings,
+                            CLSBYID.get().unwrap(),
+                            QFMAPPER.get().unwrap(),
+                            GE_LIST.get().unwrap(),
+                            prop_controller,
+                            offset,
+                            false,
+                        )
+                        .unwrap();
+                        parser.baselines = baselines;
+                        parser.start().unwrap();
+                        parser.create_output()
+                    }));
                 }
 
                 let before = self.ptr;
@@ -114,12 +86,17 @@ impl Parser {
                 let size = self.read_varint().unwrap();
 
                 self.tick = tick as i32;
-                if self.tick > 180000 {
+
+                if self.ptr + size as usize >= self.bytes.len() {
                     break;
                 }
+
                 let msg_type = cmd & !64;
                 let is_compressed = (cmd & 64) == 64;
-                if demo_cmd_type_from_int(msg_type as i32).unwrap() == DEM_Packet {
+                let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
+
+                // early exit packet (parsed by threads)
+                if demo_cmd == DEM_Packet {
                     self.ptr += size as usize;
                     continue;
                 }
@@ -130,9 +107,7 @@ impl Parser {
                     false => self.read_n_bytes(size).unwrap().to_vec(),
                 };
 
-                let ok: Result<(), DemoParserError> = match demo_cmd_type_from_int(msg_type as i32)
-                    .unwrap()
-                {
+                let ok: Result<(), DemoParserError> = match demo_cmd {
                     DEM_SendTables => {
                         sendtable = Some(Message::parse_from_bytes(&bytes).unwrap());
                         // self.parse_sendtable(&bytes)
@@ -151,12 +126,12 @@ impl Parser {
                         let (c, q, mut p) = handle.unwrap().join().unwrap().unwrap();
                         p.wanted_player_props = self.wanted_player_props.clone();
                         p.wanted_player_og_props = self.wanted_player_props_og_names.clone();
-                        println!("SETTING PROPCONTROLLER");
-                        self.prop_controller = Some(p);
-
+                        p.real_name_to_og_name = self.real_name_to_og_name.clone();
+                        self.prop_controller = Arc::new(p);
+                        self.prop_controller_is_set = true;
+                        // this can fail if user re-uses the same parser for multiple funcs
                         QFMAPPER.set(q);
                         CLSBYID.set(c);
-                        //PROPCONTROLLER.set(p).unwrap();
                         Ok(())
                     }
                     DEM_SignonPacket => self.parse_packet(&bytes),
@@ -169,12 +144,32 @@ impl Parser {
                 };
                 ok.unwrap();
             }
+            if threads_spawned == 0 {
+                let offset = Arc::new(16);
+                let settings = self.settings.clone();
+                let baselines = self.baselines.clone();
+                let prop_controller = self.prop_controller.clone();
+                handles.push(s.spawn(|| {
+                    let mut parser = ParserThread::new(
+                        settings,
+                        CLSBYID.get().unwrap(),
+                        QFMAPPER.get().unwrap(),
+                        GE_LIST.get().unwrap(),
+                        prop_controller,
+                        offset,
+                        true,
+                    )
+                    .unwrap();
+                    parser.baselines = baselines;
+                    parser.start().unwrap();
+                    parser.create_output()
+                }));
+            }
             let mut outputs: Vec<DemoOutput> = vec![];
             for handle in handles {
                 outputs.push(handle.join().unwrap());
             }
             let mut dfs = outputs.iter().map(|x| x.df.clone()).collect();
-            println!("{:?}", dfs);
             let all_dfs_combined = self.combine_dfs(&mut dfs);
             DemoOutput {
                 chat_messages: outputs
@@ -189,9 +184,10 @@ impl Parser {
                 df: all_dfs_combined,
                 header: Some(self.header.clone()),
                 game_events_counter: AHashMap::default(),
-                prop_info: Some(self.prop_controller.as_ref().unwrap().clone()),
+                prop_info: self.prop_controller.clone(),
             }
         });
+        self.prop_controller_is_set = false;
         Ok(out)
     }
 
@@ -207,6 +203,12 @@ impl Parser {
 }
 
 impl Parser {
+    pub fn is_ready_to_spawn_thread(&self) -> bool {
+        QFMAPPER.get().is_some()
+            && CLSBYID.get().is_some()
+            && GE_LIST.get().is_some()
+            && self.prop_controller_is_set
+    }
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
         let packet_data = packet.data.unwrap();
@@ -220,9 +222,8 @@ impl Parser {
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 GE_Source1LegacyGameEventList => {
                     let hm = self.parse_game_event_list(&msg_bytes)?;
+                    // this can fail if user re-uses the same parser for multiple funcs
                     GE_LIST.set(hm);
-
-                    println!("{:?}", GE_LIST);
                     Ok(())
                 }
                 // GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),

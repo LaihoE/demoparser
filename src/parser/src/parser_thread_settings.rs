@@ -8,6 +8,7 @@ use crate::decoder::QfMapper;
 use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
 use crate::other_netmessages::Class;
+use crate::parser::DemoOutput;
 use crate::sendtables::FieldInfo;
 use crate::sendtables::FieldModel;
 use crate::sendtables::PropController;
@@ -28,8 +29,9 @@ const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 pub struct ParserThread<'a> {
     pub ptr: usize,
     pub bytes: Arc<Mmap>,
+    pub parse_all_packets: bool,
     // Parsing state
-    pub prop_controller: PropController,
+    pub prop_controller: Arc<PropController>,
     pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_by_id: &'a AHashMap<u32, Class>,
@@ -118,6 +120,7 @@ pub struct PlayerEndMetaData {
 #[derive(Debug, Clone)]
 pub struct ParserInputs {
     pub bytes: Arc<Mmap>,
+    pub real_name_to_og_name: AHashMap<String, String>,
 
     pub wanted_player_props: Vec<String>,
     pub wanted_player_props_og_names: Vec<String>,
@@ -135,13 +138,28 @@ pub struct ParserInputs {
 }
 
 impl<'a> ParserThread<'a> {
+    pub fn create_output(self) -> DemoOutput {
+        DemoOutput {
+            chat_messages: self.chat_messages,
+            convars: self.convars,
+            df: self.output,
+            game_events: self.game_events,
+            skins: self.skins,
+            item_drops: self.item_drops,
+            header: None,
+            player_md: self.player_end_data,
+            game_events_counter: self.game_events_counter,
+            prop_info: Arc::new(PropController::new(vec![], vec![])),
+        }
+    }
     pub fn new(
         mut settings: ParserInputs,
         cls_by_id: &'a AHashMap<u32, Class>,
         qfmap: &'a QfMapper,
         ge_list: &'a AHashMap<i32, Descriptor_t>,
-        prop_controller: PropController,
+        prop_controller: Arc<PropController>,
         ptr: Arc<usize>,
+        parse_all_packets: bool,
     ) -> Result<Self, DemoParserError> {
         let fp_filler = FieldPath {
             last: 0,
@@ -152,8 +170,10 @@ impl<'a> ParserThread<'a> {
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
+        // println!("RR {:?}", prop_controller.real_name_to_og_name);
         // let huffman_table = create_huffman_lookup_table();
         Ok(ParserThread {
+            parse_all_packets: parse_all_packets,
             wanted_ticks: AHashSet::default(),
             prop_controller: prop_controller,
             qf_map: qfmap,

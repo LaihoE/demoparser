@@ -21,13 +21,14 @@ pub struct ProjectileRecord {
 
 impl<'a> ParserThread<'a> {
     pub fn collect_entities(&mut self) {
-        if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 {
+        if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0
+            || self.wanted_event.is_some()
+        {
             return;
         }
         if self.parse_projectiles {
             // self.collect_projectiles();
         }
-        // println!("{:#?}", self.prop_controller.prop_infos);
         // iterate every player and every wanted prop name
         // if either one is missing then push None to output
         for (entity_id, player) in &self.players {
@@ -335,7 +336,6 @@ impl<'a> ParserThread<'a> {
         None
     }
     pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
-        // println!("{:?}", prop_name);
         match prop_name {
             "X" => self.collect_cell_coordinate_player("X", entity_id),
             "Y" => self.collect_cell_coordinate_player("Y", entity_id),
@@ -349,11 +349,9 @@ impl<'a> ParserThread<'a> {
             Some(p) => p,
             None => return None,
         };
-        // println!("ACT W {:?}", p);
         if let Some(Variant::U32(weap_handle)) = self.get_prop_for_ent(&p, player_entid) {
             let weapon_entity_id = (weap_handle & 0x7FF) as i32;
             let pp = self.get_prop_for_ent(&prop, &weapon_entity_id);
-            // println!("PP {:?}", pp);
             return pp;
         }
         None
