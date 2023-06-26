@@ -42,7 +42,7 @@ pub struct Field {
     pub child_decoder: Option<Decoder>,
 
     pub should_parse: bool,
-    pub df_pos: usize,
+    pub prop_id: usize,
     pub is_controller_prop: bool,
     pub controller_prop: Option<ControllerProp>,
     pub idx: u32,
@@ -81,7 +81,6 @@ impl fmt::Display for Decoder {
 }
 #[derive(Clone, Debug)]
 pub struct PropController {
-    pub wanted_prop_paths: AHashSet<[i32; 7]>,
     pub id: u32,
     pub wanted_player_props: Vec<String>,
     pub wanted_prop_ids: Vec<u32>,
@@ -194,7 +193,7 @@ impl Field {
                 return FieldInfo {
                     decoder: self.decoder,
                     should_parse: self.should_parse,
-                    df_pos: self.df_pos as u32,
+                    df_pos: self.prop_id as u32,
                     controller_prop: self.controller_prop,
                 };
             }
@@ -202,7 +201,7 @@ impl Field {
                 return FieldInfo {
                     decoder: self.decoder,
                     should_parse: self.should_parse,
-                    df_pos: self.df_pos as u32,
+                    df_pos: self.prop_id as u32,
                     controller_prop: self.controller_prop,
                 }
             }
@@ -212,14 +211,14 @@ impl Field {
                         return FieldInfo {
                             decoder: self.base_decoder.unwrap(),
                             should_parse: self.should_parse,
-                            df_pos: self.df_pos as u32,
+                            df_pos: self.prop_id as u32,
                             controller_prop: self.controller_prop,
                         };
                     }
                     return FieldInfo {
                         decoder: self.decoder,
                         should_parse: self.should_parse,
-                        df_pos: self.df_pos as u32,
+                        df_pos: self.prop_id as u32,
                         controller_prop: self.controller_prop,
                     };
                 } else {
@@ -236,14 +235,14 @@ impl Field {
                     return FieldInfo {
                         decoder: self.child_decoder.unwrap(),
                         should_parse: self.should_parse,
-                        df_pos: self.df_pos as u32,
+                        df_pos: self.prop_id as u32,
                         controller_prop: self.controller_prop,
                     };
                 } else {
                     return FieldInfo {
                         decoder: self.base_decoder.unwrap(),
                         should_parse: self.should_parse,
-                        df_pos: self.df_pos as u32,
+                        df_pos: self.prop_id as u32,
                         controller_prop: self.controller_prop,
                     };
                 }
@@ -260,7 +259,7 @@ impl Field {
                     return FieldInfo {
                         decoder: self.base_decoder.unwrap(),
                         should_parse: self.should_parse,
-                        df_pos: self.df_pos as u32,
+                        df_pos: self.prop_id as u32,
                         controller_prop: self.controller_prop,
                     };
                 }
@@ -680,7 +679,6 @@ impl PropController {
         wanted_player_props_og_names: Vec<String>,
     ) -> Self {
         PropController {
-            wanted_prop_paths: AHashSet::default(),
             id: 0,
             wanted_player_props: wanted_player_props,
             wanted_prop_ids: vec![],
@@ -701,8 +699,121 @@ impl PropController {
         // Example: "m_iHealth" => [4, 0, 0, 0, 0, 0, 0]
         self.traverse_fields(&mut ser.fields, vec![], ser.name.clone())
     }
+    fn vec_to_arr(path: &Vec<i32>) -> [i32; 7]{
+        let mut arr = [0, 0, 0, 0, 0, 0, 0];
+        for (idx, val) in path.iter().enumerate() {
+            arr[idx] = *val;
+        }
+        arr
+    }
 
-    fn traverse_fields(&mut self, fields: &mut Vec<Field>, path: Vec<i32>, ser_name: String) {
+    fn handle_normal_prop(&mut self, full_name: &str){
+        self.prop_infos.push(PropInfo {
+            id: self.id,
+            prop_type: TYPEHM.get(&full_name).copied(),
+            prop_name: full_name.to_string(),
+            prop_friendly_name: self
+                .real_name_to_og_name
+                .get(&full_name.to_string())
+                .unwrap_or(&full_name.to_string())
+                .to_string(),
+        });
+    }
+    fn handle_weapon_prop(&mut self, weap_prop: &str, f: &mut Field){
+        match self.name_to_id.get(weap_prop) {
+            // If we already have an id for prop of same name then use that
+            Some(id) => {
+                return;// f.prop_id = *id as usize;
+            }
+            None => match TYPEHM.get(&weap_prop) {
+                Some(t) => self.prop_infos.push(PropInfo {
+                    id: self.id,
+                    prop_type: Some(t.clone()),
+                    prop_name: weap_prop.to_string(),
+                    prop_friendly_name: self
+                        .real_name_to_og_name
+                        .get(&weap_prop.to_string())
+                        .unwrap_or(&weap_prop.to_string())
+                        .to_string(),
+                }),
+                _ => panic!("weapon prop: {:?} not found", weap_prop),
+            },
+        };
+    }
+    fn handle_prop(&mut self, full_name: &str, f: &mut Field){
+        let split_at_dot: Vec<&str> = full_name.split(".").collect();
+        let weap_prop = split_at_dot.last().unwrap();
+        
+        let is_wanted_normal_prop = self.wanted_player_props.contains(&full_name.to_string());
+        let is_wanted_weapon_prop = self.wanted_player_props.contains(&weap_prop.to_string());
+
+        if is_wanted_normal_prop {
+            self.handle_normal_prop(full_name);
+            self.name_to_id.insert(full_name.to_string(), self.id);
+        }
+        else if is_wanted_weapon_prop {
+            self.handle_weapon_prop(&full_name, f);
+            self.name_to_id.insert(weap_prop.to_string(), self.id);
+        }
+        self.set_grenades(full_name, f);
+        if is_wanted_normal_prop || is_wanted_weapon_prop{
+            f.prop_id = self.id as usize;
+            f.should_parse = true;
+            self.id += 1;
+        }
+    }
+    fn set_grenades(&mut self, full_name: &str, f: &mut Field){
+        if full_name.contains("Projectile.CBodyComponentBaseAnimGraph.m_vec") {
+            match  full_name.chars().last(){
+                Some('X') => {
+                    if self.special_ids.m_vecX_grenade.is_none(){
+                        self.special_ids.m_vecX_grenade = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_vecX_grenade.unwrap() as usize;
+                }
+                Some('Y') => {
+                    if self.special_ids.m_vecY_greande.is_none(){
+                        self.special_ids.m_vecY_greande = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_vecY_greande.unwrap() as usize;
+                }
+                Some('Z') => {
+                    if self.special_ids.m_vecZ_grenade.is_none(){
+                        self.special_ids.m_vecZ_grenade = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_vecZ_grenade.unwrap() as usize;
+                }                        
+                _ => {},
+            } 
+        }
+        if full_name.contains("Projectile.CBodyComponentBaseAnimGraph.m_cell") {
+            match full_name.chars().last(){
+                Some('X') => {
+                    if self.special_ids.m_cellX_grenade.is_none(){
+                        self.special_ids.m_cellX_grenade = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_cellX_grenade.unwrap() as usize;
+                }
+                Some('Y') => {
+                    if self.special_ids.m_cellY_greande.is_none(){
+                        self.special_ids.m_cellY_greande = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_cellY_greande.unwrap() as usize;
+
+                }
+                Some('Z') => {
+                    if self.special_ids.m_cellZ_grenade.is_none(){
+                        self.special_ids.m_cellZ_grenade = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_cellZ_grenade.unwrap() as usize;
+                } 
+                _ => {},
+            } 
+        }
+    }
+
+
+    fn traverse_fields(&mut self, fields: &mut Vec<Field>, mut path: Vec<i32>, ser_name: String) {
         for (idx, f) in fields.iter_mut().enumerate() {
             if let Some(ser) = &mut f.serializer {
                 let mut tmp = path.clone();
@@ -711,131 +822,45 @@ impl PropController {
             } else {
                 let mut tmp = path.clone();
                 tmp.push(idx as i32);
-
-                let mut arr = [0, 0, 0, 0, 0, 0, 0];
-                for (idx, val) in tmp.iter().enumerate() {
-                    arr[idx] = *val;
-                }
+                let arr = PropController::vec_to_arr(&tmp);
                 let full_name = ser_name.clone() + "." + &f.var_name;
-                self.id_to_name.insert(self.id, full_name.clone());
+
 
                 if self.is_wanted_prop(&full_name) {
                     f.should_parse = true;
-                    self.wanted_prop_paths.insert(arr);
-                    if full_name.contains("Controller") {
-                        f.is_controller_prop = true;
-                        f.controller_prop = self.find_controller_prop_type(&full_name);
-                    }
-                    f.df_pos = self.id as usize;
+                    f.prop_id = self.id as usize;
                 }
-                let split_at_dot: Vec<&str> = full_name.split(".").collect();
-                let weap_prop = split_at_dot.last().unwrap();
 
-                if self.wanted_player_props.contains(&full_name) {
-                    self.wanted_prop_ids.push(self.id);
-                    match TYPEHM.get(&full_name) {
-                        Some(t) => self.prop_infos.push(PropInfo {
-                            id: self.id,
-                            prop_type: Some(t.clone()),
-                            prop_name: full_name.clone(),
-                            prop_friendly_name: self
-                                .real_name_to_og_name
-                                .get(&full_name.to_string())
-                                .unwrap_or(&full_name.to_string())
-                                .to_string(),
-                        }),
-                        None => {
-                            self.prop_infos.push(
-                                PropInfo {
-                                    id: self.id,
-                                    prop_type: None,
-                                    prop_name: full_name.clone(),
-                                    prop_friendly_name: self
-                                        .real_name_to_og_name
-                                        .get(&full_name.to_string())
-                                        .unwrap_or(&full_name.to_string())
-                                        .to_string(),
-                                }
-                                .clone(),
-                            );
-                        }
-                    }
-                }
+                self.handle_prop(&full_name,  f);
+
+                /* 
                 if arr == [78, 0, 0, 0, 0, 0, 0] && full_name.contains("m_iItemDefinitionIndex") {
-                    f.df_pos = 69999;
+                    f.prop_id = 69999;
                     self.special_ids.item_def = Some(69999);
                     continue;
                 }
-                if self.wanted_player_props.contains(&weap_prop.to_string()) {
-                    f.should_parse = true;
-                    self.wanted_prop_ids.push(self.id);
-                    self.prop_name_to_path.insert(full_name.clone(), arr);
-                    self.path_to_prop_name.insert(arr, full_name.clone());
-
-                    match self.name_to_id.get(weap_prop.to_owned()) {
-                        Some(i) => {
-                            f.df_pos = *i as usize;
-                            continue;
-                        }
-                        None => match TYPEHM.get(&weap_prop) {
-                            Some(t) => self.prop_infos.push(PropInfo {
-                                id: self.id,
-                                prop_type: Some(t.clone()),
-                                prop_name: weap_prop.to_string(),
-                                prop_friendly_name: self
-                                    .real_name_to_og_name
-                                    .get(&full_name.to_string())
-                                    .unwrap_or(&full_name.to_string())
-                                    .to_string(),
-                            }),
-                            None => {
-                                self.prop_infos.push(
-                                    PropInfo {
-                                        id: self.id,
-                                        prop_type: None,
-                                        prop_name: weap_prop.to_string(),
-                                        prop_friendly_name: self
-                                            .real_name_to_og_name
-                                            .get(&full_name.to_string())
-                                            .unwrap_or(&full_name.to_string())
-                                            .to_string(),
-                                    }
-                                    .clone(),
-                                );
-                            }
-                        },
-                    };
-                    f.df_pos = self.id as usize;
-                    self.name_to_id.insert(weap_prop.to_string(), self.id);
-                    self.id_to_path.insert(self.id, arr);
-                    self.id_to_name.insert(self.id, full_name.clone());
-                    self.id += 1;
-                    // continue;
-                }
                 if full_name.contains("renadeProjectile.CBodyComponentBaseAnimGraph.m_vec") {
-                    
                     match  full_name.chars().last(){
                         Some('X') => {
                             if self.special_ids.m_vecX_grenade.is_none(){
                                 self.special_ids.m_vecX_grenade = Some(self.id);
                             }
                             f.should_parse = true;
-                            f.df_pos = self.special_ids.m_vecX_grenade.unwrap() as usize;
+                            f.prop_id = self.special_ids.m_vecX_grenade.unwrap() as usize;
                         }
                         Some('Y') => {
                             if self.special_ids.m_vecY_greande.is_none(){
                                 self.special_ids.m_vecY_greande = Some(self.id);
                             }
                             f.should_parse = true;
-                            f.df_pos = self.special_ids.m_vecY_greande.unwrap() as usize;
-
+                            f.prop_id = self.special_ids.m_vecY_greande.unwrap() as usize;
                         }
                         Some('Z') => {
                             if self.special_ids.m_vecZ_grenade.is_none(){
                                 self.special_ids.m_vecZ_grenade = Some(self.id);
                             }
                             f.should_parse = true;
-                            f.df_pos = self.special_ids.m_vecZ_grenade.unwrap() as usize;
+                            f.prop_id = self.special_ids.m_vecZ_grenade.unwrap() as usize;
 
                         }                        
                         _ => {},
@@ -848,14 +873,14 @@ impl PropController {
                                 self.special_ids.m_cellX_grenade = Some(self.id);
                             }
                             f.should_parse = true;
-                            f.df_pos = self.special_ids.m_cellX_grenade.unwrap() as usize;
+                            f.prop_id = self.special_ids.m_cellX_grenade.unwrap() as usize;
                         }
                         Some('Y') => {
                             if self.special_ids.m_cellY_greande.is_none(){
                                 self.special_ids.m_cellY_greande = Some(self.id);
                             }
                             f.should_parse = true;
-                            f.df_pos = self.special_ids.m_cellY_greande.unwrap() as usize;
+                            f.prop_id = self.special_ids.m_cellY_greande.unwrap() as usize;
 
                         }
                         Some('Z') => {
@@ -863,7 +888,7 @@ impl PropController {
                                 self.special_ids.m_cellZ_grenade = Some(self.id);
                             }
                             f.should_parse = true;
-                            f.df_pos = self.special_ids.m_cellZ_grenade.unwrap() as usize;
+                            f.prop_id = self.special_ids.m_cellZ_grenade.unwrap() as usize;
                         } 
                         _ => {},
                     } 
@@ -876,7 +901,7 @@ impl PropController {
                         self.special_ids.grenade_owner_id = Some(self.id)
                     }
                     f.should_parse = true;
-                    f.df_pos = self.special_ids.grenade_owner_id.unwrap() as usize;
+                    f.prop_id = self.special_ids.grenade_owner_id.unwrap() as usize;
                 };
 
                 match full_name.as_str() {
@@ -942,6 +967,7 @@ impl PropController {
                 self.id += 1;
                 self.prop_name_to_path.insert(full_name.clone(), arr);
                 self.path_to_prop_name.insert(arr, full_name);
+                */
             }
         }
     }
@@ -1032,7 +1058,7 @@ fn field_from_msg(
         base_decoder: None,
         child_decoder: None,
         should_parse: false,
-        df_pos: 0,
+        prop_id: 0,
         is_controller_prop: false,
         controller_prop: None,
         idx: 0,

@@ -60,7 +60,6 @@ pub struct Parser {
 
     pub prop_name_to_path: AHashMap<String, [i32; 7]>,
     pub path_to_prop_name: AHashMap<[i32; 7], String>,
-    pub wanted_prop_paths: AHashSet<[i32; 7]>,
     pub name_to_id: AHashMap<String, u32>,
 
     // pub qf_mapper: QfMapper,
@@ -111,7 +110,6 @@ impl Parser {
             wanted_event: inputs.wanted_event.clone(),
             settings: inputs,
             wanted_ticks: AHashSet::default(),
-            wanted_prop_paths: AHashSet::default(),
             path_to_prop_name: AHashMap::default(),
             prop_name_to_path: AHashMap::default(),
             wanted_player_props_og_names: vec![],

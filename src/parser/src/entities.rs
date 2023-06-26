@@ -373,7 +373,6 @@ impl ParserThread {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),
         };
-
         match class.name.as_str() {
             "CCSPlayerController" => return Ok(EntityType::PlayerController),
             "CCSGameRulesProxy" => return Ok(EntityType::Rules),
