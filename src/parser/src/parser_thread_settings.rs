@@ -4,6 +4,7 @@ use super::read_bits::DemoParserError;
 use super::sendtables::Serializer;
 use super::stringtables::StringTable;
 use super::variants::PropColumn;
+use crate::collect_data::ProjectileRecord;
 use crate::decoder::QfMapper;
 use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
@@ -53,6 +54,7 @@ pub struct ParserThread {
     pub fullpackets_parsed: u32,
     pub packets_parsed: u32,
     pub cnt: AHashMap<FieldModel, u32>,
+    pub projectile_records: Vec<ProjectileRecord>,
     //pub qf_map: &'a QfMapper,
     pub wanted_ticks: AHashSet<i32>,
 
@@ -152,6 +154,7 @@ impl ParserThread {
             player_md: self.player_end_data,
             game_events_counter: self.game_events_counter,
             prop_info: Arc::new(PropController::new(vec![], vec![])),
+            projectiles: self.projectile_records,
         }
     }
     pub fn new(
@@ -175,6 +178,7 @@ impl ParserThread {
         // println!("RR {:?}", prop_controller.real_name_to_og_name);
         // let huffman_table = create_huffman_lookup_table();
         Ok(ParserThread {
+            projectile_records: vec![],
             parse_all_packets: parse_all_packets,
             wanted_ticks: AHashSet::default(),
             prop_controller: prop_controller,
@@ -211,7 +215,7 @@ impl ParserThread {
             ],
             teams: Teams::new(),
             game_events_counter: AHashMap::default(),
-            parse_projectiles: settings.parse_projectiles,
+            parse_projectiles: true,
             rules_entity_id: None,
             convars: AHashMap::default(),
             chat_messages: vec![],
@@ -252,6 +256,8 @@ pub struct SpecialIDs {
     pub m_cellX_grenade: Option<u32>,
     pub m_cellY_greande: Option<u32>,
     pub m_cellZ_grenade: Option<u32>,
+
+    pub grenade_owner_id: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -277,6 +283,7 @@ impl SpecialIDs {
             m_vecX_grenade: None,
             m_vecY_greande: None,
             m_vecZ_grenade: None,
+            grenade_owner_id: None,
         }
     }
 }

@@ -25,6 +25,7 @@ use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 use std::thread;
+use crate::collect_data::ProjectileRecord;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -38,6 +39,7 @@ pub struct DemoOutput {
     pub player_md: Vec<PlayerEndMetaData>,
     pub game_events_counter: AHashMap<String, i32>,
     pub prop_info: Arc<PropController>,
+    pub projectiles: Vec<ProjectileRecord>
 }
 //static CLSBYID: OnceLock<AHashMap<u32, Class>> = OnceLock::new();
 //static QFMAPPER: OnceLock<QfMapper> = OnceLock::new();
@@ -185,6 +187,7 @@ impl Parser {
                 header: Some(self.header.clone()),
                 game_events_counter: AHashMap::default(),
                 prop_info: self.prop_controller.clone(),
+                projectiles: outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
             }
         });
         self.prop_controller_is_set = false;

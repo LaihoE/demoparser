@@ -157,22 +157,23 @@ impl DemoParser {
     /// 0 -388.875  1295.46875 -5120.0   982              NaN    HeGrenade
     /// 1 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
     /// 2 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
-    /*
+    
     pub fn parse_grenades(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
         let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
             bytes: arc_mmap.clone(),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
             wanted_event: None,
-            parse_ents: false,
+            parse_ents: true,
             wanted_ticks: vec![],
-            parse_projectiles: false,
+            parse_projectiles: true,
             only_header: true,
             count_props: false,
             only_convars: false,
@@ -184,24 +185,32 @@ impl DemoParser {
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
 
+        let xs: Vec<Option<f32>> = output.projectiles.iter().map(|s| s.x).collect();
+        let ys: Vec<Option<f32>> = output.projectiles.iter().map(|s| s.y).collect();
+        let ticks: Vec<Option<i32>> = output.projectiles.iter().map(|s| s.tick).collect();
+        let steamid: Vec<Option<u64>> = output.projectiles.iter().map(|s| s.steamid).collect();
+        let name: Vec<Option<String>> = output.projectiles.iter().map(|s| s.name.clone()).collect();
+        let grenade_type: Vec<Option<String>> = output.projectiles.iter().map(|s| s.grenade_type.clone()).collect();
+
+
         // SoA form
-        let xs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.x))).unwrap();
-        let ys = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.y))).unwrap();
+        let xs = arr_to_py(Box::new(Float32Array::from(xs))).unwrap();
+        let ys = arr_to_py(Box::new(Float32Array::from(ys))).unwrap();
         // Actually not sure about Z coordinate. Leave out for now.
-        //let zs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.z))).unwrap();
-        let ticks = arr_to_py(Box::new(Int32Array::from(parser.projectile_records.tick))).unwrap();
+        // let zs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.z))).unwrap();
+        let ticks = arr_to_py(Box::new(Int32Array::from(ticks))).unwrap();
 
         let grenade_type = arr_to_py(Box::new(Utf8Array::<i32>::from(
-            parser.projectile_records.grenade_type,
+            grenade_type,
         )))
         .unwrap();
         let name = arr_to_py(Box::new(Utf8Array::<i32>::from(
-            parser.projectile_records.name,
+            name,
         )))
         .unwrap();
 
         let steamids = arr_to_py(Box::new(UInt64Array::from(
-            parser.projectile_records.steamid,
+            steamid,
         )))
         .unwrap();
 
@@ -218,7 +227,7 @@ impl DemoParser {
             Ok(pandas_df.to_object(py))
         })
     }
-    */
+    
     /// returns a DF with chat messages
     ///
     /// Example output:

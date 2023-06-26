@@ -813,14 +813,70 @@ impl PropController {
                     // continue;
                 }
                 if full_name.contains("renadeProjectile.CBodyComponentBaseAnimGraph.m_vec") {
-                    let x: Vec<&str> = full_name.split(".").collect();
-                    let y = x[1].to_owned() + "." + x[2];
-                    println!("{:?}", y);
+                    
+                    match  full_name.chars().last(){
+                        Some('X') => {
+                            if self.special_ids.m_vecX_grenade.is_none(){
+                                self.special_ids.m_vecX_grenade = Some(self.id);
+                            }
+                            f.should_parse = true;
+                            f.df_pos = self.special_ids.m_vecX_grenade.unwrap() as usize;
+                        }
+                        Some('Y') => {
+                            if self.special_ids.m_vecY_greande.is_none(){
+                                self.special_ids.m_vecY_greande = Some(self.id);
+                            }
+                            f.should_parse = true;
+                            f.df_pos = self.special_ids.m_vecY_greande.unwrap() as usize;
 
-                    println!("{:?} {:?}", full_name, arr);
-                };
+                        }
+                        Some('Z') => {
+                            if self.special_ids.m_vecZ_grenade.is_none(){
+                                self.special_ids.m_vecZ_grenade = Some(self.id);
+                            }
+                            f.should_parse = true;
+                            f.df_pos = self.special_ids.m_vecZ_grenade.unwrap() as usize;
+
+                        }                        
+                        _ => {},
+                    } 
+                }
                 if full_name.contains("renadeProjectile.CBodyComponentBaseAnimGraph.m_cell") {
-                    println!("{:?} {:?}", full_name, arr);
+                    match full_name.chars().last(){
+                        Some('X') => {
+                            if self.special_ids.m_cellX_grenade.is_none(){
+                                self.special_ids.m_cellX_grenade = Some(self.id);
+                            }
+                            f.should_parse = true;
+                            f.df_pos = self.special_ids.m_cellX_grenade.unwrap() as usize;
+                        }
+                        Some('Y') => {
+                            if self.special_ids.m_cellY_greande.is_none(){
+                                self.special_ids.m_cellY_greande = Some(self.id);
+                            }
+                            f.should_parse = true;
+                            f.df_pos = self.special_ids.m_cellY_greande.unwrap() as usize;
+
+                        }
+                        Some('Z') => {
+                            if self.special_ids.m_cellZ_grenade.is_none(){
+                                self.special_ids.m_cellZ_grenade = Some(self.id);
+                            }
+                            f.should_parse = true;
+                            f.df_pos = self.special_ids.m_cellZ_grenade.unwrap() as usize;
+                        } 
+                        _ => {},
+                    } 
+                }
+
+
+
+                if full_name.contains("Projectile.m_nOwnerId") {
+                    if self.special_ids.grenade_owner_id.is_none(){
+                        self.special_ids.grenade_owner_id = Some(self.id)
+                    }
+                    f.should_parse = true;
+                    f.df_pos = self.special_ids.grenade_owner_id.unwrap() as usize;
                 };
 
                 match full_name.as_str() {
@@ -882,7 +938,6 @@ impl PropController {
                     _ => {}
                 };
                 self.id_to_name.insert(self.id, full_name.clone());
-
                 self.id_to_path.insert(self.id, arr);
                 self.id += 1;
                 self.prop_name_to_path.insert(full_name.clone(), arr);

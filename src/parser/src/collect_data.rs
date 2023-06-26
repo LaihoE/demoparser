@@ -6,7 +6,7 @@ use crate::variants::PropColumn;
 use itertools::Itertools;
 use phf_macros::phf_map;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProjectileRecord {
     pub steamid: Option<u64>,
     pub name: Option<String>,
@@ -27,7 +27,7 @@ impl ParserThread {
             return;
         }
         if self.parse_projectiles {
-            // self.collect_projectiles();
+            self.collect_projectiles();
         }
         // iterate every player and every wanted prop name
         // if either one is missing then push None to output
@@ -114,39 +114,25 @@ impl ParserThread {
         }
         None
     }
-    /*
-    pub fn collect_cell_coordinate_player(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
-        let offset = self.get_prop_for_ent(
-            &("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vec".to_owned() + axis),
-            entity_id,
-        );
-        let cell = self.get_prop_for_ent(
-            &("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cell".to_owned() + axis),
-            entity_id,
-        );
-        if let Some(coord) = coord_from_cell(cell, offset) {
-            return Some(Variant::F32(coord));
-        }
-        None
-    }
     pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
-        let entity = match self.entities.get(entity_id) {
-            Some(ent) => ent,
-            None => return None,
+        let (offset, cell) = match axis {
+            "X" => {
+                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vecX_grenade.unwrap(), entity_id);
+                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cellX_grenade.unwrap(), entity_id);
+                (offset, cell)
+            }
+            "Y" => {
+                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vecY_greande.unwrap(), entity_id);
+                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cellY_greande.unwrap(), entity_id);
+                (offset, cell)
+            }
+            "Z" => {
+                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vecZ_grenade.unwrap(), entity_id);
+                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cellZ_grenade.unwrap(), entity_id);
+                (offset, cell)
+            }
+            _ => panic!("unk axis"),
         };
-
-        let class = match self.cls_by_id.get(&entity.cls_id) {
-            Some(cls) => cls,
-            None => return None,
-        };
-        let offset = self.get_prop_for_ent(
-            &(class.name.to_owned() + "." + "CBodyComponentBaseAnimGraph.m_vec" + axis),
-            entity_id,
-        );
-        let cell = self.get_prop_for_ent(
-            &(class.name.to_owned() + "." + "CBodyComponentBaseAnimGraph.m_cell" + axis),
-            entity_id,
-        );
         if let Some(coord) = coord_from_cell(cell, offset) {
             return Some(Variant::F32(coord));
         }
@@ -162,7 +148,7 @@ impl ParserThread {
             None => return None,
         };
         let owner_entid =
-            match self.get_prop_for_ent(&(class.name.to_owned() + "." + "m_nOwnerId"), entity_id) {
+            match self.get_prop_for_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), entity_id) {
                 Some(Variant::U32(prop)) => Some(prop & 0x7FF),
                 _ => None,
             };
@@ -185,7 +171,7 @@ impl ParserThread {
             None => return None,
         };
         let owner_entid =
-            match self.get_prop_for_ent(&(class.name.to_owned() + "." + "m_nOwnerId"), entity_id) {
+            match self.get_prop_for_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), entity_id) {
                 Some(Variant::U32(prop)) => Some(prop & 0x7FF),
                 _ => None,
             };
@@ -198,9 +184,14 @@ impl ParserThread {
         };
         name
     }
+
+
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
         if let Some(ent) = self.entities.get(&entity_id) {
             if let Some(cls) = self.cls_by_id.get(&ent.cls_id).as_ref() {
+                if !cls.name.contains("Grenade"){
+                    return None;
+                }
                 // remove extra from name: CSmokeGrenadeProjectile --> SmokeGrenade
                 // Todo maybe make names like this: smoke_grenade or just "smoke"
                 let mut clean_name = cls.name[1..].split_at(cls.name.len() - 11).0;
@@ -213,6 +204,7 @@ impl ParserThread {
         }
         None
     }
+    
     pub fn collect_projectiles(&mut self) {
         for projectile_entid in &self.projectiles {
             let grenade_type = self.find_grenade_type(projectile_entid);
@@ -245,29 +237,9 @@ impl ParserThread {
                 grenade_type: grenade_type,
             });
         }
-    }
+    }   
 
 
-    pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
-        match prop_name {
-            "X" => self.collect_cell_coordinate_player("X", entity_id),
-            "Y" => self.collect_cell_coordinate_player("Y", entity_id),
-            "Z" => self.collect_cell_coordinate_player("Z", entity_id),
-            "weapon_name" => self.find_weapon_name(entity_id),
-            _ => panic!("unknown custom prop: {}", prop_name),
-        }
-    }
-    fn find_weapon_name(&self, entity_id: &i32) -> Option<Variant> {
-        let i = self.find_weapon_prop("m_iItemDefinitionIndex", entity_id);
-        if let Some(Variant::U32(def_idx)) = i {
-            match WEAPINDICIES.get(&def_idx) {
-                Some(v) => return Some(Variant::String(v.to_string())),
-                _ => {}
-            }
-        }
-        None
-    }
-    */
     fn find_weapon_name(&self, entity_id: &i32) -> Option<Variant> {
         let item_def_id = match self.prop_controller.special_ids.item_def {
             Some(x) => x,

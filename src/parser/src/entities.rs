@@ -72,7 +72,7 @@ impl ParserThread {
             match cmd {
                 EntityCmd::Delete => {
                     self.projectiles.remove(&entity_id);
-                    // self.entities.remove(&entity_id);
+                    self.entities.remove(&entity_id);
                 }
                 EntityCmd::CreateAndUpdate => {
                     self.create_new_entity(&mut bitreader, &entity_id)?;
@@ -113,7 +113,6 @@ impl ParserThread {
             if field_info.should_parse {
                 entity.props.insert(field_info.df_pos as u32, result);
             }
-            // entity.props.insert(field_info.df_pos as u32, result);
         }
         Ok(n_paths)
     }
