@@ -33,7 +33,7 @@ fn main() {
     let before1 = Instant::now();
 
     // let file = File::open(path.unwrap().path()).unwrap();
-    let file = File::open("/home/laiho/Documents/demos/cs2/s2.dem").unwrap();
+    let file = File::open("/home/laiho/Documents/demos/cs2/test2/66.dem").unwrap();
 
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let arc_bytes = Arc::new(mmap);

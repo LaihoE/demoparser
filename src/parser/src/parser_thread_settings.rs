@@ -10,6 +10,7 @@ use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
 use crate::other_netmessages::Class;
 use crate::parser::DemoOutput;
+use crate::parser::ParserThreadInput;
 use crate::sendtables::FieldInfo;
 use crate::sendtables::FieldModel;
 use crate::sendtables::PropController;
@@ -157,20 +158,12 @@ impl ParserThread {
             projectiles: self.projectile_records,
         }
     }
-    pub fn new(
-        mut settings: ParserInputs,
-        cls_by_id: Arc<AHashMap<u32, Class>>,
-        qfmap: Arc<QfMapper>,
-        ge_list: Arc<AHashMap<i32, Descriptor_t>>,
-        prop_controller: Arc<PropController>,
-        ptr: Arc<usize>,
-        parse_all_packets: bool,
-    ) -> Result<Self, DemoParserError> {
+    pub fn new(mut input: ParserThreadInput) -> Result<Self, DemoParserError> {
         let fp_filler = FieldPath {
             last: 0,
             path: [-1, 0, 0, 0, 0, 0, 0],
         };
-        settings.wanted_player_props.extend(vec![
+        input.settings.wanted_player_props.extend(vec![
             "tick".to_owned(),
             "steamid".to_owned(),
             "name".to_owned(),
@@ -179,27 +172,26 @@ impl ParserThread {
         // let huffman_table = create_huffman_lookup_table();
         Ok(ParserThread {
             projectile_records: vec![],
-            parse_all_packets: parse_all_packets,
+            parse_all_packets: input.parse_all_packets,
             wanted_ticks: AHashSet::default(),
-            prop_controller: prop_controller,
-            qf_mapper: qfmap,
+            prop_controller: input.prop_controller,
+            qf_mapper: input.qfmap,
             fullpackets_parsed: 0,
             packets_parsed: 0,
             cnt: AHashMap::default(),
             serializers: AHashMap::default(),
-            ptr: *ptr,
-            ge_list: ge_list.clone(),
-            bytes: settings.bytes,
-            // JUST LOL
-            cls_by_id: cls_by_id,
+            ptr: input.offset,
+            ge_list: input.ge_list.clone(),
+            bytes: input.settings.bytes,
+            cls_by_id: input.cls_by_id,
             entities: AHashMap::default(),
             cls_bits: None,
             tick: -99999,
             players: BTreeMap::default(),
             output: AHashMap::default(),
             game_events: vec![],
-            wanted_event: settings.wanted_event,
-            parse_entities: settings.parse_ents,
+            wanted_event: input.settings.wanted_event,
+            parse_entities: input.settings.parse_ents,
             projectiles: AHashSet::default(),
             // projectile_records: ProjectileRecordVec::new(),
             baselines: AHashMap::default(),
@@ -215,14 +207,14 @@ impl ParserThread {
             ],
             teams: Teams::new(),
             game_events_counter: AHashMap::default(),
-            parse_projectiles: settings.parse_projectiles,
+            parse_projectiles: input.settings.parse_projectiles,
             rules_entity_id: None,
             convars: AHashMap::default(),
             chat_messages: vec![],
             item_drops: vec![],
             skins: vec![],
             player_end_data: vec![],
-            huffman_lookup_table: settings.huffman_lookup_table,
+            huffman_lookup_table: input.settings.huffman_lookup_table,
             header: HashMap::default(),
         })
     }
