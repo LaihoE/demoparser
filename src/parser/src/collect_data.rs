@@ -117,18 +117,36 @@ impl ParserThread {
     pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
         let (offset, cell) = match axis {
             "X" => {
-                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vecX_grenade.unwrap(), entity_id);
-                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cellX_grenade.unwrap(), entity_id);
+                let offset = self.get_prop_for_ent(
+                    &self.prop_controller.special_ids.m_vecX_grenade.unwrap(),
+                    entity_id,
+                );
+                let cell = self.get_prop_for_ent(
+                    &self.prop_controller.special_ids.m_cellX_grenade.unwrap(),
+                    entity_id,
+                );
                 (offset, cell)
             }
             "Y" => {
-                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vecY_greande.unwrap(), entity_id);
-                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cellY_greande.unwrap(), entity_id);
+                let offset = self.get_prop_for_ent(
+                    &self.prop_controller.special_ids.m_vecY_greande.unwrap(),
+                    entity_id,
+                );
+                let cell = self.get_prop_for_ent(
+                    &self.prop_controller.special_ids.m_cellY_greande.unwrap(),
+                    entity_id,
+                );
                 (offset, cell)
             }
             "Z" => {
-                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vecZ_grenade.unwrap(), entity_id);
-                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cellZ_grenade.unwrap(), entity_id);
+                let offset = self.get_prop_for_ent(
+                    &self.prop_controller.special_ids.m_vecZ_grenade.unwrap(),
+                    entity_id,
+                );
+                let cell = self.get_prop_for_ent(
+                    &self.prop_controller.special_ids.m_cellZ_grenade.unwrap(),
+                    entity_id,
+                );
                 (offset, cell)
             }
             _ => panic!("unk axis"),
@@ -147,11 +165,13 @@ impl ParserThread {
             Some(cls) => cls,
             None => return None,
         };
-        let owner_entid =
-            match self.get_prop_for_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), entity_id) {
-                Some(Variant::U32(prop)) => Some(prop & 0x7FF),
-                _ => None,
-            };
+        let owner_entid = match self.get_prop_for_ent(
+            &self.prop_controller.special_ids.grenade_owner_id.unwrap(),
+            entity_id,
+        ) {
+            Some(Variant::U32(prop)) => Some(prop & 0x7FF),
+            _ => None,
+        };
         let steamid = match owner_entid {
             Some(entid) => match self.players.get(&(entid as i32)) {
                 Some(metadata) => metadata.steamid,
@@ -170,11 +190,13 @@ impl ParserThread {
             Some(cls) => cls,
             None => return None,
         };
-        let owner_entid =
-            match self.get_prop_for_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), entity_id) {
-                Some(Variant::U32(prop)) => Some(prop & 0x7FF),
-                _ => None,
-            };
+        let owner_entid = match self.get_prop_for_ent(
+            &self.prop_controller.special_ids.grenade_owner_id.unwrap(),
+            entity_id,
+        ) {
+            Some(Variant::U32(prop)) => Some(prop & 0x7FF),
+            _ => None,
+        };
         let name = match owner_entid {
             Some(entid) => match self.players.get(&(entid as i32)) {
                 Some(metadata) => return metadata.name.clone(),
@@ -185,11 +207,10 @@ impl ParserThread {
         name
     }
 
-
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
         if let Some(ent) = self.entities.get(&entity_id) {
             if let Some(cls) = self.cls_by_id.get(&ent.cls_id).as_ref() {
-                if !cls.name.contains("Grenade"){
+                if !cls.name.contains("Grenade") {
                     return None;
                 }
                 // remove extra from name: CSmokeGrenadeProjectile --> SmokeGrenade
@@ -204,7 +225,7 @@ impl ParserThread {
         }
         None
     }
-    
+
     pub fn collect_projectiles(&mut self) {
         for projectile_entid in &self.projectiles {
             let grenade_type = self.find_grenade_type(projectile_entid);
@@ -237,8 +258,7 @@ impl ParserThread {
                 grenade_type: grenade_type,
             });
         }
-    }   
-
+    }
 
     fn find_weapon_name(&self, entity_id: &i32) -> Option<Variant> {
         let item_def_id = match self.prop_controller.special_ids.item_def {

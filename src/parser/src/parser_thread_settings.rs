@@ -215,7 +215,7 @@ impl ParserThread {
             ],
             teams: Teams::new(),
             game_events_counter: AHashMap::default(),
-            parse_projectiles: true,
+            parse_projectiles: settings.parse_projectiles,
             rules_entity_id: None,
             convars: AHashMap::default(),
             chat_messages: vec![],

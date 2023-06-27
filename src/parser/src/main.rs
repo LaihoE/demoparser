@@ -29,12 +29,11 @@ fn main() {
     let arc_huf = Arc::new(huf);
     let mut c = 0;
     let before = Instant::now();
-
     c += 1;
     let before1 = Instant::now();
 
     // let file = File::open(path.unwrap().path()).unwrap();
-    let file = File::open("C:/Users/emill/ap/f/1.dem").unwrap();
+    let file = File::open("/home/laiho/Documents/demos/cs2/s2.dem").unwrap();
 
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let arc_bytes = Arc::new(mmap);
@@ -71,7 +70,7 @@ fn main() {
     let d = ds.parse_demo().unwrap();
     // println!("{:?}", d.df);
     println!("{:?}", before.elapsed());
-    
+
     // println!("{:?}", ds.handles);
     //println!("{:#?}", ds.state.cls_by_id);
 }
