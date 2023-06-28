@@ -36,8 +36,9 @@ pub struct Field {
     pub high_value: f32,
     pub model: FieldModel,
     pub field_type: FieldType,
-    pub serializer: Option<Serializer>,
     pub decoder: Decoder,
+
+    pub serializer: Option<Serializer>,
     pub base_decoder: Option<Decoder>,
     pub child_decoder: Option<Decoder>,
 
@@ -731,10 +732,12 @@ impl PropController {
             }
             f.should_parse = true;
             f.prop_id = self.special_ids.item_def.unwrap() as usize;
+            return;
         }
         match self.name_to_id.get(weap_prop) {
             // If we already have an id for prop of same name then use that
             Some(id) => {
+                f.prop_id = *id as usize;
                 return; // f.prop_id = *id as usize;
             }
             None => match TYPEHM.get(&weap_prop) {
@@ -757,7 +760,8 @@ impl PropController {
         let weap_prop = split_at_dot.last().unwrap();
 
         let is_wanted_normal_prop = self.wanted_player_props.contains(&full_name.to_string());
-        let is_wanted_weapon_prop = self.wanted_player_props.contains(&weap_prop.to_string());
+        let is_wanted_weapon_prop = self.wanted_player_props.contains(&weap_prop.to_string())
+            || weap_prop == &"m_iItemDefinitionIndex";
 
         if is_wanted_normal_prop {
             self.handle_normal_prop(full_name);
