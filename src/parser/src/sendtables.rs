@@ -726,14 +726,6 @@ impl PropController {
         });
     }
     fn handle_weapon_prop(&mut self, weap_prop: &str, f: &mut Field) {
-        if weap_prop.contains("m_iItemDefinitionIndex") {
-            if self.special_ids.item_def.is_none() {
-                self.special_ids.item_def = Some(self.id);
-            }
-            f.should_parse = true;
-            f.prop_id = self.special_ids.item_def.unwrap() as usize;
-            return;
-        }
         match self.name_to_id.get(weap_prop) {
             // If we already have an id for prop of same name then use that
             Some(id) => {
@@ -760,8 +752,16 @@ impl PropController {
         let weap_prop = split_at_dot.last().unwrap();
 
         let is_wanted_normal_prop = self.wanted_player_props.contains(&full_name.to_string());
-        let is_wanted_weapon_prop = self.wanted_player_props.contains(&weap_prop.to_string())
-            || weap_prop == &"m_iItemDefinitionIndex";
+        let is_wanted_weapon_prop = self.wanted_player_props.contains(&weap_prop.to_string());
+
+        if arr == [78, 0, 0, 0, 0, 0, 0] && weap_prop.contains("m_iItemDefinitionIndex") {
+            if self.special_ids.item_def.is_none() {
+                self.special_ids.item_def = Some(699999);
+            }
+            f.should_parse = true;
+            f.prop_id = 699999;
+            return;
+        }
 
         if is_wanted_normal_prop {
             self.handle_normal_prop(full_name);
