@@ -100,17 +100,8 @@ impl Parser {
 
                 let msg_type = cmd & !64;
                 let is_compressed = (cmd & 64) == 64;
-                /*
-                if is_compressed && size > 10000 {
-                    println!(
-                        "{} {:?} {:?}",
-                        tick,
-                        size,
-                        demo_cmd_type_from_int(msg_type as i32).unwrap()
-                    );
-                }
-                */
                 let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
+
                 if demo_cmd == DEM_Packet || demo_cmd == DEM_AnimationData {
                     self.ptr += size as usize;
                     continue;

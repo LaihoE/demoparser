@@ -646,8 +646,7 @@ impl DemoParser {
         let mut prop_infos = output.prop_info.prop_infos.clone();
         prop_infos.sort_by_key(|x| x.prop_name.clone());
         real_props.sort();
-        println!("{:?}", real_props);
-        println!("{:#?}", prop_infos);
+
         let df_columns = prop_infos
             .iter()
             .map(|x| x.prop_friendly_name.clone())

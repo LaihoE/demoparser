@@ -649,7 +649,7 @@ impl Parser {
             {
                 prop_controller.find_prop_name_paths(&mut my_serializer);
             }
-            // prop_controller.find_prop_name_paths(&mut my_serializer);
+            //prop_controller.find_prop_name_paths(&mut my_serializer);
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
         if wanted_props.contains(&("weapon_name".to_string())) {
@@ -713,7 +713,6 @@ impl PropController {
         arr
     }
     fn handle_normal_prop(&mut self, full_name: &str) {
-        // println!("{:?} {:?}", full_name, self.real_name_to_og_name);
         self.prop_infos.push(PropInfo {
             id: self.id,
             prop_type: TYPEHM.get(&full_name).copied(),
@@ -733,16 +732,19 @@ impl PropController {
                 return; // f.prop_id = *id as usize;
             }
             None => match TYPEHM.get(&weap_prop) {
-                Some(t) => self.prop_infos.push(PropInfo {
-                    id: self.id,
-                    prop_type: Some(t.clone()),
-                    prop_name: weap_prop.to_string(),
-                    prop_friendly_name: self
-                        .real_name_to_og_name
-                        .get(&weap_prop.to_string())
-                        .unwrap_or(&weap_prop.to_string())
-                        .to_string(),
-                }),
+                Some(t) => {
+                    self.name_to_id.insert(weap_prop.to_string(), self.id);
+                    self.prop_infos.push(PropInfo {
+                        id: self.id,
+                        prop_type: Some(t.clone()),
+                        prop_name: weap_prop.to_string(),
+                        prop_friendly_name: self
+                            .real_name_to_og_name
+                            .get(&weap_prop.to_string())
+                            .unwrap_or(&weap_prop.to_string())
+                            .to_string(),
+                    })
+                }
                 _ => panic!("weapon prop: {:?} not found", weap_prop),
             },
         };
@@ -754,12 +756,16 @@ impl PropController {
         let is_wanted_normal_prop = self.wanted_player_props.contains(&full_name.to_string());
         let is_wanted_weapon_prop = self.wanted_player_props.contains(&weap_prop.to_string());
 
-        if arr == [78, 0, 0, 0, 0, 0, 0] && weap_prop.contains("m_iItemDefinitionIndex") {
-            if self.special_ids.item_def.is_none() {
-                self.special_ids.item_def = Some(699999);
-            }
+        if is_wanted_normal_prop && is_wanted_weapon_prop {
+            panic!("{:?} {:?}", full_name, weap_prop);
+        }
+
+        if full_name.contains("m_iItemDefinitionIndex")
+            && (full_name.contains("Weapon") || full_name.contains("AK"))
+        {
             f.should_parse = true;
             f.prop_id = 699999;
+            self.special_ids.item_def = Some(699999);
             return;
         }
 
@@ -768,13 +774,13 @@ impl PropController {
             self.name_to_id.insert(full_name.to_string(), self.id);
         } else if is_wanted_weapon_prop {
             self.handle_weapon_prop(weap_prop, f);
-            self.name_to_id.insert(weap_prop.to_string(), self.id);
+            f.should_parse = true;
         }
         self.set_grenades(full_name, f);
         self.set_custom(full_name, f);
         self.match_names(full_name, f);
 
-        if is_wanted_normal_prop || is_wanted_weapon_prop {
+        if is_wanted_normal_prop {
             f.prop_id = self.id as usize;
             f.should_parse = true;
         }
