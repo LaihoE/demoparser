@@ -154,8 +154,9 @@ impl ParserThread {
             header: None,
             player_md: self.player_end_data,
             game_events_counter: self.game_events_counter,
-            prop_info: Arc::new(PropController::new(vec![], vec![])),
+            prop_info: Arc::new(PropController::new(vec![], vec![], AHashMap::default())),
             projectiles: self.projectile_records,
+            ptr: self.ptr,
         }
     }
     pub fn new(mut input: ParserThreadInput) -> Result<Self, DemoParserError> {
@@ -168,8 +169,6 @@ impl ParserThread {
             "steamid".to_owned(),
             "name".to_owned(),
         ]);
-        // println!("RR {:?}", prop_controller.real_name_to_og_name);
-        // let huffman_table = create_huffman_lookup_table();
         Ok(ParserThread {
             projectile_records: vec![],
             parse_all_packets: input.parse_all_packets,

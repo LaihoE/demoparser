@@ -1,15 +1,8 @@
-use super::entities_utils::FieldPath;
-use super::game_events::GameEvent;
-use super::read_bits::DemoParserError;
 use super::sendtables::Serializer;
 use super::stringtables::StringTable;
-use super::variants::PropColumn;
 use crate::decoder::QfMapper;
-use crate::entities::Entity;
-use crate::entities::PlayerMetaData;
 use crate::other_netmessages::Class;
 use crate::parser_thread_settings::ParserInputs;
-use crate::parser_thread_settings::ParserThread;
 use crate::parser_thread_settings::PlayerEndMetaData;
 use crate::parser_thread_settings::SpecialIDs;
 use crate::sendtables::PropController;
@@ -58,8 +51,8 @@ pub struct Parser {
     pub parse_entities: bool,
     pub parse_projectiles: bool,
 
-    pub prop_name_to_path: AHashMap<String, [i32; 7]>,
-    pub path_to_prop_name: AHashMap<[i32; 7], String>,
+    // pub prop_name_to_path: AHashMap<String, [i32; 7]>,
+    // pub path_to_prop_name: AHashMap<[i32; 7], String>,
     pub name_to_id: AHashMap<String, u32>,
 
     // pub qf_mapper: QfMapper,
@@ -68,7 +61,8 @@ pub struct Parser {
     pub controller_ids: SpecialIDs,
     pub player_output_ids: Vec<u8>,
     pub prop_out_id: u8,
-    pub id_to_path: AHashMap<u32, [i32; 7]>,
+    pub only_header: bool,
+    //pub id_to_path: AHashMap<u32, [i32; 7]>,
     pub prop_infos: Vec<PropInfo>,
 
     pub header: AHashMap<String, String>,
@@ -79,11 +73,16 @@ impl Parser {
         let arc_bytes = inputs.bytes.clone();
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
+            only_header: inputs.only_header,
             ge_list_set: false,
             cls_by_id_set: false,
             qf_map_set: false,
             real_name_to_og_name: inputs.real_name_to_og_name.clone(),
-            prop_controller: Arc::new(PropController::new(vec![], vec![])),
+            prop_controller: Arc::new(PropController::new(
+                vec![],
+                vec![],
+                inputs.real_name_to_og_name.clone(),
+            )),
             prop_controller_is_set: false,
             start: Instant::now(),
             cls_by_id: Arc::new(AHashMap::default()),
@@ -110,13 +109,13 @@ impl Parser {
             wanted_event: inputs.wanted_event.clone(),
             settings: inputs,
             wanted_ticks: AHashSet::default(),
-            path_to_prop_name: AHashMap::default(),
-            prop_name_to_path: AHashMap::default(),
+            //path_to_prop_name: AHashMap::default(),
+            //prop_name_to_path: AHashMap::default(),
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
             controller_ids: SpecialIDs::new(),
-            id_to_path: AHashMap::default(),
+            //id_to_path: AHashMap::default(),
             id: 0,
             player_output_ids: vec![],
             wanted_prop_ids: vec![],

@@ -1,22 +1,21 @@
-use std::time::Instant;
-
 use super::netmessage_types;
 use super::read_bits::DemoParserError;
 use crate::netmessage_types::netmessage_type_from_int;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
-
 use bitter::BitReader;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
+use std::time::Instant;
 use EDemoCommands::*;
 
 // The parser struct is defined in parser_settings.rs
 impl ParserThread {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
+        let before = Instant::now();
         loop {
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
@@ -44,15 +43,16 @@ impl ParserThread {
                 DEM_UserCmd => self.parse_user_command_cmd(&bytes),
                 DEM_StringTables => self.parse_stringtable_cmd(&bytes),
                 DEM_FullPacket => {
-                    if self.parse_all_packets {
-                        self.parse_full_packet(&bytes).unwrap();
-                        continue;
-                    }
-                    if self.fullpackets_parsed == 0 {
-                        self.parse_full_packet(&bytes).unwrap();
-                        self.fullpackets_parsed += 1;
-                    } else {
-                        break;
+                    match self.parse_all_packets {
+                        true => self.parse_full_packet(&bytes).unwrap(),
+                        false => {
+                            if self.fullpackets_parsed == 0 {
+                                self.parse_full_packet(&bytes).unwrap();
+                                self.fullpackets_parsed += 1;
+                            } else {
+                                break;
+                            }
+                        }
                     }
                     Ok(())
                 }
@@ -209,7 +209,8 @@ pub fn demo_cmd_type_from_int(value: i32) -> ::std::option::Option<EDemoCommands
         13 => ::std::option::Option::Some(EDemoCommands::DEM_FullPacket),
         14 => ::std::option::Option::Some(EDemoCommands::DEM_SaveGame),
         15 => ::std::option::Option::Some(EDemoCommands::DEM_SpawnGroups),
-        16 => ::std::option::Option::Some(EDemoCommands::DEM_Max),
+        16 => ::std::option::Option::Some(EDemoCommands::DEM_AnimationData),
+        17 => ::std::option::Option::Some(EDemoCommands::DEM_Max),
         64 => ::std::option::Option::Some(EDemoCommands::DEM_IsCompressed),
         _ => ::std::option::Option::None,
     }

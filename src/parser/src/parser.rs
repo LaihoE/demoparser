@@ -28,6 +28,7 @@ use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -42,6 +43,7 @@ pub struct DemoOutput {
     pub game_events_counter: AHashMap<String, i32>,
     pub prop_info: Arc<PropController>,
     pub projectiles: Vec<ProjectileRecord>,
+    pub ptr: usize,
 }
 
 impl Parser {
@@ -68,41 +70,52 @@ impl Parser {
         let out = thread::scope(|s| {
             let mut handles = vec![];
             loop {
+                // If sendtables is done
                 if handle.is_some() && handle.as_ref().unwrap().is_finished() {
                     let mut class_result: ClassInfoThreadResult =
                         handle.take().unwrap().join().unwrap().unwrap();
                     self.insert_cls_thread_result(class_result);
                 }
+                // Spawn thread if done
                 if self.fullpacket_offsets.len() > 0 && self.is_ready_to_spawn_thread() {
                     let offset = self.fullpacket_offsets.pop().unwrap();
+                    let input = self.create_parser_thread_input(offset, false);
                     threads_spawned += 1;
-                    let input = self.create_parser_thread_input(offset, true);
                     handles.push(s.spawn(|| {
                         let mut parser = ParserThread::new(input).unwrap();
-                        // parser.baselines = baselines;
                         parser.start().unwrap();
                         parser.create_output()
                     }));
                 }
 
                 let before = self.ptr;
-
                 let cmd = self.read_varint().unwrap();
                 let tick = self.read_varint().unwrap();
                 let size = self.read_varint().unwrap();
-
                 self.tick = tick as i32;
+
                 if self.ptr + size as usize >= self.bytes.len() {
                     break;
                 }
 
                 let msg_type = cmd & !64;
                 let is_compressed = (cmd & 64) == 64;
+                /*
+                if is_compressed && size > 10000 {
+                    println!(
+                        "{} {:?} {:?}",
+                        tick,
+                        size,
+                        demo_cmd_type_from_int(msg_type as i32).unwrap()
+                    );
+                }
+                */
                 let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
-                if demo_cmd == DEM_Packet {
+                if demo_cmd == DEM_Packet || demo_cmd == DEM_AnimationData {
                     self.ptr += size as usize;
                     continue;
                 }
+
                 let bytes = match is_compressed {
                     true => SnapDecoder::new()
                         .decompress_vec(self.read_n_bytes(size).unwrap())
@@ -122,8 +135,15 @@ impl Parser {
                         let my_b = bytes.clone();
                         let want_prop = self.wanted_player_props.clone();
                         let want_prop_og = self.wanted_player_props_og_names.clone();
+                        let real_to_og = self.real_name_to_og_name.clone();
                         handle = Some(thread::spawn(move || {
-                            Parser::parse_class_info(&my_b, my_s.unwrap(), want_prop, want_prop_og)
+                            Parser::parse_class_info(
+                                &my_b,
+                                my_s.unwrap(),
+                                want_prop,
+                                want_prop_og,
+                                real_to_og,
+                            )
                         }));
                         Ok(())
                     }
@@ -137,19 +157,37 @@ impl Parser {
                 };
                 ok.unwrap();
             }
-            if threads_spawned == 0 {
+            while !self.is_ready_to_spawn_thread() {
+                if handle.is_some() && handle.as_ref().unwrap().is_finished() {
+                    let mut class_result: ClassInfoThreadResult =
+                        handle.take().unwrap().join().unwrap().unwrap();
+                    self.insert_cls_thread_result(class_result);
+                    break;
+                }
+            }
+            if threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
                 let input = self.create_parser_thread_input(16, true);
                 handles.push(s.spawn(|| {
                     let mut parser = ParserThread::new(input).unwrap();
-                    // parser.baselines = baselines;
                     parser.start().unwrap();
                     parser.create_output()
                 }));
+            } else {
+                while self.fullpacket_offsets.len() > 0 {
+                    let offset = self.fullpacket_offsets.pop().unwrap();
+                    let input = self.create_parser_thread_input(offset, false);
+                    handles.push(s.spawn(|| {
+                        let mut parser = ParserThread::new(input).unwrap();
+                        parser.start().unwrap();
+                        parser.create_output()
+                    }));
+                }
             }
             let mut outputs: Vec<DemoOutput> = vec![];
             for handle in handles {
                 outputs.push(handle.join().unwrap());
             }
+            outputs.sort_by_key(|x| x.ptr);
             let mut dfs = outputs.iter().map(|x| x.df.clone()).collect();
             let all_dfs_combined = self.combine_dfs(&mut dfs);
             DemoOutput {
@@ -167,6 +205,7 @@ impl Parser {
                 game_events_counter: AHashMap::default(),
                 prop_info: self.prop_controller.clone(),
                 projectiles: outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
+                ptr: self.ptr,
             }
         });
         self.prop_controller_is_set = false;
@@ -180,8 +219,8 @@ impl Parser {
 
         self.qf_map_set = true;
         self.cls_by_id_set = true;
-        self.prop_controller = Arc::new(class_result.prop_controller);
         self.prop_controller_is_set = true;
+        self.prop_controller = Arc::new(class_result.prop_controller);
         self.qf_mapper = Arc::new(class_result.qf_mapper);
         self.cls_by_id = Arc::new(class_result.cls_by_id);
     }
@@ -199,10 +238,10 @@ impl Parser {
 impl Parser {
     pub fn is_ready_to_spawn_thread(&self) -> bool {
         /*
-        println!("{} {} {} {}",         self.qf_map_set,
-        && self.cls_by_id_set,
-        && self.ge_list_set,
-        && self.prop_controller_is_set);
+        println!(
+            "{} {} {} {}",
+            self.qf_map_set, self.cls_by_id_set, self.ge_list_set, self.prop_controller_is_set
+        );
         */
         self.qf_map_set && self.cls_by_id_set && self.ge_list_set && self.prop_controller_is_set
     }
@@ -291,15 +330,15 @@ impl Parser {
         sendtables: CDemoSendTables,
         want_prop: Vec<String>,
         want_prop_og: Vec<String>,
+        real_name_to_og_name: AHashMap<String, String>,
     ) -> Result<ClassInfoThreadResult, DemoParserError> {
         let (serializers, qf_mapper, p) =
-            Parser::parse_sendtable(sendtables, want_prop, want_prop_og)?;
+            Parser::parse_sendtable(sendtables, want_prop, want_prop_og, real_name_to_og_name)?;
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
         let mut cls_by_id = AHashMap::default();
         for class_t in msg.classes {
             let cls_id = class_t.class_id();
             let network_name = class_t.network_name();
-
             cls_by_id.insert(
                 cls_id as u32,
                 Class {

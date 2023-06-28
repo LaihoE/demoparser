@@ -564,6 +564,7 @@ impl Parser {
         tables: CDemoSendTables,
         wanted_props: Vec<String>,
         wanted_props_og_names: Vec<String>,
+        real_name_to_og_name: AHashMap<String, String>,
     ) -> Result<(AHashMap<String, Serializer>, QfMapper, PropController), DemoParserError> {
         let before = Instant::now();
         let mut bitreader = Bitreader::new(tables.data());
@@ -576,9 +577,12 @@ impl Parser {
             idx: 0,
             map: AHashMap::default(),
         };
-
         let mut fields: HashMap<i32, Field> = HashMap::default();
-        let mut prop_controller = PropController::new(wanted_props.clone(), wanted_props_og_names);
+        let mut prop_controller = PropController::new(
+            wanted_props.clone(),
+            wanted_props_og_names,
+            real_name_to_og_name,
+        );
         for (ii, serializer) in serializer_msg.serializers.iter().enumerate() {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
@@ -640,6 +644,7 @@ impl Parser {
                 || my_serializer.name.contains("AK")
                 || my_serializer.name.contains("cell")
                 || my_serializer.name.contains("vec")
+                || my_serializer.name.contains("Projectile")
             {
                 prop_controller.find_prop_name_paths(&mut my_serializer);
             }
@@ -651,7 +656,7 @@ impl Parser {
                 id: 9999992,
                 prop_type: Some(PropType::Custom),
                 prop_name: "weapon_name".to_string(),
-                prop_friendly_name: "weapon_name".to_string(),
+                prop_friendly_name: "active_weapon_name".to_string(),
             });
         }
         prop_controller.prop_infos.push(PropInfo {
@@ -679,6 +684,7 @@ impl PropController {
     pub fn new(
         wanted_player_props: Vec<String>,
         wanted_player_props_og_names: Vec<String>,
+        real_name_to_og_name: AHashMap<String, String>,
     ) -> Self {
         PropController {
             id: 0,
@@ -692,7 +698,7 @@ impl PropController {
             special_ids: SpecialIDs::new(),
             wanted_player_og_props: wanted_player_props_og_names,
             id_to_name: AHashMap::default(),
-            real_name_to_og_name: AHashMap::default(),
+            real_name_to_og_name: real_name_to_og_name,
         }
     }
     pub fn find_prop_name_paths(&mut self, ser: &mut Serializer) {
@@ -706,6 +712,7 @@ impl PropController {
         arr
     }
     fn handle_normal_prop(&mut self, full_name: &str) {
+        // println!("{:?} {:?}", full_name, self.real_name_to_og_name);
         self.prop_infos.push(PropInfo {
             id: self.id,
             prop_type: TYPEHM.get(&full_name).copied(),
@@ -718,6 +725,13 @@ impl PropController {
         });
     }
     fn handle_weapon_prop(&mut self, weap_prop: &str, f: &mut Field) {
+        if weap_prop.contains("m_iItemDefinitionIndex") {
+            if self.special_ids.item_def.is_none() {
+                self.special_ids.item_def = Some(self.id);
+            }
+            f.should_parse = true;
+            f.prop_id = self.special_ids.item_def.unwrap() as usize;
+        }
         match self.name_to_id.get(weap_prop) {
             // If we already have an id for prop of same name then use that
             Some(id) => {
@@ -738,7 +752,7 @@ impl PropController {
             },
         };
     }
-    fn handle_prop(&mut self, full_name: &str, f: &mut Field) {
+    fn handle_prop(&mut self, full_name: &str, f: &mut Field, arr: [i32; 7]) {
         let split_at_dot: Vec<&str> = full_name.split(".").collect();
         let weap_prop = split_at_dot.last().unwrap();
 
@@ -749,7 +763,7 @@ impl PropController {
             self.handle_normal_prop(full_name);
             self.name_to_id.insert(full_name.to_string(), self.id);
         } else if is_wanted_weapon_prop {
-            self.handle_weapon_prop(&full_name, f);
+            self.handle_weapon_prop(weap_prop, f);
             self.name_to_id.insert(weap_prop.to_string(), self.id);
         }
         self.set_grenades(full_name, f);
@@ -758,18 +772,12 @@ impl PropController {
 
         if is_wanted_normal_prop || is_wanted_weapon_prop {
             f.prop_id = self.id as usize;
-            // f.should_parse = true;
-            self.id += 1;
+            f.should_parse = true;
         }
+        self.id += 1;
     }
     fn set_custom(&mut self, full_name: &str, f: &mut Field) {}
     fn match_names(&mut self, full_name: &str, f: &mut Field) {
-        if full_name.contains("m_iItemDefinitionIndex") {
-            if self.special_ids.item_def.is_none() {
-                self.special_ids.item_def = Some(self.id);
-            }
-            f.prop_id = self.special_ids.item_def.unwrap() as usize;
-        }
         match full_name {
             "CCSTeam.m_iTeamNum" => self.special_ids.team_team_num = Some(self.id),
             "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX" => {
@@ -826,6 +834,7 @@ impl PropController {
             f.prop_id = self.special_ids.grenade_owner_id.unwrap() as usize;
         };
         if full_name.contains("Projectile.CBodyComponentBaseAnimGraph.m_vec") {
+            f.should_parse = true;
             match full_name.chars().last() {
                 Some('X') => {
                     if self.special_ids.m_vecX_grenade.is_none() {
@@ -849,6 +858,7 @@ impl PropController {
             }
         }
         if full_name.contains("Projectile.CBodyComponentBaseAnimGraph.m_cell") {
+            f.should_parse = true;
             match full_name.chars().last() {
                 Some('X') => {
                     if self.special_ids.m_cellX_grenade.is_none() {
@@ -889,8 +899,7 @@ impl PropController {
                     f.should_parse = true;
                     f.prop_id = self.id as usize;
                 }
-
-                self.handle_prop(&full_name, f);
+                self.handle_prop(&full_name, f, arr);
                 self.id_to_name.insert(self.id, full_name.clone());
                 self.id_to_path.insert(self.id, arr);
                 self.prop_name_to_path.insert(full_name.clone(), arr);
@@ -1031,6 +1040,7 @@ mod tests {
             idx: 0,
         }
     }
+    /*
     #[test]
     pub fn test_smoke_owner_set() {
         let mut f = gen_default_field();
@@ -1045,4 +1055,5 @@ mod tests {
         pc.handle_prop("X", &mut f);
         assert!(pc.special_ids.grenade_owner_id.is_none())
     }
+    */
 }

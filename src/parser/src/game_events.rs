@@ -190,7 +190,6 @@ impl ParserThread {
     ) -> Result<Vec<EventField>, DemoParserError> {
         let mut extra_pairs = vec![];
         // prop name:
-        println!("{:?}", &self.prop_controller.prop_infos);
         for prop_info in &self.prop_controller.prop_infos {
             // These are meant for entities not used here
             if prop_info.prop_name == "tick"

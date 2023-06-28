@@ -7,6 +7,7 @@ use crate::variants::Variant;
 use ahash::HashMap;
 use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
+use itertools::Itertools;
 use protobuf::Message;
 
 const NSERIALBITS: u32 = 17;
@@ -56,7 +57,6 @@ impl ParserThread {
             Some(data) => data,
             None => return Err(DemoParserError::MalformedMessage),
         };
-
         let mut bitreader = Bitreader::new(&data);
         let mut entity_id: i32 = -1;
         for _ in 0..n_updates {
@@ -192,21 +192,16 @@ impl ParserThread {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
-        /*
-        let cls_by_id = match self.cls_by_id.get() {
-            Some(c) => c,
-            None => panic!("boo"),
-        };
-        */
+
         let class = match self.cls_by_id.get(&entity.cls_id) {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),
         };
-
         // Create an "empty" path ([-1, 0, 0, 0, 0, 0, 0])
         // For perfomance reasons have them always the same len
         let mut fp = generate_fp();
         let mut idx = 0;
+        let mut contains_wanted = false;
         // Do huffman decoding with a lookup table instead of reading one bit at a time
         // and traversing a tree.
         // Here we peek ("HUFFMAN_CODE_MAXLEN" == 17) amount of bits and see from a table which
@@ -223,11 +218,9 @@ impl ParserThread {
             }
 
             do_op(symbol, bitreader, &mut fp)?;
-
             self.paths[idx] = class.serializer.find_decoder(&fp, 0);
             // We reuse one big vector for holding paths. Purely for performance.
             // Alternatively we could create a new vector in this function and return it.
-            // self.paths[idx] = fp;
             idx += 1;
         }
         Ok(idx)
@@ -371,7 +364,9 @@ impl ParserThread {
     pub fn check_entity_type(&self, cls_id: &u32) -> Result<EntityType, DemoParserError> {
         let class = match self.cls_by_id.get(&cls_id) {
             Some(cls) => cls,
-            None => return Err(DemoParserError::ClassNotFound),
+            None => {
+                return Err(DemoParserError::ClassNotFound);
+            }
         };
         match class.name.as_str() {
             "CCSPlayerController" => return Ok(EntityType::PlayerController),
