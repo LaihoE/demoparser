@@ -32,6 +32,7 @@ use pyo3::Python;
 use pyo3::{PyAny, PyObject, PyResult};
 use std::fs::File;
 use std::sync::Arc;
+use std::time::Instant;
 
 #[pymethods]
 impl DemoParser {
@@ -157,7 +158,7 @@ impl DemoParser {
     /// 0 -388.875  1295.46875 -5120.0   982              NaN    HeGrenade
     /// 1 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
     /// 2 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
-    
+
     pub fn parse_grenades(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
         let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
@@ -190,8 +191,11 @@ impl DemoParser {
         let ticks: Vec<Option<i32>> = output.projectiles.iter().map(|s| s.tick).collect();
         let steamid: Vec<Option<u64>> = output.projectiles.iter().map(|s| s.steamid).collect();
         let name: Vec<Option<String>> = output.projectiles.iter().map(|s| s.name.clone()).collect();
-        let grenade_type: Vec<Option<String>> = output.projectiles.iter().map(|s| s.grenade_type.clone()).collect();
-
+        let grenade_type: Vec<Option<String>> = output
+            .projectiles
+            .iter()
+            .map(|s| s.grenade_type.clone())
+            .collect();
 
         // SoA form
         let xs = arr_to_py(Box::new(Float32Array::from(xs))).unwrap();
@@ -200,19 +204,10 @@ impl DemoParser {
         // let zs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.z))).unwrap();
         let ticks = arr_to_py(Box::new(Int32Array::from(ticks))).unwrap();
 
-        let grenade_type = arr_to_py(Box::new(Utf8Array::<i32>::from(
-            grenade_type,
-        )))
-        .unwrap();
-        let name = arr_to_py(Box::new(Utf8Array::<i32>::from(
-            name,
-        )))
-        .unwrap();
+        let grenade_type = arr_to_py(Box::new(Utf8Array::<i32>::from(grenade_type))).unwrap();
+        let name = arr_to_py(Box::new(Utf8Array::<i32>::from(name))).unwrap();
 
-        let steamids = arr_to_py(Box::new(UInt64Array::from(
-            steamid,
-        )))
-        .unwrap();
+        let steamids = arr_to_py(Box::new(UInt64Array::from(steamid))).unwrap();
 
         let polars = py.import("polars")?;
         let all_series_py = [xs, ys, ticks, steamids, name, grenade_type].to_object(py);
@@ -227,7 +222,7 @@ impl DemoParser {
             Ok(pandas_df.to_object(py))
         })
     }
-    
+
     /// returns a DF with chat messages
     ///
     /// Example output:
@@ -648,7 +643,15 @@ impl DemoParser {
         real_props.push("steamid".to_owned());
         real_props.push("name".to_owned());
 
-        let prop_infos = output.prop_info.prop_infos.clone();
+        let mut prop_infos = output.prop_info.prop_infos.clone();
+        prop_infos.sort_by_key(|x| x.prop_name.clone());
+        real_props.sort();
+        println!("{:?}", real_props);
+        println!("{:#?}", prop_infos);
+        let df_columns = prop_infos
+            .iter()
+            .map(|x| x.prop_friendly_name.clone())
+            .collect_vec();
 
         for (prop_name, prop_info) in real_props.iter().zip(prop_infos) {
             if output.df.contains_key(&prop_info.id) {
@@ -681,7 +684,7 @@ impl DemoParser {
             let polars = py.import("polars")?;
             let all_series_py = all_series.to_object(py);
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
-            df.setattr("columns", wanted_props.to_object(py)).unwrap();
+            df.setattr("columns", df_columns.to_object(py)).unwrap();
             let pandas_df = df.call_method0("to_pandas").unwrap();
             Ok(pandas_df.to_object(py))
         })
