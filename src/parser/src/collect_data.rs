@@ -5,8 +5,9 @@ use crate::sendtables::PropInfo;
 use crate::variants::PropColumn;
 use itertools::Itertools;
 use phf_macros::phf_map;
+use serde::Serialize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ProjectileRecord {
     pub steamid: Option<u64>,
     pub name: Option<String>,

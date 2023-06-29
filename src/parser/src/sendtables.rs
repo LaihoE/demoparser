@@ -791,27 +791,31 @@ impl PropController {
         match full_name {
             "CCSTeam.m_iTeamNum" => self.special_ids.team_team_num = Some(self.id),
             "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX" => {
-                f.should_parse = true;
-                self.special_ids.cell_x_player = Some(self.id);
-                self.prop_infos.push(PropInfo {
-                    id: 9999944,
-                    prop_type: Some(PropType::Custom),
-                    prop_name: "X".to_string(),
-                    prop_friendly_name: "X".to_string(),
-                });
+                if self.wanted_player_props.contains(&"X".to_string()) {
+                    f.should_parse = true;
+                    self.special_ids.cell_x_player = Some(self.id);
+                    self.prop_infos.push(PropInfo {
+                        id: 9999944,
+                        prop_type: Some(PropType::Custom),
+                        prop_name: "X".to_string(),
+                        prop_friendly_name: "X".to_string(),
+                    });
+                }
             }
             "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX" => {
                 self.special_ids.cell_x_offset_player = Some(self.id)
             }
             "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellY" => {
-                f.should_parse = true;
-                self.special_ids.cell_y_player = Some(self.id);
-                self.prop_infos.push(PropInfo {
-                    id: 9999945,
-                    prop_type: Some(PropType::Custom),
-                    prop_name: "Y".to_string(),
-                    prop_friendly_name: "Y".to_string(),
-                });
+                if self.wanted_player_props.contains(&"Y".to_string()) {
+                    f.should_parse = true;
+                    self.special_ids.cell_y_player = Some(self.id);
+                    self.prop_infos.push(PropInfo {
+                        id: 9999945,
+                        prop_type: Some(PropType::Custom),
+                        prop_name: "Y".to_string(),
+                        prop_friendly_name: "Y".to_string(),
+                    });
+                }
             }
             "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY" => {
                 self.special_ids.cell_y_offset_player = Some(self.id)
