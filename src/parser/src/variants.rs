@@ -1,3 +1,4 @@
+use crate::sendtables::PropInfo;
 use ahash::HashMap;
 use serde::ser::SerializeMap;
 use serde::Serialize;
@@ -315,7 +316,8 @@ impl Serialize for Variant {
 
 #[derive(Debug, Clone)]
 pub struct OutputSerdeHelperStruct {
-    pub inner: HashMap<String, PropColumn>,
+    pub prop_infos: Vec<PropInfo>,
+    pub inner: HashMap<u32, PropColumn>,
 }
 
 impl Serialize for OutputSerdeHelperStruct {
@@ -324,29 +326,36 @@ impl Serialize for OutputSerdeHelperStruct {
         S: serde::Serializer,
     {
         let mut map = serializer.serialize_map(Some(2))?;
-
-        for (k, v) in &self.inner {
-            match &v.data {
-                Some(VarVec::F32(val)) => {
-                    map.serialize_entry(&k, val).unwrap();
+        for prop_info in &self.prop_infos {
+            if self.inner.contains_key(&prop_info.id) {
+                match &self.inner[&prop_info.id].data {
+                    Some(VarVec::F32(val)) => {
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)
+                            .unwrap();
+                    }
+                    Some(VarVec::I32(val)) => {
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)
+                            .unwrap();
+                    }
+                    Some(VarVec::String(val)) => {
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)
+                            .unwrap();
+                    }
+                    Some(VarVec::U64(val)) => {
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)
+                            .unwrap();
+                    }
+                    Some(VarVec::Bool(val)) => {
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)
+                            .unwrap();
+                    }
+                    Some(VarVec::U32(val)) => {
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)
+                            .unwrap();
+                    }
+                    None => {}
                 }
-                Some(VarVec::I32(val)) => {
-                    map.serialize_entry(&k, val).unwrap();
-                }
-                Some(VarVec::String(val)) => {
-                    map.serialize_entry(&k, val).unwrap();
-                }
-                Some(VarVec::U64(val)) => {
-                    map.serialize_entry(&k, val).unwrap();
-                }
-                Some(VarVec::Bool(val)) => {
-                    map.serialize_entry(&k, val).unwrap();
-                }
-                Some(VarVec::U32(val)) => {
-                    map.serialize_entry(&k, val).unwrap();
-                }
-                None => {}
-            };
+            }
         }
         map.end()
     }
