@@ -22,6 +22,7 @@ use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use memmap2::Mmap;
 use phf_macros::phf_map;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -90,7 +91,7 @@ impl Teams {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ChatMessageRecord {
     pub entity_idx: Option<i32>,
     pub param1: Option<String>,
@@ -98,7 +99,7 @@ pub struct ChatMessageRecord {
     pub param3: Option<String>,
     pub param4: Option<String>,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct EconItem {
     pub account_id: Option<u32>,
     pub item_id: Option<u64>,
@@ -115,7 +116,7 @@ pub struct EconItem {
     pub ent_idx: Option<i32>,
     pub steamid: Option<u64>,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PlayerEndMetaData {
     pub steamid: Option<u64>,
     pub name: Option<String>,
