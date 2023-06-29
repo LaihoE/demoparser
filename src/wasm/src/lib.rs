@@ -1,3 +1,4 @@
+/*
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::variants::Variant;
@@ -195,3 +196,4 @@ pub fn to_string_js(val: Variant) -> String {
 fn log_to_browser(log_msg: String) {
     console::log_1(&log_msg.into());
 }
+*/

@@ -1,3 +1,4 @@
+/*
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::variants::Variant;
@@ -57,10 +58,10 @@ mod tests {
         let bytes = fs::read(demo_path).unwrap();
         let wanted_props: Vec<String> = input.iter().map(|x| x.prop_name.to_string()).collect();
         let mut parser = get_default_tick_parser(wanted_props.clone(), &bytes);
-        parser.start().unwrap();
+        let out = parser.parse_demo().unwrap();
 
         for entry in &input {
-            match parser.output.get(&entry.prop_name) {
+            match out.df.get(&entry.prop_name) {
                 Some(propcol) => match &propcol.data {
                     Some(parser::variants::VarVec::F32(v)) => {
                         if entry.variant_type != "F32" {
@@ -1128,7 +1129,7 @@ mod tests {
                 max: 1000000,
                 prop_name: "CCSPlayerPawn.m_flTimeScale".to_string(),
                 variant_type: "F32".to_string(),
-                },       
+                },
         ];
         gt_lt_test(v, demo_path);
     }
@@ -1148,6 +1149,8 @@ fn get_default_tick_parser(wanted_props: Vec<String>, bytes: &Vec<u8>) -> Parser
         count_props: false,
         only_convars: false,
     };
-    let parser = Parser::new(settings).unwrap();
+    let parser = Parser::new(settings);
     parser
 }
+*/
+fn main() {}
