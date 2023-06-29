@@ -122,26 +122,6 @@ pub struct PlayerEndMetaData {
     pub team_number: Option<i32>,
 }
 
-#[derive(Debug, Clone)]
-pub struct ParserInputs {
-    pub bytes: Arc<Mmap>,
-    pub real_name_to_og_name: AHashMap<String, String>,
-
-    pub wanted_player_props: Vec<String>,
-    pub wanted_player_props_og_names: Vec<String>,
-    pub wanted_other_props: Vec<String>,
-    pub wanted_other_props_og_names: Vec<String>,
-
-    pub wanted_ticks: Vec<i32>,
-    pub wanted_event: Option<String>,
-    pub parse_ents: bool,
-    pub parse_projectiles: bool,
-    pub only_header: bool,
-    pub count_props: bool,
-    pub only_convars: bool,
-    pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
-}
-
 impl ParserThread {
     pub fn create_output(self) -> DemoOutput {
         DemoOutput {

@@ -2,7 +2,6 @@ use super::sendtables::Serializer;
 use super::stringtables::StringTable;
 use crate::decoder::QfMapper;
 use crate::other_netmessages::Class;
-use crate::parser_thread_settings::ParserInputs;
 use crate::parser_thread_settings::PlayerEndMetaData;
 use crate::parser_thread_settings::SpecialIDs;
 use crate::read_bits::DemoParserError;
@@ -16,6 +15,26 @@ use memmap2::Mmap;
 use phf_macros::phf_map;
 use std::sync::Arc;
 use std::time::Instant;
+
+#[derive(Debug, Clone)]
+pub struct ParserInputs {
+    pub bytes: Arc<Mmap>,
+    pub real_name_to_og_name: AHashMap<String, String>,
+
+    pub wanted_player_props: Vec<String>,
+    pub wanted_player_props_og_names: Vec<String>,
+    pub wanted_other_props: Vec<String>,
+    pub wanted_other_props_og_names: Vec<String>,
+
+    pub wanted_ticks: Vec<i32>,
+    pub wanted_event: Option<String>,
+    pub parse_ents: bool,
+    pub parse_projectiles: bool,
+    pub only_header: bool,
+    pub count_props: bool,
+    pub only_convars: bool,
+    pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
+}
 
 pub struct Parser {
     pub real_name_to_og_name: AHashMap<String, String>,
@@ -52,19 +71,14 @@ pub struct Parser {
     pub wanted_event: Option<String>,
     pub parse_entities: bool,
     pub parse_projectiles: bool,
-
-    // pub prop_name_to_path: AHashMap<String, [i32; 7]>,
-    // pub path_to_prop_name: AHashMap<[i32; 7], String>,
     pub name_to_id: AHashMap<String, u32>,
 
-    // pub qf_mapper: QfMapper,
     pub id: u32,
     pub wanted_prop_ids: Vec<u32>,
     pub controller_ids: SpecialIDs,
     pub player_output_ids: Vec<u8>,
     pub prop_out_id: u8,
     pub only_header: bool,
-    //pub id_to_path: AHashMap<u32, [i32; 7]>,
     pub prop_infos: Vec<PropInfo>,
 
     pub header: AHashMap<String, String>,
