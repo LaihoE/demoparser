@@ -103,14 +103,13 @@ impl ParserThread {
     ) -> Result<usize, DemoParserError> {
         let n_paths = self.parse_paths(bitreader, &entity_id)?;
 
-        let entity = match self.entities.get_mut(&(entity_id)) {
-            Some(ent) => ent,
-            None => return Err(DemoParserError::EntityNotFound),
-        };
-
         for field_info in &self.paths[..n_paths] {
             let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
             if field_info.should_parse {
+                let entity = match self.entities.get_mut(&(entity_id)) {
+                    Some(ent) => ent,
+                    None => return Err(DemoParserError::EntityNotFound),
+                };
                 entity.props.insert(field_info.df_pos as u32, result);
             }
         }
@@ -201,7 +200,6 @@ impl ParserThread {
         // For perfomance reasons have them always the same len
         let mut fp = generate_fp();
         let mut idx = 0;
-        let mut contains_wanted = false;
         // Do huffman decoding with a lookup table instead of reading one bit at a time
         // and traversing a tree.
         // Here we peek ("HUFFMAN_CODE_MAXLEN" == 17) amount of bits and see from a table which
@@ -219,6 +217,14 @@ impl ParserThread {
 
             do_op(symbol, bitreader, &mut fp)?;
             self.paths[idx] = class.serializer.find_decoder(&fp, 0);
+            /*
+            let tmp = class
+                .serializer
+                .debug_find_decoder(&fp, 0, class.name.clone());
+            if !tmp.full_name.contains("Player") {
+                println!("{:?}", tmp.full_name);
+            }
+            */
             // We reuse one big vector for holding paths. Purely for performance.
             // Alternatively we could create a new vector in this function and return it.
             idx += 1;

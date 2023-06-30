@@ -57,7 +57,7 @@ impl ParserThread {
                 return Ok(());
             }
         };
-
+        // println!("{:?}", event_desc.name);
         // Used to count how many of each event in this demo. Cheap so do it always
         self.game_events_counter
             .entry(event_desc.name.as_ref().unwrap().clone())

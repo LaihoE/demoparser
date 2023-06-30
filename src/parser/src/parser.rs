@@ -72,7 +72,7 @@ impl Parser {
             loop {
                 // If sendtables is done
                 if handle.is_some() && handle.as_ref().unwrap().is_finished() {
-                    let mut class_result: ClassInfoThreadResult =
+                    let class_result: ClassInfoThreadResult =
                         handle.take().unwrap().join().unwrap().unwrap();
                     self.insert_cls_thread_result(class_result);
                 }
@@ -148,9 +148,10 @@ impl Parser {
                 };
                 ok.unwrap();
             }
+            // println!("{} {}", threads_spawned, self.fullpacket_offsets.len());
             while !self.is_ready_to_spawn_thread() {
                 if handle.is_some() && handle.as_ref().unwrap().is_finished() {
-                    let mut class_result: ClassInfoThreadResult =
+                    let class_result: ClassInfoThreadResult =
                         handle.take().unwrap().join().unwrap().unwrap();
                     self.insert_cls_thread_result(class_result);
                     break;

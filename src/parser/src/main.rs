@@ -27,19 +27,25 @@ fn main() {
     let mut c = 0;
 
     for path in dir {
+        c += 1;
         let huf = create_huffman_lookup_table();
         let arc_huf = Arc::new(huf);
         let before = Instant::now();
-        c += 1;
-        if c > 30 {
+
+        if c > 1 {
             break;
         }
+
         let before1 = Instant::now();
 
-        let file = File::open(path.unwrap().path()).unwrap();
-        //let file = File::open("/home/laiho/Documents/demos/cs2/test2/66.dem").unwrap();
+        //let file = File::open(path.unwrap().path()).unwrap();
+        let file = File::open("/home/laiho/Documents/demos/cs2/driv/nuke.dem").unwrap();
 
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+        mmap.advise(memmap2::Advice::HugePage).unwrap();
+        // mmap.advise(memmap2::Advice::Sequential).unwrap();
+        // mmap.advise(memmap2::Advice::).unwrap();
+
         let arc_bytes = Arc::new(mmap);
         let mc = arc_bytes.clone();
         let demo_path = "/home/laiho/Documents/demos/cs2/test2/66.dem";
@@ -78,4 +84,5 @@ fn main() {
         // println!("{:?}", ds.handles);
         //println!("{:#?}", ds.state.cls_by_id);
     }
+    println!("TOTAL {:?}", before.elapsed());
 }

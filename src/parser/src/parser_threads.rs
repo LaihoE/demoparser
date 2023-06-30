@@ -28,7 +28,13 @@ impl ParserThread {
             }
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
-
+            let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
+            /*
+                        if demo_cmd == DEM_AnimationData || demo_cmd == DEM_SendTables {
+                            self.ptr += size as usize;
+                            continue;
+                        }
+            */
             let bytes = match is_compressed {
                 true => SnapDecoder::new()
                     .decompress_vec(self.read_n_bytes(size)?)
@@ -36,7 +42,7 @@ impl ParserThread {
                 false => self.read_n_bytes(size)?.to_vec(),
             };
 
-            let ok = match demo_cmd_type_from_int(msg_type as i32).unwrap() {
+            let ok = match demo_cmd {
                 DEM_Packet => self.parse_packet(&bytes),
                 DEM_FileInfo => self.parse_file_info(&bytes),
                 DEM_SignonPacket => self.parse_packet(&bytes),
@@ -95,6 +101,7 @@ impl ParserThread {
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
+        /*
         for item in &full_packet.string_table.tables {
             if item.table_name.as_ref().unwrap() == "instancebaseline" {
                 for i in &item.items {
@@ -103,8 +110,8 @@ impl ParserThread {
                 }
             }
         }
-
-        let p = full_packet.packet.0.clone().unwrap();
+        */
+        let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
         // Inner loop
         while bitreader.reader.bits_remaining().unwrap() > 8 {
