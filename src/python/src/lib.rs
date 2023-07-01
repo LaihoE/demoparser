@@ -5,6 +5,7 @@ use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
 use arrow::ffi;
+use cached::instant::Instant;
 use itertools::Itertools;
 use memmap2::MmapOptions;
 use parser::game_events::EventField;
@@ -657,7 +658,9 @@ impl DemoParser {
                         all_series.push(arr_to_py(Box::new(Float32Array::from(data))).unwrap());
                     }
                     Some(VarVec::I32(data)) => {
+                        let before = Instant::now();
                         all_series.push(arr_to_py(Box::new(Int32Array::from(data))).unwrap());
+                        println!("{:2?}", before.elapsed());
                     }
                     Some(VarVec::U64(data)) => {
                         all_series.push(arr_to_py(Box::new(UInt64Array::from(data))).unwrap());

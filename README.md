@@ -3,81 +3,32 @@
 
 Work in progress so expect some bugs here and there!
 
-## Install
-```pip install demoparser2```
+### Install
+Python: ```pip install demoparser2```
 
+NodeJS: ```npm i @laihoe/demoparser2```
 
-# Documentation
-This will have to do for now 😂
-
-
-### Game events
+### Gettings started
+#### Python
 ```python
 from demoparser2 import DemoParser
 
 parser = DemoParser("path_to_demo.dem")
-# Extra_player and extra_other are optional fields to be added into the game event
-df = parser.parse_events("player_death", extra_player=["last_place_name"], extra_other=["team_rounds_total"])
+events_df = parser.parse_events("player_death", extra_player=["X", "Y"])
+ticks_df = parser.parse_ticks(["X", "Y"])
 ```
-extra_player adds values to players that are referred to in events like attacker and victim. Extra_other are values that don't refer to players like how many rounds the ct team has won or when the round started.
+#### NodeJS
+```JavaScript
+var {parseEvents, parseTicks} = require('@laihoe/demoparser2');
 
-
-You can find out what events your demo had with:
-```event_names = parser.list_game_events()```
-
-
-This can be helpful: https://wiki.alliedmods.net/Counter-Strike:_Global_Offensive_Events  
-
-
-
-
-### Utility functions
-```python
-parser = DemoParser("path_to_demo.dem")
-
-# returns list like: ["player_death", "weapon_fire"...]
-event_name_list = parser.list_game_events()
-
-df = parser.parse_grenades()
-df = parser.parse_item_drops()
-df = parser.parse_skins()
-df = parser.parse_player_info()
-dict_output = parser.parse_convars()
-```
-All of these take no arguments and return the same shape data. Probably easiest to understand by just trying these out.
-
-
-
-
-### Tick data (entities)
-```python
-from demoparser2 import DemoParser
-
-wanted_fields = ["X", "Y"]
-
-parser = DemoParser("path_to_demo.dem")
-df = parser.parse_ticks(wanted_fields)
-```
-#####  Example output of parse_ticks():
-```
-              X            Y       tick            steamid        name
-0        649.795044   633.648438      0  76512345678912345      person1
-1        526.207642   794.186157      0  76512345678912345      person2
-2        997.494324   583.692871      0  76512345678912345      person3
-3        958.421570   498.485657      0  76512345678912345      person4
-4        624.525696   556.522217      0  76512345678912345      person5
-...             ...          ...    ...                ...         ...
-913215   924.593140   308.131622  30452  76512345678912345      person6
-913216   598.564514   794.186157  30452  76512345678912345      person7
-913217   329.393677   323.219360  30452  76512345678912345      person8
-913218   526.207642    81.611084  30452  76512345678912345      person9
-913219    36.691650   308.887451  30452  76512345678912345      person10
+let events_json = parseEvents("path_to_demo.dem", "player_death", ["X", "Y"])
+let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 ```
 
 
-### List of values to try for parse_ticks() and parse_events():
+### List of fields the parser supports:
 
-### Player data
+#### Player data
 |         Name          | "Real" name                                                                                                                               |
 | :-------------------: | :----------------------------------- |
 | X |  m_vec + m_cell |
@@ -185,7 +136,24 @@ df = parser.parse_ticks(wanted_fields)
 | current_equip_value  | m_unCurrentEquipmentValue |
 | time  | m_flSimulationTime |
 
-## Match info (same for all players)
+#### Buttons 
+True/Flase if player is pressing button.
+|         Name          | Real name                                                                                                                               |
+| :-------------------: | :----------------------------------- |
+|W|m_nButtonDownMaskPrev|
+|A|m_nButtonDownMaskPrev|
+|S|m_nButtonDownMaskPrev|
+|D|m_nButtonDownMaskPrev|
+|left_mouse|m_nButtonDownMaskPrev|
+|right_mouse|m_nButtonDownMaskPrev|
+|reload|m_nButtonDownMaskPrev|
+|score_board|m_nButtonDownMaskPrev|
+|inspect_weapon|m_nButtonDownMaskPrev|
+|buttons|m_nButtonDownMaskPrev|
+
+(button is the real value of m_nButtonDownMaskPrev and the others are derived from it)
+
+#### Match info (same for all players)
 |         Name          | Real name                                                                                                                               |
 | :-------------------: | :----------------------------------- |
 | team_score_second_half | m_scoreSecondHalf |
@@ -237,7 +205,7 @@ df = parser.parse_ticks(wanted_fields)
 | survival_start_time | m_flSurvivalStartTime  |
 | round_in_progress | m_bRoundInProgress  |
 
-### Weapon
+#### Weapon
 |         Name          | Real name                                                                                                                               |
 | :-------------------: | :----------------------------------- |
 | active_weapon_name  |  - |
@@ -292,7 +260,7 @@ df = parser.parse_ticks(wanted_fields)
 | next_secondary_attack_tick  |  m_nNextSecondaryAttackTick |
 | next_secondary_attack_tick_ratio |  m_flNextSecondaryAttackTickRatio |
 
-### Per round stats (this is quite awkward to use)
+#### Per round stats (this is quite awkward to use)
 
 |         Name          | Real name                                                                                                                               |
 | :-------------------: | :----------------------------------- |
@@ -310,7 +278,7 @@ df = parser.parse_ticks(wanted_fields)
 | kill_reward_this_round | m_iKillReward |
 | cash_earned_this_round | m_iCashEarned |
 
-### Stats total (so far into the demo)
+#### Stats total (so far into the demo)
 |         Name          | Real name                                                                                                                               |
 | :-------------------: | :----------------------------------- |
 | kills_total | m_iKills |

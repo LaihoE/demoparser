@@ -154,6 +154,24 @@ pub fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoPa
 }
 
 pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_map! {
+    "W" => "W",
+    "A" => "A",
+    "S" => "S",
+    "D" => "D",
+    "FIRE" => "FIRE",
+    "RIGHTCLICK" => "RIGHTCLICK",
+    "RELOAD" => "RELOAD",
+    "INSPECT" => "INSPECT",
+    "USE" => "USE",
+    "ZOOM" => "ZOOM",
+    "SCOREBOARD" => "SCOREBOARD",
+    "IN_GRENADE1" => "IN_GRENADE1",
+    "IN_ATTACK2" => "IN_ATTACK2",
+    "IN_WALK" => "IN_WALK",
+    "pitch" => "pitch",
+    "yaw" => "yaw",
+
+    "buttons" => "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev",
     "team_surrendered" => "CCSTeam.m_bSurrendered",
     "team_rounds_total" => "CCSTeam.m_iScore",
     "team_name" => "CCSTeam.m_szTeamname",
@@ -341,8 +359,6 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "X"=> "X",
     "Y"=> "Y",
     "Z"=> "Z",
-    "pitch" => "CCSPlayerPawnBase.m_angEyeAngles@0",
-    "yaw" => "CCSPlayerPawnBase.m_angEyeAngles@1",
     "active_weapon_name" => "weapon_name",
     "active_weapon_ammo" => "m_iClip1",
     "total_ammo_left" => "m_pReserveAmmo",

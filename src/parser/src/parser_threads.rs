@@ -26,6 +26,7 @@ impl ParserThread {
             if self.ptr + size as usize >= self.bytes.len() {
                 break;
             }
+            // println!("{}", tick);
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
@@ -101,7 +102,7 @@ impl ParserThread {
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
-        /*
+
         for item in &full_packet.string_table.tables {
             if item.table_name.as_ref().unwrap() == "instancebaseline" {
                 for i in &item.items {
@@ -110,7 +111,7 @@ impl ParserThread {
                 }
             }
         }
-        */
+
         let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
         // Inner loop

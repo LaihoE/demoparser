@@ -72,8 +72,13 @@ impl PropColumn {
                 Some(VarVec::Bool(v_other)) => {
                     v.extend_from_slice(&v_other);
                 }
+                None => {
+                    for i in 0..other.num_nones {
+                        v.push(None);
+                    }
+                }
                 _ => {
-                    panic!("illegal 1");
+                    panic!("illegal bool != bool {:?}", other);
                 }
             },
             Some(VarVec::I32(v)) => match &other.data {

@@ -46,6 +46,7 @@ impl ParserThread {
     pub fn get_prop_for_ent(&self, prop_id: &u32, entity_id: &i32) -> Option<Variant> {
         if let Some(ent) = self.entities.get(entity_id) {
             if let Some(prop) = ent.props.get(&prop_id) {
+                // println!("{:?}", ent.props);
                 return Some(prop.clone());
             }
         }
@@ -58,7 +59,6 @@ impl ParserThread {
         player: &PlayerMetaData,
     ) -> Option<Variant> {
         // Early exit these metadata props
-
         match prop_info.prop_name.as_str() {
             "tick" => return Some(Variant::I32(self.tick)),
             "steamid" => match player.steamid {
@@ -91,27 +91,22 @@ impl ParserThread {
                     return self.get_prop_for_ent(&prop_info.id, &entity_id);
                 };
             }
-            /*
-            Some(PropType::PlayerVec) => {
+            Some(PropType::Button) => {
                 if let Some(e) = player.controller_entid {
-                    let is_alive = self.get_prop_for_ent("CCSPlayerController.m_bPawnIsAlive", &e);
-                    match is_alive {
-                        Some(Variant::Bool(true)) => {
-                            let parts = prop_name.split("@").collect_vec();
-                            let prop_name = parts[0];
-                            let prop_idx = parts[1].parse::<usize>().unwrap();
-
-                            match self.get_prop_for_ent(&prop_name, &entity_id) {
-                                Some(Variant::VecXYZ(v)) => return Some(Variant::F32(v[prop_idx])),
-                                _ => {}
+                    if let Some(button_id) = self.prop_controller.special_ids.buttons {
+                        if let Some(Variant::U64(button_mask)) =
+                            self.get_prop_for_ent(&button_id, &entity_id)
+                        {
+                            if let Some(flag) = BUTTONMAP.get(&prop_info.prop_name) {
+                                return Some(Variant::Bool(button_mask & flag != 0));
                             }
                         }
-                        _ => return None,
                     }
                 };
+                return None;
             }
-            */
-            _ => return None,
+
+            _ => panic!("no type for: {:?}", prop_info),
         }
         None
     }
@@ -325,14 +320,24 @@ impl ParserThread {
             }
             _ => panic!("Unknown axis: {}", axis),
         }
-
         None
     }
+    fn find_pitch_or_yaw(&self, entity_id: &i32, idx: usize) -> Option<Variant> {
+        if let Some(prop_id) = self.prop_controller.special_ids.eye_angles {
+            if let Some(Variant::VecXYZ(v)) = self.get_prop_for_ent(&prop_id, entity_id) {
+                return Some(Variant::F32(v[idx]));
+            }
+        }
+        None
+    }
+
     pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
         match prop_name {
             "X" => self.collect_cell_coordinate_player("X", entity_id),
             "Y" => self.collect_cell_coordinate_player("Y", entity_id),
             "Z" => self.collect_cell_coordinate_player("Z", entity_id),
+            "pitch" => self.find_pitch_or_yaw(entity_id, 0),
+            "yaw" => self.find_pitch_or_yaw(entity_id, 1),
             "weapon_name" => self.find_weapon_name(entity_id),
             _ => panic!("unknown custom prop: {}", prop_name),
         }
@@ -397,7 +402,21 @@ pub enum PropType {
     Player,
     PlayerVec,
     Weapon,
+    Button,
 }
+
+pub static BUTTONMAP: phf::Map<&'static str, u64> = phf_map! {
+    "A" => 1 << 9,
+    "W" => 1 << 3,
+    "S" => 1 << 4,
+    "D" => 1 << 10,
+    "FIRE" => 1 << 0,
+    "RIGHTCLICK" => 1 << 11,
+    "RELOAD" => 1 << 13,
+    "INSPECT" => 1 << 35,
+    "USE" => 1 << 5,
+    "SCOREBOARD" => 1 << 16,
+};
 
 // Found in scripts/items/items_game.txt
 pub static WEAPINDICIES: phf::Map<u32, &'static str> = phf_map! {
@@ -493,6 +512,17 @@ pub static WEAPINDICIES: phf::Map<u32, &'static str> = phf_map! {
 };
 
 pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
+    "A" => PropType::Button,
+    "W" => PropType::Button,
+    "S" => PropType::Button,
+    "D" => PropType::Button,
+    "FIRE" => PropType::Button,
+    "RIGHTCLICK" => PropType::Button,
+    "RELOAD" =>PropType::Button,
+    "SCOREBOARD" =>PropType::Button,
+    "USE" =>PropType::Button,
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => PropType::Player,
+
     // TEAM
     "CCSTeam.m_iTeamNum" => PropType::Team,
     "CCSTeam.m_aPlayers" => PropType::Team,
@@ -812,6 +842,8 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "X"=> PropType::Custom,
     "Y"=> PropType::Custom,
     "Z"=> PropType::Custom,
+    "pitch"=> PropType::Custom,
+    "yaw"=> PropType::Custom,
     "weapon_name" => PropType::Custom,
     // Weapon
     "m_iClip1"=> PropType::Weapon,

@@ -17,7 +17,7 @@ use std::time::Instant;
 //static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
-    let wanted_props = vec!["CCSPlayerPawn.m_iHealth".to_owned()];
+    let wanted_props = vec!["pitch".to_string()];
     let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
     // let bytes = fs::read(demo_path).unwrap();
     // let file = File::open(demo_path).unwrap();
@@ -32,14 +32,14 @@ fn main() {
         let arc_huf = Arc::new(huf);
         let before = Instant::now();
 
-        if c > 1 {
+        if c > 500 {
             break;
         }
 
         let before1 = Instant::now();
 
-        //let file = File::open(path.unwrap().path()).unwrap();
-        let file = File::open("/home/laiho/Documents/demos/cs2/driv/nuke.dem").unwrap();
+        let file = File::open(path.unwrap().path()).unwrap();
+        // let file = File::open("/home/laiho/Documents/demos/cs2/driv/lpk.dem").unwrap();
 
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         mmap.advise(memmap2::Advice::HugePage).unwrap();
@@ -48,7 +48,7 @@ fn main() {
 
         let arc_bytes = Arc::new(mmap);
         let mc = arc_bytes.clone();
-        let demo_path = "/home/laiho/Documents/demos/cs2/test2/66.dem";
+        let demo_path = "/home/laiho/Documents/demos/cs2/driv/mirage.dem";
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),

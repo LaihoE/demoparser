@@ -69,17 +69,7 @@ impl<'a> Bitreader<'a> {
     }
 
     pub fn read_bit_coord_pres(&mut self) -> Result<f32, DemoParserError> {
-        let sign = self.read_boolean()?;
-        let int_val = self.reader.read_bits(14).unwrap();
-        let frac_val = self.read_nbits(5)?;
-
-        let resol: f64 = 1.0 / (1 << 5) as f64;
-        let result: f32 = (int_val as f64 + (frac_val as f64 * resol) as f64) as f32;
-        if sign {
-            Ok(-result)
-        } else {
-            Ok(result)
-        }
+        return Ok(self.read_nbits(20)? as f32 * 360.0 / (1 << 20) as f32 - 180.0);
     }
 
     pub fn decode_vector_float_coord(&mut self) -> Result<Vec<f32>, DemoParserError> {

@@ -230,6 +230,8 @@ pub struct SpecialIDs {
     pub m_cellZ_grenade: Option<u32>,
 
     pub grenade_owner_id: Option<u32>,
+    pub buttons: Option<u32>,
+    pub eye_angles: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -256,6 +258,8 @@ impl SpecialIDs {
             m_vecY_greande: None,
             m_vecZ_grenade: None,
             grenade_owner_id: None,
+            buttons: None,
+            eye_angles: None,
         }
     }
 }

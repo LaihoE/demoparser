@@ -77,6 +77,7 @@ impl Parser {
                     self.insert_cls_thread_result(class_result);
                 }
                 // Spawn thread if done
+
                 if self.fullpacket_offsets.len() > 0 && self.is_ready_to_spawn_thread() {
                     let offset = self.fullpacket_offsets.pop().unwrap();
                     let input = self.create_parser_thread_input(offset, false);
@@ -148,7 +149,6 @@ impl Parser {
                 };
                 ok.unwrap();
             }
-            // println!("{} {}", threads_spawned, self.fullpacket_offsets.len());
             while !self.is_ready_to_spawn_thread() {
                 if handle.is_some() && handle.as_ref().unwrap().is_finished() {
                     let class_result: ClassInfoThreadResult =
@@ -157,6 +157,7 @@ impl Parser {
                     break;
                 }
             }
+            // self.fullpacket_offsets = vec![];
             if threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
                 let input = self.create_parser_thread_input(16, true);
                 handles.push(s.spawn(|| {

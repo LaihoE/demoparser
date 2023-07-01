@@ -1,5 +1,6 @@
 use super::read_bits::{Bitreader, DemoParserError};
 use crate::collect_data::PropType;
+use crate::collect_data::BUTTONMAP;
 use crate::collect_data::TYPEHM;
 use crate::decoder::QfMapper;
 use crate::entities_utils::FieldPath;
@@ -649,35 +650,9 @@ impl Parser {
             {
                 prop_controller.find_prop_name_paths(&mut my_serializer);
             }
-            //prop_controller.find_prop_name_paths(&mut my_serializer);
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
-        if wanted_props.contains(&("weapon_name".to_string())) {
-            prop_controller.prop_infos.push(PropInfo {
-                id: 9999992,
-                prop_type: Some(PropType::Custom),
-                prop_name: "weapon_name".to_string(),
-                prop_friendly_name: "active_weapon_name".to_string(),
-            });
-        }
-        prop_controller.prop_infos.push(PropInfo {
-            id: 9999999,
-            prop_type: None,
-            prop_name: "tick".to_string(),
-            prop_friendly_name: "tick".to_string(),
-        });
-        prop_controller.prop_infos.push(PropInfo {
-            id: 9999998,
-            prop_type: None,
-            prop_name: "steamid".to_string(),
-            prop_friendly_name: "steamid".to_string(),
-        });
-        prop_controller.prop_infos.push(PropInfo {
-            id: 9999997,
-            prop_type: None,
-            prop_name: "name".to_string(),
-            prop_friendly_name: "name".to_string(),
-        });
+        prop_controller.set_custom_propinfos(wanted_props);
         Ok((serializers, qf_mapper, prop_controller))
     }
 }
@@ -701,6 +676,63 @@ impl PropController {
             id_to_name: AHashMap::default(),
             real_name_to_og_name: real_name_to_og_name,
         }
+    }
+    pub fn set_custom_propinfos(&mut self, wanted_player_props: Vec<String>) {
+        let mut button_names = BUTTONMAP.keys();
+        let mut someid = 8000000;
+        for bn in button_names {
+            if wanted_player_props.contains(&(bn.to_string())) {
+                self.prop_infos.push(PropInfo {
+                    id: someid,
+                    prop_type: Some(PropType::Button),
+                    prop_name: bn.to_string(),
+                    prop_friendly_name: bn.to_string(),
+                });
+                someid += 1;
+            }
+        }
+        if wanted_player_props.contains(&("weapon_name".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: 9999992,
+                prop_type: Some(PropType::Custom),
+                prop_name: "weapon_name".to_string(),
+                prop_friendly_name: "active_weapon_name".to_string(),
+            });
+        }
+        if wanted_player_props.contains(&("pitch".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: 7999993,
+                prop_type: Some(PropType::Custom),
+                prop_name: "pitch".to_string(),
+                prop_friendly_name: "pitch".to_string(),
+            });
+        }
+        if wanted_player_props.contains(&("yaw".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: 7999992,
+                prop_type: Some(PropType::Custom),
+                prop_name: "yaw".to_string(),
+                prop_friendly_name: "yaw".to_string(),
+            });
+        }
+        self.prop_infos.push(PropInfo {
+            id: 9999999,
+            prop_type: None,
+            prop_name: "tick".to_string(),
+            prop_friendly_name: "tick".to_string(),
+        });
+        self.prop_infos.push(PropInfo {
+            id: 9999998,
+            prop_type: None,
+            prop_name: "steamid".to_string(),
+            prop_friendly_name: "steamid".to_string(),
+        });
+        self.prop_infos.push(PropInfo {
+            id: 9999997,
+            prop_type: None,
+            prop_name: "name".to_string(),
+            prop_friendly_name: "name".to_string(),
+        });
     }
     pub fn find_prop_name_paths(&mut self, ser: &mut Serializer) {
         self.traverse_fields(&mut ser.fields, vec![], ser.name.clone())
@@ -729,7 +761,7 @@ impl PropController {
             // If we already have an id for prop of same name then use that
             Some(id) => {
                 f.prop_id = *id as usize;
-                return; // f.prop_id = *id as usize;
+                return;
             }
             None => match TYPEHM.get(&weap_prop) {
                 Some(t) => {
@@ -755,6 +787,10 @@ impl PropController {
 
         let is_wanted_normal_prop = self.wanted_player_props.contains(&full_name.to_string());
         let is_wanted_weapon_prop = self.wanted_player_props.contains(&weap_prop.to_string());
+
+        if full_name.contains("CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev") {
+            f.should_parse = true;
+        }
 
         if is_wanted_normal_prop && is_wanted_weapon_prop {
             panic!("{:?} {:?}", full_name, weap_prop);
@@ -802,6 +838,9 @@ impl PropController {
                     });
                 }
             }
+            "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => {
+                self.special_ids.buttons = Some(self.id);
+            }
             "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX" => {
                 self.special_ids.cell_x_offset_player = Some(self.id)
             }
@@ -817,11 +856,19 @@ impl PropController {
                     });
                 }
             }
+            "CCSPlayerPawn.m_angEyeAngles" => {
+                f.prop_id = self.id as usize;
+                f.should_parse = true;
+                self.special_ids.eye_angles = Some(self.id);
+            }
             "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY" => {
                 self.special_ids.cell_y_offset_player = Some(self.id)
             }
             "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellZ" => {
                 self.special_ids.cell_z_player = Some(self.id)
+            }
+            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => {
+                self.special_ids.cell_z_offset_player = Some(self.id)
             }
             "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => {
                 self.special_ids.cell_z_offset_player = Some(self.id)

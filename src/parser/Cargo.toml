@@ -1,9 +1,7 @@
 [package]
 name = "parser"
-version = "0.0.9"
+version = "0.1.1"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 bitter = "0.6.1"
@@ -28,9 +26,9 @@ path = "../csgoproto"
 overflow-checks = false
 
 [profile.release]
-debug = true
+# debug = true
 
-#opt-level = 3
-#lto = "fat"
-#codegen-units = 1
-#panic = "abort"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"

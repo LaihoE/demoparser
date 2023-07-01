@@ -103,13 +103,13 @@ impl ParserThread {
     ) -> Result<usize, DemoParserError> {
         let n_paths = self.parse_paths(bitreader, &entity_id)?;
 
+        let entity = match self.entities.get_mut(&(entity_id)) {
+            Some(ent) => ent,
+            None => return Err(DemoParserError::EntityNotFound),
+        };
         for field_info in &self.paths[..n_paths] {
             let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
             if field_info.should_parse {
-                let entity = match self.entities.get_mut(&(entity_id)) {
-                    Some(ent) => ent,
-                    None => return Err(DemoParserError::EntityNotFound),
-                };
                 entity.props.insert(field_info.df_pos as u32, result);
             }
         }
@@ -216,17 +216,9 @@ impl ParserThread {
             }
 
             do_op(symbol, bitreader, &mut fp)?;
-            self.paths[idx] = class.serializer.find_decoder(&fp, 0);
-            /*
-            let tmp = class
-                .serializer
-                .debug_find_decoder(&fp, 0, class.name.clone());
-            if !tmp.full_name.contains("Player") {
-                println!("{:?}", tmp.full_name);
-            }
-            */
             // We reuse one big vector for holding paths. Purely for performance.
             // Alternatively we could create a new vector in this function and return it.
+            self.paths[idx] = class.serializer.find_decoder(&fp, 0);
             idx += 1;
         }
         Ok(idx)
