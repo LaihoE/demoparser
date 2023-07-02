@@ -7,7 +7,6 @@ use super::{
 use crate::q_float::QuantalizedFloat;
 use crate::sendtables::Decoder::*;
 use ahash::AHashMap;
-use bitter::BitReader;
 
 #[derive(Debug, Clone)]
 pub struct QfMapper {
@@ -17,11 +16,7 @@ pub struct QfMapper {
 
 impl<'a> Bitreader<'a> {
     #[inline(always)]
-    pub fn decode(
-        &mut self,
-        decoder: &Decoder,
-        qf_map: &QfMapper,
-    ) -> Result<Variant, DemoParserError> {
+    pub fn decode(&mut self, decoder: &Decoder, qf_map: &QfMapper) -> Result<Variant, DemoParserError> {
         match decoder {
             NoscaleDecoder => Ok(Variant::F32(f32::from_bits(self.read_nbits(32)?))),
             FloatSimulationTimeDecoder => Ok(Variant::F32(self.decode_simul_time()?)),
@@ -186,26 +181,19 @@ impl<'a> Bitreader<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::read_bits::Bitreader;
     use crate::read_bits::DemoParserError;
-    use crate::{q_float::*, read_bits::Bitreader};
 
     #[test]
     fn test_read_string_ok() {
-        let bytes = [
-            97, 112, 101, 95, 122, 111, 110, 101, 95, 48, 50, 46, 118, 99, 100, 0,
-        ];
+        let bytes = [97, 112, 101, 95, 122, 111, 110, 101, 95, 48, 50, 46, 118, 99, 100, 0];
         let mut bitreader = Bitreader::new(&bytes);
         assert_eq!("ape_zone_02.vcd", bitreader.read_string().unwrap());
     }
     #[test]
     fn test_read_string_no_null() {
-        let bytes = [
-            97, 112, 101, 95, 122, 111, 110, 101, 95, 48, 50, 46, 118, 99, 100,
-        ];
+        let bytes = [97, 112, 101, 95, 122, 111, 110, 101, 95, 48, 50, 46, 118, 99, 100];
         let mut bitreader = Bitreader::new(&bytes);
-        assert_eq!(
-            Err(DemoParserError::OutOfBitsError),
-            bitreader.read_string()
-        );
+        assert_eq!(Err(DemoParserError::OutOfBitsError), bitreader.read_string());
     }
 }

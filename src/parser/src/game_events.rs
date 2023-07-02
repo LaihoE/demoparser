@@ -13,22 +13,12 @@ use protobuf::Message;
 use serde::ser::SerializeMap;
 use serde::Serialize;
 
-static INTERNALEVENTFIELDS: &'static [&str] = &[
-    "userid",
-    "attacker",
-    "assister",
-    "userid_pawn",
-    "attacker_pawn",
-    "assister_pawn",
-];
+static INTERNALEVENTFIELDS: &'static [&str] = &["userid", "attacker", "assister", "userid_pawn", "attacker_pawn", "assister_pawn"];
 const ENTITYIDNONE: i32 = 2047;
 
 impl Parser {
     // Message that should come before first game event
-    pub fn parse_game_event_list(
-        &mut self,
-        bytes: &[u8],
-    ) -> Result<AHashMap<i32, Descriptor_t>, DemoParserError> {
+    pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<AHashMap<i32, Descriptor_t>, DemoParserError> {
         let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
 
         let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
@@ -103,9 +93,7 @@ impl ParserThread {
                         // this assumes that "pawn" is not used for other key names, only for handles to players
                         let prefix = match field.name.split("_pawn").next() {
                             Some(prefix) => prefix,
-                            None => {
-                                return Err(DemoParserError::UnknownPawnPrefix(field.name.clone()))
-                            }
+                            None => return Err(DemoParserError::UnknownPawnPrefix(field.name.clone())),
                         };
                         extra_fields.push(self.create_player_name_field(entity_id, prefix));
                         extra_fields.push(self.create_player_steamid_field(entity_id, prefix));
@@ -174,19 +162,12 @@ impl ParserThread {
         extra_fields
     }
 
-    pub fn find_extra_props_events(
-        &self,
-        entity_id: i32,
-        prefix: &str,
-    ) -> Result<Vec<EventField>, DemoParserError> {
+    pub fn find_extra_props_events(&self, entity_id: i32, prefix: &str) -> Result<Vec<EventField>, DemoParserError> {
         let mut extra_pairs = vec![];
         // prop name:
         for prop_info in &self.prop_controller.prop_infos {
             // These are meant for entities not used here
-            if prop_info.prop_name == "tick"
-                || prop_info.prop_name == "name"
-                || prop_info.prop_name == "steamid"
-            {
+            if prop_info.prop_name == "tick" || prop_info.prop_name == "name" || prop_info.prop_name == "steamid" {
                 continue;
             }
             if entity_id == ENTITYIDNONE {

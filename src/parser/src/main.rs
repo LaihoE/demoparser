@@ -1,5 +1,6 @@
 use ahash::AHashMap;
 use ahash::AHashSet;
+use libc;
 use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
@@ -39,18 +40,15 @@ fn main() {
         c += 1;
         let before = Instant::now();
 
-        if c > 10 {
+        if c > 30 {
             break;
         }
 
         let before1 = Instant::now();
         let file = File::open(path.unwrap().path()).unwrap();
         // let file = File::open("/home/laiho/Documents/demos/cs2/driv/lpk.dem").unwrap();
-
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         mmap.advise(memmap2::Advice::HugePage).unwrap();
-        // mmap.advise(memmap2::Advice::Sequential).unwrap();
-        // mmap.advise(memmap2::Advice::).unwrap();
 
         let arc_bytes = Arc::new(mmap);
         let mc = arc_bytes.clone();

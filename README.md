@@ -151,7 +151,7 @@ True/Flase if player is pressing button.
 |inspect_weapon|m_nButtonDownMaskPrev|
 |buttons|m_nButtonDownMaskPrev|
 
-(button is the real value of m_nButtonDownMaskPrev and the others are derived from it)
+(buttons is the real value of m_nButtonDownMaskPrev and the others are derived from it)
 
 #### Match info (same for all players)
 |         Name          | Real name                                                                                                                               |

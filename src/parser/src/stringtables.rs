@@ -45,9 +45,7 @@ impl Parser {
             return Ok(());
         }
         let bytes = match table.data_compressed() {
-            true => snap::raw::Decoder::new()
-                .decompress_vec(table.string_data())
-                .unwrap(),
+            true => snap::raw::Decoder::new().decompress_vec(table.string_data()).unwrap(),
             false => table.string_data().to_vec(),
         };
         self.parse_string_table(
@@ -108,9 +106,7 @@ impl Parser {
                             if length > s.len() as u32 {
                                 key = key.to_owned() + &s + &bitreader.read_string()?;
                             } else {
-                                key = key.to_owned()
-                                    + &s[0..length as usize]
-                                    + &bitreader.read_string()?;
+                                key = key.to_owned() + &s[0..length as usize] + &bitreader.read_string()?;
                             }
                         }
                     }

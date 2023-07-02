@@ -1,23 +1,17 @@
 use super::read_bits::{Bitreader, DemoParserError};
-use crate::collect_data::PropType;
-use crate::collect_data::BUTTONMAP;
-use crate::collect_data::TYPEHM;
 use crate::decoder::QfMapper;
 use crate::entities_utils::FieldPath;
 use crate::parser_settings::Parser;
-use crate::parser_thread_settings::SpecialIDs;
 use crate::prop_controller::PropController;
 use crate::q_float::QuantalizedFloat;
 use crate::sendtables::Decoder::*;
 use crate::sendtables::FieldModel::*;
 use ahash::AHashMap;
-use ahash::AHashSet;
 use ahash::HashMap;
 use csgoproto::{
     demo::CDemoSendTables,
     netmessages::{CSVCMsg_FlattenedSerializer, ProtoFlattenedSerializerField_t},
 };
-use itertools::Itertools;
 use lazy_static::lazy_static;
 use phf_macros::phf_map;
 use protobuf::Message;
@@ -255,12 +249,7 @@ impl Field {
             _ => panic!("HUH"),
         }
     }
-    pub fn debug_decoder_from_path(
-        &self,
-        path: &FieldPath,
-        pos: usize,
-        prop_name: String,
-    ) -> DebugField {
+    pub fn debug_decoder_from_path(&self, path: &FieldPath, pos: usize, prop_name: String) -> DebugField {
         match self.model {
             FieldModelSimple => {
                 return DebugField {
@@ -317,11 +306,7 @@ impl Field {
                 if path.last >= pos + 1 {
                     match &self.serializer {
                         Some(ser) => {
-                            return ser.debug_find_decoder(
-                                path,
-                                pos + 1,
-                                prop_name + "." + &ser.name,
-                            );
+                            return ser.debug_find_decoder(path, pos + 1, prop_name + "." + &ser.name);
                         }
                         None => panic!("no serializer for path"),
                     }
@@ -350,14 +335,10 @@ impl Field {
                     // Dont know why these 4 break the parsing
                     "m_PredFloatVariables" => self.child_decoder = Some(NoscaleDecoder),
                     "m_OwnerOnlyPredNetFloatVariables" => self.child_decoder = Some(NoscaleDecoder),
-                    "m_OwnerOnlyPredNetVectorVariables" => {
-                        self.child_decoder = Some(VectorNoscaleDecoder)
-                    }
+                    "m_OwnerOnlyPredNetVectorVariables" => self.child_decoder = Some(VectorNoscaleDecoder),
                     "m_PredVectorVariables" => self.child_decoder = Some(VectorNoscaleDecoder),
                     _ => {
-                        self.child_decoder = match BASETYPE_DECODERS
-                            .get(&self.field_type.generic_type.clone().unwrap().base_type)
-                        {
+                        self.child_decoder = match BASETYPE_DECODERS.get(&self.field_type.generic_type.clone().unwrap().base_type) {
                             Some(decoder) => Some(decoder.clone()),
                             None => Some(Decoder::BaseDecoder),
                         };
@@ -509,12 +490,7 @@ impl Serializer {
     pub fn find_decoder(&self, path: &FieldPath, pos: usize) -> FieldInfo {
         self.fields[path.path[pos] as usize].decoder_from_path(path, pos + 1)
     }
-    pub fn debug_find_decoder(
-        &self,
-        path: &FieldPath,
-        pos: usize,
-        prop_name: String,
-    ) -> DebugField {
+    pub fn debug_find_decoder(&self, path: &FieldPath, pos: usize, prop_name: String) -> DebugField {
         let idx = path.path[pos];
         let f = &self.fields[idx as usize];
         f.debug_decoder_from_path(path, pos + 1, prop_name)
@@ -558,19 +534,14 @@ impl Parser {
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint()?;
         let bytes = bitreader.read_n_bytes(n_bytes as usize)?;
-        let serializer_msg: CSVCMsg_FlattenedSerializer =
-            Message::parse_from_bytes(&bytes).unwrap();
+        let serializer_msg: CSVCMsg_FlattenedSerializer = Message::parse_from_bytes(&bytes).unwrap();
         let mut serializers: AHashMap<String, Serializer> = AHashMap::default();
         let mut qf_mapper = QfMapper {
             idx: 0,
             map: AHashMap::default(),
         };
         let mut fields: HashMap<i32, Field> = HashMap::default();
-        let mut prop_controller = PropController::new(
-            wanted_props.clone(),
-            wanted_props_og_names,
-            real_name_to_og_name,
-        );
+        let mut prop_controller = PropController::new(wanted_props.clone(), wanted_props_og_names, real_name_to_og_name);
         for (ii, serializer) in serializer_msg.serializers.iter().enumerate() {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
@@ -595,18 +566,14 @@ impl Parser {
 
                         match &field.serializer {
                             Some(_) => {
-                                if field.field_type.pointer
-                                    || POINTER_TYPES.contains(&field.field_type.base_type.as_str())
-                                {
+                                if field.field_type.pointer || POINTER_TYPES.contains(&field.field_type.base_type.as_str()) {
                                     field.find_decoder(FieldModelFixedTable, &mut qf_mapper)
                                 } else {
                                     field.find_decoder(FieldModelVariableTable, &mut qf_mapper)
                                 }
                             }
                             None => {
-                                if field.field_type.count > 0
-                                    && field.field_type.base_type != "char"
-                                {
+                                if field.field_type.count > 0 && field.field_type.base_type != "char" {
                                     field.find_decoder(FieldModelFixedArray, &mut qf_mapper)
                                 } else if field.field_type.base_type == "CUtlVector"
                                     || field.field_type.base_type == "CNetworkUtlVectorBase"
@@ -651,10 +618,7 @@ pub struct DebugField {
     pub decoder: Decoder,
 }
 
-fn field_from_msg(
-    field: &ProtoFlattenedSerializerField_t,
-    serializer_msg: &CSVCMsg_FlattenedSerializer,
-) -> Field {
+fn field_from_msg(field: &ProtoFlattenedSerializerField_t, serializer_msg: &CSVCMsg_FlattenedSerializer) -> Field {
     let field_type = find_field_type(&serializer_msg.symbols[field.var_type_sym() as usize]);
 
     let ser_name = match field.has_field_serializer_name_sym() {

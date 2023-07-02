@@ -58,16 +58,14 @@ impl ParserThread {
         let convar: CNETMsg_SetConVar = Message::parse_from_bytes(bytes).unwrap();
         for cv in &convar.convars {
             for var in &cv.cvars {
-                self.convars
-                    .insert(var.name().to_owned(), var.value().to_owned());
+                self.convars.insert(var.name().to_owned(), var.value().to_owned());
             }
         }
         Ok(())
     }
 
     pub fn parse_player_end_msg(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let end_data: CCSUsrMsg_EndOfMatchAllPlayersData =
-            Message::parse_from_bytes(&bytes).unwrap();
+        let end_data: CCSUsrMsg_EndOfMatchAllPlayersData = Message::parse_from_bytes(&bytes).unwrap();
         /*
         Todo parse "accolade", seems to be the awards at the end like "most mvps in game"
         But seems to only have integers so need to figure out what they mean

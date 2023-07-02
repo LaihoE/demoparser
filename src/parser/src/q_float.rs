@@ -24,9 +24,7 @@ impl QuantalizedFloat {
         if self.flags == 0 {
             return;
         }
-        if (self.low == 0.0 && (self.flags & QFF_ROUNDDOWN) != 0)
-            || (self.high == 0.0 && (self.flags & QFF_ROUNDUP) != 0)
-        {
+        if (self.low == 0.0 && (self.flags & QFF_ROUNDDOWN) != 0) || (self.high == 0.0 && (self.flags & QFF_ROUNDUP) != 0) {
             self.flags &= !QFF_ENCODE_ZERO;
         }
         if self.low == 0.0 && (self.flags & QFF_ENCODE_ZERO) != 0 {
@@ -66,15 +64,11 @@ impl QuantalizedFloat {
             high_mul = (high as f32) / range;
         }
 
-        if (high_mul * range > (high as f32))
-            || (((high_mul * range) as f64) > ((high as f32) as f64))
-        {
+        if (high_mul * range > (high as f32)) || (((high_mul * range) as f64) > ((high as f32) as f64)) {
             let multipliers = vec![0.9999, 0.99, 0.9, 0.8, 0.7];
             for multiplier in multipliers {
                 high_mul = (high as f32) / range * multiplier;
-                if (high_mul * range > (high as f32))
-                    || (((high_mul * range) as f64) > (high as f32) as f64)
-                {
+                if (high_mul * range > (high as f32)) || (((high_mul * range) as f64) > (high as f32) as f64) {
                     continue;
                 }
                 break;
@@ -109,12 +103,7 @@ impl QuantalizedFloat {
         let bits = bitreader.read_nbits(self.bit_count).unwrap();
         self.low + (self.high - self.low) * bits as f32 * self.dec_mul
     }
-    pub fn new(
-        bitcount: u32,
-        flags: Option<i32>,
-        low_value: Option<f32>,
-        high_value: Option<f32>,
-    ) -> Self {
+    pub fn new(bitcount: u32, flags: Option<i32>, low_value: Option<f32>, high_value: Option<f32>) -> Self {
         let mut qf = QuantalizedFloat {
             no_scale: false,
             bit_count: 0,

@@ -50,10 +50,7 @@ pub struct PropColumn {
 }
 impl PropColumn {
     pub fn new() -> Self {
-        PropColumn {
-            data: None,
-            num_nones: 0,
-        }
+        PropColumn { data: None, num_nones: 0 }
     }
     pub fn len(&self) -> usize {
         match &self.data {
@@ -335,28 +332,22 @@ impl Serialize for OutputSerdeHelperStruct {
             if self.inner.contains_key(&prop_info.id) {
                 match &self.inner[&prop_info.id].data {
                     Some(VarVec::F32(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val)
-                            .unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
                     }
                     Some(VarVec::I32(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val)
-                            .unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
                     }
                     Some(VarVec::String(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val)
-                            .unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
                     }
                     Some(VarVec::U64(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val)
-                            .unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
                     }
                     Some(VarVec::Bool(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val)
-                            .unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
                     }
                     Some(VarVec::U32(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val)
-                            .unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
                     }
                     None => {}
                 }

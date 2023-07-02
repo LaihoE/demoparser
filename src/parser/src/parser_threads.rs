@@ -30,18 +30,13 @@ impl ParserThread {
             let is_compressed = (cmd & 64) == 64;
             let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
 
-            if demo_cmd == DEM_AnimationData
-                || demo_cmd == DEM_SendTables
-                || demo_cmd == DEM_StringTables
-            {
+            if demo_cmd == DEM_AnimationData || demo_cmd == DEM_SendTables || demo_cmd == DEM_StringTables {
                 self.ptr += size as usize;
                 continue;
             }
 
             let bytes = match is_compressed {
-                true => SnapDecoder::new()
-                    .decompress_vec(self.read_n_bytes(size)?)
-                    .unwrap(),
+                true => SnapDecoder::new().decompress_vec(self.read_n_bytes(size)?).unwrap(),
                 false => self.read_n_bytes(size)?.to_vec(),
             };
 

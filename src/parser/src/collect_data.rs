@@ -21,9 +21,7 @@ pub struct ProjectileRecord {
 
 impl ParserThread {
     pub fn collect_entities(&mut self) {
-        if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0
-            || self.wanted_event.is_some()
-        {
+        if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_event.is_some() {
             return;
         }
         if self.parse_projectiles {
@@ -35,10 +33,7 @@ impl ParserThread {
             for prop_info in &self.prop_controller.prop_infos {
                 // All values come trough here. None if cant be found.
                 let prop = self.find_prop(prop_info, entity_id, player);
-                self.output
-                    .entry(prop_info.id)
-                    .or_insert_with(|| PropColumn::new())
-                    .push(prop);
+                self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(prop);
             }
         }
     }
@@ -50,12 +45,7 @@ impl ParserThread {
         }
         None
     }
-    pub fn find_prop(
-        &self,
-        prop_info: &PropInfo,
-        entity_id: &i32,
-        player: &PlayerMetaData,
-    ) -> Option<Variant> {
+    pub fn find_prop(&self, prop_info: &PropInfo, entity_id: &i32, player: &PlayerMetaData) -> Option<Variant> {
         // Early exit these metadata props
         match prop_info.prop_name.as_str() {
             "tick" => return Some(Variant::I32(self.tick)),
@@ -72,9 +62,7 @@ impl ParserThread {
 
         match prop_info.prop_type {
             Some(PropType::Team) => return self.find_team_prop(&prop_info.id, &entity_id),
-            Some(PropType::Custom) => {
-                return self.create_custom_prop(prop_info.prop_name.as_str(), entity_id)
-            }
+            Some(PropType::Custom) => return self.create_custom_prop(prop_info.prop_name.as_str(), entity_id),
             Some(PropType::Weapon) => return self.find_weapon_prop(&prop_info.id, &entity_id),
             Some(PropType::Controller) => match player.controller_entid {
                 Some(entid) => return self.get_prop_for_ent(&prop_info.id, &entid),
@@ -92,9 +80,7 @@ impl ParserThread {
             Some(PropType::Button) => {
                 if let Some(e) = player.controller_entid {
                     if let Some(button_id) = self.prop_controller.special_ids.buttons {
-                        if let Some(Variant::U64(button_mask)) =
-                            self.get_prop_for_ent(&button_id, &entity_id)
-                        {
+                        if let Some(Variant::U64(button_mask)) = self.get_prop_for_ent(&button_id, &entity_id) {
                             if let Some(flag) = BUTTONMAP.get(&prop_info.prop_name) {
                                 return Some(Variant::Bool(button_mask & flag != 0));
                             }
@@ -110,36 +96,18 @@ impl ParserThread {
     pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
         let (offset, cell) = match axis {
             "X" => {
-                let offset = self.get_prop_for_ent(
-                    &self.prop_controller.special_ids.m_vecX_grenade.unwrap(),
-                    entity_id,
-                );
-                let cell = self.get_prop_for_ent(
-                    &self.prop_controller.special_ids.m_cellX_grenade.unwrap(),
-                    entity_id,
-                );
+                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vec_x_grenade.unwrap(), entity_id);
+                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cell_x_grenade.unwrap(), entity_id);
                 (offset, cell)
             }
             "Y" => {
-                let offset = self.get_prop_for_ent(
-                    &self.prop_controller.special_ids.m_vecY_greande.unwrap(),
-                    entity_id,
-                );
-                let cell = self.get_prop_for_ent(
-                    &self.prop_controller.special_ids.m_cellY_greande.unwrap(),
-                    entity_id,
-                );
+                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vec_y_greande.unwrap(), entity_id);
+                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cell_y_greande.unwrap(), entity_id);
                 (offset, cell)
             }
             "Z" => {
-                let offset = self.get_prop_for_ent(
-                    &self.prop_controller.special_ids.m_vecZ_grenade.unwrap(),
-                    entity_id,
-                );
-                let cell = self.get_prop_for_ent(
-                    &self.prop_controller.special_ids.m_cellZ_grenade.unwrap(),
-                    entity_id,
-                );
+                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vec_z_grenade.unwrap(), entity_id);
+                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cell_z_grenade.unwrap(), entity_id);
                 (offset, cell)
             }
             _ => panic!("unk axis"),
@@ -158,10 +126,7 @@ impl ParserThread {
             Some(cls) => cls,
             None => return None,
         };
-        let owner_entid = match self.get_prop_for_ent(
-            &self.prop_controller.special_ids.grenade_owner_id.unwrap(),
-            entity_id,
-        ) {
+        let owner_entid = match self.get_prop_for_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), entity_id) {
             Some(Variant::U32(prop)) => Some(prop & 0x7FF),
             _ => None,
         };
@@ -183,10 +148,7 @@ impl ParserThread {
             Some(cls) => cls,
             None => return None,
         };
-        let owner_entid = match self.get_prop_for_ent(
-            &self.prop_controller.special_ids.grenade_owner_id.unwrap(),
-            entity_id,
-        ) {
+        let owner_entid = match self.get_prop_for_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), entity_id) {
             Some(Variant::U32(prop)) => Some(prop & 0x7FF),
             _ => None,
         };
@@ -327,7 +289,6 @@ impl ParserThread {
         }
         None
     }
-
     pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
         match prop_name {
             "X" => self.collect_cell_coordinate_player("X", entity_id),

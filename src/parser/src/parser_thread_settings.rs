@@ -21,7 +21,6 @@ use ahash::RandomState;
 use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use memmap2::Mmap;
-use phf_macros::phf_map;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -143,11 +142,10 @@ impl ParserThread {
             last: 0,
             path: [-1, 0, 0, 0, 0, 0, 0],
         };
-        input.settings.wanted_player_props.extend(vec![
-            "tick".to_owned(),
-            "steamid".to_owned(),
-            "name".to_owned(),
-        ]);
+        input
+            .settings
+            .wanted_player_props
+            .extend(vec!["tick".to_owned(), "steamid".to_owned(), "name".to_owned()]);
         Ok(ParserThread {
             projectile_records: vec![],
             parse_all_packets: input.parse_all_packets,
@@ -219,13 +217,13 @@ pub struct SpecialIDs {
     pub active_weapon: Option<u32>,
     pub item_def: Option<u32>,
 
-    pub m_vecX_grenade: Option<u32>,
-    pub m_vecY_greande: Option<u32>,
-    pub m_vecZ_grenade: Option<u32>,
+    pub m_vec_x_grenade: Option<u32>,
+    pub m_vec_y_greande: Option<u32>,
+    pub m_vec_z_grenade: Option<u32>,
 
-    pub m_cellX_grenade: Option<u32>,
-    pub m_cellY_greande: Option<u32>,
-    pub m_cellZ_grenade: Option<u32>,
+    pub m_cell_x_grenade: Option<u32>,
+    pub m_cell_y_greande: Option<u32>,
+    pub m_cell_z_grenade: Option<u32>,
 
     pub grenade_owner_id: Option<u32>,
     pub buttons: Option<u32>,
@@ -249,12 +247,12 @@ impl SpecialIDs {
             cell_z_offset_player: None,
             active_weapon: None,
             item_def: None,
-            m_cellX_grenade: None,
-            m_cellY_greande: None,
-            m_cellZ_grenade: None,
-            m_vecX_grenade: None,
-            m_vecY_greande: None,
-            m_vecZ_grenade: None,
+            m_cell_x_grenade: None,
+            m_cell_y_greande: None,
+            m_cell_z_grenade: None,
+            m_vec_x_grenade: None,
+            m_vec_y_greande: None,
+            m_vec_z_grenade: None,
             grenade_owner_id: None,
             buttons: None,
             eye_angles: None,

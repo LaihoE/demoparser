@@ -72,8 +72,7 @@ impl Parser {
             loop {
                 // If sendtables is done
                 if handle.is_some() && handle.as_ref().unwrap().is_finished() {
-                    let class_result: ClassInfoThreadResult =
-                        handle.take().unwrap().join().unwrap().unwrap();
+                    let class_result: ClassInfoThreadResult = handle.take().unwrap().join().unwrap().unwrap();
                     self.insert_cls_thread_result(class_result);
                 }
                 // Spawn thread if done
@@ -108,9 +107,7 @@ impl Parser {
                 }
 
                 let bytes = match is_compressed {
-                    true => SnapDecoder::new()
-                        .decompress_vec(self.read_n_bytes(size).unwrap())
-                        .unwrap(),
+                    true => SnapDecoder::new().decompress_vec(self.read_n_bytes(size).unwrap()).unwrap(),
                     false => self.read_n_bytes(size).unwrap().to_vec(),
                 };
 
@@ -127,13 +124,7 @@ impl Parser {
                         let want_prop_og = self.wanted_player_props_og_names.clone();
                         let real_to_og = self.real_name_to_og_name.clone();
                         handle = Some(thread::spawn(move || {
-                            Parser::parse_class_info(
-                                &my_b,
-                                my_s.unwrap(),
-                                want_prop,
-                                want_prop_og,
-                                real_to_og,
-                            )
+                            Parser::parse_class_info(&my_b, my_s.unwrap(), want_prop, want_prop_og, real_to_og)
                         }));
                         Ok(())
                     }
@@ -150,8 +141,7 @@ impl Parser {
 
             while !self.is_ready_to_spawn_thread() {
                 if handle.is_some() && handle.as_ref().unwrap().is_finished() {
-                    let class_result: ClassInfoThreadResult =
-                        handle.take().unwrap().join().unwrap().unwrap();
+                    let class_result: ClassInfoThreadResult = handle.take().unwrap().join().unwrap().unwrap();
                     self.insert_cls_thread_result(class_result);
                     break;
                 }
@@ -184,10 +174,7 @@ impl Parser {
             let mut dfs = outputs.iter().map(|x| x.df.clone()).collect();
             let all_dfs_combined = self.combine_dfs(&mut dfs);
             DemoOutput {
-                chat_messages: outputs
-                    .iter()
-                    .flat_map(|x| x.chat_messages.clone())
-                    .collect(),
+                chat_messages: outputs.iter().flat_map(|x| x.chat_messages.clone()).collect(),
                 item_drops: outputs.iter().flat_map(|x| x.item_drops.clone()).collect(),
                 player_md: outputs.iter().flat_map(|x| x.player_md.clone()).collect(),
                 game_events: outputs.iter().flat_map(|x| x.game_events.clone()).collect(),
@@ -206,8 +193,7 @@ impl Parser {
     }
     fn insert_cls_thread_result(&mut self, mut class_result: ClassInfoThreadResult) {
         class_result.prop_controller.wanted_player_props = self.wanted_player_props.clone();
-        class_result.prop_controller.wanted_player_og_props =
-            self.wanted_player_props_og_names.clone();
+        class_result.prop_controller.wanted_player_og_props = self.wanted_player_props_og_names.clone();
         class_result.prop_controller.real_name_to_og_name = self.real_name_to_og_name.clone();
 
         self.qf_map_set = true;
@@ -267,32 +253,19 @@ impl Parser {
 
     pub fn parse_header(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let header: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
-        self.header.insert(
-            "demo_file_stamp".to_string(),
-            header.demo_file_stamp().to_string(),
-        );
-        self.header.insert(
-            "demo_version_guid".to_string(),
-            header.demo_version_guid().to_string(),
-        );
-        self.header.insert(
-            "network_protocol".to_string(),
-            header.network_protocol().to_string(),
-        );
         self.header
-            .insert("server_name".to_string(), header.server_name().to_string());
+            .insert("demo_file_stamp".to_string(), header.demo_file_stamp().to_string());
         self.header
-            .insert("client_name".to_string(), header.client_name().to_string());
+            .insert("demo_version_guid".to_string(), header.demo_version_guid().to_string());
         self.header
-            .insert("map_name".to_string(), header.map_name().to_string());
-        self.header.insert(
-            "game_directory".to_string(),
-            header.game_directory().to_string(),
-        );
-        self.header.insert(
-            "fullpackets_version".to_string(),
-            header.fullpackets_version().to_string(),
-        );
+            .insert("network_protocol".to_string(), header.network_protocol().to_string());
+        self.header.insert("server_name".to_string(), header.server_name().to_string());
+        self.header.insert("client_name".to_string(), header.client_name().to_string());
+        self.header.insert("map_name".to_string(), header.map_name().to_string());
+        self.header
+            .insert("game_directory".to_string(), header.game_directory().to_string());
+        self.header
+            .insert("fullpackets_version".to_string(), header.fullpackets_version().to_string());
         self.header.insert(
             "allow_clientside_entities".to_string(),
             header.allow_clientside_entities().to_string(),
@@ -305,14 +278,10 @@ impl Parser {
             "allow_clientside_particles".to_string(),
             header.allow_clientside_particles().to_string(),
         );
+        self.header.insert("addons".to_string(), header.addons().to_string());
         self.header
-            .insert("addons".to_string(), header.addons().to_string());
-        self.header.insert(
-            "demo_version_name".to_string(),
-            header.demo_version_name().to_string(),
-        );
-        self.header
-            .insert("addons".to_string(), header.addons().to_string());
+            .insert("demo_version_name".to_string(), header.demo_version_name().to_string());
+        self.header.insert("addons".to_string(), header.addons().to_string());
         Ok(())
     }
 
@@ -323,8 +292,7 @@ impl Parser {
         want_prop_og: Vec<String>,
         real_name_to_og_name: AHashMap<String, String>,
     ) -> Result<ClassInfoThreadResult, DemoParserError> {
-        let (serializers, qf_mapper, p) =
-            Parser::parse_sendtable(sendtables, want_prop, want_prop_og, real_name_to_og_name)?;
+        let (serializers, qf_mapper, p) = Parser::parse_sendtable(sendtables, want_prop, want_prop_og, real_name_to_og_name)?;
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
         let mut cls_by_id = AHashMap::default();
         for class_t in msg.classes {

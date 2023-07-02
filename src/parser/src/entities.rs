@@ -1,5 +1,4 @@
 use super::read_bits::DemoParserError;
-use crate::collect_data::TYPEHM;
 use crate::entities_utils::*;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
@@ -7,7 +6,6 @@ use crate::variants::Variant;
 use ahash::HashMap;
 use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
-use itertools::Itertools;
 use protobuf::Message;
 
 const NSERIALBITS: u32 = 17;
@@ -20,7 +18,6 @@ pub struct Entity {
     pub entity_id: i32,
     pub props: HashMap<u32, Variant>,
     pub entity_type: EntityType,
-    pub history: HashMap<[i32; 7], Vec<Variant>>,
 }
 
 #[derive(Debug, Clone)]
@@ -85,22 +82,14 @@ impl ParserThread {
         }
         Ok(())
     }
-    pub fn update_entity(
-        &mut self,
-        bitreader: &mut Bitreader,
-        entity_id: i32,
-    ) -> Result<(), DemoParserError> {
+    pub fn update_entity(&mut self, bitreader: &mut Bitreader, entity_id: i32) -> Result<(), DemoParserError> {
         let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
         if n_updated_values > 0 {
             self.gather_extra_info(&entity_id)?;
         }
         Ok(())
     }
-    pub fn decode_entity_update(
-        &mut self,
-        bitreader: &mut Bitreader,
-        entity_id: i32,
-    ) -> Result<usize, DemoParserError> {
+    pub fn decode_entity_update(&mut self, bitreader: &mut Bitreader, entity_id: i32) -> Result<usize, DemoParserError> {
         let n_paths = self.parse_paths(bitreader, &entity_id)?;
 
         let entity = match self.entities.get_mut(&(entity_id)) {
@@ -116,11 +105,7 @@ impl ParserThread {
         Ok(n_paths)
     }
 
-    pub fn parse_paths(
-        &mut self,
-        bitreader: &mut Bitreader,
-        entity_id: &i32,
-    ) -> Result<usize, DemoParserError> {
+    pub fn parse_paths(&mut self, bitreader: &mut Bitreader, entity_id: &i32) -> Result<usize, DemoParserError> {
         /*
         Create a field path by decoding using a Huffman tree.
         The huffman tree can be found at the bottom of entities_utils.rs
@@ -231,21 +216,14 @@ impl ParserThread {
             None => return Err(DemoParserError::EntityNotFound),
         };
 
-        if !(entity.entity_type == EntityType::PlayerController
-            || entity.entity_type == EntityType::Team)
-        {
+        if !(entity.entity_type == EntityType::PlayerController || entity.entity_type == EntityType::Team) {
             return Ok(());
         }
 
         if entity.entity_type == EntityType::Team {
-            if let Some(Variant::U32(t)) = self.get_prop_for_ent(
-                self.prop_controller
-                    .special_ids
-                    .team_team_num
-                    .as_ref()
-                    .unwrap(),
-                entity_id,
-            ) {
+            if let Some(Variant::U32(t)) =
+                self.get_prop_for_ent(self.prop_controller.special_ids.team_team_num.as_ref().unwrap(), entity_id)
+            {
                 match t {
                     1 => self.teams.team1_entid = Some(*entity_id),
                     2 => self.teams.team2_entid = Some(*entity_id),
@@ -256,10 +234,7 @@ impl ParserThread {
             return Ok(());
         }
 
-        let team_num = match self.get_prop_for_ent(
-            self.prop_controller.special_ids.teamnum.as_ref().unwrap(),
-            entity_id,
-        ) {
+        let team_num = match self.get_prop_for_ent(self.prop_controller.special_ids.teamnum.as_ref().unwrap(), entity_id) {
             Some(team_num) => match team_num {
                 Variant::U32(team_num) => Some(team_num),
                 // Signals that something went very wrong
@@ -267,38 +242,21 @@ impl ParserThread {
             },
             None => None,
         };
-        let name = match self.get_prop_for_ent(
-            self.prop_controller
-                .special_ids
-                .player_name
-                .as_ref()
-                .unwrap(),
-            entity_id,
-        ) {
+        let name = match self.get_prop_for_ent(self.prop_controller.special_ids.player_name.as_ref().unwrap(), entity_id) {
             Some(name) => match name {
                 Variant::String(name) => Some(name),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
             None => None,
         };
-        let steamid = match self.get_prop_for_ent(
-            self.prop_controller.special_ids.steamid.as_ref().unwrap(),
-            entity_id,
-        ) {
+        let steamid = match self.get_prop_for_ent(self.prop_controller.special_ids.steamid.as_ref().unwrap(), entity_id) {
             Some(steamid) => match steamid {
                 Variant::U64(steamid) => Some(steamid),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
             None => None,
         };
-        let player_entid = match self.get_prop_for_ent(
-            self.prop_controller
-                .special_ids
-                .player_pawn
-                .as_ref()
-                .unwrap(),
-            entity_id,
-        ) {
+        let player_entid = match self.get_prop_for_ent(self.prop_controller.special_ids.player_pawn.as_ref().unwrap(), entity_id) {
             Some(player_entid) => match player_entid {
                 Variant::U32(handle) => Some((handle & 0x7FF) as i32),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
@@ -324,15 +282,12 @@ impl ParserThread {
         }
         Ok(())
     }
-    fn create_new_entity(
-        &mut self,
-        bitreader: &mut Bitreader,
-        entity_id: &i32,
-    ) -> Result<(), DemoParserError> {
+    fn create_new_entity(&mut self, bitreader: &mut Bitreader, entity_id: &i32) -> Result<(), DemoParserError> {
         let cls_id: u32 = bitreader.read_nbits(8)?;
         // Both of these are not used. Don't think they are interesting for the parser
         let _serial = bitreader.read_nbits(NSERIALBITS)?;
         let _unknown = bitreader.read_varint();
+        // println!("{:?} {:?}", _serial, _unknown);
 
         let entity_type = self.check_entity_type(&cls_id)?;
         match entity_type {
@@ -348,7 +303,6 @@ impl ParserThread {
             cls_id: cls_id,
             props: HashMap::default(),
             entity_type: entity_type,
-            history: HashMap::default(),
         };
         self.entities.insert(*entity_id, entity);
         // Insert baselines
