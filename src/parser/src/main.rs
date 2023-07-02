@@ -24,7 +24,7 @@ fn x() {
 
 fn main() {
     x();
-    let wanted_props = vec!["pitch".to_string()];
+    let wanted_props = vec!["m_iClip1".to_string()];
     let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
     // let bytes = fs::read(demo_path).unwrap();
     // let file = File::open(demo_path).unwrap();

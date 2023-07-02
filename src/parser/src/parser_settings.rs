@@ -94,11 +94,7 @@ impl Parser {
             cls_by_id_set: false,
             qf_map_set: false,
             real_name_to_og_name: inputs.real_name_to_og_name.clone(),
-            prop_controller: Arc::new(PropController::new(
-                vec![],
-                vec![],
-                inputs.real_name_to_og_name.clone(),
-            )),
+            prop_controller: Arc::new(PropController::new(vec![], vec![], inputs.real_name_to_og_name.clone())),
             prop_controller_is_set: false,
             start: Instant::now(),
             cls_by_id: Arc::new(AHashMap::default()),
