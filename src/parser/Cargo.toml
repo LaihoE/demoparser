@@ -28,7 +28,7 @@ overflow-checks = false
 [profile.release]
 # debug = true
 
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-panic = "abort"
+# opt-level = 3
+# lto = "fat"
+# codegen-units = 1
+# panic = "abort"

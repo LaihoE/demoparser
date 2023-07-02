@@ -1,11 +1,7 @@
-use std::time::Instant;
-
-use crate::collect_data::PropType;
-use crate::collect_data::TYPEHM;
 use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
+use crate::prop_controller::PropInfo;
 use crate::read_bits::DemoParserError;
-use crate::sendtables::PropInfo;
 use crate::variants::*;
 use ahash::AHashMap;
 use ahash::RandomState;
@@ -49,7 +45,6 @@ impl ParserThread {
             return Ok(());
         }
         let event: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
-        //let g = self.ge_list.unwrap();
         // Check if this events id is found in our game event list
         let event_desc = match self.ge_list.get(&event.eventid()) {
             Some(desc) => desc,
@@ -57,7 +52,6 @@ impl ParserThread {
                 return Ok(());
             }
         };
-        // println!("{:?}", event_desc.name);
         // Used to count how many of each event in this demo. Cheap so do it always
         self.game_events_counter
             .entry(event_desc.name.as_ref().unwrap().clone())
@@ -118,10 +112,7 @@ impl ParserThread {
                         extra_fields.extend(self.find_extra_props_events(entity_id, prefix)?);
                     }
                     _ => {
-                        return Err(DemoParserError::UnknownEntityHandle((
-                            field.name.clone(),
-                            field.data.clone(),
-                        )));
+                        return Err(DemoParserError::UnknownEntityHandle(field.name.clone()));
                     }
                 }
             }

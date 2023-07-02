@@ -10,8 +10,8 @@ use crate::parser_thread_settings::EconItem;
 use crate::parser_thread_settings::ParserThread;
 use crate::parser_thread_settings::PlayerEndMetaData;
 use crate::parser_threads::demo_cmd_type_from_int;
+use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
-use crate::sendtables::PropController;
 use crate::variants::PropColumn;
 use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
@@ -28,7 +28,6 @@ use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
-use std::time::Duration;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -63,6 +62,7 @@ impl Parser {
     pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
         self.ptr = 16;
         self.fullpacket_offsets.push(16);
+        let mut i = 0;
 
         let mut sendtable: Option<CDemoSendTables> = None;
         let mut handle: Option<JoinHandle<Result<_, _>>> = None;
@@ -77,7 +77,6 @@ impl Parser {
                     self.insert_cls_thread_result(class_result);
                 }
                 // Spawn thread if done
-
                 if self.fullpacket_offsets.len() > 0 && self.is_ready_to_spawn_thread() {
                     let offset = self.fullpacket_offsets.pop().unwrap();
                     let input = self.create_parser_thread_input(offset, false);
@@ -118,7 +117,6 @@ impl Parser {
                 let ok: Result<(), DemoParserError> = match demo_cmd {
                     DEM_SendTables => {
                         sendtable = Some(Message::parse_from_bytes(&bytes).unwrap());
-                        // self.parse_sendtable(&bytes)
                         Ok(())
                     }
                     DEM_FileHeader => self.parse_header(&bytes),
@@ -149,6 +147,7 @@ impl Parser {
                 };
                 ok.unwrap();
             }
+
             while !self.is_ready_to_spawn_thread() {
                 if handle.is_some() && handle.as_ref().unwrap().is_finished() {
                     let class_result: ClassInfoThreadResult =
@@ -157,7 +156,6 @@ impl Parser {
                     break;
                 }
             }
-            // self.fullpacket_offsets = vec![];
             if threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
                 let input = self.create_parser_thread_input(16, true);
                 handles.push(s.spawn(|| {
@@ -168,6 +166,7 @@ impl Parser {
             } else {
                 while self.fullpacket_offsets.len() > 0 {
                     let offset = self.fullpacket_offsets.pop().unwrap();
+                    threads_spawned += 1;
                     let input = self.create_parser_thread_input(offset, false);
                     handles.push(s.spawn(|| {
                         let mut parser = ParserThread::new(input).unwrap();
@@ -176,6 +175,7 @@ impl Parser {
                     }));
                 }
             }
+
             let mut outputs: Vec<DemoOutput> = vec![];
             for handle in handles {
                 outputs.push(handle.join().unwrap());
@@ -254,10 +254,8 @@ impl Parser {
                     // this can fail if user re-uses the same parser for multiple funcs
                     self.ge_list = Arc::new(hm);
                     self.ge_list_set = true;
-                    //GE_LIST.set(hm);
                     Ok(())
                 }
-                // GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 _ => Ok(()),

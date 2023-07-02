@@ -3,7 +3,7 @@ use bitter::BitReader;
 use bitter::LittleEndianReader;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum DemoParserError {
     OutOfBitsError,
     OutOfBytesError,
@@ -18,13 +18,14 @@ pub enum DemoParserError {
     UnknownFile,
     IncorrectMetaDataProp,
     UnknownPropName(String),
-    FileError(std::io::Error),
+    // FileError(std::io::Error),
     GameEventListNotSet,
     PropTypeNotFound(String),
     GameEventUnknownId(String),
     UnknownPawnPrefix(String),
-    UnknownEntityHandle((String, Option<Variant>)),
-    UnknownGameEventVariant(String, Option<Variant>),
+    UnknownEntityHandle(String),
+    ClsIdOutOfBounds,
+    UnknownGameEventVariant(String), // UnknownEntityHandle(String, V),
 }
 
 impl std::error::Error for DemoParserError {}

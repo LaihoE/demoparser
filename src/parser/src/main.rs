@@ -5,8 +5,8 @@ use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
 use parser::parser_thread_settings::SpecialIDs;
+use parser::prop_controller::PropInfo;
 use parser::read_bits::Bitreader;
-use parser::sendtables::PropInfo;
 use std::fs;
 use std::fs::File;
 use std::sync::Arc;
@@ -16,7 +16,14 @@ use std::time::Instant;
 //#[global_allocator]
 //static GLOBAL: MiMalloc = MiMalloc;
 
+use std::env;
+fn x() {
+    // this method needs to be inside main() method
+    env::set_var("RUST_BACKTRACE", "1");
+}
+
 fn main() {
+    x();
     let wanted_props = vec!["pitch".to_string()];
     let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
     // let bytes = fs::read(demo_path).unwrap();
@@ -25,19 +32,18 @@ fn main() {
     let before = Instant::now();
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test2/").unwrap();
     let mut c = 0;
+    let huf = create_huffman_lookup_table();
+    let arc_huf = Arc::new(huf);
 
     for path in dir {
         c += 1;
-        let huf = create_huffman_lookup_table();
-        let arc_huf = Arc::new(huf);
         let before = Instant::now();
 
-        if c > 500 {
+        if c > 10 {
             break;
         }
 
         let before1 = Instant::now();
-
         let file = File::open(path.unwrap().path()).unwrap();
         // let file = File::open("/home/laiho/Documents/demos/cs2/driv/lpk.dem").unwrap();
 

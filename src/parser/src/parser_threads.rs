@@ -26,16 +26,18 @@ impl ParserThread {
             if self.ptr + size as usize >= self.bytes.len() {
                 break;
             }
-            // println!("{}", tick);
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
-            /*
-                        if demo_cmd == DEM_AnimationData || demo_cmd == DEM_SendTables {
-                            self.ptr += size as usize;
-                            continue;
-                        }
-            */
+
+            if demo_cmd == DEM_AnimationData
+                || demo_cmd == DEM_SendTables
+                || demo_cmd == DEM_StringTables
+            {
+                self.ptr += size as usize;
+                continue;
+            }
+
             let bytes = match is_compressed {
                 true => SnapDecoder::new()
                     .decompress_vec(self.read_n_bytes(size)?)
@@ -45,10 +47,6 @@ impl ParserThread {
 
             let ok = match demo_cmd {
                 DEM_Packet => self.parse_packet(&bytes),
-                DEM_FileInfo => self.parse_file_info(&bytes),
-                DEM_SignonPacket => self.parse_packet(&bytes),
-                DEM_UserCmd => self.parse_user_command_cmd(&bytes),
-                DEM_StringTables => self.parse_stringtable_cmd(&bytes),
                 DEM_FullPacket => {
                     match self.parse_all_packets {
                         true => self.parse_full_packet(&bytes).unwrap(),
@@ -85,9 +83,6 @@ impl ParserThread {
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
-                // svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
-                // svc_UpdateStringTable => self.update_string_table(&msg_bytes),
-                // GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
                 GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
@@ -96,7 +91,7 @@ impl ParserThread {
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
                 _ => Ok(()),
             };
-            ok?
+            ok?;
         }
         Ok(())
     }
@@ -122,9 +117,6 @@ impl ParserThread {
 
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
-                // svc_ServerInfo => self.parse_class_info(&msg_bytes),
-                // svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
-                // svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
@@ -137,20 +129,6 @@ impl ParserThread {
         Ok(())
     }
 
-    pub fn parse_stringtable_cmd(&mut self, data: &[u8]) -> Result<(), DemoParserError> {
-        return Ok(());
-        // Why do we use this and not just create/update stringtables??
-        let tables: CDemoStringTables = Message::parse_from_bytes(data).unwrap();
-        for item in &tables.tables {
-            if item.table_name.as_ref().unwrap() == "instancebaseline" {
-                for i in &item.items {
-                    let k = i.str().parse::<u32>().unwrap_or(999999);
-                    self.baselines.insert(k, i.data.as_ref().unwrap().clone());
-                }
-            }
-        }
-        Ok(())
-    }
     pub fn parse_server_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let server_info: CSVCMsg_ServerInfo = Message::parse_from_bytes(bytes).unwrap();
         let class_count = server_info.max_classes();

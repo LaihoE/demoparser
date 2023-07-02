@@ -41,6 +41,9 @@ impl Parser {
 
     pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
+        if table.name() != "instancebaseline" {
+            return Ok(());
+        }
         let bytes = match table.data_compressed() {
             true => snap::raw::Decoder::new()
                 .decompress_vec(table.string_data())
@@ -68,6 +71,9 @@ impl Parser {
         flags: i32,
         variant_bit_count: bool,
     ) -> Result<(), DemoParserError> {
+        if name != "instancebaseline" {
+            return Ok(());
+        }
         let mut bitreader = Bitreader::new(&bytes);
         let mut idx = -1;
         let mut keys: Vec<String> = vec![];
@@ -142,7 +148,10 @@ impl Parser {
                 if name == "instancebaseline" {
                     // Watch out for keys like 42:15 <-- seem to be props that are not used atm
                     let k = key.parse::<u32>().unwrap_or(999999);
-                    self.baselines.insert(k, value.clone());
+                    match key.parse::<u32>() {
+                        Ok(cls_id) => self.baselines.insert(k, value.clone()),
+                        Err(e) => None,
+                    };
                 }
                 items.push(StringTableEntry {
                     idx: idx,

@@ -104,7 +104,7 @@ impl<'a> Bitreader<'a> {
     pub fn read_string(&mut self) -> Result<String, DemoParserError> {
         let mut s: Vec<u8> = vec![];
         loop {
-            let c = self.read_n_bytes(1)?[0];
+            let c = self.read_nbits(8)? as u8;
             if c == 0 {
                 break;
             }
@@ -181,5 +181,31 @@ impl<'a> Bitreader<'a> {
     }
     pub fn read_angle(&mut self, n: usize) -> Result<f32, DemoParserError> {
         return Ok(self.decode_noscale()? / ((1 << n) as f32));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::read_bits::DemoParserError;
+    use crate::{q_float::*, read_bits::Bitreader};
+
+    #[test]
+    fn test_read_string_ok() {
+        let bytes = [
+            97, 112, 101, 95, 122, 111, 110, 101, 95, 48, 50, 46, 118, 99, 100, 0,
+        ];
+        let mut bitreader = Bitreader::new(&bytes);
+        assert_eq!("ape_zone_02.vcd", bitreader.read_string().unwrap());
+    }
+    #[test]
+    fn test_read_string_no_null() {
+        let bytes = [
+            97, 112, 101, 95, 122, 111, 110, 101, 95, 48, 50, 46, 118, 99, 100,
+        ];
+        let mut bitreader = Bitreader::new(&bytes);
+        assert_eq!(
+            Err(DemoParserError::OutOfBitsError),
+            bitreader.read_string()
+        );
     }
 }

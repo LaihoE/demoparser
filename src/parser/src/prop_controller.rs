@@ -1,0 +1,904 @@
+use crate::collect_data::PropType;
+use crate::collect_data::BUTTONMAP;
+use crate::collect_data::TYPEHM;
+use crate::parser_thread_settings::SpecialIDs;
+use crate::sendtables::ControllerProp;
+use crate::sendtables::Field;
+use crate::sendtables::Serializer;
+use ahash::AHashMap;
+use itertools::Itertools;
+
+const WEAPON_NAME_ID: u32 = 1;
+const YAW_ID: u32 = 2;
+const PITCH_ID: u32 = 3;
+const TICK_ID: u32 = 4;
+const STEAMID_ID: u32 = 5;
+const NAME_ID: u32 = 6;
+const ITEM_DEF_IDX_ID: u32 = 7;
+const BUTTONS_BASEID: u32 = 100000;
+const NORMAL_PROP_BASEID: u32 = 1000;
+
+#[derive(Clone, Debug)]
+pub struct PropController {
+    pub id: u32,
+    pub wanted_player_props: Vec<String>,
+    pub wanted_prop_ids: Vec<u32>,
+    pub prop_infos: Vec<PropInfo>,
+    pub prop_name_to_path: AHashMap<String, [i32; 7]>,
+    pub path_to_prop_name: AHashMap<[i32; 7], String>,
+    pub name_to_id: AHashMap<String, u32>,
+    pub id_to_path: AHashMap<u32, [i32; 7]>,
+    pub id_to_name: AHashMap<u32, String>,
+    pub special_ids: SpecialIDs,
+    pub wanted_player_og_props: Vec<String>,
+    pub real_name_to_og_name: AHashMap<String, String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PropInfo {
+    pub id: u32,
+    pub prop_type: Option<PropType>,
+    pub prop_name: String,
+    pub prop_friendly_name: String,
+}
+
+impl PropController {
+    pub fn new(
+        wanted_player_props: Vec<String>,
+        wanted_player_props_og_names: Vec<String>,
+        real_name_to_og_name: AHashMap<String, String>,
+    ) -> Self {
+        PropController {
+            id: NORMAL_PROP_BASEID,
+            wanted_player_props: wanted_player_props,
+            wanted_prop_ids: vec![],
+            prop_infos: vec![],
+            prop_name_to_path: AHashMap::default(),
+            path_to_prop_name: AHashMap::default(),
+            name_to_id: AHashMap::default(),
+            id_to_path: AHashMap::default(),
+            special_ids: SpecialIDs::new(),
+            wanted_player_og_props: wanted_player_props_og_names,
+            id_to_name: AHashMap::default(),
+            real_name_to_og_name: real_name_to_og_name,
+        }
+    }
+    pub fn set_custom_propinfos(&mut self) {
+        let mut button_names = BUTTONMAP.keys();
+        let mut someid = BUTTONS_BASEID;
+        for bn in button_names {
+            if self.wanted_player_props.contains(&(bn.to_string())) {
+                self.prop_infos.push(PropInfo {
+                    id: someid,
+                    prop_type: Some(PropType::Button),
+                    prop_name: bn.to_string(),
+                    prop_friendly_name: bn.to_string(),
+                });
+                someid += 1;
+            }
+        }
+        if self
+            .wanted_player_props
+            .contains(&("weapon_name".to_string()))
+        {
+            self.prop_infos.push(PropInfo {
+                id: WEAPON_NAME_ID,
+                prop_type: Some(PropType::Custom),
+                prop_name: "active_weapon_name".to_string(),
+                prop_friendly_name: "active_weapon_name".to_string(),
+            });
+        }
+        if self.wanted_player_props.contains(&("pitch".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: PITCH_ID,
+                prop_type: Some(PropType::Custom),
+                prop_name: "pitch".to_string(),
+                prop_friendly_name: "pitch".to_string(),
+            });
+        }
+        if self.wanted_player_props.contains(&("yaw".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: YAW_ID,
+                prop_type: Some(PropType::Custom),
+                prop_name: "yaw".to_string(),
+                prop_friendly_name: "yaw".to_string(),
+            });
+        }
+        self.prop_infos.push(PropInfo {
+            id: TICK_ID,
+            prop_type: None,
+            prop_name: "tick".to_string(),
+            prop_friendly_name: "tick".to_string(),
+        });
+        self.prop_infos.push(PropInfo {
+            id: STEAMID_ID,
+            prop_type: None,
+            prop_name: "steamid".to_string(),
+            prop_friendly_name: "steamid".to_string(),
+        });
+        self.prop_infos.push(PropInfo {
+            id: NAME_ID,
+            prop_type: None,
+            prop_name: "name".to_string(),
+            prop_friendly_name: "name".to_string(),
+        });
+    }
+    pub fn find_prop_name_paths(&mut self, ser: &mut Serializer) {
+        self.traverse_fields(&mut ser.fields, vec![], ser.name.clone())
+    }
+    fn vec_to_arr(path: &Vec<i32>) -> [i32; 7] {
+        let mut arr = [0, 0, 0, 0, 0, 0, 0];
+        for (idx, val) in path.iter().enumerate() {
+            arr[idx] = *val;
+        }
+        arr
+    }
+    fn handle_normal_prop(&mut self, full_name: &str) {
+        self.prop_infos.push(PropInfo {
+            id: self.id,
+            prop_type: TYPEHM.get(&full_name).copied(),
+            prop_name: full_name.to_string(),
+            prop_friendly_name: self
+                .real_name_to_og_name
+                .get(&full_name.to_string())
+                .unwrap_or(&full_name.to_string())
+                .to_string(),
+        });
+    }
+    fn handle_weapon_prop(&mut self, weap_prop: &str, f: &mut Field) {
+        match self.name_to_id.get(weap_prop) {
+            // If we already have an id for prop of same name then use that
+            Some(id) => {
+                f.prop_id = *id as usize;
+                return;
+            }
+            None => match TYPEHM.get(&weap_prop) {
+                Some(t) => {
+                    self.name_to_id.insert(weap_prop.to_string(), self.id);
+                    self.prop_infos.push(PropInfo {
+                        id: self.id,
+                        prop_type: Some(t.clone()),
+                        prop_name: weap_prop.to_string(),
+                        prop_friendly_name: self
+                            .real_name_to_og_name
+                            .get(&weap_prop.to_string())
+                            .unwrap_or(&weap_prop.to_string())
+                            .to_string(),
+                    })
+                }
+                _ => panic!("weapon prop: {:?} not found", weap_prop),
+            },
+        };
+    }
+    pub fn handle_prop(&mut self, full_name: &str, f: &mut Field) {
+        let split_at_dot: Vec<&str> = full_name.split(".").collect();
+        let weap_prop = split_at_dot.last().unwrap();
+        let is_wanted_normal_prop = self.wanted_player_props.contains(&full_name.to_string());
+        let is_wanted_weapon_prop = self.wanted_player_props.contains(&weap_prop.to_string());
+
+        if full_name.contains("CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev") {
+            f.should_parse = true;
+        }
+
+        if is_wanted_normal_prop && is_wanted_weapon_prop {
+            panic!("{:?} {:?}", full_name, weap_prop);
+        }
+
+        if full_name.contains("m_iItemDefinitionIndex")
+            && (full_name.contains("Weapon") || full_name.contains("AK"))
+        {
+            f.should_parse = true;
+            f.prop_id = ITEM_DEF_IDX_ID as usize;
+            self.special_ids.item_def = Some(ITEM_DEF_IDX_ID);
+            return;
+        }
+
+        if is_wanted_normal_prop {
+            self.handle_normal_prop(full_name);
+            self.name_to_id.insert(full_name.to_string(), self.id);
+        } else if is_wanted_weapon_prop {
+            self.handle_weapon_prop(weap_prop, f);
+            f.should_parse = true;
+        }
+        self.set_grenades(full_name, f);
+        self.match_names(full_name, f);
+
+        if is_wanted_normal_prop {
+            f.prop_id = self.id as usize;
+            f.should_parse = true;
+        }
+        self.id += 1;
+    }
+    fn match_names(&mut self, full_name: &str, f: &mut Field) {
+        match full_name {
+            "CCSTeam.m_iTeamNum" => self.special_ids.team_team_num = Some(self.id),
+            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX" => {
+                self.special_ids.cell_x_player = Some(self.id);
+                if self.wanted_player_props.contains(&"X".to_string()) {
+                    f.should_parse = true;
+                    self.prop_infos.push(PropInfo {
+                        id: 9999944,
+                        prop_type: Some(PropType::Custom),
+                        prop_name: "X".to_string(),
+                        prop_friendly_name: "X".to_string(),
+                    });
+                }
+            }
+            "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => {
+                self.special_ids.buttons = Some(self.id);
+            }
+            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX" => {
+                self.special_ids.cell_x_offset_player = Some(self.id)
+            }
+            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellY" => {
+                self.special_ids.cell_y_player = Some(self.id);
+
+                if self.wanted_player_props.contains(&"Y".to_string()) {
+                    f.should_parse = true;
+                    self.prop_infos.push(PropInfo {
+                        id: 9999945,
+                        prop_type: Some(PropType::Custom),
+                        prop_name: "Y".to_string(),
+                        prop_friendly_name: "Y".to_string(),
+                    });
+                }
+            }
+            "CCSPlayerPawn.m_angEyeAngles" => {
+                f.prop_id = self.id as usize;
+                f.should_parse = true;
+                self.special_ids.eye_angles = Some(self.id);
+            }
+            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY" => {
+                self.special_ids.cell_y_offset_player = Some(self.id)
+            }
+            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellZ" => {
+                self.special_ids.cell_z_player = Some(self.id)
+            }
+            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => {
+                self.special_ids.cell_z_offset_player = Some(self.id)
+            }
+            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => {
+                self.special_ids.cell_z_offset_player = Some(self.id)
+            }
+            "CCSPlayerPawn.m_iTeamNum" => self.special_ids.player_team_pointer = Some(self.id),
+            "CBasePlayerWeapon.m_nOwnerId" => self.special_ids.weapon_owner_pointer = Some(self.id),
+            "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => {
+                self.special_ids.active_weapon = Some(self.id)
+            }
+            "CCSPlayerController.m_iTeamNum" => self.special_ids.teamnum = Some(self.id),
+            "CCSPlayerController.m_iszPlayerName" => self.special_ids.player_name = Some(self.id),
+            "CCSPlayerController.m_steamID" => self.special_ids.steamid = Some(self.id),
+            "CCSPlayerController.m_hPlayerPawn" => self.special_ids.player_pawn = Some(self.id),
+            _ => {}
+        };
+    }
+
+    fn set_grenades(&mut self, full_name: &str, f: &mut Field) {
+        if full_name.contains("Projectile.m_nOwnerId") {
+            if self.special_ids.grenade_owner_id.is_none() {
+                self.special_ids.grenade_owner_id = Some(self.id)
+            }
+            f.should_parse = true;
+            f.prop_id = self.special_ids.grenade_owner_id.unwrap() as usize;
+        };
+        if full_name.contains("Projectile.CBodyComponentBaseAnimGraph.m_vec") {
+            f.should_parse = true;
+            match full_name.chars().last() {
+                Some('X') => {
+                    if self.special_ids.m_vecX_grenade.is_none() {
+                        self.special_ids.m_vecX_grenade = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_vecX_grenade.unwrap() as usize;
+                }
+                Some('Y') => {
+                    if self.special_ids.m_vecY_greande.is_none() {
+                        self.special_ids.m_vecY_greande = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_vecY_greande.unwrap() as usize;
+                }
+                Some('Z') => {
+                    if self.special_ids.m_vecZ_grenade.is_none() {
+                        self.special_ids.m_vecZ_grenade = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_vecZ_grenade.unwrap() as usize;
+                }
+                _ => {}
+            }
+        }
+        if full_name.contains("Projectile.CBodyComponentBaseAnimGraph.m_cell") {
+            f.should_parse = true;
+            match full_name.chars().last() {
+                Some('X') => {
+                    if self.special_ids.m_cellX_grenade.is_none() {
+                        self.special_ids.m_cellX_grenade = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_cellX_grenade.unwrap() as usize;
+                }
+                Some('Y') => {
+                    if self.special_ids.m_cellY_greande.is_none() {
+                        self.special_ids.m_cellY_greande = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_cellY_greande.unwrap() as usize;
+                }
+                Some('Z') => {
+                    if self.special_ids.m_cellZ_grenade.is_none() {
+                        self.special_ids.m_cellZ_grenade = Some(self.id);
+                    }
+                    f.prop_id = self.special_ids.m_cellZ_grenade.unwrap() as usize;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn traverse_fields(&mut self, fields: &mut Vec<Field>, mut path: Vec<i32>, ser_name: String) {
+        for (idx, f) in fields.iter_mut().enumerate() {
+            if let Some(ser) = &mut f.serializer {
+                let mut tmp = path.clone();
+                tmp.push(idx as i32);
+                self.traverse_fields(&mut ser.fields, tmp, ser_name.clone() + "." + &ser.name)
+            } else {
+                let mut tmp = path.clone();
+                tmp.push(idx as i32);
+                let arr = PropController::vec_to_arr(&tmp);
+                let full_name = ser_name.clone() + "." + &f.var_name;
+
+                if self.is_wanted_prop(&full_name) {
+                    f.should_parse = true;
+                    f.prop_id = self.id as usize;
+                }
+                self.handle_prop(&full_name, f);
+                self.id_to_name.insert(self.id, full_name.clone());
+                self.id_to_path.insert(self.id, arr);
+                self.prop_name_to_path.insert(full_name.clone(), arr);
+                self.path_to_prop_name.insert(arr, full_name);
+                self.id += 1;
+            }
+        }
+    }
+    fn find_controller_prop_type(&self, name: &str) -> Option<ControllerProp> {
+        match name {
+            "CCSPlayerController.m_iTeamNum" => Some(ControllerProp::TeamNum),
+            "CCSPlayerController.m_iszPlayerName" => Some(ControllerProp::Name),
+            "CCSPlayerController.m_steamID" => Some(ControllerProp::SteamId),
+            "CCSPlayerController.m_hPlayerPawn" => Some(ControllerProp::PlayerEntityId),
+            _ => None,
+        }
+    }
+    fn is_wanted_prop(&self, name: &str) -> bool {
+        if self.wanted_player_props.contains(&"X".to_string())
+            || self.wanted_player_props.contains(&"Y".to_string())
+            || self.wanted_player_props.contains(&"Z".to_string())
+        {
+            if name.contains("cell") || name.contains("m_vec") {
+                return true;
+            }
+        }
+        let temp = name.split(".").collect_vec();
+        let weap_prop_part = temp.last().unwrap_or(&"Whatever");
+        match TYPEHM.get(weap_prop_part) {
+            Some(PropType::Weapon) => return true,
+            _ => {}
+        };
+        if name.contains("CCSTeam.m_iTeamNum")
+            || name.contains("CCSPlayerPawn.m_iTeamNum")
+            || name.contains("CCSPlayerController.m_iTeamNum")
+            || name.contains("CCSPlayerController.m_iszPlayerName")
+            || name.contains("CCSPlayerController.m_steamID")
+            || name.contains("CCSPlayerController.m_hPlayerPawn")
+            || name.contains("CCSPlayerController.m_bPawnIsAlive")
+            || name.contains("m_hActiveWeapon")
+        {
+            return true;
+        }
+        if self.wanted_player_props.contains(&name.to_owned()) {
+            return true;
+        }
+        false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PropController;
+    use crate::collect_data::PropType;
+    use crate::prop_controller::{PropInfo, NORMAL_PROP_BASEID, TICK_ID, YAW_ID};
+    use crate::prop_controller::{BUTTONS_BASEID, PITCH_ID};
+    use crate::prop_controller::{STEAMID_ID, WEAPON_NAME_ID};
+    use crate::sendtables::Decoder::BaseDecoder;
+    use crate::sendtables::Field;
+    use crate::sendtables::FieldModel::FieldModelNOTSET;
+    use crate::sendtables::FieldType;
+    use ahash::AHashMap;
+
+    pub fn gen_default_field() -> Field {
+        Field {
+            var_name: "m_nRandomSeedOffset".to_string(),
+            var_type: "int32".to_string(),
+            send_node: "m_animationController.m_animGraphNetworkedVars".to_string(),
+            serializer_name: None,
+            encoder: "".to_string(),
+            encode_flags: 0,
+            bitcount: 0,
+            low_value: 0.0,
+            high_value: 0.0,
+            model: FieldModelNOTSET,
+            field_type: FieldType {
+                base_type: "int32".to_string(),
+                generic_type: None,
+                pointer: false,
+                count: 0,
+            },
+            serializer: None,
+            decoder: BaseDecoder,
+            base_decoder: None,
+            child_decoder: None,
+            should_parse: false,
+            prop_id: 0,
+            is_controller_prop: false,
+            controller_prop: None,
+            idx: 0,
+        }
+    }
+
+    #[test]
+    pub fn test_smoke_owner_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("SmokeGrenadeProjectile.m_nOwnerId", &mut f);
+        assert!(pc.special_ids.grenade_owner_id.is_some())
+    }
+
+    #[test]
+    pub fn test_smoke_owner_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("X", &mut f);
+        assert!(pc.special_ids.grenade_owner_id.is_none())
+    }
+    #[test]
+    pub fn test_custom_propinfos_weapon_name() {
+        let mut f = gen_default_field();
+        let mut pc =
+            PropController::new(vec!["weapon_name".to_string()], vec![], AHashMap::default());
+        pc.set_custom_propinfos();
+        let pi = pc.prop_infos[0].clone();
+        assert_eq!(
+            pi,
+            PropInfo {
+                id: WEAPON_NAME_ID,
+                prop_type: Some(PropType::Custom),
+                prop_name: "active_weapon_name".to_string(),
+                prop_friendly_name: "active_weapon_name".to_string(),
+            }
+        );
+    }
+    #[test]
+    pub fn test_custom_propinfos_A() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec!["A".to_string()], vec![], AHashMap::default());
+        pc.set_custom_propinfos();
+        let pi = pc.prop_infos[0].clone();
+        assert_eq!(
+            pi,
+            PropInfo {
+                id: BUTTONS_BASEID,
+                prop_type: Some(PropType::Button),
+                prop_name: "A".to_string(),
+                prop_friendly_name: "A".to_string(),
+            }
+        );
+    }
+    #[test]
+    pub fn test_custom_propinfos_steamid() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.set_custom_propinfos();
+        let pi = pc.prop_infos[1].clone();
+        assert_eq!(
+            pi,
+            PropInfo {
+                id: STEAMID_ID,
+                prop_type: None,
+                prop_name: "steamid".to_string(),
+                prop_friendly_name: "steamid".to_string(),
+            }
+        );
+    }
+    #[test]
+    pub fn test_custom_propinfos_tick() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.set_custom_propinfos();
+        let pi = pc.prop_infos[0].clone();
+        assert_eq!(
+            pi,
+            PropInfo {
+                id: TICK_ID,
+                prop_type: None,
+                prop_name: "tick".to_string(),
+                prop_friendly_name: "tick".to_string(),
+            }
+        );
+    }
+    #[test]
+    pub fn test_custom_propinfos_pitch() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec!["pitch".to_string()], vec![], AHashMap::default());
+        pc.set_custom_propinfos();
+        let pi = pc.prop_infos[0].clone();
+        assert_eq!(
+            pi,
+            PropInfo {
+                id: PITCH_ID,
+                prop_type: Some(PropType::Custom),
+                prop_name: "pitch".to_string(),
+                prop_friendly_name: "pitch".to_string(),
+            }
+        );
+    }
+    #[test]
+    pub fn test_custom_propinfos_yaw() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec!["yaw".to_string()], vec![], AHashMap::default());
+        pc.set_custom_propinfos();
+        let pi = pc.prop_infos[0].clone();
+        assert_eq!(
+            pi,
+            PropInfo {
+                id: YAW_ID,
+                prop_type: Some(PropType::Custom),
+                prop_name: "yaw".to_string(),
+                prop_friendly_name: "yaw".to_string(),
+            }
+        );
+    }
+    #[test]
+    pub fn test_special_ids_teamnum_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.team_team_num.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_teamnum_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellY", &mut f);
+        assert!(pc.special_ids.team_team_num.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_player_cell_x_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX", &mut f);
+        assert!(pc.special_ids.cell_x_player.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_player_cell_x_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.cell_x_player.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_player_cell_y_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellY", &mut f);
+        assert!(pc.special_ids.cell_y_player.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_player_cell_y_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.cell_y_player.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_player_cell_z_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellZ", &mut f);
+        assert!(pc.special_ids.cell_z_player.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_player_cell_Z_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.cell_z_player.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_player_offset_X_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX", &mut f);
+        assert!(pc.special_ids.cell_x_offset_player.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_player_offset_X_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.cell_x_offset_player.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_player_offset_Y_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY", &mut f);
+        assert!(pc.special_ids.cell_y_offset_player.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_player_offset_Y_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.cell_y_offset_player.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_player_offset_Z_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ", &mut f);
+        assert!(pc.special_ids.cell_z_offset_player.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_player_offset_Z_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.cell_z_offset_player.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_grenade_cell_X_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop(
+            "CSmokeGrenadeProjectile.CBodyComponentBaseAnimGraph.m_cellX",
+            &mut f,
+        );
+        assert!(pc.special_ids.m_cellX_grenade.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_grenade_cell_X_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.m_cellX_grenade.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_grenade_cell_Y_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop(
+            "CSmokeGrenadeProjectile.CBodyComponentBaseAnimGraph.m_cellY",
+            &mut f,
+        );
+        assert!(pc.special_ids.m_cellY_greande.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_grenade_cell_Y_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.m_cellY_greande.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_grenade_cell_Z_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop(
+            "CSmokeGrenadeProjectile.CBodyComponentBaseAnimGraph.m_cellZ",
+            &mut f,
+        );
+        assert!(pc.special_ids.m_cellZ_grenade.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_grenade_cell_Z_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.m_cellZ_grenade.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_item_def_idx_AK_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CAK47.m_iItemDefinitionIndex", &mut f);
+        assert!(pc.special_ids.item_def.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_item_def_idx_normal_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CWeaponNOVA.m_iItemDefinitionIndex", &mut f);
+        assert!(pc.special_ids.item_def.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_item_def_idx_AK_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("X", &mut f);
+        assert!(pc.special_ids.item_def.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_item_def_idx_normal_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("Y", &mut f);
+        assert!(pc.special_ids.item_def.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_eyeangles_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerPawn.m_angEyeAngles", &mut f);
+        assert!(pc.special_ids.eye_angles.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_eyeangles_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("Z", &mut f);
+        assert!(pc.special_ids.eye_angles.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_playercontroller_team() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerController.m_iTeamNum", &mut f);
+        assert!(pc.special_ids.teamnum.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_playercontroller_team_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("Z", &mut f);
+        assert!(pc.special_ids.eye_angles.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_playercontroller_name() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerController.m_iszPlayerName", &mut f);
+        assert!(pc.special_ids.player_name.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_playercontroller_name_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("Z", &mut f);
+        assert!(pc.special_ids.player_name.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_playercontroller_steamid() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerController.m_steamID", &mut f);
+        assert!(pc.special_ids.steamid.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_playercontroller_steamid_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("Z", &mut f);
+        assert!(pc.special_ids.steamid.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_playercontroller_player_pawn() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CCSPlayerController.m_hPlayerPawn", &mut f);
+        assert!(pc.special_ids.player_pawn.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_playercontroller_player_pawn_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("X", &mut f);
+        assert!(pc.special_ids.player_pawn.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_weapon_owner_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("CBasePlayerWeapon.m_nOwnerId", &mut f);
+        assert!(pc.special_ids.weapon_owner_pointer.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_weapon_owner_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("X", &mut f);
+        assert!(pc.special_ids.weapon_owner_pointer.is_none());
+    }
+    #[test]
+    pub fn test_special_ids_active_weapon_handle_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop(
+            "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon",
+            &mut f,
+        );
+        assert!(pc.special_ids.active_weapon.is_some());
+    }
+    #[test]
+    pub fn test_special_ids_active_weapon_handle_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec![], vec![], AHashMap::default());
+        pc.handle_prop("X", &mut f);
+        assert!(pc.special_ids.weapon_owner_pointer.is_none());
+    }
+    #[test]
+    pub fn test_weapon_prop_ammo_normal() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec!["m_iClip1".to_string()], vec![], AHashMap::default());
+        pc.handle_prop("CWeaponSCAR20.m_iClip1", &mut f);
+        let correct = PropInfo {
+            id: NORMAL_PROP_BASEID,
+            prop_type: Some(PropType::Weapon),
+            prop_friendly_name: "m_iClip1".to_string(),
+            prop_name: "m_iClip1".to_string(),
+        };
+        assert_eq!(pc.prop_infos[0], correct);
+    }
+    #[test]
+    pub fn test_weapon_prop_ammo_normal_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec!["m_iClip1".to_string()], vec![], AHashMap::default());
+        pc.handle_prop("CWeaponCSBase.m_iItemDefinitionIndex", &mut f);
+        let correct = PropInfo {
+            id: NORMAL_PROP_BASEID,
+            prop_type: Some(PropType::Weapon),
+            prop_friendly_name: "m_iClip1".to_string(),
+            prop_name: "m_iClip1".to_string(),
+        };
+        assert_eq!(pc.prop_infos.len(), 0);
+    }
+    #[test]
+    pub fn test_weapon_prop_ammo_ak() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec!["m_iClip1".to_string()], vec![], AHashMap::default());
+        pc.handle_prop("CAK47.m_iClip1", &mut f);
+        let correct = PropInfo {
+            id: NORMAL_PROP_BASEID,
+            prop_type: Some(PropType::Weapon),
+            prop_friendly_name: "m_iClip1".to_string(),
+            prop_name: "m_iClip1".to_string(),
+        };
+        assert_eq!(pc.prop_infos[0], correct);
+    }
+    #[test]
+    pub fn test_weapon_prop_ammo_ak_not_set() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec!["X".to_string()], vec![], AHashMap::default());
+        pc.handle_prop("CWeaponCSBase.m_iItemDefinitionIndex", &mut f);
+        let correct = PropInfo {
+            id: NORMAL_PROP_BASEID,
+            prop_type: Some(PropType::Weapon),
+            prop_friendly_name: "m_iClip1".to_string(),
+            prop_name: "m_iClip1".to_string(),
+        };
+        assert_eq!(pc.prop_infos.len(), 0);
+    }
+    #[test]
+    pub fn test_normal_prop_health() {
+        // "health" => "CCSPlayerPawn.m_iHealth",
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(
+            vec!["CCSPlayerPawn.m_iHealth".to_string()],
+            vec![],
+            AHashMap::default(),
+        );
+        pc.handle_prop("CCSPlayerPawn.m_iHealth", &mut f);
+        let correct = PropInfo {
+            id: NORMAL_PROP_BASEID,
+            prop_type: Some(PropType::Player),
+            prop_friendly_name: "CCSPlayerPawn.m_iHealth".to_string(),
+            prop_name: "CCSPlayerPawn.m_iHealth".to_string(),
+        };
+        assert_eq!(pc.prop_infos[0], correct);
+    }
+}

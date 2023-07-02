@@ -1,4 +1,4 @@
-use crate::sendtables::PropInfo;
+use crate::prop_controller::PropInfo;
 use ahash::HashMap;
 use serde::ser::SerializeMap;
 use serde::Serialize;

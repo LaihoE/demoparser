@@ -6,6 +6,7 @@ use crate::decoder::QfMapper;
 use crate::entities_utils::FieldPath;
 use crate::parser_settings::Parser;
 use crate::parser_thread_settings::SpecialIDs;
+use crate::prop_controller::PropController;
 use crate::q_float::QuantalizedFloat;
 use crate::sendtables::Decoder::*;
 use crate::sendtables::FieldModel::*;
@@ -53,7 +54,7 @@ pub struct Field {
 pub struct FieldInfo {
     pub decoder: Decoder,
     pub should_parse: bool,
-    pub df_pos: u32,
+    pub prop_id: u32,
     pub controller_prop: Option<ControllerProp>,
 }
 #[derive(Debug, Clone, Copy)]
@@ -80,21 +81,6 @@ impl fmt::Display for Decoder {
         // or, alternatively:
         // fmt::Debug::fmt(self, f)
     }
-}
-#[derive(Clone, Debug)]
-pub struct PropController {
-    pub id: u32,
-    pub wanted_player_props: Vec<String>,
-    pub wanted_prop_ids: Vec<u32>,
-    pub prop_infos: Vec<PropInfo>,
-    pub prop_name_to_path: AHashMap<String, [i32; 7]>,
-    pub path_to_prop_name: AHashMap<[i32; 7], String>,
-    pub name_to_id: AHashMap<String, u32>,
-    pub id_to_path: AHashMap<u32, [i32; 7]>,
-    pub id_to_name: AHashMap<u32, String>,
-    pub special_ids: SpecialIDs,
-    pub wanted_player_og_props: Vec<String>,
-    pub real_name_to_og_name: AHashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -195,7 +181,7 @@ impl Field {
                 return FieldInfo {
                     decoder: self.decoder,
                     should_parse: self.should_parse,
-                    df_pos: self.prop_id as u32,
+                    prop_id: self.prop_id as u32,
                     controller_prop: self.controller_prop,
                 };
             }
@@ -203,7 +189,7 @@ impl Field {
                 return FieldInfo {
                     decoder: self.decoder,
                     should_parse: self.should_parse,
-                    df_pos: self.prop_id as u32,
+                    prop_id: self.prop_id as u32,
                     controller_prop: self.controller_prop,
                 }
             }
@@ -213,14 +199,14 @@ impl Field {
                         return FieldInfo {
                             decoder: self.base_decoder.unwrap(),
                             should_parse: self.should_parse,
-                            df_pos: self.prop_id as u32,
+                            prop_id: self.prop_id as u32,
                             controller_prop: self.controller_prop,
                         };
                     }
                     return FieldInfo {
                         decoder: self.decoder,
                         should_parse: self.should_parse,
-                        df_pos: self.prop_id as u32,
+                        prop_id: self.prop_id as u32,
                         controller_prop: self.controller_prop,
                     };
                 } else {
@@ -237,14 +223,14 @@ impl Field {
                     return FieldInfo {
                         decoder: self.child_decoder.unwrap(),
                         should_parse: self.should_parse,
-                        df_pos: self.prop_id as u32,
+                        prop_id: self.prop_id as u32,
                         controller_prop: self.controller_prop,
                     };
                 } else {
                     return FieldInfo {
                         decoder: self.base_decoder.unwrap(),
                         should_parse: self.should_parse,
-                        df_pos: self.prop_id as u32,
+                        prop_id: self.prop_id as u32,
                         controller_prop: self.controller_prop,
                     };
                 }
@@ -261,7 +247,7 @@ impl Field {
                     return FieldInfo {
                         decoder: self.base_decoder.unwrap(),
                         should_parse: self.should_parse,
-                        df_pos: self.prop_id as u32,
+                        prop_id: self.prop_id as u32,
                         controller_prop: self.controller_prop,
                     };
                 }
@@ -631,6 +617,7 @@ impl Parser {
                                 }
                             }
                         }
+
                         if field.encoder == "qangle_precise" {
                             field.decoder = QanglePresDecoder;
                         }
@@ -652,371 +639,9 @@ impl Parser {
             }
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
-        prop_controller.set_custom_propinfos(wanted_props);
+        prop_controller.set_custom_propinfos();
         Ok((serializers, qf_mapper, prop_controller))
     }
-}
-impl PropController {
-    pub fn new(
-        wanted_player_props: Vec<String>,
-        wanted_player_props_og_names: Vec<String>,
-        real_name_to_og_name: AHashMap<String, String>,
-    ) -> Self {
-        PropController {
-            id: 0,
-            wanted_player_props: wanted_player_props,
-            wanted_prop_ids: vec![],
-            prop_infos: vec![],
-            prop_name_to_path: AHashMap::default(),
-            path_to_prop_name: AHashMap::default(),
-            name_to_id: AHashMap::default(),
-            id_to_path: AHashMap::default(),
-            special_ids: SpecialIDs::new(),
-            wanted_player_og_props: wanted_player_props_og_names,
-            id_to_name: AHashMap::default(),
-            real_name_to_og_name: real_name_to_og_name,
-        }
-    }
-    pub fn set_custom_propinfos(&mut self, wanted_player_props: Vec<String>) {
-        let mut button_names = BUTTONMAP.keys();
-        let mut someid = 8000000;
-        for bn in button_names {
-            if wanted_player_props.contains(&(bn.to_string())) {
-                self.prop_infos.push(PropInfo {
-                    id: someid,
-                    prop_type: Some(PropType::Button),
-                    prop_name: bn.to_string(),
-                    prop_friendly_name: bn.to_string(),
-                });
-                someid += 1;
-            }
-        }
-        if wanted_player_props.contains(&("weapon_name".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: 9999992,
-                prop_type: Some(PropType::Custom),
-                prop_name: "weapon_name".to_string(),
-                prop_friendly_name: "active_weapon_name".to_string(),
-            });
-        }
-        if wanted_player_props.contains(&("pitch".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: 7999993,
-                prop_type: Some(PropType::Custom),
-                prop_name: "pitch".to_string(),
-                prop_friendly_name: "pitch".to_string(),
-            });
-        }
-        if wanted_player_props.contains(&("yaw".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: 7999992,
-                prop_type: Some(PropType::Custom),
-                prop_name: "yaw".to_string(),
-                prop_friendly_name: "yaw".to_string(),
-            });
-        }
-        self.prop_infos.push(PropInfo {
-            id: 9999999,
-            prop_type: None,
-            prop_name: "tick".to_string(),
-            prop_friendly_name: "tick".to_string(),
-        });
-        self.prop_infos.push(PropInfo {
-            id: 9999998,
-            prop_type: None,
-            prop_name: "steamid".to_string(),
-            prop_friendly_name: "steamid".to_string(),
-        });
-        self.prop_infos.push(PropInfo {
-            id: 9999997,
-            prop_type: None,
-            prop_name: "name".to_string(),
-            prop_friendly_name: "name".to_string(),
-        });
-    }
-    pub fn find_prop_name_paths(&mut self, ser: &mut Serializer) {
-        self.traverse_fields(&mut ser.fields, vec![], ser.name.clone())
-    }
-    fn vec_to_arr(path: &Vec<i32>) -> [i32; 7] {
-        let mut arr = [0, 0, 0, 0, 0, 0, 0];
-        for (idx, val) in path.iter().enumerate() {
-            arr[idx] = *val;
-        }
-        arr
-    }
-    fn handle_normal_prop(&mut self, full_name: &str) {
-        self.prop_infos.push(PropInfo {
-            id: self.id,
-            prop_type: TYPEHM.get(&full_name).copied(),
-            prop_name: full_name.to_string(),
-            prop_friendly_name: self
-                .real_name_to_og_name
-                .get(&full_name.to_string())
-                .unwrap_or(&full_name.to_string())
-                .to_string(),
-        });
-    }
-    fn handle_weapon_prop(&mut self, weap_prop: &str, f: &mut Field) {
-        match self.name_to_id.get(weap_prop) {
-            // If we already have an id for prop of same name then use that
-            Some(id) => {
-                f.prop_id = *id as usize;
-                return;
-            }
-            None => match TYPEHM.get(&weap_prop) {
-                Some(t) => {
-                    self.name_to_id.insert(weap_prop.to_string(), self.id);
-                    self.prop_infos.push(PropInfo {
-                        id: self.id,
-                        prop_type: Some(t.clone()),
-                        prop_name: weap_prop.to_string(),
-                        prop_friendly_name: self
-                            .real_name_to_og_name
-                            .get(&weap_prop.to_string())
-                            .unwrap_or(&weap_prop.to_string())
-                            .to_string(),
-                    })
-                }
-                _ => panic!("weapon prop: {:?} not found", weap_prop),
-            },
-        };
-    }
-    fn handle_prop(&mut self, full_name: &str, f: &mut Field, arr: [i32; 7]) {
-        let split_at_dot: Vec<&str> = full_name.split(".").collect();
-        let weap_prop = split_at_dot.last().unwrap();
-
-        let is_wanted_normal_prop = self.wanted_player_props.contains(&full_name.to_string());
-        let is_wanted_weapon_prop = self.wanted_player_props.contains(&weap_prop.to_string());
-
-        if full_name.contains("CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev") {
-            f.should_parse = true;
-        }
-
-        if is_wanted_normal_prop && is_wanted_weapon_prop {
-            panic!("{:?} {:?}", full_name, weap_prop);
-        }
-
-        if full_name.contains("m_iItemDefinitionIndex")
-            && (full_name.contains("Weapon") || full_name.contains("AK"))
-        {
-            f.should_parse = true;
-            f.prop_id = 699999;
-            self.special_ids.item_def = Some(699999);
-            return;
-        }
-
-        if is_wanted_normal_prop {
-            self.handle_normal_prop(full_name);
-            self.name_to_id.insert(full_name.to_string(), self.id);
-        } else if is_wanted_weapon_prop {
-            self.handle_weapon_prop(weap_prop, f);
-            f.should_parse = true;
-        }
-        self.set_grenades(full_name, f);
-        self.set_custom(full_name, f);
-        self.match_names(full_name, f);
-
-        if is_wanted_normal_prop {
-            f.prop_id = self.id as usize;
-            f.should_parse = true;
-        }
-        self.id += 1;
-    }
-    fn set_custom(&mut self, full_name: &str, f: &mut Field) {}
-    fn match_names(&mut self, full_name: &str, f: &mut Field) {
-        match full_name {
-            "CCSTeam.m_iTeamNum" => self.special_ids.team_team_num = Some(self.id),
-            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX" => {
-                if self.wanted_player_props.contains(&"X".to_string()) {
-                    f.should_parse = true;
-                    self.special_ids.cell_x_player = Some(self.id);
-                    self.prop_infos.push(PropInfo {
-                        id: 9999944,
-                        prop_type: Some(PropType::Custom),
-                        prop_name: "X".to_string(),
-                        prop_friendly_name: "X".to_string(),
-                    });
-                }
-            }
-            "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => {
-                self.special_ids.buttons = Some(self.id);
-            }
-            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX" => {
-                self.special_ids.cell_x_offset_player = Some(self.id)
-            }
-            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellY" => {
-                if self.wanted_player_props.contains(&"Y".to_string()) {
-                    f.should_parse = true;
-                    self.special_ids.cell_y_player = Some(self.id);
-                    self.prop_infos.push(PropInfo {
-                        id: 9999945,
-                        prop_type: Some(PropType::Custom),
-                        prop_name: "Y".to_string(),
-                        prop_friendly_name: "Y".to_string(),
-                    });
-                }
-            }
-            "CCSPlayerPawn.m_angEyeAngles" => {
-                f.prop_id = self.id as usize;
-                f.should_parse = true;
-                self.special_ids.eye_angles = Some(self.id);
-            }
-            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY" => {
-                self.special_ids.cell_y_offset_player = Some(self.id)
-            }
-            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellZ" => {
-                self.special_ids.cell_z_player = Some(self.id)
-            }
-            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => {
-                self.special_ids.cell_z_offset_player = Some(self.id)
-            }
-            "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => {
-                self.special_ids.cell_z_offset_player = Some(self.id)
-            }
-            "CCSPlayerPawn.m_iTeamNum" => self.special_ids.player_team_pointer = Some(self.id),
-            "CBasePlayerWeapon.m_nOwnerId" => self.special_ids.weapon_owner_pointer = Some(self.id),
-            "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => {
-                self.special_ids.active_weapon = Some(self.id)
-            }
-            "CCSPlayerController.m_iTeamNum" => self.special_ids.teamnum = Some(self.id),
-            "CCSPlayerController.m_iszPlayerName" => self.special_ids.player_name = Some(self.id),
-            "CCSPlayerController.m_steamID" => self.special_ids.steamid = Some(self.id),
-            "CCSPlayerController.m_hPlayerPawn" => self.special_ids.player_pawn = Some(self.id),
-            _ => {}
-        };
-    }
-
-    fn set_grenades(&mut self, full_name: &str, f: &mut Field) {
-        if full_name.contains("Projectile.m_nOwnerId") {
-            if self.special_ids.grenade_owner_id.is_none() {
-                self.special_ids.grenade_owner_id = Some(self.id)
-            }
-            f.should_parse = true;
-            f.prop_id = self.special_ids.grenade_owner_id.unwrap() as usize;
-        };
-        if full_name.contains("Projectile.CBodyComponentBaseAnimGraph.m_vec") {
-            f.should_parse = true;
-            match full_name.chars().last() {
-                Some('X') => {
-                    if self.special_ids.m_vecX_grenade.is_none() {
-                        self.special_ids.m_vecX_grenade = Some(self.id);
-                    }
-                    f.prop_id = self.special_ids.m_vecX_grenade.unwrap() as usize;
-                }
-                Some('Y') => {
-                    if self.special_ids.m_vecY_greande.is_none() {
-                        self.special_ids.m_vecY_greande = Some(self.id);
-                    }
-                    f.prop_id = self.special_ids.m_vecY_greande.unwrap() as usize;
-                }
-                Some('Z') => {
-                    if self.special_ids.m_vecZ_grenade.is_none() {
-                        self.special_ids.m_vecZ_grenade = Some(self.id);
-                    }
-                    f.prop_id = self.special_ids.m_vecZ_grenade.unwrap() as usize;
-                }
-                _ => {}
-            }
-        }
-        if full_name.contains("Projectile.CBodyComponentBaseAnimGraph.m_cell") {
-            f.should_parse = true;
-            match full_name.chars().last() {
-                Some('X') => {
-                    if self.special_ids.m_cellX_grenade.is_none() {
-                        self.special_ids.m_cellX_grenade = Some(self.id);
-                    }
-                    f.prop_id = self.special_ids.m_cellX_grenade.unwrap() as usize;
-                }
-                Some('Y') => {
-                    if self.special_ids.m_cellY_greande.is_none() {
-                        self.special_ids.m_cellY_greande = Some(self.id);
-                    }
-                    f.prop_id = self.special_ids.m_cellY_greande.unwrap() as usize;
-                }
-                Some('Z') => {
-                    if self.special_ids.m_cellZ_grenade.is_none() {
-                        self.special_ids.m_cellZ_grenade = Some(self.id);
-                    }
-                    f.prop_id = self.special_ids.m_cellZ_grenade.unwrap() as usize;
-                }
-                _ => {}
-            }
-        }
-    }
-
-    fn traverse_fields(&mut self, fields: &mut Vec<Field>, mut path: Vec<i32>, ser_name: String) {
-        for (idx, f) in fields.iter_mut().enumerate() {
-            if let Some(ser) = &mut f.serializer {
-                let mut tmp = path.clone();
-                tmp.push(idx as i32);
-                self.traverse_fields(&mut ser.fields, tmp, ser_name.clone() + "." + &ser.name)
-            } else {
-                let mut tmp = path.clone();
-                tmp.push(idx as i32);
-                let arr = PropController::vec_to_arr(&tmp);
-                let full_name = ser_name.clone() + "." + &f.var_name;
-
-                if self.is_wanted_prop(&full_name) {
-                    f.should_parse = true;
-                    f.prop_id = self.id as usize;
-                }
-                self.handle_prop(&full_name, f, arr);
-                self.id_to_name.insert(self.id, full_name.clone());
-                self.id_to_path.insert(self.id, arr);
-                self.prop_name_to_path.insert(full_name.clone(), arr);
-                self.path_to_prop_name.insert(arr, full_name);
-                self.id += 1;
-            }
-        }
-    }
-    fn find_controller_prop_type(&self, name: &str) -> Option<ControllerProp> {
-        match name {
-            "CCSPlayerController.m_iTeamNum" => Some(ControllerProp::TeamNum),
-            "CCSPlayerController.m_iszPlayerName" => Some(ControllerProp::Name),
-            "CCSPlayerController.m_steamID" => Some(ControllerProp::SteamId),
-            "CCSPlayerController.m_hPlayerPawn" => Some(ControllerProp::PlayerEntityId),
-            _ => None,
-        }
-    }
-    fn is_wanted_prop(&self, name: &str) -> bool {
-        if self.wanted_player_props.contains(&"X".to_string())
-            || self.wanted_player_props.contains(&"Y".to_string())
-            || self.wanted_player_props.contains(&"Z".to_string())
-        {
-            if name.contains("cell") || name.contains("m_vec") {
-                return true;
-            }
-        }
-        let temp = name.split(".").collect_vec();
-        let weap_prop_part = temp.last().unwrap_or(&"Whatever");
-        match TYPEHM.get(weap_prop_part) {
-            Some(PropType::Weapon) => return true,
-            _ => {}
-        };
-        if name.contains("CCSTeam.m_iTeamNum")
-            || name.contains("CCSPlayerPawn.m_iTeamNum")
-            || name.contains("CCSPlayerController.m_iTeamNum")
-            || name.contains("CCSPlayerController.m_iszPlayerName")
-            || name.contains("CCSPlayerController.m_steamID")
-            || name.contains("CCSPlayerController.m_hPlayerPawn")
-            || name.contains("CCSPlayerController.m_bPawnIsAlive")
-            || name.contains("m_hActiveWeapon")
-        {
-            return true;
-        }
-        if self.wanted_player_props.contains(&name.to_owned()) {
-            return true;
-        }
-        false
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PropInfo {
-    pub id: u32,
-    pub prop_type: Option<PropType>,
-    pub prop_name: String,
-    pub prop_friendly_name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -1031,6 +656,7 @@ fn field_from_msg(
     serializer_msg: &CSVCMsg_FlattenedSerializer,
 ) -> Field {
     let field_type = find_field_type(&serializer_msg.symbols[field.var_type_sym() as usize]);
+
     let ser_name = match field.has_field_serializer_name_sym() {
         true => Some(serializer_msg.symbols[field.field_serializer_name_sym() as usize].clone()),
         false => None,
@@ -1062,59 +688,4 @@ fn field_from_msg(
         idx: 0,
     };
     f
-}
-
-#[cfg(test)]
-mod tests {
-    use super::PropController;
-    use crate::sendtables::Decoder::BaseDecoder;
-    use crate::sendtables::Field;
-    use crate::sendtables::FieldModel::FieldModelNOTSET;
-    use crate::sendtables::FieldType;
-
-    pub fn gen_default_field() -> Field {
-        Field {
-            var_name: "m_nRandomSeedOffset".to_string(),
-            var_type: "int32".to_string(),
-            send_node: "m_animationController.m_animGraphNetworkedVars".to_string(),
-            serializer_name: None,
-            encoder: "".to_string(),
-            encode_flags: 0,
-            bitcount: 0,
-            low_value: 0.0,
-            high_value: 0.0,
-            model: FieldModelNOTSET,
-            field_type: FieldType {
-                base_type: "int32".to_string(),
-                generic_type: None,
-                pointer: false,
-                count: 0,
-            },
-            serializer: None,
-            decoder: BaseDecoder,
-            base_decoder: None,
-            child_decoder: None,
-            should_parse: false,
-            prop_id: 0,
-            is_controller_prop: false,
-            controller_prop: None,
-            idx: 0,
-        }
-    }
-    /*
-    #[test]
-    pub fn test_smoke_owner_set() {
-        let mut f = gen_default_field();
-        let mut pc = PropController::new(vec![], vec![]);
-        pc.handle_prop("SmokeGrenadeProjectile.m_nOwnerId", &mut f);
-        assert!(pc.special_ids.grenade_owner_id.is_some())
-    }
-    #[test]
-    pub fn test_smoke_owner_not_set() {
-        let mut f = gen_default_field();
-        let mut pc = PropController::new(vec![], vec![]);
-        pc.handle_prop("X", &mut f);
-        assert!(pc.special_ids.grenade_owner_id.is_none())
-    }
-    */
 }

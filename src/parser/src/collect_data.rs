@@ -1,9 +1,8 @@
 use super::entities::PlayerMetaData;
 use super::variants::Variant;
 use crate::parser_thread_settings::ParserThread;
-use crate::sendtables::PropInfo;
+use crate::prop_controller::PropInfo;
 use crate::variants::PropColumn;
-use itertools::Itertools;
 use phf_macros::phf_map;
 use serde::Serialize;
 
@@ -46,7 +45,6 @@ impl ParserThread {
     pub fn get_prop_for_ent(&self, prop_id: &u32, entity_id: &i32) -> Option<Variant> {
         if let Some(ent) = self.entities.get(entity_id) {
             if let Some(prop) = ent.props.get(&prop_id) {
-                // println!("{:?}", ent.props);
                 return Some(prop.clone());
             }
         }
@@ -105,7 +103,6 @@ impl ParserThread {
                 };
                 return None;
             }
-
             _ => panic!("no type for: {:?}", prop_info),
         }
         None
@@ -393,7 +390,7 @@ fn coord_from_cell(cell: Option<Variant>, offset: Option<Variant>) -> Option<f32
     }
     None
 }
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PropType {
     Team,
     Rules,

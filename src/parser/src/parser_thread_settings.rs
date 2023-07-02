@@ -11,9 +11,9 @@ use crate::entities::PlayerMetaData;
 use crate::other_netmessages::Class;
 use crate::parser::DemoOutput;
 use crate::parser::ParserThreadInput;
+use crate::prop_controller::PropController;
 use crate::sendtables::FieldInfo;
 use crate::sendtables::FieldModel;
-use crate::sendtables::PropController;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
@@ -37,7 +37,6 @@ pub struct ParserThread {
     pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,
     pub qf_mapper: Arc<QfMapper>,
     pub prop_controller: Arc<PropController>,
-    //pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_by_id: Arc<AHashMap<u32, Class>>,
     pub cls_bits: Option<u32>,
@@ -57,7 +56,6 @@ pub struct ParserThread {
     pub packets_parsed: u32,
     pub cnt: AHashMap<FieldModel, u32>,
     pub projectile_records: Vec<ProjectileRecord>,
-    //pub qf_map: &'a QfMapper,
     pub wanted_ticks: AHashSet<i32>,
 
     // Output from parsing
@@ -164,7 +162,7 @@ impl ParserThread {
             ge_list: input.ge_list.clone(),
             bytes: input.settings.bytes,
             cls_by_id: input.cls_by_id,
-            entities: AHashMap::default(),
+            entities: AHashMap::with_capacity(512),
             cls_bits: None,
             tick: -99999,
             players: BTreeMap::default(),
@@ -180,7 +178,7 @@ impl ParserThread {
                 FieldInfo {
                     decoder: crate::sendtables::Decoder::NoscaleDecoder,
                     should_parse: false,
-                    df_pos: 0,
+                    prop_id: 0,
                     controller_prop: None
                 };
                 8192

@@ -9,6 +9,7 @@ pub mod parser;
 pub mod parser_settings;
 pub mod parser_thread_settings;
 pub mod parser_threads;
+pub mod prop_controller;
 pub mod q_float;
 pub mod read_bits;
 pub mod read_bytes;

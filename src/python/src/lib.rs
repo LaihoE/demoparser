@@ -37,13 +37,10 @@ use std::sync::Arc;
 impl DemoParser {
     #[new]
     pub fn py_new(demo_path: String) -> PyResult<Self> {
-        let file = File::open(demo_path.clone()).unwrap();
-        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-        let huf = create_huffman_lookup_table();
-        Ok(DemoParser {
-            path: demo_path,
-            bytes: mmap,
-        })
+        // let file = File::open(demo_path.clone()).unwrap();
+        // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+        // let huf = create_huffman_lookup_table();
+        Ok(DemoParser { path: demo_path })
     }
 
     /// Parses header message (different from the first 16 bytes of the file)
@@ -529,7 +526,6 @@ impl DemoParser {
         for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
-
         let file = File::open(self.path.clone())?;
         let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
         let arc_huf = Arc::new(create_huffman_lookup_table());
@@ -660,7 +656,6 @@ impl DemoParser {
                     Some(VarVec::I32(data)) => {
                         let before = Instant::now();
                         all_series.push(arr_to_py(Box::new(Int32Array::from(data))).unwrap());
-                        println!("{:2?}", before.elapsed());
                     }
                     Some(VarVec::U64(data)) => {
                         all_series.push(arr_to_py(Box::new(UInt64Array::from(data))).unwrap());
@@ -733,7 +728,6 @@ pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
 #[pyclass]
 struct DemoParser {
     path: String,
-    bytes: memmap2::Mmap,
 }
 
 pub fn parse_kwargs_ticks(kwargs: Option<&PyDict>) -> (Vec<u64>, Vec<i32>) {
@@ -926,10 +920,7 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
             Some(Variant::U32(u)) => Some(Variant::U32(*u)),
             None => None,
             _ => {
-                return Err(DemoParserError::UnknownGameEventVariant(
-                    pair.name.clone(),
-                    pair.data.clone(),
-                ));
+                return Err(DemoParserError::UnknownGameEventVariant(pair.name.clone()));
             }
         });
     }
