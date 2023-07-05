@@ -12,6 +12,10 @@ const PITCH_ID: u32 = 3;
 const TICK_ID: u32 = 4;
 const STEAMID_ID: u32 = 5;
 const NAME_ID: u32 = 6;
+const PLAYER_X_ID: u32 = 7;
+const PLAYER_Y_ID: u32 = 8;
+const PLAYER_Z_ID: u32 = 9;
+
 const BUTTONS_BASEID: u32 = 100000;
 const NORMAL_PROP_BASEID: u32 = 1000;
 
@@ -98,6 +102,30 @@ impl PropController {
                 prop_friendly_name: "yaw".to_string(),
             });
         }
+        if self.wanted_player_props.contains(&("X".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: PLAYER_X_ID,
+                prop_type: Some(PropType::Custom),
+                prop_name: "X".to_string(),
+                prop_friendly_name: "X".to_string(),
+            });
+        }
+        if self.wanted_player_props.contains(&("Y".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: PLAYER_Y_ID,
+                prop_type: Some(PropType::Custom),
+                prop_name: "Y".to_string(),
+                prop_friendly_name: "Y".to_string(),
+            });
+        }
+        if self.wanted_player_props.contains(&("Z".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: PLAYER_Z_ID,
+                prop_type: Some(PropType::Custom),
+                prop_name: "Z".to_string(),
+                prop_friendly_name: "Z".to_string(),
+            });
+        }
         self.prop_infos.push(PropInfo {
             id: TICK_ID,
             prop_type: Some(PropType::Custom),
@@ -160,9 +188,10 @@ impl PropController {
     pub fn handle_prop(&mut self, full_name: &str, f: &mut Field) {
         // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]
         let split_at_dot: Vec<&str> = full_name.split(".").collect();
-        let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK")) && !split_at_dot[0].contains("Player");
-        let is_projectile_prop =
-            (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade")) && !split_at_dot[0].contains("Player");
+        let is_weapon_prop =
+            (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK")) && !split_at_dot[0].contains("Player");
+        let is_projectile_prop = (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade"))
+            && !split_at_dot[0].contains("Player");
         let is_grenade_or_weapon = is_weapon_prop || is_projectile_prop;
 
         // Strip first part of name from grenades and weapons.

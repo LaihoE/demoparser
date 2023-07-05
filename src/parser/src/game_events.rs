@@ -13,7 +13,14 @@ use protobuf::Message;
 use serde::ser::SerializeMap;
 use serde::Serialize;
 
-static INTERNALEVENTFIELDS: &'static [&str] = &["userid", "attacker", "assister", "userid_pawn", "attacker_pawn", "assister_pawn"];
+static INTERNALEVENTFIELDS: &'static [&str] = &[
+    "userid",
+    "attacker",
+    "assister",
+    "userid_pawn",
+    "attacker_pawn",
+    "assister_pawn",
+];
 const ENTITYIDNONE: i32 = 2047;
 
 impl Parser {
@@ -43,10 +50,7 @@ impl ParserThread {
             }
         };
         // Used to count how many of each event in this demo. Cheap so do it always
-        self.game_events_counter
-            .entry(event_desc.name.as_ref().unwrap().clone())
-            .and_modify(|counter| *counter += 1)
-            .or_insert(1);
+        self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
         // Return if this is not our wanted event. (user can only request one event per demo)
         // This could change in the future.
         if event_desc.name != self.wanted_event {

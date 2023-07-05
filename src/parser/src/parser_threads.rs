@@ -4,6 +4,7 @@ use crate::netmessage_types::netmessage_type_from_int;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
 use bitter::BitReader;
+use csgoproto::cstrike15_usermessages::CCSUsrMsg_VoiceMask;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
 use netmessage_types::NetmessageType::*;
@@ -117,6 +118,7 @@ impl ParserThread {
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
                 net_SetConVar => self.parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
+
                 _ => Ok(()),
             };
             ok?

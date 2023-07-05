@@ -38,6 +38,7 @@ fn main() {
 
     for path in dir {
         c += 1;
+
         let before = Instant::now();
 
         if c > 30 {

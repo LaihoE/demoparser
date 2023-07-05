@@ -47,7 +47,7 @@ pub struct ParserThread {
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
     pub rules_entity_id: Option<i32>,
-    pub game_events_counter: AHashMap<String, i32>,
+    pub game_events_counter: AHashSet<String>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub paths: Vec<FieldInfo>,
     pub projectiles: AHashSet<i32, RandomState>,
@@ -149,7 +149,7 @@ impl ParserThread {
         Ok(ParserThread {
             projectile_records: vec![],
             parse_all_packets: input.parse_all_packets,
-            wanted_ticks: AHashSet::default(),
+            wanted_ticks: input.wanted_ticks,
             prop_controller: input.prop_controller,
             qf_mapper: input.qfmap,
             fullpackets_parsed: 0,
@@ -182,7 +182,7 @@ impl ParserThread {
                 8192
             ],
             teams: Teams::new(),
-            game_events_counter: AHashMap::default(),
+            game_events_counter: AHashSet::default(),
             parse_projectiles: input.settings.parse_projectiles,
             rules_entity_id: None,
             convars: AHashMap::default(),

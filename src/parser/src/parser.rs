@@ -15,6 +15,7 @@ use crate::read_bits::Bitreader;
 use crate::variants::PropColumn;
 use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
+use ahash::AHashSet;
 use bitter::BitReader;
 use csgoproto::demo::CDemoClassInfo;
 use csgoproto::demo::CDemoFileHeader;
@@ -39,7 +40,7 @@ pub struct DemoOutput {
     pub convars: AHashMap<String, String>,
     pub header: Option<AHashMap<String, String>>,
     pub player_md: Vec<PlayerEndMetaData>,
-    pub game_events_counter: AHashMap<String, i32>,
+    pub game_events_counter: AHashSet<String>,
     pub prop_info: Arc<PropController>,
     pub projectiles: Vec<ProjectileRecord>,
     pub ptr: usize,
@@ -56,6 +57,8 @@ impl Parser {
             qfmap: self.qf_mapper.clone(),
             ge_list: self.ge_list.clone(),
             parse_all_packets: parse_all,
+            // arc?
+            wanted_ticks: self.wanted_ticks.clone(),
         }
     }
 
@@ -173,6 +176,8 @@ impl Parser {
             outputs.sort_by_key(|x| x.ptr);
             let mut dfs = outputs.iter().map(|x| x.df.clone()).collect();
             let all_dfs_combined = self.combine_dfs(&mut dfs);
+            let all_game_events: AHashSet<String> =
+                AHashSet::from_iter(outputs.iter().flat_map(|x| x.game_events_counter.iter().cloned()));
             DemoOutput {
                 chat_messages: outputs.iter().flat_map(|x| x.chat_messages.clone()).collect(),
                 item_drops: outputs.iter().flat_map(|x| x.item_drops.clone()).collect(),
@@ -182,7 +187,7 @@ impl Parser {
                 convars: outputs.iter().flat_map(|x| x.convars.clone()).collect(),
                 df: all_dfs_combined,
                 header: Some(self.header.clone()),
-                game_events_counter: AHashMap::default(),
+                game_events_counter: all_game_events,
                 prop_info: self.prop_controller.clone(),
                 projectiles: outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
                 ptr: self.ptr,
@@ -259,8 +264,10 @@ impl Parser {
             .insert("demo_version_guid".to_string(), header.demo_version_guid().to_string());
         self.header
             .insert("network_protocol".to_string(), header.network_protocol().to_string());
-        self.header.insert("server_name".to_string(), header.server_name().to_string());
-        self.header.insert("client_name".to_string(), header.client_name().to_string());
+        self.header
+            .insert("server_name".to_string(), header.server_name().to_string());
+        self.header
+            .insert("client_name".to_string(), header.client_name().to_string());
         self.header.insert("map_name".to_string(), header.map_name().to_string());
         self.header
             .insert("game_directory".to_string(), header.game_directory().to_string());
@@ -324,6 +331,7 @@ pub struct ParserThreadInput {
     pub qfmap: Arc<QfMapper>,
     pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,
     pub parse_all_packets: bool,
+    pub wanted_ticks: AHashSet<i32>,
 }
 
 pub struct ClassInfoThreadResult {

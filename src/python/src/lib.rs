@@ -109,22 +109,20 @@ impl DemoParser {
 
         Ok(output.convars.to_object(py))
     }
-    /// Returns the names and frequencies of game events during the game.
-    ///
-    /// Example: {"player_death": 43, "bomb_planted": 4 ...}
-    /*
+    /// Returns the names of game events present in the demo
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
         let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
             bytes: arc_mmap.clone(),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: None,
+            wanted_event: Some("".to_string()),
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -138,15 +136,10 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-
-        // Sort by freq
-        let mut v: Vec<_> = parser.game_events_counter.iter().collect();
-        v.sort_by(|x, y| x.1.cmp(&y.1));
-        let h = HashMap::from_iter(v);
-        let dict = pyo3::Python::with_gil(|py| h.to_object(py));
-        Ok(dict)
+        let ge = pyo3::Python::with_gil(|py| output.game_events_counter.to_object(py));
+        Ok(ge)
     }
-    */
+
     /// Returns all coordinates of all grenades along with info about thrower.
     ///
     /// Example:
@@ -566,6 +559,7 @@ impl DemoParser {
             all_series.push(py_series);
         }
         if rows == 0 {
+            // Maybe remove this? kinda annoying to use if some demos have events
             return Err(PyIndexError::new_err(format!(
                 "No {:?} events found!",
                 event_name.unwrap()
@@ -594,7 +588,6 @@ impl DemoParser {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        use std::sync::Arc;
         let file = File::open(self.path.clone()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
@@ -615,7 +608,7 @@ impl DemoParser {
             wanted_other_props_og_names: vec![],
             wanted_event: None,
             parse_ents: true,
-            wanted_ticks: vec![],
+            wanted_ticks: wanted_ticks,
             parse_projectiles: false,
             only_header: true,
             count_props: false,

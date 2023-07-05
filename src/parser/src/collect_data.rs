@@ -33,7 +33,10 @@ impl ParserThread {
             for prop_info in &self.prop_controller.prop_infos {
                 // All values come trough here. None if cant be found.
                 let prop = self.find_prop(prop_info, entity_id, player);
-                self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(prop);
+                self.output
+                    .entry(prop_info.id)
+                    .or_insert_with(|| PropColumn::new())
+                    .push(prop);
             }
         }
     }

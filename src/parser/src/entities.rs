@@ -256,7 +256,8 @@ impl ParserThread {
             },
             None => None,
         };
-        let player_entid = match self.get_prop_for_ent(self.prop_controller.special_ids.player_pawn.as_ref().unwrap(), entity_id) {
+        let player_entid = match self.get_prop_for_ent(self.prop_controller.special_ids.player_pawn.as_ref().unwrap(), entity_id)
+        {
             Some(player_entid) => match player_entid {
                 Variant::U32(handle) => Some((handle & 0x7FF) as i32),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
@@ -287,7 +288,6 @@ impl ParserThread {
         // Both of these are not used. Don't think they are interesting for the parser
         let _serial = bitreader.read_nbits(NSERIALBITS)?;
         let _unknown = bitreader.read_varint();
-        // println!("{:?} {:?}", _serial, _unknown);
 
         let entity_type = self.check_entity_type(&cls_id)?;
         match entity_type {
