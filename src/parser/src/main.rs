@@ -19,7 +19,7 @@ fn x() {
 
 fn main() {
     x();
-    let wanted_props = vec!["m_iClip1".to_string()];
+    let wanted_props = vec!["X".to_string(), "yaw".to_string()];
     // let bytes = fs::read(demo_path).unwrap();
     // let file = File::open(demo_path).unwrap();
     // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
@@ -51,7 +51,7 @@ fn main() {
             bytes: arc_bytes.clone(),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            wanted_event: Some("player_death".to_string()),
+            wanted_event: None,
             // wanted_event: None,
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),

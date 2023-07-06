@@ -5,10 +5,7 @@ use crate::netmessage_types;
 use crate::netmessage_types::netmessage_type_from_int;
 use crate::parser_settings::Parser;
 use crate::parser_settings::ParserInputs;
-use crate::parser_thread_settings::ChatMessageRecord;
-use crate::parser_thread_settings::EconItem;
-use crate::parser_thread_settings::ParserThread;
-use crate::parser_thread_settings::PlayerEndMetaData;
+use crate::parser_thread_settings::*;
 use crate::parser_threads::demo_cmd_type_from_int;
 use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
@@ -47,7 +44,7 @@ pub struct DemoOutput {
 }
 
 impl Parser {
-    fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
+    pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
         ParserThreadInput {
             offset: offset,
             settings: self.settings.clone(),

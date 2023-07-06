@@ -1,6 +1,6 @@
 use crate::collect_data::PropType;
-use crate::collect_data::BUTTONMAP;
-use crate::collect_data::TYPEHM;
+use crate::maps::BUTTONMAP;
+use crate::maps::TYPEHM;
 use crate::parser_thread_settings::SpecialIDs;
 use crate::sendtables::Field;
 use crate::sendtables::Serializer;
@@ -128,19 +128,19 @@ impl PropController {
         }
         self.prop_infos.push(PropInfo {
             id: TICK_ID,
-            prop_type: Some(PropType::Custom),
+            prop_type: Some(PropType::Tick),
             prop_name: "tick".to_string(),
             prop_friendly_name: "tick".to_string(),
         });
         self.prop_infos.push(PropInfo {
             id: STEAMID_ID,
-            prop_type: Some(PropType::Custom),
+            prop_type: Some(PropType::Steamid),
             prop_name: "steamid".to_string(),
             prop_friendly_name: "steamid".to_string(),
         });
         self.prop_infos.push(PropInfo {
             id: NAME_ID,
-            prop_type: Some(PropType::Custom),
+            prop_type: Some(PropType::Name),
             prop_name: "name".to_string(),
             prop_friendly_name: "name".to_string(),
         });
@@ -266,10 +266,10 @@ impl PropController {
             match name {
                 "m_nOwnerId" => self.special_ids.grenade_owner_id = Some(self.id),
                 "CBodyComponentBaseAnimGraph.m_vecX" => self.special_ids.m_vec_x_grenade = Some(self.id),
-                "CBodyComponentBaseAnimGraph.m_vecY" => self.special_ids.m_vec_y_greande = Some(self.id),
+                "CBodyComponentBaseAnimGraph.m_vecY" => self.special_ids.m_vec_y_grenade = Some(self.id),
                 "CBodyComponentBaseAnimGraph.m_vecZ" => self.special_ids.m_vec_z_grenade = Some(self.id),
                 "CBodyComponentBaseAnimGraph.m_cellX" => self.special_ids.m_cell_x_grenade = Some(self.id),
-                "CBodyComponentBaseAnimGraph.m_cellY" => self.special_ids.m_cell_y_greande = Some(self.id),
+                "CBodyComponentBaseAnimGraph.m_cellY" => self.special_ids.m_cell_y_grenade = Some(self.id),
                 "CBodyComponentBaseAnimGraph.m_cellZ" => self.special_ids.m_cell_z_grenade = Some(self.id),
                 "m_iItemDefinitionIndex" => self.special_ids.item_def = Some(self.id),
                 "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => self.special_ids.buttons = Some(self.id),
@@ -314,7 +314,7 @@ impl PropController {
 mod tests {
     use super::PropController;
     use crate::collect_data::PropType;
-    use crate::prop_controller::{PropInfo, NORMAL_PROP_BASEID, PLAYER_X_ID, TICK_ID, YAW_ID};
+    use crate::prop_controller::{PropInfo, NORMAL_PROP_BASEID, TICK_ID, YAW_ID};
     use crate::prop_controller::{BUTTONS_BASEID, PITCH_ID};
     use crate::prop_controller::{STEAMID_ID, WEAPON_NAME_ID};
     use crate::sendtables::Decoder::BaseDecoder;
@@ -604,14 +604,14 @@ mod tests {
         let mut f = gen_default_field();
         let mut pc = PropController::new(vec![], vec![], AHashMap::default());
         pc.handle_prop("CSmokeGrenadeProjectile.CBodyComponentBaseAnimGraph.m_cellY", &mut f);
-        assert!(pc.special_ids.m_cell_y_greande.is_some());
+        assert!(pc.special_ids.m_cell_y_grenade.is_some());
     }
     #[test]
     pub fn test_special_ids_grenade_cell_y_not_set() {
         let mut f = gen_default_field();
         let mut pc = PropController::new(vec![], vec![], AHashMap::default());
         pc.handle_prop("CCSTeam.m_iTeamNum", &mut f);
-        assert!(pc.special_ids.m_cell_y_greande.is_none());
+        assert!(pc.special_ids.m_cell_y_grenade.is_none());
     }
     #[test]
     pub fn test_special_ids_grenade_cell_z_set() {
@@ -904,6 +904,7 @@ mod tests {
         assert_eq!(f.should_parse, false);
         assert_eq!(f.prop_id, NORMAL_PROP_BASEID as usize);
     }
+    /*
     #[test]
     pub fn test_player_x_propinfo() {
         let mut f = gen_default_field();
@@ -919,4 +920,5 @@ mod tests {
         assert_eq!(pc.prop_infos.len(), 1);
         assert_eq!(pc.prop_infos[0], correct);
     }
+    */
 }

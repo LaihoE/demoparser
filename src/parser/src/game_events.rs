@@ -181,9 +181,8 @@ impl ParserThread {
                 });
                 continue;
             }
-
             let prop = match self.players.get(&entity_id) {
-                Some(player_md) => self.find_prop(&prop_info, &entity_id, player_md),
+                Some(player_md) => Some(self.find_prop(&prop_info, &entity_id, player_md).unwrap()),
                 None => None,
             };
             match prop {
@@ -242,7 +241,7 @@ impl ParserThread {
         }
     }
 }
-
+// what is this shit
 fn parse_key(key: &Key_t) -> Option<Variant> {
     match key.type_() {
         1 => Some(Variant::String(key.val_string().to_owned())),

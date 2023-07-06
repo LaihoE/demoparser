@@ -3,7 +3,7 @@ use ahash::HashMap;
 use serde::ser::SerializeMap;
 use serde::Serialize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Variant {
     Bool(bool),
     U32(u32),

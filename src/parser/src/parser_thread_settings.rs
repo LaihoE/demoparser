@@ -213,11 +213,11 @@ pub struct SpecialIDs {
     pub item_def: Option<u32>,
 
     pub m_vec_x_grenade: Option<u32>,
-    pub m_vec_y_greande: Option<u32>,
+    pub m_vec_y_grenade: Option<u32>,
     pub m_vec_z_grenade: Option<u32>,
 
     pub m_cell_x_grenade: Option<u32>,
-    pub m_cell_y_greande: Option<u32>,
+    pub m_cell_y_grenade: Option<u32>,
     pub m_cell_z_grenade: Option<u32>,
 
     pub grenade_owner_id: Option<u32>,
@@ -243,10 +243,10 @@ impl SpecialIDs {
             active_weapon: None,
             item_def: None,
             m_cell_x_grenade: None,
-            m_cell_y_greande: None,
+            m_cell_y_grenade: None,
             m_cell_z_grenade: None,
             m_vec_x_grenade: None,
-            m_vec_y_greande: None,
+            m_vec_y_grenade: None,
             m_vec_z_grenade: None,
             grenade_owner_id: None,
             buttons: None,

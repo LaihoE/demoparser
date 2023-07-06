@@ -1,10 +1,93 @@
 use super::entities::PlayerMetaData;
 use super::variants::Variant;
+use crate::maps::BUTTONMAP;
+use crate::maps::WEAPINDICIES;
 use crate::parser_thread_settings::ParserThread;
 use crate::prop_controller::PropInfo;
 use crate::variants::PropColumn;
-use phf_macros::phf_map;
 use serde::Serialize;
+use std::fmt;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PropType {
+    Team,
+    Rules,
+    Custom,
+    Controller,
+    Player,
+    PlayerVec,
+    Weapon,
+    Button,
+    Name,
+    Steamid,
+    Tick,
+}
+#[derive(Debug, PartialEq)]
+// While this is an error, its very common and doesn't exactly signal
+// that anything went "wrong", just that prop was not found.
+// We can do this cause rusts errors like these are very cheap :) (not ok with exceptions).
+// Serves mostly as help for debugging.
+// The point is to be able to track why a prop was not found, without
+// having to go and add a bunch of prints everywhere
+pub enum PropCollectionError {
+    PlayerSpecialIDCellXMissing,
+    PlayerSpecialIDCellYMissing,
+    PlayerSpecialIDCellZMissing,
+    PlayerSpecialIDOffsetXMissing,
+    PlayerSpecialIDOffsetYMissing,
+    PlayerSpecialIDOffsetZMissing,
+
+    GrenadeSpecialIDCellXMissing,
+    GrenadeSpecialIDCellYMissing,
+    GrenadeSpecialIDCellZMissing,
+    GrenadeSpecialIDOffsetXMissing,
+    GrenadeSpecialIDOffsetYMissing,
+    GrenadeSpecialIDOffsetZMissing,
+
+    CoordinateOffsetNone,
+    CoordinateCellNone,
+    CoordinateIncorrectTypes,
+    CoordinateBothNone,
+
+    GrenadeOffsetVariantNone,
+    PlayerMetaDataNameNone,
+    ButtonsSpecialIDNone,
+    ButtonsMapNoEntryFound,
+    GetPropFromEntEntityNotFound,
+    GetPropFromEntPropNotFound,
+    ButtonMaskNotU64Variant,
+    RulesEntityIdNotSet,
+    ControllerEntityIdNotSet,
+
+    SpecialidsEyeAnglesNotSet,
+    SpecialidsItemDefNotSet,
+
+    EyeAnglesWrongVariant,
+    WeaponIdxMappingNotFound,
+    WeaponDefVariantWrongType,
+
+    SpecialidsPlayerTeamPointerNotSet,
+    TeamNumIncorrectVariant,
+    IllegalTeamValue,
+    TeamEntityIdNotSet,
+
+    GrenadeOwnerIdNotSet,
+    GrenadeOwnerIdPropIncorrectVariant,
+
+    PlayerNotFound,
+    SpecialidsActiveWeaponNotSet,
+    WeaponHandleIncorrectVariant,
+}
+// DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
+const CELL_BITS: i32 = 9;
+const MAX_COORD: f32 = (1 << 14) as f32;
+
+impl std::error::Error for PropCollectionError {}
+impl fmt::Display for PropCollectionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ProjectileRecord {
@@ -32,116 +115,158 @@ impl ParserThread {
         for (entity_id, player) in &self.players {
             for prop_info in &self.prop_controller.prop_infos {
                 // All values come trough here. None if cant be found.
-                let prop = self.find_prop(prop_info, entity_id, player);
-                self.output
-                    .entry(prop_info.id)
-                    .or_insert_with(|| PropColumn::new())
-                    .push(prop);
-            }
-        }
-    }
-    pub fn get_prop_for_ent(&self, prop_id: &u32, entity_id: &i32) -> Option<Variant> {
-        if let Some(ent) = self.entities.get(entity_id) {
-            if let Some(prop) = ent.props.get(&prop_id) {
-                return Some(prop.clone());
-            }
-        }
-        None
-    }
-    pub fn find_prop(&self, prop_info: &PropInfo, entity_id: &i32, player: &PlayerMetaData) -> Option<Variant> {
-        // Early exit these metadata props
-        match prop_info.prop_name.as_str() {
-            "tick" => return Some(Variant::I32(self.tick)),
-            "steamid" => match player.steamid {
-                Some(steamid) => return Some(Variant::U64(steamid)),
-                _ => return Some(Variant::U64(0)),
-            },
-            "name" => match &player.name {
-                Some(name) => return Some(Variant::String(name.to_string())),
-                _ => return None,
-            },
-            _ => {}
-        }
-
-        match prop_info.prop_type {
-            Some(PropType::Team) => return self.find_team_prop(&prop_info.id, &entity_id),
-            Some(PropType::Custom) => return self.create_custom_prop(prop_info.prop_name.as_str(), entity_id),
-            Some(PropType::Weapon) => return self.find_weapon_prop(&prop_info.id, &entity_id),
-            Some(PropType::Controller) => match player.controller_entid {
-                Some(entid) => return self.get_prop_for_ent(&prop_info.id, &entid),
-                None => return None,
-            },
-            Some(PropType::Rules) => match self.rules_entity_id {
-                Some(rules_entid) => return self.get_prop_for_ent(&prop_info.id, &rules_entid),
-                None => return None,
-            },
-            Some(PropType::Player) => {
-                return self.get_prop_for_ent(&prop_info.id, &entity_id);
-            }
-            Some(PropType::Button) => {
-                if let Some(button_id) = self.prop_controller.special_ids.buttons {
-                    if let Some(Variant::U64(button_mask)) = self.get_prop_for_ent(&button_id, &entity_id) {
-                        if let Some(flag) = BUTTONMAP.get(&prop_info.prop_name) {
-                            return Some(Variant::Bool(button_mask & flag != 0));
-                        }
+                match self.find_prop(prop_info, entity_id, player) {
+                    Ok(prop) => {
+                        self.output
+                            .entry(prop_info.id)
+                            .or_insert_with(|| PropColumn::new())
+                            .push(Some(prop));
+                    }
+                    Err(e) => {
+                        println!("{:?}", e);
+                        self.output
+                            .entry(prop_info.id)
+                            .or_insert_with(|| PropColumn::new())
+                            .push(None);
                     }
                 }
-                return None;
             }
+        }
+    }
+    pub fn find_prop(
+        &self,
+        prop_info: &PropInfo,
+        entity_id: &i32,
+        player: &PlayerMetaData,
+    ) -> Result<Variant, PropCollectionError> {
+        match prop_info.prop_type {
+            Some(PropType::Tick) => return self.create_tick(),
+            Some(PropType::Name) => return self.create_name(player),
+            Some(PropType::Steamid) => return self.create_steamid(player),
+            Some(PropType::Player) => return self.get_prop_from_ent(&prop_info.id, &entity_id),
+            Some(PropType::Team) => return self.find_team_prop(&prop_info.id, &entity_id),
+            Some(PropType::Custom) => self.create_custom_prop(prop_info.prop_name.as_str(), entity_id),
+            Some(PropType::Weapon) => return self.find_weapon_prop(&prop_info.id, &entity_id),
+            Some(PropType::Button) => return self.get_button_prop(&prop_info, &entity_id),
+            Some(PropType::Controller) => return self.get_controller_prop(prop_info, player),
+            Some(PropType::Rules) => return self.get_rules_prop(prop_info),
             _ => panic!("no type for: {:?}", prop_info),
         }
     }
-    pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
+    pub fn get_prop_from_ent(&self, prop_id: &u32, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        match self.entities.get(entity_id) {
+            None => return Err(PropCollectionError::GetPropFromEntEntityNotFound),
+            Some(e) => match e.props.get(&prop_id) {
+                None => return Err(PropCollectionError::GetPropFromEntPropNotFound),
+                Some(prop) => return Ok(prop.clone()),
+            },
+        }
+    }
+    fn create_tick(&self) -> Result<Variant, PropCollectionError> {
+        // This can't actually fail
+        return Ok(Variant::I32(self.tick));
+    }
+    fn create_steamid(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        match player.steamid {
+            Some(steamid) => return Ok(Variant::U64(steamid)),
+            // Revisit this as it was related to pandas null support with u64's
+            _ => return Ok(Variant::U64(0)),
+        }
+    }
+    fn create_name(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        match &player.name {
+            Some(name) => return Ok(Variant::String(name.to_string())),
+            _ => return Err(PropCollectionError::PlayerMetaDataNameNone),
+        }
+    }
+    pub fn get_button_prop(&self, prop_info: &PropInfo, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        match self.prop_controller.special_ids.buttons {
+            None => Err(PropCollectionError::ButtonsSpecialIDNone),
+            Some(button_id) => match self.get_prop_from_ent(&button_id, &entity_id) {
+                Ok(Variant::U64(button_mask)) => match BUTTONMAP.get(&prop_info.prop_name) {
+                    Some(button_flag) => Ok(Variant::Bool(button_mask & button_flag != 0)),
+                    None => return Err(PropCollectionError::ButtonsMapNoEntryFound),
+                },
+                Ok(_) => return Err(PropCollectionError::ButtonMaskNotU64Variant),
+                Err(e) => Err(e),
+            },
+        }
+    }
+    pub fn get_rules_prop(&self, prop_info: &PropInfo) -> Result<Variant, PropCollectionError> {
+        match self.rules_entity_id {
+            Some(entid) => return self.get_prop_from_ent(&prop_info.id, &entid),
+            None => return Err(PropCollectionError::RulesEntityIdNotSet),
+        }
+    }
+    pub fn get_controller_prop(&self, prop_info: &PropInfo, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        match player.controller_entid {
+            Some(entid) => return self.get_prop_from_ent(&prop_info.id, &entid),
+            None => return Err(PropCollectionError::ControllerEntityIdNotSet),
+        }
+    }
+    /*
+    pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Result<Variant, PropCollectionError> {
         let (offset, cell) = match axis {
             "X" => {
-                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vec_x_grenade.unwrap(), entity_id);
-                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cell_x_grenade.unwrap(), entity_id);
+                let offset = self.get_prop_from_ent(&self.prop_controller.special_ids.m_vec_x_grenade.unwrap(), entity_id);
+                let cell = self.get_prop_from_ent(&self.prop_controller.special_ids.m_cell_x_grenade.unwrap(), entity_id);
                 (offset, cell)
             }
             "Y" => {
-                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vec_y_greande.unwrap(), entity_id);
-                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cell_y_greande.unwrap(), entity_id);
+                let offset = self.get_prop_from_ent(&self.prop_controller.special_ids.m_vec_y_greande.unwrap(), entity_id);
+                let cell = self.get_prop_from_ent(&self.prop_controller.special_ids.m_cell_y_greande.unwrap(), entity_id);
                 (offset, cell)
             }
             "Z" => {
-                let offset = self.get_prop_for_ent(&self.prop_controller.special_ids.m_vec_z_grenade.unwrap(), entity_id);
-                let cell = self.get_prop_for_ent(&self.prop_controller.special_ids.m_cell_z_grenade.unwrap(), entity_id);
+                let offset = self.get_prop_from_ent(&self.prop_controller.special_ids.m_vec_z_grenade.unwrap(), entity_id);
+                let cell = self.get_prop_from_ent(&self.prop_controller.special_ids.m_cell_z_grenade.unwrap(), entity_id);
                 (offset, cell)
             }
             _ => panic!("unk axis"),
         };
-        if let Some(coord) = coord_from_cell(cell, offset) {
+        if let Ok(coord) = coord_from_cell(cell, offset) {
             return Some(Variant::F32(coord));
         }
         None
     }
-    pub fn find_thrower_steamid(&self, entity_id: &i32) -> Option<u64> {
-        let owner_entid = match self.get_prop_for_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), entity_id) {
-            Some(Variant::U32(prop)) => Some(prop & 0x7FF),
-            _ => None,
+    */
+    pub fn find_thrower_steamid(&self, entity_id: &i32) -> Result<u64, PropCollectionError> {
+        let owner_id = match self.prop_controller.special_ids.grenade_owner_id {
+            Some(owner_id) => owner_id,
+            None => return Err(PropCollectionError::GrenadeOwnerIdNotSet),
         };
-        let steamid = match owner_entid {
-            Some(entid) => match self.players.get(&(entid as i32)) {
-                Some(metadata) => metadata.steamid,
-                None => None,
+        let owner_entid = match self.get_prop_from_ent(&owner_id, entity_id) {
+            Ok(Variant::U32(prop)) => prop & 0x7FF,
+            Ok(_) => return Err(PropCollectionError::GrenadeOwnerIdPropIncorrectVariant),
+            Err(e) => return Err(e),
+        };
+        match self.players.get(&(owner_entid as i32)) {
+            Some(metadata) => match metadata.steamid {
+                Some(s) => Ok(s),
+                // Watch out
+                None => Ok(0),
             },
-            None => None,
-        };
-        steamid
+            None => Err(PropCollectionError::PlayerNotFound),
+        }
     }
-    pub fn find_thrower_name(&self, entity_id: &i32) -> Option<String> {
-        let owner_entid = match self.get_prop_for_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), entity_id) {
-            Some(Variant::U32(prop)) => Some(prop & 0x7FF),
-            _ => None,
+    pub fn find_thrower_name(&self, entity_id: &i32) -> Result<String, PropCollectionError> {
+        let owner_id = match self.prop_controller.special_ids.grenade_owner_id {
+            Some(owner_id) => owner_id,
+            None => return Err(PropCollectionError::GrenadeOwnerIdNotSet),
         };
-        let name = match owner_entid {
-            Some(entid) => match self.players.get(&(entid as i32)) {
-                Some(metadata) => return metadata.name.clone(),
-                None => None,
+        let owner_entid = match self.get_prop_from_ent(&owner_id, entity_id) {
+            Ok(Variant::U32(prop)) => prop & 0x7FF,
+            Ok(_) => return Err(PropCollectionError::GrenadeOwnerIdPropIncorrectVariant),
+            Err(e) => return Err(e),
+        };
+        match self.players.get(&(owner_entid as i32)) {
+            Some(metadata) => match &metadata.name {
+                Some(s) => Ok(s.to_owned()),
+                // Watch out
+                None => Err(PropCollectionError::PlayerMetaDataNameNone),
             },
-            None => None,
-        };
-        name
+            None => Err(PropCollectionError::PlayerNotFound),
+        }
     }
 
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
@@ -172,17 +297,30 @@ impl ParserThread {
             let y = self.collect_cell_coordinate_grenade("Y", projectile_entid);
             let z = self.collect_cell_coordinate_grenade("Z", projectile_entid);
 
+            // Watch out with this one
             let float_x = match x {
-                Some(Variant::F32(p)) => Some(p),
-                _ => None,
+                Ok(Variant::F32(p)) => Some(p),
+                Ok(_) => None,
+                Err(_) => None,
             };
             let float_y = match y {
-                Some(Variant::F32(p)) => Some(p),
-                _ => None,
+                Ok(Variant::F32(p)) => Some(p),
+                Ok(_) => None,
+                Err(_) => None,
             };
             let float_z = match z {
-                Some(Variant::F32(p)) => Some(p),
-                _ => None,
+                Ok(Variant::F32(p)) => Some(p),
+                Ok(_) => None,
+                Err(_) => None,
+            };
+            let steamid = match steamid {
+                Ok(p) => Some(p),
+                Ok(_) => None,
+                Err(_) => None,
+            };
+            let name = match name {
+                Ok(p) => Some(p),
+                Err(_) => None,
             };
 
             self.projectile_records.push(ProjectileRecord {
@@ -197,81 +335,125 @@ impl ParserThread {
         }
     }
 
-    fn find_weapon_name(&self, entity_id: &i32) -> Option<Variant> {
+    fn find_weapon_name(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
         let item_def_id = match self.prop_controller.special_ids.item_def {
             Some(x) => x,
-            None => return None,
+            None => return Err(PropCollectionError::SpecialidsItemDefNotSet),
         };
-        let i = self.find_weapon_prop(&item_def_id, entity_id);
-        if let Some(Variant::U32(def_idx)) = i {
-            match WEAPINDICIES.get(&def_idx) {
-                Some(v) => return Some(Variant::String(v.to_string())),
-                _ => {}
-            }
+        match self.find_weapon_prop(&item_def_id, entity_id) {
+            Ok(Variant::U32(def_idx)) => match WEAPINDICIES.get(&def_idx) {
+                Some(v) => return Ok(Variant::String(v.to_string())),
+                None => return Err(PropCollectionError::WeaponIdxMappingNotFound),
+            },
+            Ok(_) => return Err(PropCollectionError::WeaponDefVariantWrongType),
+            Err(e) => Err(e),
         }
-        None
     }
-    pub fn collect_cell_coordinate_player(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
-        match axis {
+    pub fn collect_cell_coordinate_player(&self, axis: &str, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        let coordinate = match axis {
             "X" => {
                 let x_prop_id = match self.prop_controller.special_ids.cell_x_player {
                     Some(x) => x,
-                    None => return None,
+                    None => return Err(PropCollectionError::PlayerSpecialIDCellXMissing),
                 };
                 let x_offset_id = match self.prop_controller.special_ids.cell_x_offset_player {
                     Some(x) => x,
-                    None => return None,
+                    None => return Err(PropCollectionError::PlayerSpecialIDOffsetXMissing),
                 };
-                let offset = self.get_prop_for_ent(&x_offset_id, entity_id);
-                let cell = self.get_prop_for_ent(&x_prop_id, entity_id);
-                if let Some(coord) = coord_from_cell(cell, offset) {
-                    return Some(Variant::F32(coord));
-                }
+                let offset = self.get_prop_from_ent(&x_offset_id, entity_id);
+                let cell = self.get_prop_from_ent(&x_prop_id, entity_id);
+                coord_from_cell(cell, offset)
             }
             "Y" => {
                 let y_prop_id = match self.prop_controller.special_ids.cell_y_player {
                     Some(y) => y,
-                    None => return None,
+                    None => return Err(PropCollectionError::PlayerSpecialIDCellYMissing),
                 };
                 let y_offset_id = match self.prop_controller.special_ids.cell_y_offset_player {
                     Some(y) => y,
-                    None => return None,
+                    None => return Err(PropCollectionError::PlayerSpecialIDOffsetYMissing),
                 };
 
-                let offset = self.get_prop_for_ent(&y_offset_id, entity_id);
-                let cell = self.get_prop_for_ent(&y_prop_id, entity_id);
-                if let Some(coord) = coord_from_cell(cell, offset) {
-                    return Some(Variant::F32(coord));
-                }
+                let offset = self.get_prop_from_ent(&y_offset_id, entity_id);
+                let cell = self.get_prop_from_ent(&y_prop_id, entity_id);
+                coord_from_cell(cell, offset)
             }
             "Z" => {
                 let z_prop_id = match self.prop_controller.special_ids.cell_z_player {
                     Some(z) => z,
-                    None => return None,
+                    None => return Err(PropCollectionError::PlayerSpecialIDCellZMissing),
                 };
                 let z_offset_id = match self.prop_controller.special_ids.cell_z_offset_player {
                     Some(z) => z,
-                    None => return None,
+                    None => return Err(PropCollectionError::PlayerSpecialIDOffsetZMissing),
                 };
-                let offset = self.get_prop_for_ent(&z_offset_id, entity_id);
-                let cell = self.get_prop_for_ent(&z_prop_id, entity_id);
-                if let Some(coord) = coord_from_cell(cell, offset) {
-                    return Some(Variant::F32(coord));
-                }
+                let offset = self.get_prop_from_ent(&z_offset_id, entity_id);
+                let cell = self.get_prop_from_ent(&z_prop_id, entity_id);
+                coord_from_cell(cell, offset)
             }
             _ => panic!("Unknown axis: {}", axis),
-        }
-        None
+        };
+        Ok(Variant::F32(coordinate?))
     }
-    fn find_pitch_or_yaw(&self, entity_id: &i32, idx: usize) -> Option<Variant> {
-        if let Some(prop_id) = self.prop_controller.special_ids.eye_angles {
-            if let Some(Variant::VecXYZ(v)) = self.get_prop_for_ent(&prop_id, entity_id) {
-                return Some(Variant::F32(v[idx]));
+    pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        // Todo rename to be consistent with player special ids
+        let coordinate = match axis {
+            "X" => {
+                let x_prop_id = match self.prop_controller.special_ids.m_cell_x_grenade {
+                    Some(x) => x,
+                    None => return Err(PropCollectionError::GrenadeSpecialIDCellXMissing),
+                };
+                let x_offset_id = match self.prop_controller.special_ids.m_vec_x_grenade {
+                    Some(x) => x,
+                    None => return Err(PropCollectionError::GrenadeSpecialIDOffsetXMissing),
+                };
+                let offset = self.get_prop_from_ent(&x_offset_id, entity_id);
+                let cell = self.get_prop_from_ent(&x_prop_id, entity_id);
+                coord_from_cell(cell, offset)
             }
-        }
-        None
+            "Y" => {
+                let y_prop_id = match self.prop_controller.special_ids.m_cell_y_grenade {
+                    Some(y) => y,
+                    None => return Err(PropCollectionError::GrenadeSpecialIDCellYMissing),
+                };
+                let y_offset_id = match self.prop_controller.special_ids.m_vec_y_grenade {
+                    Some(y) => y,
+                    None => return Err(PropCollectionError::GrenadeSpecialIDOffsetYMissing),
+                };
+
+                let offset = self.get_prop_from_ent(&y_offset_id, entity_id);
+                let cell = self.get_prop_from_ent(&y_prop_id, entity_id);
+                coord_from_cell(cell, offset)
+            }
+            "Z" => {
+                let z_prop_id = match self.prop_controller.special_ids.m_cell_z_grenade {
+                    Some(z) => z,
+                    None => return Err(PropCollectionError::GrenadeSpecialIDCellZMissing),
+                };
+                let z_offset_id = match self.prop_controller.special_ids.m_vec_z_grenade {
+                    Some(z) => z,
+                    None => return Err(PropCollectionError::GrenadeSpecialIDOffsetZMissing),
+                };
+                let offset = self.get_prop_from_ent(&z_offset_id, entity_id);
+                let cell = self.get_prop_from_ent(&z_prop_id, entity_id);
+                coord_from_cell(cell, offset)
+            }
+            _ => panic!("Unknown axis: {}", axis),
+        };
+        Ok(Variant::F32(coordinate?))
     }
-    pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Option<Variant> {
+
+    fn find_pitch_or_yaw(&self, entity_id: &i32, idx: usize) -> Result<Variant, PropCollectionError> {
+        match self.prop_controller.special_ids.eye_angles {
+            Some(prop_id) => match self.get_prop_from_ent(&prop_id, entity_id) {
+                Ok(Variant::VecXYZ(v)) => return Ok(Variant::F32(v[idx])),
+                Ok(_) => return Err(PropCollectionError::EyeAnglesWrongVariant),
+                Err(e) => return Err(e),
+            },
+            None => Err(PropCollectionError::SpecialidsEyeAnglesNotSet),
+        }
+    }
+    pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Result<Variant, PropCollectionError> {
         match prop_name {
             "X" => self.collect_cell_coordinate_player("X", entity_id),
             "Y" => self.collect_cell_coordinate_player("Y", entity_id),
@@ -282,689 +464,311 @@ impl ParserThread {
             _ => panic!("unknown custom prop: {}", prop_name),
         }
     }
-    pub fn find_weapon_prop(&self, prop: &u32, player_entid: &i32) -> Option<Variant> {
+    pub fn find_weapon_prop(&self, prop: &u32, player_entid: &i32) -> Result<Variant, PropCollectionError> {
         let p = match self.prop_controller.special_ids.active_weapon {
             Some(p) => p,
-            None => return None,
+            None => return Err(PropCollectionError::SpecialidsActiveWeaponNotSet),
         };
-        if let Some(Variant::U32(weap_handle)) = self.get_prop_for_ent(&p, player_entid) {
-            let weapon_entity_id = (weap_handle & 0x7FF) as i32;
-            let pp = self.get_prop_for_ent(&prop, &weapon_entity_id);
-            return pp;
-        }
-        None
-    }
-    pub fn find_team_prop(&self, prop: &u32, player_entid: &i32) -> Option<Variant> {
-        match self.prop_controller.special_ids.player_team_pointer {
-            None => {
-                return None;
+        match self.get_prop_from_ent(&p, player_entid) {
+            Ok(Variant::U32(weap_handle)) => {
+                // Could be more specific
+                let weapon_entity_id = (weap_handle & 0x7FF) as i32;
+                self.get_prop_from_ent(&prop, &weapon_entity_id)
             }
+            Ok(_) => Err(PropCollectionError::WeaponHandleIncorrectVariant),
+            Err(e) => Err(e),
+        }
+    }
+    pub fn find_team_prop(&self, prop: &u32, player_entid: &i32) -> Result<Variant, PropCollectionError> {
+        match self.prop_controller.special_ids.player_team_pointer {
+            None => return Err(PropCollectionError::SpecialidsPlayerTeamPointerNotSet),
             Some(p) => {
-                if let Some(Variant::U32(team_num)) = self.get_prop_for_ent(&p, player_entid) {
-                    let team_entid = match team_num {
-                        // 1 should be spectator
-                        1 => self.teams.team1_entid,
-                        2 => self.teams.team2_entid,
-                        3 => self.teams.team3_entid,
-                        _ => None,
-                    };
-                    // Get prop from team entity
-                    if let Some(entid) = team_entid {
-                        if let Some(p) = self.get_prop_for_ent(prop, &entid) {
-                            return Some(p);
+                match self.get_prop_from_ent(&p, player_entid) {
+                    Ok(Variant::U32(team_num)) => {
+                        let team_entid = match team_num {
+                            // 1 should be spectator
+                            1 => self.teams.team1_entid,
+                            2 => self.teams.team2_entid,
+                            3 => self.teams.team3_entid,
+                            _ => return Err(PropCollectionError::IllegalTeamValue),
+                        };
+                        // Get prop from team entity
+                        match team_entid {
+                            Some(eid) => return self.get_prop_from_ent(prop, &eid),
+                            None => return Err(PropCollectionError::TeamEntityIdNotSet),
                         }
                     }
+                    Ok(_) => Err(PropCollectionError::TeamNumIncorrectVariant),
+                    Err(e) => Err(e),
                 }
             }
         }
-        None
     }
 }
-fn coord_from_cell(cell: Option<Variant>, offset: Option<Variant>) -> Option<f32> {
-    // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
-    let cell_bits = 9;
-    let max_coord = (1 << 14) as f32;
-    // Both are cell and offset are needed for calculation
-    if let Some(Variant::U32(cell)) = cell {
-        if let Some(Variant::F32(offset)) = offset {
-            let cell_coord = ((cell as f32 * (1 << cell_bits) as f32) - max_coord) as f32;
-            return Some(cell_coord + offset);
+
+fn coord_from_cell(
+    cell: Result<Variant, PropCollectionError>,
+    offset: Result<Variant, PropCollectionError>,
+) -> Result<f32, PropCollectionError> {
+    // Both cell and offset are needed for calculation
+    match (offset, cell) {
+        (Ok(Variant::F32(offset)), Ok(Variant::U32(cell))) => {
+            let cell_coord = ((cell as f32 * (1 << CELL_BITS) as f32) - MAX_COORD) as f32;
+            Ok(cell_coord + offset)
         }
+        (Err(_), Err(_)) => Err(PropCollectionError::CoordinateBothNone),
+        (Ok(Variant::F32(offset)), Err(_)) => Err(PropCollectionError::CoordinateCellNone),
+        (Err(_), Ok(Variant::U32(cell))) => Err(PropCollectionError::CoordinateOffsetNone),
+        (_, _) => Err(PropCollectionError::CoordinateIncorrectTypes),
     }
-    None
 }
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum PropType {
-    Team,
-    Rules,
-    Custom,
-    Controller,
-    Player,
-    PlayerVec,
-    Weapon,
-    Button,
+/*
+#[cfg(test)]
+mod tests {
+    use crate::entities::Entity;
+    use crate::entities::EntityType;
+    use crate::entities::PlayerMetaData;
+    use crate::maps::BUTTONMAP;
+    use crate::parser_settings::Parser;
+    use crate::prop_controller::PropInfo;
+    use crate::variants::*;
+    use crate::{parser_settings::ParserInputs, parser_thread_settings::ParserThread, prop_controller::PropController};
+    use ahash::AHashMap;
+    use memmap2::MmapOptions;
+    use std::fs::File;
+    use std::sync::Arc;
+
+    use super::PropType;
+    const PLAYER_ENTITY_ID: i32 = 1;
+    const WANTED_PROP_ID: u32 = 2;
+    const THIS_PLAYERS_CONTROLLER_ID: i32 = 3;
+    const RULES_ENTITY_ID: i32 = 4;
+    const BUTTONS_SPECIAL_ID: u32 = 5;
+    const PLAYER_TEAM_POINTER_SPECIAL_ID: u32 = 6;
+    const TEAM_ENTITY_ID: i32 = 7;
+
+    fn default_setup() -> (ParserThread, PlayerMetaData) {
+        let file = File::open("src/collect_data.rs").unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+
+        let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
+            bytes: Arc::new(mmap),
+            wanted_player_props: vec![],
+            wanted_player_props_og_names: vec![],
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
+            wanted_event: None,
+            parse_ents: true,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: true,
+            count_props: false,
+            only_convars: false,
+            huffman_lookup_table: Arc::new(vec![]),
+        };
+        let player_md = PlayerMetaData {
+            controller_entid: Some(THIS_PLAYERS_CONTROLLER_ID),
+            name: Some("player".to_string()),
+            player_entity_id: Some(PLAYER_ENTITY_ID),
+            steamid: Some(6412478871),
+            team_num: Some(3),
+        };
+        let parser = Parser::new(settings);
+        let input = parser.create_parser_thread_input(0, false);
+        let parser_thread = ParserThread::new(input).unwrap();
+        (parser_thread, player_md)
+    }
+
+    #[test]
+    fn test_controller_prop_found() {
+        let (mut parser_thread, player_md) = default_setup();
+
+        let mut controller_props = AHashMap::default();
+        controller_props.insert(WANTED_PROP_ID, Variant::I32(555));
+        let player_props = AHashMap::default();
+        // CCSPlayerController.m_iCompetitiveWins
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let controller = Entity {
+            cls_id: 0,
+            entity_id: THIS_PLAYERS_CONTROLLER_ID,
+            props: controller_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(controller.entity_id, controller.clone());
+
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Controller),
+            prop_name: "WINS".to_string(),
+            prop_friendly_name: "WINS".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Some(Variant::I32(555)), prop);
+    }
+    #[test]
+    fn test_controller_prop_not_found() {
+        let (mut parser_thread, player_md) = default_setup();
+        let controller_props = AHashMap::default();
+        let player_props = AHashMap::default();
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let controller = Entity {
+            cls_id: 0,
+            entity_id: THIS_PLAYERS_CONTROLLER_ID,
+            props: controller_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(controller.entity_id, controller.clone());
+
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Controller),
+            prop_name: "WINS".to_string(),
+            prop_friendly_name: "WINS".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(None, prop);
+    }
+    #[test]
+    fn test_rules_prop_found() {
+        let (mut parser_thread, player_md) = default_setup();
+        let mut rules_props = AHashMap::default();
+        let player_props = AHashMap::default();
+
+        rules_props.insert(WANTED_PROP_ID, Variant::U32(33333));
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let rules = Entity {
+            cls_id: 0,
+            entity_id: RULES_ENTITY_ID,
+            props: rules_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(rules.entity_id, rules.clone());
+
+        // EHH odd place to store this
+        parser_thread.rules_entity_id = Some(RULES_ENTITY_ID);
+
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Rules),
+            prop_name: "WINS".to_string(),
+            prop_friendly_name: "WINS".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Some(Variant::U32(33333)), prop);
+    }
+    #[test]
+    fn test_button_prop_found() {
+        let (mut parser_thread, player_md) = default_setup();
+
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        prop_controller_new.special_ids.buttons = Some(BUTTONS_SPECIAL_ID);
+        parser_thread.prop_controller = Arc::new(prop_controller_new);
+
+        let mut player_props = AHashMap::default();
+        let flag = *BUTTONMAP.get("A").unwrap();
+        player_props.insert(BUTTONS_SPECIAL_ID, Variant::U64(flag));
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+
+        let prop_info = PropInfo {
+            id: BUTTONS_SPECIAL_ID,
+            prop_type: Some(PropType::Button),
+            prop_name: "A".to_string(),
+            prop_friendly_name: "A".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Some(Variant::Bool(true)), prop);
+    }
+    //
+    #[test]
+    fn test_team_prop_found() {
+        let (mut parser_thread, player_md) = default_setup();
+
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
+        parser_thread.prop_controller = Arc::new(prop_controller_new);
+
+        let mut player_props = AHashMap::default();
+        let mut team_props = AHashMap::default();
+
+        player_props.insert(PLAYER_TEAM_POINTER_SPECIAL_ID, Variant::U32(3));
+        team_props.insert(WANTED_PROP_ID, Variant::F32(55.6484211));
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let team = Entity {
+            cls_id: 0,
+            entity_id: TEAM_ENTITY_ID,
+            props: team_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(team.entity_id, team.clone());
+
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Team),
+            prop_name: "someprop".to_string(),
+            prop_friendly_name: "someprop".to_string(),
+        };
+        parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Some(Variant::F32(55.6484211)), prop);
+    }
+    #[test]
+    fn test_player_prop_found() {
+        let (mut parser_thread, player_md) = default_setup();
+
+        let mut player_props = AHashMap::default();
+        player_props.insert(WANTED_PROP_ID, Variant::U8(47));
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Player),
+            prop_name: "player_prop".to_string(),
+            prop_friendly_name: "player_prop".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Some(Variant::U8(47)), prop);
+    }
 }
-
-pub static BUTTONMAP: phf::Map<&'static str, u64> = phf_map! {
-    "A" => 1 << 9,
-    "W" => 1 << 3,
-    "S" => 1 << 4,
-    "D" => 1 << 10,
-    "FIRE" => 1 << 0,
-    "RIGHTCLICK" => 1 << 11,
-    "RELOAD" => 1 << 13,
-    "INSPECT" => 1 << 35,
-    "USE" => 1 << 5,
-    "SCOREBOARD" => 1 << 16,
-};
-
-// Found in scripts/items/items_game.txt
-pub static WEAPINDICIES: phf::Map<u32, &'static str> = phf_map! {
-    1_u32 => "deagle",
-    2_u32 => "elite",
-    3_u32 => "fiveseven",
-    4_u32 => "glock",
-    7_u32 => "ak47",
-    8_u32 => "aug",
-    9_u32 => "awp",
-    10_u32=> "famas",
-    11_u32 => "g3sg1",
-    13_u32 => "galilar",
-    14_u32 => "m249",
-    16_u32 => "m4a1",
-    17_u32 => "mac10",
-    19_u32 => "p90",
-    20_u32 => "zone_repulsor",
-    23_u32 => "mp5sd",
-    24_u32 => "ump45",
-    25_u32 => "xm1014",
-    26_u32 => "bizon",
-    27_u32 => "mag7",
-    28_u32 => "negev",
-    29_u32=> "sawedoff",
-    30_u32 => "tec9",
-    31_u32 => "taser",
-    32_u32 => "hkp2000",
-    33_u32 => "mp7",
-    34_u32 => "mp9",
-    35_u32 => "nova",
-    36_u32 => "p250",
-    37_u32 => "shield",
-    38_u32 => "scar20",
-    39_u32 => "sg556",
-    40_u32=> "ssg08",
-    41_u32 => "knifegg",
-    42_u32 => "knife",
-    43_u32 => "flashbang",
-    44_u32=> "hegrenade",
-    45_u32 => "smokegrenade",
-    46_u32 => "molotov",
-    47_u32 => "decoy",
-    48_u32 => "incgrenade",
-    49_u32 => "c4",
-    50_u32 => "item_kevlar",
-    51_u32=> "item_assaultsuit",
-    52_u32 => "item_heavyassaultsuit",
-    54_u32 => "item_nvg",
-    55_u32 => "item_defuser",
-    56_u32 => "item_cutters",
-    57_u32 => "healthshot",
-    58_u32 => "musickit_default",
-    59_u32 => "knife_t",
-    60_u32 => "m4a1_silencer",
-    61_u32 => "usp_silencer",
-    62_u32 => "Recipe Trade Up",
-    63_u32 => "cz75a",
-    64_u32 => "revolver",
-    68_u32 => "tagrenade",
-    69_u32 => "fists",
-    70_u32 => "breachcharge",
-    72_u32 => "tablet",
-    74_u32 => "melee",
-    75_u32 => "axe",
-    76_u32 => "hammer",
-    78_u32 => "spanner",
-    80_u32 => "knife_ghost",
-    81_u32 => "firebomb",
-    82_u32 => "diversion",
-    83_u32 => "frag_grenade",
-    84_u32=> "snowball",
-    85_u32 => "bumpmine",
-    500_u32 => "bayonet",
-    503_u32 => "knife_css",
-    505_u32 => "knife_flip",
-    506_u32 => "knife_gut",
-    507_u32 => "knife_karambit",
-    508_u32=> "knife_m9_bayonet",
-    509_u32 => "knife_tactical",
-    512_u32 => "knife_falchion",
-    514_u32 => "knife_survival_bowie",
-    515_u32 => "knife_butterfly",
-    516_u32 => "knife_push",
-    517_u32 => "knife_cord",
-    518_u32 => "knife_canis",
-    519_u32 => "knife_ursus",
-    520_u32 => "knife_gypsy_jackknife",
-    521_u32=> "knife_outdoor",
-    522_u32 => "knife_stiletto",
-    523_u32 => "knife_widowmaker",
-    525_u32 => "knife_skeleton",
-};
-
-pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
-    "A" => PropType::Button,
-    "W" => PropType::Button,
-    "S" => PropType::Button,
-    "D" => PropType::Button,
-    "FIRE" => PropType::Button,
-    "RIGHTCLICK" => PropType::Button,
-    "RELOAD" =>PropType::Button,
-    "SCOREBOARD" =>PropType::Button,
-    "USE" =>PropType::Button,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => PropType::Player,
-
-    // TEAM
-    "CCSTeam.m_iTeamNum" => PropType::Team,
-    "CCSTeam.m_aPlayers" => PropType::Team,
-    "CCSTeam.m_aPawns" => PropType::Team,
-    "CCSTeam.m_iScore" => PropType::Team,
-    "CCSTeam.m_szTeamname" => PropType::Team,
-    "CCSTeam.m_bSurrendered" => PropType::Team,
-    "CCSTeam.m_szTeamMatchStat" => PropType::Team,
-    "CCSTeam.m_numMapVictories" => PropType::Team,
-    "CCSTeam.m_scoreFirstHalf" => PropType::Team,
-    "CCSTeam.m_scoreSecondHalf" => PropType::Team,
-    "CCSTeam.m_scoreOvertime" => PropType::Team,
-    "CCSTeam.m_szClanTeamname" => PropType::Team,
-    // RULES
-    "CCSGameRulesProxy.CCSGameRules.m_bFreezePeriod"=> PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bWarmupPeriod" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_fWarmupPeriodEnd" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_fWarmupPeriodStart" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bTerroristTimeOutActive" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bCTTimeOutActive" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flTerroristTimeOutRemaining" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flCTTimeOutRemaining" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nTerroristTimeOuts" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nCTTimeOuts" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bTechnicalTimeOut" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bMatchWaitingForResume" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iRoundTime" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_fMatchStartTime" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_fRoundStartTime" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flRestartRoundTime" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bGameRestart" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flGameStartTime" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_timeUntilNextPhaseStarts" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_gamePhase" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_totalRoundsPlayed" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nRoundsPlayedThisPhase" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nOvertimePlaying" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iHostagesRemaining" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bAnyHostageReached" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bMapHasBombTarget" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bMapHasRescueZone" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bMapHasBuyZone" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bIsQueuedMatchmaking" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nQueuedMatchmakingMode" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bIsValveDS" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bLogoMap" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bPlayAllStepSoundsOnServer" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iNumGunGameProgressiveWeaponsCT" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iNumGunGameProgressiveWeaponsT" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iSpectatorSlotCount" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_GGProgressiveWeaponOrderCT" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_GGProgressiveWeaponOrderT" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_GGProgressiveWeaponKillUpgradeOrderCT" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_GGProgressiveWeaponKillUpgradeOrderT" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_MatchDevice" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bHasMatchStarted" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flDMBonusStartTime" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flDMBonusTimeLength" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_unDMBonusWeaponLoadoutSlot" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bDMBonusActive" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nNextMapInMapgroup" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_szTournamentEventName" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_szTournamentEventStage" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_szMatchStatTxt" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_szTournamentPredictionsTxt" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nTournamentPredictionsPct" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flCMMItemDropRevealStartTime" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flCMMItemDropRevealEndTime" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bIsDroppingItems" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bIsQuestEligible" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nGuardianModeWaveNumber" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nGuardianModeSpecialKillsRemaining" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nGuardianModeSpecialWeaponNeeded" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_numGlobalGiftsGiven" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_numGlobalGifters" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_numGlobalGiftsPeriodSeconds" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_arrFeaturedGiftersAccounts" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_arrFeaturedGiftersGifts" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_arrProhibitedItemIndices" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_arrTournamentActiveCasterAccounts" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_numBestOfMaps" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nHalloweenMaskListSeed" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bBombDropped" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bBombPlanted" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iRoundWinStatus" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_eRoundWinReason" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bTCantBuy" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bCTCantBuy" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flGuardianBuyUntilTime" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iMatchStats_RoundResults" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iMatchStats_PlayersAlive_CT" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iMatchStats_PlayersAlive_T" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_TeamRespawnWaveTimes" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flNextRespawnWave" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nServerQuestID" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nEndMatchMapGroupVoteTypes" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nEndMatchMapGroupVoteOptions" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nEndMatchMapVoteWinner" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iNumConsecutiveCTLoses" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iNumConsecutiveTerroristLoses" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_vecPlayAreaMins" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_vecPlayAreaMaxs" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iPlayerSpawnHexIndices" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_SpawnTileState" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flSpawnSelectionTimeStartCurrentStage" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flSpawnSelectionTimeEndCurrentStage" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flSpawnSelectionTimeEndLastStage" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_spawnStage" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flTabletHexOriginX" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flTabletHexOriginY" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flTabletHexSize" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_roundData_playerXuids" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_roundData_playerPositions" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_roundData_playerTeams" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_SurvivalGameRuleDecisionTypes" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_SurvivalGameRuleDecisionValues" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_flSurvivalStartTime" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nMatchSeed" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bBlockersPresent" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bRoundInProgress" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iFirstSecondHalfRound" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_iBombSite" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_nMatchEndCount" => PropType::Rules,
-    "CCSGameRulesProxy.CCSGameRules.m_bTeamIntroPeriod" => PropType::Rules,
-    // PLAYER CONTROLLER
-    "CCSPlayerController.m_bHasCommunicationAbuseMute"=> PropType::Controller,
-    "CCSPlayerController.m_szCrosshairCodes" => PropType::Controller,
-    "CCSPlayerController.m_iPendingTeamNum" => PropType::Controller,
-    "CCSPlayerController.m_flForceTeamTime" => PropType::Controller,
-    "CCSPlayerController.m_iCompTeammateColor" => PropType::Controller,
-    "CCSPlayerController.m_bEverPlayedOnTeam" => PropType::Controller,
-    "CCSPlayerController.m_szClan" => PropType::Controller,
-    "CCSPlayerController.m_iCoachingTeam" => PropType::Controller,
-    "CCSPlayerController.m_nPlayerDominated" => PropType::Controller,
-    "CCSPlayerController.m_nPlayerDominatingMe" => PropType::Controller,
-    "CCSPlayerController.m_iCompetitiveRanking" => PropType::Controller,
-    "CCSPlayerController.m_iCompetitiveWins" => PropType::Controller,
-    "CCSPlayerController.m_iCompetitiveRankType" => PropType::Controller,
-    "CCSPlayerController.m_nEndMatchNextMapVote" => PropType::Controller,
-    "CCSPlayerController.m_unActiveQuestId" => PropType::Controller,
-    "CCSPlayerController.m_nQuestProgressReason" => PropType::Controller,
-    "CCSPlayerController.m_unPlayerTvControlFlags" => PropType::Controller,
-    "CCSPlayerController.m_nDisconnectionTick" => PropType::Controller,
-    "CCSPlayerController.m_bControllingBot" => PropType::Controller,
-    "CCSPlayerController.m_bHasControlledBotThisRound" => PropType::Controller,
-    "CCSPlayerController.m_bCanControlObservedBot" => PropType::Controller,
-    "CCSPlayerController.m_hPlayerPawn" => PropType::Controller,
-    "CCSPlayerController.m_hObserverPawn" => PropType::Controller,
-    "CCSPlayerController.m_bPawnIsAlive" => PropType::Controller,
-    "CCSPlayerController.m_iPawnHealth" => PropType::Controller,
-    "CCSPlayerController.m_iPawnArmor" => PropType::Controller,
-    "CCSPlayerController.m_bPawnHasDefuser" => PropType::Controller,
-    "CCSPlayerController.m_bPawnHasHelmet" => PropType::Controller,
-    "CCSPlayerController.m_nPawnCharacterDefIndex" => PropType::Controller,
-    "CCSPlayerController.m_iPawnLifetimeStart" => PropType::Controller,
-    "CCSPlayerController.m_iPawnLifetimeEnd" => PropType::Controller,
-    "CCSPlayerController.m_iPawnGunGameLevel" => PropType::Controller,
-    "CCSPlayerController.m_iPawnBotDifficulty" => PropType::Controller,
-    "CCSPlayerController.m_hOriginalControllerOfCurrentPawn" => PropType::Controller,
-    "CCSPlayerController.m_iScore" => PropType::Controller,
-    "CCSPlayerController.m_flSimulationTime" => PropType::Controller,
-    "CCSPlayerController.m_nTickBase" => PropType::Controller,
-    "CCSPlayerController.m_fFlags" => PropType::Controller,
-    "CCSPlayerController.CEntityIdentity.m_nameStringableIndex" => PropType::Controller,
-    "CCSPlayerController.m_flCreateTime" => PropType::Controller,
-    "CCSPlayerController.m_iTeamNum" => PropType::Controller,
-    "CCSPlayerController.m_bSimulatedEveryTick" => PropType::Controller,
-    "CCSPlayerController.m_hPawn" => PropType::Controller,
-    "CCSPlayerController.m_iConnected" => PropType::Controller,
-    "CCSPlayerController.m_iszPlayerName" => PropType::Controller,
-    "CCSPlayerController.m_steamID" => PropType::Controller,
-    "CCSPlayerController.m_iDesiredFOV" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iAccount" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iStartAccount" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iTotalCashSpent" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iCashSpentThisRound" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.m_unMusicID" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.m_rank" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicLevel" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsLeader" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsTeacher" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsFriendly" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iItemDefinitionIndex" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iEntityQuality" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iEntityLevel" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iItemIDHigh" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iItemIDLow" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iAccountID" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_iInventoryPosition" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_bInitialized" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.CEconItemAttribute.m_iAttributeDefinitionIndex" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.CEconItemAttribute.m_iRawValue32" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.CEconItemAttribute.m_flInitialValue" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.CEconItemAttribute.m_nRefundableCurrency" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.CEconItemAttribute.m_bSetBonus" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_InventoryServices.CEconItemView.m_szCustomName" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iKills" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iDeaths" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iAssists" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iLiveTime" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iHeadShotKills" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iDamage" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iObjective" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iUtilityDamage" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iEnemiesFlashed" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iEquipmentValue" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iMoneySaved" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iKillReward" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iCashEarned" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iKills" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iDeaths" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iAssists" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iLiveTime" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iHeadShotKills" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemy5Ks" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemy4Ks" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemy3Ks" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iNumRoundKills" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iNumRoundKillsHeadshots" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iDamage" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iObjective" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iUtilityDamage" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemiesFlashed" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEquipmentValue" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iMoneySaved" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iKillReward" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iCashEarned" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.m_nSendUpdate" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_PlayerDamager" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_PlayerRecipient" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_hPlayerControllerDamager" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_hPlayerControllerRecipient" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_szPlayerDamagerName" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_szPlayerRecipientName" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_DamagerXuid" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_RecipientXuid" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_iDamage" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_iActualHealthRemoved" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_iNumHits" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_iLastBulletUpdate" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_bIsOtherEnemy" => PropType::Controller,
-    "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_killType" => PropType::Controller,
-    "CCSPlayerController.m_iPing"=> PropType::Controller,
-
-    "CCSPlayerPawnBase.m_angEyeAngles@0" => PropType::PlayerVec,
-    "CCSPlayerPawnBase.m_angEyeAngles@1" => PropType::PlayerVec,
-
-    "CCSPlayerPawn.m_MoveCollide" => PropType::Player,
-    "CCSPlayerPawn.m_MoveType" => PropType::Player,
-    "CCSPlayerPawn.m_iTeamNum" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_bIsLookingAtWeapon" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_bIsHoldingLookAtWeapon" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_flNextAttack" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nDuckTimeMsecs" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flMaxspeed" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flMaxFallVelocity" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flDuckAmount" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flDuckSpeed" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDuckOverride" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bOldJumpPressed" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flJumpUntil" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flJumpVel" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flFallVelocity" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bInCrouch" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nCrouchState" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDucked" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDucking" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bInDuckJump" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bAllowAutoMovement" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nJumpTimeMsecs" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flLastDuckTime" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.m_bIsRescuing" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.m_iWeaponPurchasesThisMatch" => PropType::Player,
-    "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.m_iWeaponPurchasesThisRound" => PropType::Player,
-    "CCSPlayerPawn.m_bSpotted" => PropType::Player,
-    "CCSPlayerPawn.m_bSpottedByMask" => PropType::Player,
-    "CCSPlayerPawn.m_flTimeOfLastInjury" => PropType::Player,
-    "CCSPlayerPawn.m_nRelativeDirectionOfLastInjury" => PropType::Player,
-    "CCSPlayerPawn.m_iPlayerState" => PropType::Player,
-    "CCSPlayerPawn.m_passiveItems" => PropType::Player,
-    "CCSPlayerPawn.m_bIsScoped" => PropType::Player,
-    "CCSPlayerPawn.m_bIsWalking" => PropType::Player,
-    "CCSPlayerPawn.m_bResumeZoom" => PropType::Player,
-    "CCSPlayerPawn.m_bIsDefusing" => PropType::Player,
-    "CCSPlayerPawn.m_bIsGrabbingHostage" => PropType::Player,
-    "CCSPlayerPawn.m_iBlockingUseActionInProgress" => PropType::Player,
-    "CCSPlayerPawn.m_fMolotovDamageTime" => PropType::Player,
-    "CCSPlayerPawn.m_bHasMovedSinceSpawn" => PropType::Player,
-    "CCSPlayerPawn.m_bInBombZone" => PropType::Player,
-    "CCSPlayerPawn.m_bInBuyZone" => PropType::Player,
-    "CCSPlayerPawn.m_bInNoDefuseArea" => PropType::Player,
-    "CCSPlayerPawn.m_bKilledByTaser" => PropType::Player,
-    "CCSPlayerPawn.m_iMoveState" => PropType::Player,
-    "CCSPlayerPawn.m_nWhichBombZone" => PropType::Player,
-    "CCSPlayerPawn.m_bInHostageRescueZone" => PropType::Player,
-    "CCSPlayerPawn.m_flStamina" => PropType::Player,
-    "CCSPlayerPawn.m_iDirection" => PropType::Player,
-    "CCSPlayerPawn.m_iShotsFired" => PropType::Player,
-    "CCSPlayerPawn.m_ArmorValue" => PropType::Player,
-    "CCSPlayerPawn.m_flVelocityModifier" => PropType::Player,
-    "CCSPlayerPawn.m_flGroundAccelLinearFracLastTime" => PropType::Player,
-    "CCSPlayerPawn.m_flFlashDuration" => PropType::Player,
-    "CCSPlayerPawn.m_flFlashMaxAlpha" => PropType::Player,
-    "CCSPlayerPawn.m_bWaitForNoAttack" => PropType::Player,
-    "CCSPlayerPawn.m_szLastPlaceName" => PropType::Player,
-    "CCSPlayerPawn.m_bStrafing" => PropType::Player,
-    "CCSPlayerPawn.m_unRoundStartEquipmentValue" => PropType::Player,
-    "CCSPlayerPawn.m_unCurrentEquipmentValue" => PropType::Player,
-    "CCSPlayerPawn.m_flSimulationTime" => PropType::Player,
-    "CCSPlayerPawn.m_iHealth" => PropType::Player,
-    "CCSPlayerPawn.m_lifeState" => PropType::Player,
-    "CCSPlayerPawn.m_flLowerBodyYawTarget" => PropType::Player,
-    "CCSPlayerPawn.m_flDeathTime" => PropType::Player,
-    // Custom
-    "X"=> PropType::Custom,
-    "Y"=> PropType::Custom,
-    "Z"=> PropType::Custom,
-    "pitch"=> PropType::Custom,
-    "yaw"=> PropType::Custom,
-    "weapon_name" => PropType::Custom,
-    // Weapon
-    "m_flAnimTime" => PropType::Weapon,
-    "m_flSimulationTime"=> PropType::Weapon,
-    "m_hOwnerEntity"=> PropType::Weapon,
-    "m_iClip1"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_cellX"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_cellY"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_cellZ"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_vecX"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_vecY"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_vecZ"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_hParent"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_angRotation"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_flScale"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_hSequence"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_flPlaybackRate"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_nNewSequenceParity"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_nResetEventsParity"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_name"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_hierarchyAttachName"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_hModel"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_bClientClothCreationSuppressed"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_MeshGroupMask"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_nIdealMotionType"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_bIsAnimationEnabled"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_bUseParentRenderBounds"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_materialGroup"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_nHitboxSet"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_flWeight"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_bClientSideAnimation"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_nAnimLoopMode"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_PredBoolVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_PredByteVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_PredUInt16Variables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_PredIntVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_PredUInt32Variables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_PredUInt64Variables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_PredFloatVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_PredVectorVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_PredQuaternionVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_OwnerOnlyPredNetBoolVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_OwnerOnlyPredNetByteVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_OwnerOnlyPredNetUInt16Variables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_OwnerOnlyPredNetIntVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_OwnerOnlyPredNetUInt32Variables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_OwnerOnlyPredNetUInt64Variables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_OwnerOnlyPredNetFloatVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_OwnerOnlyPredNetVectorVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_OwnerOnlyPredNetQuaternionVariables"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_nBoolVariablesCount"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_nOwnerOnlyBoolVariablesCount"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_nRandomSeedOffset"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_flLastTeleportTime"=> PropType::Weapon,
-    "CBodyComponentBaseAnimGraph.m_nOutsideWorld"=> PropType::Weapon,
-    "CEntityIdentity.m_nameStringableIndex"=> PropType::Weapon,
-    "m_MoveCollide"=> PropType::Weapon,
-    "m_MoveType"=> PropType::Weapon,
-    "m_nSubclassID"=> PropType::Weapon,
-    "m_flCreateTime"=> PropType::Weapon,
-    "m_bClientSideRagdoll"=> PropType::Weapon,
-    "m_ubInterpolationFrame"=> PropType::Weapon,
-    "m_iTeamNum"=> PropType::Weapon,
-    "m_hEffectEntity"=> PropType::Weapon,
-    "m_fEffects"=> PropType::Weapon,
-    "m_flElasticity"=> PropType::Weapon,
-    "m_bSimulatedEveryTick"=> PropType::Weapon,
-    "m_bAnimatedEveryTick"=> PropType::Weapon,
-    "m_flNavIgnoreUntilTime"=> PropType::Weapon,
-    "m_nRenderMode"=> PropType::Weapon,
-    "m_nRenderFX"=> PropType::Weapon,
-    "m_clrRender"=> PropType::Weapon,
-    "EntityRenderAttribute_t.m_ID"=> PropType::Weapon,
-    "EntityRenderAttribute_t.m_Values"=> PropType::Weapon,
-    "m_LightGroup"=> PropType::Weapon,
-    "m_bRenderToCubemaps"=> PropType::Weapon,
-    "m_nInteractsAs"=> PropType::Weapon,
-    "m_nInteractsWith"=> PropType::Weapon,
-    "m_nInteractsExclude"=> PropType::Weapon,
-    "m_nEntityId"=> PropType::Weapon,
-    "m_nOwnerId"=> PropType::Weapon,
-    "m_nHierarchyId"=> PropType::Weapon,
-    "m_nCollisionGroup"=> PropType::Weapon,
-    "m_nCollisionFunctionMask"=> PropType::Weapon,
-    "m_vecMins"=> PropType::Weapon,
-    "m_vecMaxs"=> PropType::Weapon,
-    "m_usSolidFlags"=> PropType::Weapon,
-    "m_nSolidType"=> PropType::Weapon,
-    "m_triggerBloat"=> PropType::Weapon,
-    "m_nSurroundType"=> PropType::Weapon,
-    "m_CollisionGroup"=> PropType::Weapon,
-    "m_nEnablePhysics"=> PropType::Weapon,
-    "m_vecSpecifiedSurroundingMins"=> PropType::Weapon,
-    "m_vecSpecifiedSurroundingMaxs"=> PropType::Weapon,
-    "m_vCapsuleCenter1"=> PropType::Weapon,
-    "m_vCapsuleCenter2"=> PropType::Weapon,
-    "m_flCapsuleRadius"=> PropType::Weapon,
-    "m_iGlowType"=> PropType::Weapon,
-    "m_iGlowTeam"=> PropType::Weapon,
-    "m_nGlowRange"=> PropType::Weapon,
-    "m_nGlowRangeMin"=> PropType::Weapon,
-    "m_glowColorOverride"=> PropType::Weapon,
-    "m_bFlashing"=> PropType::Weapon,
-    "m_flGlowTime"=> PropType::Weapon,
-    "m_flGlowStartTime"=> PropType::Weapon,
-    "m_bEligibleForScreenHighlight"=> PropType::Weapon,
-    "m_flGlowBackfaceMult"=> PropType::Weapon,
-    "m_fadeMinDist"=> PropType::Weapon,
-    "m_fadeMaxDist"=> PropType::Weapon,
-    "m_flFadeScale"=> PropType::Weapon,
-    "m_flShadowStrength"=> PropType::Weapon,
-    "m_nObjectCulling"=> PropType::Weapon,
-    "m_nAddDecal"=> PropType::Weapon,
-    "m_vDecalPosition"=> PropType::Weapon,
-    "m_vDecalForwardAxis"=> PropType::Weapon,
-    "m_flDecalHealBloodRate"=> PropType::Weapon,
-    "m_flDecalHealHeightRate"=> PropType::Weapon,
-    "m_ConfigEntitiesToPropagateMaterialDecalsTo"=> PropType::Weapon,
-    "m_bInitiallyPopulateInterpHistory"=> PropType::Weapon,
-    "m_bShouldAnimateDuringGameplayPause"=> PropType::Weapon,
-    "m_bAnimGraphUpdateEnabled"=> PropType::Weapon,
-    "m_vecForce"=> PropType::Weapon,
-    "m_nForceBone"=> PropType::Weapon,
-    "PhysicsRagdollPose_t.m_Transforms"=> PropType::Weapon,
-    "m_bClientRagdoll"=> PropType::Weapon,
-    "m_vLookTargetPosition"=> PropType::Weapon,
-    "m_iReapplyProvisionParity"=> PropType::Weapon,
-    "m_hOuter"=> PropType::Weapon,
-    "m_ProviderType"=> PropType::Weapon,
-    "m_iItemDefinitionIndex"=> PropType::Weapon,
-    "m_iEntityQuality"=> PropType::Weapon,
-    "m_iEntityLevel"=> PropType::Weapon,
-    "m_iItemIDHigh"=> PropType::Weapon,
-    "m_iItemIDLow"=> PropType::Weapon,
-    "m_iAccountID"=> PropType::Weapon,
-    "m_iInventoryPosition"=> PropType::Weapon,
-    "m_bInitialized"=> PropType::Weapon,
-    "CEconItemAttribute.m_iAttributeDefinitionIndex"=> PropType::Weapon,
-    "CEconItemAttribute.m_iRawValue32"=> PropType::Weapon,
-    "CEconItemAttribute.m_flInitialValue"=> PropType::Weapon,
-    "CEconItemAttribute.m_nRefundableCurrency"=> PropType::Weapon,
-    "CEconItemAttribute.m_bSetBonus"=> PropType::Weapon,
-    "m_szCustomName"=> PropType::Weapon,
-    "m_OriginalOwnerXuidLow"=> PropType::Weapon,
-    "m_OriginalOwnerXuidHigh"=> PropType::Weapon,
-    "m_nFallbackPaintKit"=> PropType::Weapon,
-    "m_nFallbackSeed"=> PropType::Weapon,
-    "m_flFallbackWear"=> PropType::Weapon,
-    "m_nFallbackStatTrak"=> PropType::Weapon,
-    "m_iState"=> PropType::Weapon,
-    "m_flFireSequenceStartTime"=> PropType::Weapon,
-    "m_nFireSequenceStartTimeChange"=> PropType::Weapon,
-    "m_bPlayerFireEventIsPrimary"=> PropType::Weapon,
-    "m_nRefundable"=> PropType::Weapon,
-    "m_weaponMode"=> PropType::Weapon,
-    "m_fAccuracyPenalty"=> PropType::Weapon,
-    "m_iRecoilIndex"=> PropType::Weapon,
-    "m_flRecoilIndex"=> PropType::Weapon,
-    "m_bBurstMode"=> PropType::Weapon,
-    "m_flPostponeFireReadyTime"=> PropType::Weapon,
-    "m_bInReload"=> PropType::Weapon,
-    "m_bReloadVisuallyComplete"=> PropType::Weapon,
-    "m_flDroppedAtTime"=> PropType::Weapon,
-    "m_bIsHauledBack"=> PropType::Weapon,
-    "m_bSilencerOn"=> PropType::Weapon,
-    "m_flTimeSilencerSwitchComplete"=> PropType::Weapon,
-    "m_iOriginalTeamNumber"=> PropType::Weapon,
-    "m_hPrevOwner"=> PropType::Weapon,
-    "m_fLastShotTime"=> PropType::Weapon,
-    "m_iIronSightMode"=> PropType::Weapon,
-    "m_iNumEmptyAttacks"=> PropType::Weapon,
-    "m_zoomLevel"=> PropType::Weapon,
-    "m_iBurstShotsRemaining"=> PropType::Weapon,
-    "m_bNeedsBoltAction"=> PropType::Weapon,
-    "m_bvDisabledHitGroups"=> PropType::Weapon,
-    "m_nNextThinkTick"=> PropType::Weapon,
-    "m_nNextPrimaryAttackTick"=> PropType::Weapon,
-    "m_flNextPrimaryAttackTickRatio"=> PropType::Weapon,
-    "m_nNextSecondaryAttackTick"=> PropType::Weapon,
-    "m_flNextSecondaryAttackTickRatio"=> PropType::Weapon,
-    "m_iClip2"=> PropType::Weapon,
-    "m_pReserveAmmo"=> PropType::Weapon,
-    "m_nViewModelIndex"=> PropType::Weapon,
-};
+*/

@@ -3,7 +3,7 @@ use crate::entities_utils::*;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
 use crate::variants::Variant;
-use ahash::HashMap;
+use ahash::AHashMap;
 use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
@@ -16,7 +16,7 @@ const HUFFMAN_CODE_MAXLEN: u32 = 17;
 pub struct Entity {
     pub cls_id: u32,
     pub entity_id: i32,
-    pub props: HashMap<u32, Variant>,
+    pub props: AHashMap<u32, Variant>,
     pub entity_type: EntityType,
 }
 
@@ -221,8 +221,8 @@ impl ParserThread {
         }
 
         if entity.entity_type == EntityType::Team {
-            if let Some(Variant::U32(t)) =
-                self.get_prop_for_ent(self.prop_controller.special_ids.team_team_num.as_ref().unwrap(), entity_id)
+            if let Ok(Variant::U32(t)) =
+                self.get_prop_from_ent(self.prop_controller.special_ids.team_team_num.as_ref().unwrap(), entity_id)
             {
                 match t {
                     1 => self.teams.team1_entid = Some(*entity_id),
@@ -234,35 +234,35 @@ impl ParserThread {
             return Ok(());
         }
 
-        let team_num = match self.get_prop_for_ent(self.prop_controller.special_ids.teamnum.as_ref().unwrap(), entity_id) {
-            Some(team_num) => match team_num {
+        let team_num = match self.get_prop_from_ent(self.prop_controller.special_ids.teamnum.as_ref().unwrap(), entity_id) {
+            Ok(team_num) => match team_num {
                 Variant::U32(team_num) => Some(team_num),
                 // Signals that something went very wrong
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
-            None => None,
+            Err(_) => None,
         };
-        let name = match self.get_prop_for_ent(self.prop_controller.special_ids.player_name.as_ref().unwrap(), entity_id) {
-            Some(name) => match name {
+        let name = match self.get_prop_from_ent(self.prop_controller.special_ids.player_name.as_ref().unwrap(), entity_id) {
+            Ok(name) => match name {
                 Variant::String(name) => Some(name),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
-            None => None,
+            Err(_) => None,
         };
-        let steamid = match self.get_prop_for_ent(self.prop_controller.special_ids.steamid.as_ref().unwrap(), entity_id) {
-            Some(steamid) => match steamid {
+        let steamid = match self.get_prop_from_ent(self.prop_controller.special_ids.steamid.as_ref().unwrap(), entity_id) {
+            Ok(steamid) => match steamid {
                 Variant::U64(steamid) => Some(steamid),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
-            None => None,
+            Err(_) => None,
         };
-        let player_entid = match self.get_prop_for_ent(self.prop_controller.special_ids.player_pawn.as_ref().unwrap(), entity_id)
+        let player_entid = match self.get_prop_from_ent(self.prop_controller.special_ids.player_pawn.as_ref().unwrap(), entity_id)
         {
-            Some(player_entid) => match player_entid {
+            Ok(player_entid) => match player_entid {
                 Variant::U32(handle) => Some((handle & 0x7FF) as i32),
                 _ => return Err(DemoParserError::IncorrectMetaDataProp),
             },
-            None => None,
+            Err(_) => None,
         };
         match player_entid {
             Some(e) => {
@@ -301,7 +301,7 @@ impl ParserThread {
         let entity = Entity {
             entity_id: *entity_id,
             cls_id: cls_id,
-            props: HashMap::default(),
+            props: AHashMap::default(),
             entity_type: entity_type,
         };
         self.entities.insert(*entity_id, entity);
