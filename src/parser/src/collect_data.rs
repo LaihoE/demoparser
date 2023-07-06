@@ -36,19 +36,16 @@ pub enum PropCollectionError {
     PlayerSpecialIDOffsetXMissing,
     PlayerSpecialIDOffsetYMissing,
     PlayerSpecialIDOffsetZMissing,
-
     GrenadeSpecialIDCellXMissing,
     GrenadeSpecialIDCellYMissing,
     GrenadeSpecialIDCellZMissing,
     GrenadeSpecialIDOffsetXMissing,
     GrenadeSpecialIDOffsetYMissing,
     GrenadeSpecialIDOffsetZMissing,
-
     CoordinateOffsetNone,
     CoordinateCellNone,
     CoordinateIncorrectTypes,
     CoordinateBothNone,
-
     GrenadeOffsetVariantNone,
     PlayerMetaDataNameNone,
     ButtonsSpecialIDNone,
@@ -58,25 +55,21 @@ pub enum PropCollectionError {
     ButtonMaskNotU64Variant,
     RulesEntityIdNotSet,
     ControllerEntityIdNotSet,
-
     SpecialidsEyeAnglesNotSet,
     SpecialidsItemDefNotSet,
-
     EyeAnglesWrongVariant,
     WeaponIdxMappingNotFound,
     WeaponDefVariantWrongType,
-
     SpecialidsPlayerTeamPointerNotSet,
     TeamNumIncorrectVariant,
     IllegalTeamValue,
     TeamEntityIdNotSet,
-
     GrenadeOwnerIdNotSet,
     GrenadeOwnerIdPropIncorrectVariant,
-
     PlayerNotFound,
     SpecialidsActiveWeaponNotSet,
     WeaponHandleIncorrectVariant,
+    UnknownCustomPropName,
 }
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
@@ -117,13 +110,15 @@ impl ParserThread {
                 // All values come trough here. None if cant be found.
                 match self.find_prop(prop_info, entity_id, player) {
                     Ok(prop) => {
+                        println!("{:?}", prop);
                         self.output
                             .entry(prop_info.id)
                             .or_insert_with(|| PropColumn::new())
                             .push(Some(prop));
                     }
-                    Err(e) => {
-                        println!("{:?}", e);
+                    Err(_e) => {
+                        // Ultimate debugger is to print this error
+                        println!("{:?}", _e);
                         self.output
                             .entry(prop_info.id)
                             .or_insert_with(|| PropColumn::new())
@@ -204,32 +199,6 @@ impl ParserThread {
             None => return Err(PropCollectionError::ControllerEntityIdNotSet),
         }
     }
-    /*
-    pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Result<Variant, PropCollectionError> {
-        let (offset, cell) = match axis {
-            "X" => {
-                let offset = self.get_prop_from_ent(&self.prop_controller.special_ids.m_vec_x_grenade.unwrap(), entity_id);
-                let cell = self.get_prop_from_ent(&self.prop_controller.special_ids.m_cell_x_grenade.unwrap(), entity_id);
-                (offset, cell)
-            }
-            "Y" => {
-                let offset = self.get_prop_from_ent(&self.prop_controller.special_ids.m_vec_y_greande.unwrap(), entity_id);
-                let cell = self.get_prop_from_ent(&self.prop_controller.special_ids.m_cell_y_greande.unwrap(), entity_id);
-                (offset, cell)
-            }
-            "Z" => {
-                let offset = self.get_prop_from_ent(&self.prop_controller.special_ids.m_vec_z_grenade.unwrap(), entity_id);
-                let cell = self.get_prop_from_ent(&self.prop_controller.special_ids.m_cell_z_grenade.unwrap(), entity_id);
-                (offset, cell)
-            }
-            _ => panic!("unk axis"),
-        };
-        if let Ok(coord) = coord_from_cell(cell, offset) {
-            return Some(Variant::F32(coord));
-        }
-        None
-    }
-    */
     pub fn find_thrower_steamid(&self, entity_id: &i32) -> Result<u64, PropCollectionError> {
         let owner_id = match self.prop_controller.special_ids.grenade_owner_id {
             Some(owner_id) => owner_id,
@@ -297,7 +266,7 @@ impl ParserThread {
             let y = self.collect_cell_coordinate_grenade("Y", projectile_entid);
             let z = self.collect_cell_coordinate_grenade("Z", projectile_entid);
 
-            // Watch out with this one
+            // Watch out with these
             let float_x = match x {
                 Ok(Variant::F32(p)) => Some(p),
                 Ok(_) => None,
@@ -315,7 +284,6 @@ impl ParserThread {
             };
             let steamid = match steamid {
                 Ok(p) => Some(p),
-                Ok(_) => None,
                 Err(_) => None,
             };
             let name = match name {
@@ -461,7 +429,7 @@ impl ParserThread {
             "pitch" => self.find_pitch_or_yaw(entity_id, 0),
             "yaw" => self.find_pitch_or_yaw(entity_id, 1),
             "weapon_name" => self.find_weapon_name(entity_id),
-            _ => panic!("unknown custom prop: {}", prop_name),
+            _ => Err(PropCollectionError::UnknownCustomPropName),
         }
     }
     pub fn find_weapon_prop(&self, prop: &u32, player_entid: &i32) -> Result<Variant, PropCollectionError> {
@@ -517,14 +485,15 @@ fn coord_from_cell(
             Ok(cell_coord + offset)
         }
         (Err(_), Err(_)) => Err(PropCollectionError::CoordinateBothNone),
-        (Ok(Variant::F32(offset)), Err(_)) => Err(PropCollectionError::CoordinateCellNone),
-        (Err(_), Ok(Variant::U32(cell))) => Err(PropCollectionError::CoordinateOffsetNone),
+        (Ok(Variant::F32(_offset)), Err(_)) => Err(PropCollectionError::CoordinateCellNone),
+        (Err(_), Ok(Variant::U32(_cell))) => Err(PropCollectionError::CoordinateOffsetNone),
         (_, _) => Err(PropCollectionError::CoordinateIncorrectTypes),
     }
 }
-/*
+
 #[cfg(test)]
 mod tests {
+    use crate::collect_data::PropCollectionError;
     use crate::entities::Entity;
     use crate::entities::EntityType;
     use crate::entities::PlayerMetaData;
@@ -546,6 +515,16 @@ mod tests {
     const BUTTONS_SPECIAL_ID: u32 = 5;
     const PLAYER_TEAM_POINTER_SPECIAL_ID: u32 = 6;
     const TEAM_ENTITY_ID: i32 = 7;
+    const PLAYER_STEAMID: u64 = 76511234567899874;
+    const PLAYER_NAME: &str = "PLAYER_NAME";
+    const CELL_PROP_ID: u32 = 8;
+    const OFFSET_PROP_ID: u32 = 9;
+    const CELL_X_PLAYER_ID: u32 = 10;
+    const CELL_Y_PLAYER_ID: u32 = 11;
+    const CELL_Z_PLAYER_ID: u32 = 12;
+    const OFFSET_X_PLAYER_ID: u32 = 13;
+    const OFFSET_Y_PLAYER_ID: u32 = 14;
+    const OFFSET_Z_PLAYER_ID: u32 = 15;
 
     fn default_setup() -> (ParserThread, PlayerMetaData) {
         let file = File::open("src/collect_data.rs").unwrap();
@@ -569,15 +548,124 @@ mod tests {
         };
         let player_md = PlayerMetaData {
             controller_entid: Some(THIS_PLAYERS_CONTROLLER_ID),
-            name: Some("player".to_string()),
+            name: Some(PLAYER_NAME.to_string()),
             player_entity_id: Some(PLAYER_ENTITY_ID),
-            steamid: Some(6412478871),
+            steamid: Some(PLAYER_STEAMID),
             team_num: Some(3),
         };
         let parser = Parser::new(settings);
         let input = parser.create_parser_thread_input(0, false);
         let parser_thread = ParserThread::new(input).unwrap();
         (parser_thread, player_md)
+    }
+    #[test]
+    fn test_player_x() {
+        let (mut parser_thread, player_md) = default_setup();
+        let mut player_props = AHashMap::default();
+
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        // prop_controller_new.special_ids.cell_x_player = Some(CELL_X_PLAYER_ID);
+        prop_controller_new.special_ids.cell_x_offset_player = Some(OFFSET_X_PLAYER_ID);
+        parser_thread.prop_controller = Arc::new(prop_controller_new);
+
+        let cell = Variant::U32(10);
+        let offset = Variant::F32(59.0);
+
+        player_props.insert(CELL_PROP_ID, cell);
+        player_props.insert(OFFSET_PROP_ID, offset);
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+
+        parser_thread.entities.insert(player.entity_id, player.clone());
+
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Custom),
+            prop_name: "X".to_string(),
+            prop_friendly_name: "X".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Err(PropCollectionError::GetPropFromEntPropNotFound), prop);
+    }
+    #[test]
+    fn test_create_tick() {
+        let (mut parser_thread, player_md) = default_setup();
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Tick),
+            prop_name: "tick".to_string(),
+            prop_friendly_name: "tick".to_string(),
+        };
+        parser_thread.tick = 5555555;
+        let prop = parser_thread.find_prop(&prop_info, &69, &player_md);
+        assert_eq!(Ok(Variant::I32(5555555)), prop);
+    }
+    #[test]
+    fn test_create_steamid() {
+        let (mut parser_thread, player_md) = default_setup();
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Steamid),
+            prop_name: "steamid".to_string(),
+            prop_friendly_name: "steamid".to_string(),
+        };
+        parser_thread
+            .players
+            .insert(player_md.player_entity_id.unwrap(), player_md.clone());
+        let prop = parser_thread.find_prop(&prop_info, &69, &player_md);
+        assert_eq!(Ok(Variant::U64(PLAYER_STEAMID)), prop);
+    }
+    #[test]
+    fn test_create_name() {
+        let (mut parser_thread, player_md) = default_setup();
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Name),
+            prop_name: "name".to_string(),
+            prop_friendly_name: "name".to_string(),
+        };
+        parser_thread
+            .players
+            .insert(player_md.player_entity_id.unwrap(), player_md.clone());
+        let prop = parser_thread.find_prop(&prop_info, &69, &player_md);
+        assert_eq!(Ok(Variant::String(PLAYER_NAME.to_string())), prop);
+    }
+    #[test]
+    fn test_get_prop_from_ent_no_entity_found() {
+        let (parser_thread, player_md) = default_setup();
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Controller),
+            prop_name: "WINS".to_string(),
+            prop_friendly_name: "WINS".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &999999, &player_md);
+        assert_eq!(Err(PropCollectionError::GetPropFromEntEntityNotFound), prop);
+    }
+    #[test]
+    fn test_get_prop_from_ent_no_prop_found() {
+        let (mut parser_thread, player_md) = default_setup();
+        let player_props = AHashMap::default();
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Player),
+            prop_name: "WINS".to_string(),
+            prop_friendly_name: "WINS".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Err(PropCollectionError::GetPropFromEntPropNotFound), prop);
     }
 
     #[test]
@@ -610,7 +698,7 @@ mod tests {
             prop_friendly_name: "WINS".to_string(),
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
-        assert_eq!(Some(Variant::I32(555)), prop);
+        assert_eq!(Ok(Variant::I32(555)), prop);
     }
     #[test]
     fn test_controller_prop_not_found() {
@@ -640,7 +728,7 @@ mod tests {
             prop_friendly_name: "WINS".to_string(),
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
-        assert_eq!(None, prop);
+        assert_eq!(Err(PropCollectionError::GetPropFromEntPropNotFound), prop);
     }
     #[test]
     fn test_rules_prop_found() {
@@ -675,7 +763,7 @@ mod tests {
             prop_friendly_name: "WINS".to_string(),
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
-        assert_eq!(Some(Variant::U32(33333)), prop);
+        assert_eq!(Ok(Variant::U32(33333)), prop);
     }
     #[test]
     fn test_button_prop_found() {
@@ -704,9 +792,8 @@ mod tests {
             prop_friendly_name: "A".to_string(),
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
-        assert_eq!(Some(Variant::Bool(true)), prop);
+        assert_eq!(Ok(Variant::Bool(true)), prop);
     }
-    //
     #[test]
     fn test_team_prop_found() {
         let (mut parser_thread, player_md) = default_setup();
@@ -744,12 +831,165 @@ mod tests {
         };
         parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
-        assert_eq!(Some(Variant::F32(55.6484211)), prop);
+        assert_eq!(Ok(Variant::F32(55.6484211)), prop);
     }
+    #[test]
+    fn test_team_prop_not_found_team_incorrect_variant() {
+        let (mut parser_thread, player_md) = default_setup();
+
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
+        parser_thread.prop_controller = Arc::new(prop_controller_new);
+
+        let mut player_props = AHashMap::default();
+        let mut team_props = AHashMap::default();
+
+        player_props.insert(PLAYER_TEAM_POINTER_SPECIAL_ID, Variant::Bool(false));
+        team_props.insert(WANTED_PROP_ID, Variant::F32(55.6484211));
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let team = Entity {
+            cls_id: 0,
+            entity_id: TEAM_ENTITY_ID,
+            props: team_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(team.entity_id, team.clone());
+
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Team),
+            prop_name: "someprop".to_string(),
+            prop_friendly_name: "someprop".to_string(),
+        };
+        parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Err(PropCollectionError::TeamNumIncorrectVariant), prop);
+    }
+    #[test]
+    fn test_team_prop_not_found_player_pointer_not_set() {
+        let (mut parser_thread, player_md) = default_setup();
+
+        let mut player_props = AHashMap::default();
+        let mut team_props = AHashMap::default();
+
+        player_props.insert(PLAYER_TEAM_POINTER_SPECIAL_ID, Variant::U32(3));
+        team_props.insert(WANTED_PROP_ID, Variant::F32(55.6484211));
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let team = Entity {
+            cls_id: 0,
+            entity_id: TEAM_ENTITY_ID,
+            props: team_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(team.entity_id, team.clone());
+
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Team),
+            prop_name: "someprop".to_string(),
+            prop_friendly_name: "someprop".to_string(),
+        };
+        parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Err(PropCollectionError::SpecialidsPlayerTeamPointerNotSet), prop);
+    }
+
+    #[test]
+    fn test_team_prop_not_found_team_entity_id_not_set() {
+        let (mut parser_thread, player_md) = default_setup();
+
+        let mut player_props = AHashMap::default();
+        let mut team_props = AHashMap::default();
+
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
+        parser_thread.prop_controller = Arc::new(prop_controller_new);
+
+        player_props.insert(PLAYER_TEAM_POINTER_SPECIAL_ID, Variant::U32(3));
+        team_props.insert(WANTED_PROP_ID, Variant::F32(55.6484211));
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let team = Entity {
+            cls_id: 0,
+            entity_id: TEAM_ENTITY_ID,
+            props: team_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(team.entity_id, team.clone());
+
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Team),
+            prop_name: "someprop".to_string(),
+            prop_friendly_name: "someprop".to_string(),
+        };
+        // parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Err(PropCollectionError::TeamEntityIdNotSet), prop);
+    }
+    #[test]
+    fn test_team_prop_not_found_illegal_team_num() {
+        let (mut parser_thread, player_md) = default_setup();
+
+        let mut player_props = AHashMap::default();
+        let mut team_props = AHashMap::default();
+
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
+        parser_thread.prop_controller = Arc::new(prop_controller_new);
+
+        player_props.insert(PLAYER_TEAM_POINTER_SPECIAL_ID, Variant::U32(4));
+        team_props.insert(WANTED_PROP_ID, Variant::F32(55.6484211));
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let team = Entity {
+            cls_id: 0,
+            entity_id: TEAM_ENTITY_ID,
+            props: team_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(team.entity_id, team.clone());
+
+        let prop_info = PropInfo {
+            id: WANTED_PROP_ID,
+            prop_type: Some(PropType::Team),
+            prop_name: "someprop".to_string(),
+            prop_friendly_name: "someprop".to_string(),
+        };
+        // parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Err(PropCollectionError::IllegalTeamValue), prop);
+    }
+
     #[test]
     fn test_player_prop_found() {
         let (mut parser_thread, player_md) = default_setup();
-
         let mut player_props = AHashMap::default();
         player_props.insert(WANTED_PROP_ID, Variant::U8(47));
 
@@ -768,7 +1008,6 @@ mod tests {
             prop_friendly_name: "player_prop".to_string(),
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
-        assert_eq!(Some(Variant::U8(47)), prop);
+        assert_eq!(Ok(Variant::U8(47)), prop);
     }
 }
-*/

@@ -436,7 +436,7 @@ mod tests {
             pi,
             PropInfo {
                 id: STEAMID_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: Some(PropType::Steamid),
                 prop_name: "steamid".to_string(),
                 prop_friendly_name: "steamid".to_string()
             }
@@ -451,7 +451,7 @@ mod tests {
             pi,
             PropInfo {
                 id: TICK_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: Some(PropType::Tick),
                 prop_name: "tick".to_string(),
                 prop_friendly_name: "tick".to_string()
             }

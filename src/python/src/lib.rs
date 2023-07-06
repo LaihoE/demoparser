@@ -455,7 +455,6 @@ impl DemoParser {
         let custom_name: Vec<Option<String>> =
             output.skins.iter().map(|s| s.custom_name.clone()).collect();
 
-        // Projectile records are in SoA form
         let def_index = arr_to_py(Box::new(UInt32Array::from(def_idx_vec))).unwrap();
         let item_id = arr_to_py(Box::new(UInt64Array::from(item_id))).unwrap();
         let paint_index = arr_to_py(Box::new(UInt32Array::from(paint_index))).unwrap();
