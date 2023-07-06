@@ -1,4 +1,3 @@
-use super::entities_utils::FieldPath;
 use super::game_events::GameEvent;
 use super::read_bits::DemoParserError;
 use super::sendtables::Serializer;
@@ -138,10 +137,6 @@ impl ParserThread {
         }
     }
     pub fn new(mut input: ParserThreadInput) -> Result<Self, DemoParserError> {
-        let fp_filler = FieldPath {
-            last: 0,
-            path: [-1, 0, 0, 0, 0, 0, 0],
-        };
         input
             .settings
             .wanted_player_props

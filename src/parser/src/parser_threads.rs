@@ -4,19 +4,16 @@ use crate::netmessage_types::netmessage_type_from_int;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
 use bitter::BitReader;
-use csgoproto::cstrike15_usermessages::CCSUsrMsg_VoiceMask;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
-use std::time::Instant;
 use EDemoCommands::*;
 
 // The parser struct is defined in parser_settings.rs
 impl ParserThread {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
-        let before = Instant::now();
         loop {
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
@@ -132,42 +129,7 @@ impl ParserThread {
         self.cls_bits = Some((class_count as f32 + 1.).log2().ceil() as u32);
         Ok(())
     }
-    pub fn parse_classes(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        if self.parse_entities {
-            // let tables: CDemoSendTables = Message::parse_from_bytes(bytes).unwrap();
-            // self.parse_sendtable(tables)?;
-        }
-        Ok(())
-    }
-    fn handle_short_header(file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
-        match std::str::from_utf8(&bytes[..8]) {
-            Ok(magic) => match magic {
-                "PBDEMS2\0" => {}
-                "HL2DEMO\0" => {
-                    return Err(DemoParserError::Source1DemoError);
-                }
-                _ => {
-                    return Err(DemoParserError::UnknownFile);
-                }
-            },
-            Err(_) => {}
-        };
-        // hmmmm not sure where the 18 comes from if the header is only 16?
-        // can be used to check that file ends early
-        let file_length_expected = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) + 18;
-        let missing_bytes = file_length_expected - file_len as u32;
-        if missing_bytes != 0 {
-            return Err(DemoParserError::DemoEndsEarly(format!(
-                "demo ends early. Expected legth: {}, file lenght: {}. Missing: {:.2}%",
-                file_length_expected,
-                file_len,
-                100.0 - (file_len as f32 / file_length_expected as f32 * 100.0),
-            )));
-        }
-        // seems to be byte offset to where DEM_END command happens. After that comes Spawngroups and fileinfo. odd...
-        let _no_clue_what_this_is = i32::from_le_bytes(bytes[12..].try_into().unwrap());
-        Ok(())
-    }
+
     pub fn parse_user_command_cmd(&mut self, _data: &[u8]) -> Result<(), DemoParserError> {
         // Only in pov demos. Maybe implement sometime. Includes buttons etc.
         Ok(())

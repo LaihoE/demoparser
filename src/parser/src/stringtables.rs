@@ -1,5 +1,5 @@
 use super::read_bits::{Bitreader, DemoParserError};
-use crate::{parser_settings::Parser, parser_thread_settings::ParserThread};
+use crate::parser_settings::Parser;
 use csgoproto::netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable};
 use protobuf::Message;
 use snap::raw::Decoder;
@@ -143,10 +143,9 @@ impl Parser {
 
                 if name == "instancebaseline" {
                     // Watch out for keys like 42:15 <-- seem to be props that are not used atm
-                    let k = key.parse::<u32>().unwrap_or(999999);
                     match key.parse::<u32>() {
-                        Ok(cls_id) => self.baselines.insert(k, value.clone()),
-                        Err(e) => None,
+                        Ok(cls_id) => self.baselines.insert(cls_id, value.clone()),
+                        Err(_e) => None,
                     };
                 }
                 items.push(StringTableEntry {

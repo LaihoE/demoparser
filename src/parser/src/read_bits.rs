@@ -1,4 +1,3 @@
-use crate::variants::Variant;
 use bitter::BitReader;
 use bitter::LittleEndianReader;
 use std::fmt;

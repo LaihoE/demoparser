@@ -63,14 +63,13 @@ impl Parser {
     }
 
     pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
+        Parser::handle_short_header(self.bytes.len(), &self.bytes[..16])?;
         self.ptr = 16;
         self.fullpacket_offsets.push(16);
-        let mut i = 0;
-
         let mut sendtable: Option<CDemoSendTables> = None;
         let mut handle: Option<JoinHandle<Result<_, _>>> = None;
         let mut threads_spawned = 0;
-        let out = thread::scope(|s| {
+        let out: Result<DemoOutput, DemoParserError> = thread::scope(|s| {
             let mut handles = vec![];
             loop {
                 // If sendtables is done
@@ -139,9 +138,9 @@ impl Parser {
                     }
                     _ => Ok(()),
                 };
-                ok.unwrap();
+                ok?;
             }
-
+            // Wait for classinfo thread if it hasn't finished
             while !self.is_ready_to_spawn_thread() {
                 if handle.is_some() && handle.as_ref().unwrap().is_finished() {
                     let class_result: ClassInfoThreadResult = handle.take().unwrap().join().unwrap().unwrap();
@@ -149,6 +148,7 @@ impl Parser {
                     break;
                 }
             }
+            // Demo does not have fullpackets
             if threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
                 let input = self.create_parser_thread_input(16, true);
                 handles.push(s.spawn(|| {
@@ -157,6 +157,7 @@ impl Parser {
                     parser.create_output()
                 }));
             } else {
+                // spawn rest of the threads
                 while self.fullpacket_offsets.len() > 0 {
                     let offset = self.fullpacket_offsets.pop().unwrap();
                     threads_spawned += 1;
@@ -168,33 +169,37 @@ impl Parser {
                     }));
                 }
             }
-
             let mut outputs: Vec<DemoOutput> = vec![];
             for handle in handles {
                 outputs.push(handle.join().unwrap());
             }
-            outputs.sort_by_key(|x| x.ptr);
-            let mut dfs = outputs.iter().map(|x| x.df.clone()).collect();
-            let all_dfs_combined = self.combine_dfs(&mut dfs);
-            let all_game_events: AHashSet<String> =
-                AHashSet::from_iter(outputs.iter().flat_map(|x| x.game_events_counter.iter().cloned()));
-            DemoOutput {
-                chat_messages: outputs.iter().flat_map(|x| x.chat_messages.clone()).collect(),
-                item_drops: outputs.iter().flat_map(|x| x.item_drops.clone()).collect(),
-                player_md: outputs.iter().flat_map(|x| x.player_md.clone()).collect(),
-                game_events: outputs.iter().flat_map(|x| x.game_events.clone()).collect(),
-                skins: outputs.iter().flat_map(|x| x.skins.clone()).collect(),
-                convars: outputs.iter().flat_map(|x| x.convars.clone()).collect(),
-                df: all_dfs_combined,
-                header: Some(self.header.clone()),
-                game_events_counter: all_game_events,
-                prop_info: self.prop_controller.clone(),
-                projectiles: outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
-                ptr: self.ptr,
-            }
+            Ok(self.combine_thread_outputs(&mut outputs))
         });
         self.prop_controller_is_set = false;
-        Ok(out)
+        Ok(out?)
+    }
+
+    fn combine_thread_outputs(&mut self, outputs: &mut Vec<DemoOutput>) -> DemoOutput {
+        // Combines all inner DemoOutputs into one big output
+        outputs.sort_by_key(|x| x.ptr);
+        let mut dfs = outputs.iter().map(|x| x.df.clone()).collect();
+        let all_dfs_combined = self.combine_dfs(&mut dfs);
+        let all_game_events: AHashSet<String> =
+            AHashSet::from_iter(outputs.iter().flat_map(|x| x.game_events_counter.iter().cloned()));
+        DemoOutput {
+            chat_messages: outputs.iter().flat_map(|x| x.chat_messages.clone()).collect(),
+            item_drops: outputs.iter().flat_map(|x| x.item_drops.clone()).collect(),
+            player_md: outputs.iter().flat_map(|x| x.player_md.clone()).collect(),
+            game_events: outputs.iter().flat_map(|x| x.game_events.clone()).collect(),
+            skins: outputs.iter().flat_map(|x| x.skins.clone()).collect(),
+            convars: outputs.iter().flat_map(|x| x.convars.clone()).collect(),
+            df: all_dfs_combined,
+            header: Some(self.header.clone()),
+            game_events_counter: all_game_events,
+            prop_info: self.prop_controller.clone(),
+            projectiles: outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
+            ptr: self.ptr,
+        }
     }
     fn insert_cls_thread_result(&mut self, mut class_result: ClassInfoThreadResult) {
         class_result.prop_controller.wanted_player_props = self.wanted_player_props.clone();
@@ -291,6 +296,35 @@ impl Parser {
         self.header.insert("addons".to_string(), header.addons().to_string());
         Ok(())
     }
+    fn handle_short_header(file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
+        match std::str::from_utf8(&bytes[..8]) {
+            Ok(magic) => match magic {
+                "PBDEMS2\0" => {}
+                "HL2DEMO\0" => {
+                    return Err(DemoParserError::Source1DemoError);
+                }
+                _ => {
+                    return Err(DemoParserError::UnknownFile);
+                }
+            },
+            Err(_) => {}
+        };
+        // hmmmm not sure where the 18 comes from if the header is only 16?
+        // can be used to check that file ends early
+        let file_length_expected = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) + 18;
+        let missing_bytes = file_length_expected - file_len as u32;
+        if missing_bytes != 0 {
+            return Err(DemoParserError::DemoEndsEarly(format!(
+                "demo ends early. Expected legth: {}, file lenght: {}. Missing: {:.2}%",
+                file_length_expected,
+                file_len,
+                100.0 - (file_len as f32 / file_length_expected as f32 * 100.0),
+            )));
+        }
+        // seems to be byte offset to where DEM_END command happens. After that comes Spawngroups and fileinfo. odd...
+        let _no_clue_what_this_is = i32::from_le_bytes(bytes[12..].try_into().unwrap());
+        Ok(())
+    }
 
     pub fn parse_class_info(
         bytes: &[u8],
@@ -299,7 +333,7 @@ impl Parser {
         want_prop_og: Vec<String>,
         real_name_to_og_name: AHashMap<String, String>,
     ) -> Result<ClassInfoThreadResult, DemoParserError> {
-        let (serializers, qf_mapper, p) = Parser::parse_sendtable(sendtables, want_prop, want_prop_og, real_name_to_og_name)?;
+        let (mut serializers, qf_mapper, p) = Parser::parse_sendtable(sendtables, want_prop, want_prop_og, real_name_to_og_name)?;
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
         let mut cls_by_id = AHashMap::default();
         for class_t in msg.classes {
@@ -310,7 +344,7 @@ impl Parser {
                 Class {
                     class_id: cls_id,
                     name: network_name.to_string(),
-                    serializer: serializers[network_name].clone(),
+                    serializer: serializers.remove(network_name).unwrap(), // [network_name].clone(),
                 },
             );
         }

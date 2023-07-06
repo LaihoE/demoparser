@@ -314,7 +314,7 @@ impl PropController {
 mod tests {
     use super::PropController;
     use crate::collect_data::PropType;
-    use crate::prop_controller::{PropInfo, NORMAL_PROP_BASEID, TICK_ID, YAW_ID};
+    use crate::prop_controller::{PropInfo, NORMAL_PROP_BASEID, PLAYER_X_ID, TICK_ID, YAW_ID};
     use crate::prop_controller::{BUTTONS_BASEID, PITCH_ID};
     use crate::prop_controller::{STEAMID_ID, WEAPON_NAME_ID};
     use crate::sendtables::Decoder::BaseDecoder;
@@ -399,7 +399,6 @@ mod tests {
     }
     #[test]
     pub fn test_custom_propinfos_weapon_name() {
-        let mut f = gen_default_field();
         let mut pc = PropController::new(vec!["weapon_name".to_string()], vec![], AHashMap::default());
         pc.set_custom_propinfos();
         let pi = pc.prop_infos[0].clone();
@@ -414,8 +413,7 @@ mod tests {
         );
     }
     #[test]
-    pub fn test_custom_propinfos_A() {
-        let mut f = gen_default_field();
+    pub fn test_custom_propinfos_a() {
         let mut pc = PropController::new(vec!["A".to_string()], vec![], AHashMap::default());
         pc.set_custom_propinfos();
         let pi = pc.prop_infos[0].clone();
@@ -431,7 +429,6 @@ mod tests {
     }
     #[test]
     pub fn test_custom_propinfos_steamid() {
-        let mut f = gen_default_field();
         let mut pc = PropController::new(vec![], vec![], AHashMap::default());
         pc.set_custom_propinfos();
         let pi = pc.prop_infos[1].clone();
@@ -447,7 +444,6 @@ mod tests {
     }
     #[test]
     pub fn test_custom_propinfos_tick() {
-        let mut f = gen_default_field();
         let mut pc = PropController::new(vec![], vec![], AHashMap::default());
         pc.set_custom_propinfos();
         let pi = pc.prop_infos[0].clone();
@@ -463,7 +459,6 @@ mod tests {
     }
     #[test]
     pub fn test_custom_propinfos_pitch() {
-        let mut f = gen_default_field();
         let mut pc = PropController::new(vec!["pitch".to_string()], vec![], AHashMap::default());
         pc.set_custom_propinfos();
         let pi = pc.prop_infos[0].clone();
@@ -479,7 +474,6 @@ mod tests {
     }
     #[test]
     pub fn test_custom_propinfos_yaw() {
-        let mut f = gen_default_field();
         let mut pc = PropController::new(vec!["yaw".to_string()], vec![], AHashMap::default());
         pc.set_custom_propinfos();
         let pi = pc.prop_infos[0].clone();
@@ -909,5 +903,20 @@ mod tests {
         pc.handle_prop("CCSPlayerPawn.m_angEyeAngles", &mut f);
         assert_eq!(f.should_parse, false);
         assert_eq!(f.prop_id, NORMAL_PROP_BASEID as usize);
+    }
+    #[test]
+    pub fn test_player_x_propinfo() {
+        let mut f = gen_default_field();
+        let mut pc = PropController::new(vec!["X".to_string()], vec![], AHashMap::default());
+        pc.handle_prop("X", &mut f);
+
+        let correct = PropInfo {
+            id: PLAYER_X_ID,
+            prop_type: Some(PropType::Custom),
+            prop_friendly_name: "X".to_string(),
+            prop_name: "X".to_string(),
+        };
+        assert_eq!(pc.prop_infos.len(), 1);
+        assert_eq!(pc.prop_infos[0], correct);
     }
 }

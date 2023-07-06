@@ -16,7 +16,6 @@ use lazy_static::lazy_static;
 use phf_macros::phf_map;
 use protobuf::Message;
 use regex::Regex;
-use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub struct Field {
@@ -338,7 +337,8 @@ impl Field {
                     "m_OwnerOnlyPredNetVectorVariables" => self.child_decoder = Some(VectorNoscaleDecoder),
                     "m_PredVectorVariables" => self.child_decoder = Some(VectorNoscaleDecoder),
                     _ => {
-                        self.child_decoder = match BASETYPE_DECODERS.get(&self.field_type.generic_type.clone().unwrap().base_type) {
+                        self.child_decoder = match BASETYPE_DECODERS.get(&self.field_type.generic_type.clone().unwrap().base_type)
+                        {
                             Some(decoder) => Some(decoder.clone()),
                             None => Some(Decoder::BaseDecoder),
                         };
@@ -530,7 +530,6 @@ impl Parser {
         wanted_props_og_names: Vec<String>,
         real_name_to_og_name: AHashMap<String, String>,
     ) -> Result<(AHashMap<String, Serializer>, QfMapper, PropController), DemoParserError> {
-        let before = Instant::now();
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint()?;
         let bytes = bitreader.read_n_bytes(n_bytes as usize)?;
@@ -542,7 +541,7 @@ impl Parser {
         };
         let mut fields: HashMap<i32, Field> = HashMap::default();
         let mut prop_controller = PropController::new(wanted_props.clone(), wanted_props_og_names, real_name_to_og_name);
-        for (ii, serializer) in serializer_msg.serializers.iter().enumerate() {
+        for serializer in serializer_msg.serializers.iter() {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
                 fields: vec![],

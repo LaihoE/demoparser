@@ -76,25 +76,20 @@ impl ParserThread {
                 None => return None,
             },
             Some(PropType::Player) => {
-                if let Some(e) = player.controller_entid {
-                    return self.get_prop_for_ent(&prop_info.id, &entity_id);
-                };
+                return self.get_prop_for_ent(&prop_info.id, &entity_id);
             }
             Some(PropType::Button) => {
-                if let Some(e) = player.controller_entid {
-                    if let Some(button_id) = self.prop_controller.special_ids.buttons {
-                        if let Some(Variant::U64(button_mask)) = self.get_prop_for_ent(&button_id, &entity_id) {
-                            if let Some(flag) = BUTTONMAP.get(&prop_info.prop_name) {
-                                return Some(Variant::Bool(button_mask & flag != 0));
-                            }
+                if let Some(button_id) = self.prop_controller.special_ids.buttons {
+                    if let Some(Variant::U64(button_mask)) = self.get_prop_for_ent(&button_id, &entity_id) {
+                        if let Some(flag) = BUTTONMAP.get(&prop_info.prop_name) {
+                            return Some(Variant::Bool(button_mask & flag != 0));
                         }
                     }
-                };
+                }
                 return None;
             }
             _ => panic!("no type for: {:?}", prop_info),
         }
-        None
     }
     pub fn collect_cell_coordinate_grenade(&self, axis: &str, entity_id: &i32) -> Option<Variant> {
         let (offset, cell) = match axis {
@@ -121,14 +116,6 @@ impl ParserThread {
         None
     }
     pub fn find_thrower_steamid(&self, entity_id: &i32) -> Option<u64> {
-        let entity = match self.entities.get(entity_id) {
-            Some(ent) => ent,
-            None => return None,
-        };
-        let class = match self.cls_by_id.get(&entity.cls_id) {
-            Some(cls) => cls,
-            None => return None,
-        };
         let owner_entid = match self.get_prop_for_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), entity_id) {
             Some(Variant::U32(prop)) => Some(prop & 0x7FF),
             _ => None,
@@ -143,14 +130,6 @@ impl ParserThread {
         steamid
     }
     pub fn find_thrower_name(&self, entity_id: &i32) -> Option<String> {
-        let entity = match self.entities.get(entity_id) {
-            Some(ent) => ent,
-            None => return None,
-        };
-        let class = match self.cls_by_id.get(&entity.cls_id) {
-            Some(cls) => cls,
-            None => return None,
-        };
         let owner_entid = match self.get_prop_for_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), entity_id) {
             Some(Variant::U32(prop)) => Some(prop & 0x7FF),
             _ => None,

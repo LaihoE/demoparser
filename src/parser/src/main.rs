@@ -1,17 +1,11 @@
 use ahash::AHashMap;
-use ahash::AHashSet;
-use libc;
 use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
-use parser::parser_thread_settings::SpecialIDs;
-use parser::prop_controller::PropInfo;
-use parser::read_bits::Bitreader;
 use std::fs;
 use std::fs::File;
 use std::sync::Arc;
-use std::thread;
 use std::time::Instant;
 
 //#[global_allocator]
@@ -26,7 +20,6 @@ fn x() {
 fn main() {
     x();
     let wanted_props = vec!["m_iClip1".to_string()];
-    let demo_path = "/home/laiho/Documents/demos/cs2/test/66.dem";
     // let bytes = fs::read(demo_path).unwrap();
     // let file = File::open(demo_path).unwrap();
     // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
@@ -41,19 +34,17 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 30 {
+        if c > 3000 {
             break;
         }
 
-        let before1 = Instant::now();
         let file = File::open(path.unwrap().path()).unwrap();
         // let file = File::open("/home/laiho/Documents/demos/cs2/driv/lpk.dem").unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         mmap.advise(memmap2::Advice::HugePage).unwrap();
 
         let arc_bytes = Arc::new(mmap);
-        let mc = arc_bytes.clone();
-        let demo_path = "/home/laiho/Documents/demos/cs2/driv/mirage.dem";
+        // let demo_path = "/home/laiho/Documents/demos/cs2/driv/mirage.dem";
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
@@ -82,12 +73,12 @@ fn main() {
         };
 
         let mut ds = Parser::new(settings);
-        let d = ds.parse_demo().unwrap();
+        let _d = ds.parse_demo().unwrap();
         // println!("{:?}", d.df);
         println!("{:?}", before.elapsed());
 
         // println!("{:?}", ds.handles);
-        //println!("{:#?}", ds.state.cls_by_id);
+        // println!("{:#?}", ds.state.cls_by_id);
     }
     println!("TOTAL {:?}", before.elapsed());
 }

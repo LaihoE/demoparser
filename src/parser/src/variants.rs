@@ -50,7 +50,10 @@ pub struct PropColumn {
 }
 impl PropColumn {
     pub fn new() -> Self {
-        PropColumn { data: None, num_nones: 0 }
+        PropColumn {
+            data: None,
+            num_nones: 0,
+        }
     }
     pub fn len(&self) -> usize {
         match &self.data {
@@ -70,7 +73,7 @@ impl PropColumn {
                     v.extend_from_slice(&v_other);
                 }
                 None => {
-                    for i in 0..other.num_nones {
+                    for _ in 0..other.num_nones {
                         v.push(None);
                     }
                 }
@@ -83,7 +86,7 @@ impl PropColumn {
                     v.extend_from_slice(&v_other);
                 }
                 None => {
-                    for i in 0..other.num_nones {
+                    for _ in 0..other.num_nones {
                         v.push(None);
                     }
                 }
@@ -96,7 +99,7 @@ impl PropColumn {
                     v.extend_from_slice(&v_other);
                 }
                 None => {
-                    for i in 0..other.num_nones {
+                    for _ in 0..other.num_nones {
                         v.push(None);
                     }
                 }
@@ -109,7 +112,7 @@ impl PropColumn {
                     v.extend_from_slice(&v_other);
                 }
                 None => {
-                    for i in 0..other.num_nones {
+                    for _ in 0..other.num_nones {
                         v.push(None);
                     }
                 }
@@ -122,7 +125,7 @@ impl PropColumn {
                     v.extend_from_slice(&v_other);
                 }
                 None => {
-                    for i in 0..other.num_nones {
+                    for _ in 0..other.num_nones {
                         v.push(None);
                     }
                 }
@@ -135,7 +138,7 @@ impl PropColumn {
                     v.extend_from_slice(&v_other);
                 }
                 None => {
-                    for i in 0..other.num_nones {
+                    for _ in 0..other.num_nones {
                         v.push(None);
                     }
                 }
@@ -144,27 +147,27 @@ impl PropColumn {
                 }
             },
             None => match &other.data {
-                Some(VarVec::Bool(inner)) => {
+                Some(VarVec::Bool(_inner)) => {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
                 }
-                Some(VarVec::I32(inner)) => {
+                Some(VarVec::I32(_inner)) => {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
                 }
-                Some(VarVec::U32(inner)) => {
+                Some(VarVec::U32(_inner)) => {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
                 }
-                Some(VarVec::U64(inner)) => {
+                Some(VarVec::U64(_inner)) => {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
                 }
-                Some(VarVec::String(inner)) => {
+                Some(VarVec::String(_inner)) => {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
                 }
-                Some(VarVec::F32(inner)) => {
+                Some(VarVec::F32(_inner)) => {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
                 }

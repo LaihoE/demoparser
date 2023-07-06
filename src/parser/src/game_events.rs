@@ -1,6 +1,6 @@
 use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
-use crate::prop_controller::PropInfo;
+// use crate::prop_controller::PropInfo;
 use crate::read_bits::DemoParserError;
 use crate::variants::*;
 use ahash::AHashMap;
@@ -130,7 +130,7 @@ impl ParserThread {
         }
         extra_fields
     }
-    */
+
     fn find_other_rules_props(&self, prop_info: &PropInfo, og_name: &String) -> Vec<EventField> {
         let mut extra_fields = vec![];
         let prop = match self.rules_entity_id {
@@ -165,7 +165,7 @@ impl ParserThread {
         });
         extra_fields
     }
-
+    */
     pub fn find_extra_props_events(&self, entity_id: i32, prefix: &str) -> Result<Vec<EventField>, DemoParserError> {
         let mut extra_pairs = vec![];
         // prop name:
