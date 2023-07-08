@@ -25,8 +25,6 @@ pub struct PropController {
     pub wanted_player_props: Vec<String>,
     pub wanted_prop_ids: Vec<u32>,
     pub prop_infos: Vec<PropInfo>,
-    pub prop_name_to_path: AHashMap<String, [i32; 7]>,
-    pub path_to_prop_name: AHashMap<[i32; 7], String>,
     pub name_to_id: AHashMap<String, u32>,
     pub id_to_name: AHashMap<u32, String>,
     pub special_ids: SpecialIDs,
@@ -38,7 +36,7 @@ pub struct PropController {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropInfo {
     pub id: u32,
-    pub prop_type: Option<PropType>,
+    pub prop_type: PropType,
     pub prop_name: String,
     pub prop_friendly_name: String,
 }
@@ -54,8 +52,6 @@ impl PropController {
             wanted_player_props: wanted_player_props,
             wanted_prop_ids: vec![],
             prop_infos: vec![],
-            prop_name_to_path: AHashMap::default(),
-            path_to_prop_name: AHashMap::default(),
             name_to_id: AHashMap::default(),
             special_ids: SpecialIDs::new(),
             wanted_player_og_props: wanted_player_props_og_names,
@@ -71,7 +67,7 @@ impl PropController {
             if self.wanted_player_props.contains(&(bn.to_string())) {
                 self.prop_infos.push(PropInfo {
                     id: someid,
-                    prop_type: Some(PropType::Button),
+                    prop_type: PropType::Button,
                     prop_name: bn.to_string(),
                     prop_friendly_name: bn.to_string(),
                 });
@@ -81,7 +77,7 @@ impl PropController {
         if self.wanted_player_props.contains(&("weapon_name".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: WEAPON_NAME_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: PropType::Custom,
                 prop_name: "active_weapon_name".to_string(),
                 prop_friendly_name: "active_weapon_name".to_string(),
             });
@@ -89,7 +85,7 @@ impl PropController {
         if self.wanted_player_props.contains(&("pitch".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: PITCH_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: PropType::Custom,
                 prop_name: "pitch".to_string(),
                 prop_friendly_name: "pitch".to_string(),
             });
@@ -97,7 +93,7 @@ impl PropController {
         if self.wanted_player_props.contains(&("yaw".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: YAW_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: PropType::Custom,
                 prop_name: "yaw".to_string(),
                 prop_friendly_name: "yaw".to_string(),
             });
@@ -105,7 +101,7 @@ impl PropController {
         if self.wanted_player_props.contains(&("X".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: PLAYER_X_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: PropType::Custom,
                 prop_name: "X".to_string(),
                 prop_friendly_name: "X".to_string(),
             });
@@ -113,7 +109,7 @@ impl PropController {
         if self.wanted_player_props.contains(&("Y".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: PLAYER_Y_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: PropType::Custom,
                 prop_name: "Y".to_string(),
                 prop_friendly_name: "Y".to_string(),
             });
@@ -121,26 +117,26 @@ impl PropController {
         if self.wanted_player_props.contains(&("Z".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: PLAYER_Z_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: PropType::Custom,
                 prop_name: "Z".to_string(),
                 prop_friendly_name: "Z".to_string(),
             });
         }
         self.prop_infos.push(PropInfo {
             id: TICK_ID,
-            prop_type: Some(PropType::Tick),
+            prop_type: PropType::Tick,
             prop_name: "tick".to_string(),
             prop_friendly_name: "tick".to_string(),
         });
         self.prop_infos.push(PropInfo {
             id: STEAMID_ID,
-            prop_type: Some(PropType::Steamid),
+            prop_type: PropType::Steamid,
             prop_name: "steamid".to_string(),
             prop_friendly_name: "steamid".to_string(),
         });
         self.prop_infos.push(PropInfo {
             id: NAME_ID,
-            prop_type: Some(PropType::Name),
+            prop_type: PropType::Name,
             prop_name: "name".to_string(),
             prop_friendly_name: "name".to_string(),
         });
@@ -175,7 +171,7 @@ impl PropController {
         if self.should_collect(weap_prop) {
             self.prop_infos.push(PropInfo {
                 id: f.prop_id as u32,
-                prop_type: prop_type.copied(),
+                prop_type: prop_type.copied().unwrap(),
                 prop_name: weap_prop.to_string(),
                 prop_friendly_name: self
                     .real_name_to_og_name
@@ -406,7 +402,7 @@ mod tests {
             pi,
             PropInfo {
                 id: WEAPON_NAME_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: PropType::Custom,
                 prop_name: "active_weapon_name".to_string(),
                 prop_friendly_name: "active_weapon_name".to_string()
             }
@@ -421,7 +417,7 @@ mod tests {
             pi,
             PropInfo {
                 id: BUTTONS_BASEID,
-                prop_type: Some(PropType::Button),
+                prop_type: PropType::Button,
                 prop_name: "A".to_string(),
                 prop_friendly_name: "A".to_string()
             }
@@ -436,7 +432,7 @@ mod tests {
             pi,
             PropInfo {
                 id: STEAMID_ID,
-                prop_type: Some(PropType::Steamid),
+                prop_type: PropType::Steamid,
                 prop_name: "steamid".to_string(),
                 prop_friendly_name: "steamid".to_string()
             }
@@ -451,7 +447,7 @@ mod tests {
             pi,
             PropInfo {
                 id: TICK_ID,
-                prop_type: Some(PropType::Tick),
+                prop_type: PropType::Tick,
                 prop_name: "tick".to_string(),
                 prop_friendly_name: "tick".to_string()
             }
@@ -466,7 +462,7 @@ mod tests {
             pi,
             PropInfo {
                 id: PITCH_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: PropType::Custom,
                 prop_name: "pitch".to_string(),
                 prop_friendly_name: "pitch".to_string()
             }
@@ -481,7 +477,7 @@ mod tests {
             pi,
             PropInfo {
                 id: YAW_ID,
-                prop_type: Some(PropType::Custom),
+                prop_type: PropType::Custom,
                 prop_name: "yaw".to_string(),
                 prop_friendly_name: "yaw".to_string()
             }
@@ -760,7 +756,7 @@ mod tests {
         pc.handle_prop("CWeaponSCAR20.m_iClip1", &mut f);
         let correct = PropInfo {
             id: NORMAL_PROP_BASEID,
-            prop_type: Some(PropType::Weapon),
+            prop_type: PropType::Weapon,
             prop_friendly_name: "m_iClip1".to_string(),
             prop_name: "m_iClip1".to_string(),
         };
@@ -780,7 +776,7 @@ mod tests {
         pc.handle_prop("CAK47.m_iClip1", &mut f);
         let correct = PropInfo {
             id: NORMAL_PROP_BASEID,
-            prop_type: Some(PropType::Weapon),
+            prop_type: PropType::Weapon,
             prop_friendly_name: "m_iClip1".to_string(),
             prop_name: "m_iClip1".to_string(),
         };
@@ -800,7 +796,7 @@ mod tests {
         pc.handle_prop("CCSPlayerPawn.m_iHealth", &mut f);
         let correct = PropInfo {
             id: NORMAL_PROP_BASEID,
-            prop_type: Some(PropType::Player),
+            prop_type: PropType::Player,
             prop_friendly_name: "CCSPlayerPawn.m_iHealth".to_string(),
             prop_name: "CCSPlayerPawn.m_iHealth".to_string(),
         };
@@ -822,7 +818,7 @@ mod tests {
 
         let correct = PropInfo {
             id: NORMAL_PROP_BASEID,
-            prop_type: Some(PropType::Weapon),
+            prop_type: PropType::Weapon,
             prop_friendly_name: "m_iClip1".to_string(),
             prop_name: "m_iClip1".to_string(),
         };
@@ -839,7 +835,7 @@ mod tests {
 
         let correct = PropInfo {
             id: NORMAL_PROP_BASEID,
-            prop_type: Some(PropType::Weapon),
+            prop_type: PropType::Weapon,
             prop_friendly_name: "m_iClip1".to_string(),
             prop_name: "m_iClip1".to_string(),
         };

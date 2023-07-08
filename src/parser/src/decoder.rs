@@ -27,7 +27,7 @@ impl<'a> Bitreader<'a> {
             }
             Qangle3Decoder => Ok(Variant::VecXYZ(self.decode_qangle_all_3()?)),
             SignedDecoder => Ok(Variant::I32(self.read_varint32()?)),
-            VectorNoscaleDecoder => Ok(Variant::FloatVec32(self.decode_vector_noscale()?)),
+            VectorNoscaleDecoder => Ok(Variant::VecXYZ(self.decode_vector_noscale()?)),
             BooleanDecoder => Ok(Variant::Bool(self.read_boolean()?)),
             BaseDecoder => Ok(Variant::U32(self.read_varint()?)),
             CentityHandleDecoder => Ok(Variant::U32(self.read_varint()?)),
@@ -37,10 +37,10 @@ impl<'a> Bitreader<'a> {
             StringDecoder => Ok(Variant::String(self.read_string()?)),
             QanglePitchYawDecoder => Ok(Variant::VecXYZ(self.decode_qangle_pitch_yaw()?)),
             QangleVarDecoder => Ok(Variant::VecXYZ(self.decode_qangle_variant()?)),
-            VectorNormalDecoder => Ok(Variant::FloatVec32(self.decode_normal_vec()?)),
+            VectorNormalDecoder => Ok(Variant::VecXYZ(self.decode_normal_vec()?)),
             Unsigned64Decoder => Ok(Variant::U64(self.read_varint_u_64()?)),
             Fixed64Decoder => Ok(Variant::U64(self.decode_uint64()?)),
-            VectorFloatCoordDecoder => Ok(Variant::FloatVec32(self.decode_vector_float_coord()?)),
+            VectorFloatCoordDecoder => Ok(Variant::VecXYZ(self.decode_vector_float_coord()?)),
             AmmoDecoder => Ok(Variant::U32(self.decode_ammo()?)),
             QanglePresDecoder => Ok(Variant::VecXYZ(self.decode_qangle_variant_pres()?)),
             _ => panic!("huh {:?}", decoder),
@@ -67,10 +67,10 @@ impl<'a> Bitreader<'a> {
         return Ok(self.read_nbits(20)? as f32 * 360.0 / (1 << 20) as f32 - 180.0);
     }
 
-    pub fn decode_vector_float_coord(&mut self) -> Result<Vec<f32>, DemoParserError> {
-        let mut v = vec![];
-        for _ in 0..3 {
-            v.push(self.decode_float_coord()?)
+    pub fn decode_vector_float_coord(&mut self) -> Result<[f32; 3], DemoParserError> {
+        let mut v = [0.0; 3];
+        for idx in 0..3 {
+            v[idx] = self.decode_float_coord()?;
         }
         Ok(v)
     }
@@ -81,10 +81,10 @@ impl<'a> Bitreader<'a> {
         }
         return Ok(ammo);
     }
-    pub fn decode_vector_noscale(&mut self) -> Result<Vec<f32>, DemoParserError> {
-        let mut v = vec![];
-        for _ in 0..3 {
-            v.push(self.decode_noscale()?)
+    pub fn decode_vector_noscale(&mut self) -> Result<[f32; 3], DemoParserError> {
+        let mut v = [0.0; 3];
+        for idx in 0..3 {
+            v[idx] = self.decode_noscale()?;
         }
         Ok(v)
     }
@@ -122,8 +122,8 @@ impl<'a> Bitreader<'a> {
             false => Ok(result),
         }
     }
-    pub fn decode_normal_vec(&mut self) -> Result<Vec<f32>, DemoParserError> {
-        let mut v = vec![0.0; 3];
+    pub fn decode_normal_vec(&mut self) -> Result<[f32; 3], DemoParserError> {
+        let mut v = [0.0; 3];
         let has_x = self.read_boolean()?;
         let has_y = self.read_boolean()?;
         if has_x {

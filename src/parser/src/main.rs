@@ -34,7 +34,7 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 500 {
+        if c > 10 {
             break;
         }
 
@@ -51,8 +51,8 @@ fn main() {
             bytes: arc_bytes.clone(),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            //wanted_event: Some("player_death".to_string()),
-            wanted_event: None,
+            wanted_event: Some("player_death".to_string()),
+            // wanted_event: None,
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
                 "CCSTeam.m_szTeamname".to_string(),

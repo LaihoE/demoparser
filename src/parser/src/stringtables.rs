@@ -3,6 +3,7 @@ use crate::parser_settings::Parser;
 use csgoproto::netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable};
 use protobuf::Message;
 use snap::raw::Decoder;
+
 #[derive(Clone, Debug)]
 pub struct StringTable {
     name: String,
@@ -23,7 +24,6 @@ pub struct StringTableEntry {
 impl Parser {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
-
         match self.string_tables.get(table.table_id() as usize) {
             Some(st) => self.parse_string_table(
                 table.string_data().to_vec(),
@@ -140,7 +140,6 @@ impl Parser {
                         value
                     };
                 }
-
                 if name == "instancebaseline" {
                     // Watch out for keys like 42:15 <-- seem to be props that are not used atm
                     match key.parse::<u32>() {

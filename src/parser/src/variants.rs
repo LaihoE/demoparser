@@ -15,8 +15,6 @@ pub enum Variant {
     String(String),
     VecXY([f32; 2]),
     VecXYZ([f32; 3]),
-    Vec(Vec<i32>),
-    FloatVec32(Vec<f32>),
 }
 
 #[derive(Debug, Clone)]

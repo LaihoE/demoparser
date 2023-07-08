@@ -20,7 +20,7 @@ pub struct Entity {
     pub entity_type: EntityType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PlayerMetaData {
     pub player_entity_id: Option<i32>,
     pub steamid: Option<u64>,
@@ -85,7 +85,7 @@ impl ParserThread {
     pub fn update_entity(&mut self, bitreader: &mut Bitreader, entity_id: i32) -> Result<(), DemoParserError> {
         let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
         if n_updated_values > 0 {
-            self.gather_extra_info(&entity_id)?;
+            // self.gather_extra_info(&entity_id)?;
         }
         Ok(())
     }
@@ -96,6 +96,7 @@ impl ParserThread {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
+
         for field_info in &self.paths[..n_paths] {
             let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
             if field_info.should_parse {

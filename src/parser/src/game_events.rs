@@ -27,7 +27,6 @@ impl Parser {
     // Message that should come before first game event
     pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<AHashMap<i32, Descriptor_t>, DemoParserError> {
         let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
-
         let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
         for event_desc in event_list.descriptors {
             hm.insert(event_desc.eventid(), event_desc);

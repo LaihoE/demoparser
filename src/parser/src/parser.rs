@@ -104,12 +104,10 @@ impl Parser {
                     self.ptr += size as usize;
                     continue;
                 }
-
                 let bytes = match is_compressed {
                     true => SnapDecoder::new().decompress_vec(self.read_n_bytes(size).unwrap()).unwrap(),
                     false => self.read_n_bytes(size).unwrap().to_vec(),
                 };
-
                 let ok: Result<(), DemoParserError> = match demo_cmd {
                     DEM_SendTables => {
                         sendtable = Some(Message::parse_from_bytes(&bytes).unwrap());
@@ -118,7 +116,7 @@ impl Parser {
                     DEM_FileHeader => self.parse_header(&bytes),
                     DEM_ClassInfo => {
                         let my_s = sendtable.clone();
-                        let my_b = bytes.clone();
+                        let my_b = bytes;
                         let want_prop = self.wanted_player_props.clone();
                         let want_prop_og = self.wanted_player_props_og_names.clone();
                         let real_to_og = self.real_name_to_og_name.clone();
@@ -137,6 +135,7 @@ impl Parser {
                 };
                 ok?;
             }
+
             // Wait for classinfo thread if it hasn't finished
             while !self.is_ready_to_spawn_thread() {
                 if handle.is_some() && handle.as_ref().unwrap().is_finished() {

@@ -27,7 +27,7 @@ path = "../csgoproto"
 overflow-checks = false
 
 [profile.release]
-debug = true
+# debug = true
 
 # opt-level = 3
 # lto = "fat"

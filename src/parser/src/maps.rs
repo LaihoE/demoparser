@@ -363,9 +363,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_killType" => PropType::Controller,
     "CCSPlayerController.m_iPing"=> PropType::Controller,
 
-    "CCSPlayerPawnBase.m_angEyeAngles@0" => PropType::PlayerVec,
-    "CCSPlayerPawnBase.m_angEyeAngles@1" => PropType::PlayerVec,
-
     "CCSPlayerPawn.m_MoveCollide" => PropType::Player,
     "CCSPlayerPawn.m_MoveType" => PropType::Player,
     "CCSPlayerPawn.m_iTeamNum" => PropType::Player,
