@@ -70,6 +70,8 @@ pub enum PropCollectionError {
     WeaponHandleIncorrectVariant,
     UnknownCustomPropName,
     UnknownCoordinateAxis,
+    WeaponEntityNotFound,
+    WeaponEntityWantedPropNotFound,
 }
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
@@ -115,7 +117,7 @@ impl ParserThread {
                 // All values come trough here. None if cant be found.
                 match self.find_prop(prop_info, entity_id, player) {
                     Ok(prop) => {
-                        // println!("{:?}", prop);
+                        // println!("{} {:?}", prop_info.prop_name, prop);
                         self.output
                             .entry(prop_info.id)
                             .or_insert_with(|| PropColumn::new())
@@ -123,7 +125,7 @@ impl ParserThread {
                     }
                     Err(_e) => {
                         // Ultimate debugger is to print this error
-                        // println!("{:?}", _e);
+                        // println!("{} {:?}", self.tick, _e);
                         self.output
                             .entry(prop_info.id)
                             .or_insert_with(|| PropColumn::new())
@@ -438,7 +440,16 @@ impl ParserThread {
             Ok(Variant::U32(weap_handle)) => {
                 // Could be more specific
                 let weapon_entity_id = (weap_handle & 0x7FF) as i32;
-                self.get_prop_from_ent(&prop, &weapon_entity_id)
+                match self.get_prop_from_ent(&prop, &weapon_entity_id) {
+                    Ok(p) => Ok(p),
+                    Err(e) => match e {
+                        PropCollectionError::GetPropFromEntEntityNotFound => Err(PropCollectionError::WeaponEntityNotFound),
+                        PropCollectionError::GetPropFromEntPropNotFound => {
+                            Err(PropCollectionError::WeaponEntityWantedPropNotFound)
+                        }
+                        _ => Err(e),
+                    },
+                }
             }
             Ok(_) => Err(PropCollectionError::WeaponHandleIncorrectVariant),
             Err(e) => Err(e),
@@ -650,25 +661,25 @@ mod tests {
     }
     #[test]
     fn test_grenade_x_ok() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("X".to_string());
+        let (_prop_info, weapon, parser_thread, _player_md) = default_coordinate_grenade("X".to_string());
         let prop = parser_thread.collect_cell_coordinate_grenade(CoordinateAxis::X, &weapon.entity_id);
         assert_eq!(Ok(Variant::F32(-11222.0)), prop);
     }
     #[test]
     fn test_grenade_y_ok() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("Y".to_string());
+        let (_prop_info, weapon, parser_thread, _player_md) = default_coordinate_grenade("Y".to_string());
         let prop = parser_thread.collect_cell_coordinate_grenade(CoordinateAxis::Y, &weapon.entity_id);
         assert_eq!(Ok(Variant::F32(-11222.0)), prop);
     }
     #[test]
     fn test_grenade_z_ok() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("Z".to_string());
+        let (_prop_info, weapon, parser_thread, _player_md) = default_coordinate_grenade("Z".to_string());
         let prop = parser_thread.collect_cell_coordinate_grenade(CoordinateAxis::Z, &weapon.entity_id);
         assert_eq!(Ok(Variant::F32(-11222.0)), prop);
     }
     #[test]
     fn test_grenade_x_cell_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("X".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("X".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         ent.props.remove(&CELL_X_GRENADE).unwrap();
         let prop = parser_thread.collect_cell_coordinate_grenade(CoordinateAxis::X, &weapon.entity_id);
@@ -676,7 +687,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_y_cell_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("Y".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Y".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         ent.props.remove(&CELL_Y_GRENADE).unwrap();
         let prop = parser_thread.collect_cell_coordinate_grenade(CoordinateAxis::Y, &weapon.entity_id);
@@ -684,7 +695,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_z_cell_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("Z".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Z".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         ent.props.remove(&CELL_Z_GRENADE).unwrap();
         let prop = parser_thread.collect_cell_coordinate_grenade(CoordinateAxis::Z, &weapon.entity_id);
@@ -692,7 +703,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_x_offset_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("X".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("X".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         ent.props.remove(&OFFSET_X_GRENADE).unwrap();
         let prop = parser_thread.collect_cell_coordinate_grenade(CoordinateAxis::X, &weapon.entity_id);
@@ -700,7 +711,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_y_offset_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("Y".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Y".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         ent.props.remove(&OFFSET_Y_GRENADE).unwrap();
         let prop = parser_thread.collect_cell_coordinate_grenade(CoordinateAxis::Y, &weapon.entity_id);
@@ -708,7 +719,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_z_offset_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("Z".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Z".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         ent.props.remove(&OFFSET_Z_GRENADE).unwrap();
         let prop = parser_thread.collect_cell_coordinate_grenade(CoordinateAxis::Z, &weapon.entity_id);
@@ -716,7 +727,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_specialid_cell_x_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("X".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("X".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_x_grenade = None;
@@ -727,7 +738,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_specialid_cell_y_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("Y".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Y".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_y_grenade = None;
@@ -738,7 +749,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_specialid_cell_z_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("Z".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Z".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_z_grenade = None;
@@ -749,7 +760,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_specialid_offset_x_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("X".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("X".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_x_grenade = Some(48);
@@ -761,7 +772,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_specialid_offset_y_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("Y".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Y".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_y_grenade = Some(48);
@@ -773,7 +784,7 @@ mod tests {
     }
     #[test]
     fn test_grenade_specialid_offset_z_not_set() {
-        let (prop_info, weapon, mut parser_thread, player_md) = default_coordinate_grenade("Z".to_string());
+        let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Z".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
         let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_z_grenade = Some(48);
@@ -852,13 +863,13 @@ mod tests {
 
     #[test]
     fn test_player_x_ok() {
-        let (prop_info, mut parser_thread, player_md) = default_coordinate("X".to_string());
+        let (prop_info, parser_thread, player_md) = default_coordinate("X".to_string());
         let prop = parser_thread.find_prop(&prop_info, &PLAYER_ENTITY_ID, &player_md);
         assert_eq!(Ok(Variant::F32(-11222.0)), prop);
     }
     #[test]
     fn test_player_coordinate_illegal_axis() {
-        let (prop_info, mut parser_thread, player_md) = default_coordinate("ILLEGAL".to_string());
+        let (prop_info, parser_thread, player_md) = default_coordinate("ILLEGAL".to_string());
         let prop = parser_thread.find_prop(&prop_info, &PLAYER_ENTITY_ID, &player_md);
         assert_eq!(Err(PropCollectionError::UnknownCustomPropName), prop);
     }
@@ -890,7 +901,7 @@ mod tests {
     }
     #[test]
     fn test_player_y_ok() {
-        let (prop_info, mut parser_thread, player_md) = default_coordinate("Y".to_string());
+        let (prop_info, parser_thread, player_md) = default_coordinate("Y".to_string());
         let prop = parser_thread.find_prop(&prop_info, &PLAYER_ENTITY_ID, &player_md);
         assert_eq!(Ok(Variant::F32(-11222.0)), prop);
     }
@@ -921,7 +932,7 @@ mod tests {
     }
     #[test]
     fn test_player_z_ok() {
-        let (prop_info, mut parser_thread, player_md) = default_coordinate("Z".to_string());
+        let (prop_info, parser_thread, player_md) = default_coordinate("Z".to_string());
         let prop = parser_thread.find_prop(&prop_info, &PLAYER_ENTITY_ID, &player_md);
         assert_eq!(Ok(Variant::F32(-11222.0)), prop);
     }
@@ -1161,7 +1172,7 @@ mod tests {
     #[test]
     fn test_eyeangles_get_entity_err() {
         let (mut parser_thread, player_md) = default_setup();
-        let mut player_props = AHashMap::default();
+        let player_props = AHashMap::default();
         // player_props.insert(EYEANGLES_ID, Variant::F32(3.0));
 
         let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
@@ -1249,7 +1260,7 @@ mod tests {
     }
     #[test]
     fn test_controller_not_found() {
-        let (mut parser_thread, player_md) = default_setup();
+        let (mut parser_thread, _player_md) = default_setup();
         let player_props = AHashMap::default();
 
         let player_md = PlayerMetaData {
@@ -1396,7 +1407,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(ITEMDEF_ID, Variant::U32(33333));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        let prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         // prop_controller_new.special_ids.item_def = Some(ITEMDEF_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1586,7 +1597,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(WANTED_PROP_ID, Variant::U32(33333));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        let prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         // prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1778,7 +1789,7 @@ mod tests {
     fn test_button_special_id_not_set() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        let prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         // prop_controller_new.special_ids.buttons = Some(BUTTONS_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1812,7 +1823,7 @@ mod tests {
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
         let mut player_props = AHashMap::default();
-        let mut team_props = AHashMap::default();
+        let team_props = AHashMap::default();
 
         player_props.insert(PLAYER_TEAM_POINTER_SPECIAL_ID, Variant::U32(1));
         // team_props.insert(WANTED_PROP_ID, Variant::F32(55.6484211));
@@ -2118,10 +2129,10 @@ mod tests {
     }
     #[test]
     fn test_grenade_thrower_steamid() {
-        let (mut parser_thread, player_md) = default_setup();
+        let (mut parser_thread, _player_md) = default_setup();
 
         let mut player_props = AHashMap::default();
-        let mut grenade_props = AHashMap::default();
+        let grenade_props = AHashMap::default();
 
         let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
@@ -2150,10 +2161,10 @@ mod tests {
     }
     #[test]
     fn test_grenade_thrower_steamid_incorrect() {
-        let (mut parser_thread, player_md) = default_setup();
+        let (mut parser_thread, _player_md) = default_setup();
 
         let mut player_props = AHashMap::default();
-        let mut grenade_props = AHashMap::default();
+        let grenade_props = AHashMap::default();
 
         let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
@@ -2216,7 +2227,7 @@ mod tests {
     }
     #[test]
     fn test_player_metadata_not_found() {
-        let (mut parser_thread, player_md_og) = default_setup();
+        let (parser_thread, player_md_og) = default_setup();
         let player_md = parser_thread.find_player_metadata(player_md_og.player_entity_id.unwrap());
         assert_eq!(Err(PropCollectionError::PlayerNotFound), player_md);
     }

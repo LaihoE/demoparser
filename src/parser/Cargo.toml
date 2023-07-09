@@ -18,6 +18,7 @@ bit_reverse = "0.1.8"
 memmap2 = "0.5.10"
 serde = { version = "1.0.164", features = ["derive"] }
 libc = "0.2.147"
+rayon = "1.7.0"
 
 [dependencies.csgoproto]
 path = "../csgoproto"
@@ -27,7 +28,7 @@ path = "../csgoproto"
 overflow-checks = false
 
 [profile.release]
-# debug = true
+debug = true
 
 # opt-level = 3
 # lto = "fat"

@@ -1,4 +1,5 @@
-### Welcome to the source code
+### Notes on parser
+
 
 The outer loop trough the file is very simple and can be found in parsing/parser.rs.
 
@@ -95,7 +96,22 @@ This part combined with command "DEM_SendTables" are by far the most comlicated 
 
 
 
-
 ### Other stuff
 
-The demo has 2 headers. First header 16 bytes and is just demo magic + how long file is expected to be. The other has some more info like what map was played.
+The demo has 2 headers. First header 16 bytes and is just demo magic + how long file is expected to be. The other header is the message DEM_FileHeader and has some more info like what map was played.
+
+
+
+## Multithreading
+
+The demo has state dumps each few thousand ticks. This allows you to start a thread from these "checkpoints". As the packets are stateful you cannot just parse them in any order.
+
+While the state dumps contain all info regarding entities and stringtables, it does not include the structs which come in the Classinfo message (and nor should they). This is a message in the beginning of the demo that tells you how to decode packets in THIS demo. So classinfo has to be parsed before any threads are spawned.
+
+The main thread has the following jobs:
+1. go trough the demo as fast as possible
+2. spawn the thread that parses classinfo ASAP
+3. join the classinfo thread ASAP
+4. spawn a thread for each fullpacket statedump
+
+In other words the main thread just spawns threads when it finds something interesting in the demo, while speeding trough the file as fast as possible.

@@ -1271,6 +1271,7 @@ dependencies = [
  "phf",
  "phf_macros",
  "protobuf",
+ "rayon",
  "regex",
  "serde",
  "snap",

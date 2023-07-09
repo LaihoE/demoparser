@@ -85,7 +85,7 @@ impl ParserThread {
     pub fn update_entity(&mut self, bitreader: &mut Bitreader, entity_id: i32) -> Result<(), DemoParserError> {
         let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
         if n_updated_values > 0 {
-            // self.gather_extra_info(&entity_id)?;
+            self.gather_extra_info(&entity_id)?;
         }
         Ok(())
     }
@@ -177,7 +177,6 @@ impl ParserThread {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
-
         let class = match self.cls_by_id.get(&entity.cls_id) {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),

@@ -48,7 +48,6 @@ impl ParserThread {
                 return Ok(());
             }
         };
-        // Used to count how many of each event in this demo. Cheap so do it always
         self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
         // Return if this is not our wanted event. (user can only request one event per demo)
         // This could change in the future.
@@ -181,7 +180,10 @@ impl ParserThread {
                 continue;
             }
             let prop = match self.players.get(&entity_id) {
-                Some(player_md) => Some(self.find_prop(&prop_info, &entity_id, player_md).unwrap()),
+                Some(player_md) => match self.find_prop(&prop_info, &entity_id, player_md) {
+                    Ok(p) => Some(p),
+                    Err(_) => None,
+                },
                 None => None,
             };
             match prop {

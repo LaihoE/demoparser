@@ -227,7 +227,6 @@ impl PropController {
             "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon",
             "CCSPlayerPawn.m_iTeamNum",
             "CBasePlayerWeapon.m_nOwnerId",
-            "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon",
         ];
         if self.wanted_player_props.contains(&("yaw").to_string())
             || self.wanted_player_props.contains(&("pitch").to_string()) && name == "CCSPlayerPawn.m_angEyeAngles"
@@ -268,8 +267,6 @@ impl PropController {
                 "CBodyComponentBaseAnimGraph.m_cellY" => self.special_ids.m_cell_y_grenade = Some(self.id),
                 "CBodyComponentBaseAnimGraph.m_cellZ" => self.special_ids.m_cell_z_grenade = Some(self.id),
                 "m_iItemDefinitionIndex" => self.special_ids.item_def = Some(self.id),
-                "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => self.special_ids.buttons = Some(self.id),
-                "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => self.special_ids.active_weapon = Some(self.id),
                 _ => {}
             };
         } else {

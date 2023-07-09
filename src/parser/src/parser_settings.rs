@@ -82,6 +82,7 @@ pub struct Parser {
     pub prop_infos: Vec<PropInfo>,
 
     pub header: AHashMap<String, String>,
+    pub threads_spawned: u32,
 }
 
 impl Parser {
@@ -89,6 +90,7 @@ impl Parser {
         let arc_bytes = inputs.bytes.clone();
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
+            threads_spawned: 0,
             only_header: inputs.only_header,
             ge_list_set: false,
             cls_by_id_set: false,

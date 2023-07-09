@@ -8,18 +8,8 @@ use std::fs::File;
 use std::sync::Arc;
 use std::time::Instant;
 
-//#[global_allocator]
-//static GLOBAL: MiMalloc = MiMalloc;
-
-use std::env;
-fn x() {
-    // this method needs to be inside main() method
-    env::set_var("RUST_BACKTRACE", "1");
-}
-
 fn main() {
-    x();
-    let wanted_props = vec!["YY".to_string()];
+    let wanted_props = vec!["m_iClip1".to_string()];
     // let bytes = fs::read(demo_path).unwrap();
     // let file = File::open(demo_path).unwrap();
     // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
@@ -52,7 +42,7 @@ fn main() {
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
             wanted_event: Some("player_death".to_string()),
-            // wanted_event: None,
+            //wanted_event: None,
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
                 "CCSTeam.m_szTeamname".to_string(),

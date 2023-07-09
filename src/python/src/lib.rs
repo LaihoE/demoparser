@@ -518,8 +518,10 @@ impl DemoParser {
         for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
-        let file = File::open(self.path.clone())?;
-        let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
+        let file = File::open(self.path.clone()).unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+
+        let arc_mmap = Arc::new(mmap);
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {

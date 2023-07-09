@@ -14,11 +14,8 @@ use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
 use ahash::AHashSet;
 use bitter::BitReader;
-use csgoproto::demo::CDemoClassInfo;
-use csgoproto::demo::CDemoFileHeader;
-use csgoproto::demo::CDemoPacket;
-use csgoproto::demo::CDemoSendTables;
 use csgoproto::demo::EDemoCommands::*;
+use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoPacket, CDemoSendTables};
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
@@ -65,116 +62,125 @@ impl Parser {
         self.fullpacket_offsets.push(16);
         let mut sendtable: Option<CDemoSendTables> = None;
         let mut handle: Option<JoinHandle<Result<_, _>>> = None;
-        let mut threads_spawned = 0;
-        let out: Result<DemoOutput, DemoParserError> = thread::scope(|s| {
-            let mut handles = vec![];
-            loop {
-                // If sendtables is done
-                if handle.is_some() && handle.as_ref().unwrap().is_finished() {
-                    let class_result: ClassInfoThreadResult = handle.take().unwrap().join().unwrap().unwrap();
-                    self.insert_cls_thread_result(class_result);
-                }
-                // Spawn thread if done
-                if self.fullpacket_offsets.len() > 0 && self.is_ready_to_spawn_thread() {
-                    let offset = self.fullpacket_offsets.pop().unwrap();
-                    let input = self.create_parser_thread_input(offset, false);
-                    threads_spawned += 1;
-                    handles.push(s.spawn(|| {
-                        let mut parser = ParserThread::new(input).unwrap();
-                        parser.start().unwrap();
-                        parser.create_output()
-                    }));
-                }
-
-                let before = self.ptr;
-                let cmd = self.read_varint().unwrap();
-                let tick = self.read_varint().unwrap();
-                let size = self.read_varint().unwrap();
-                self.tick = tick as i32;
-
-                if self.ptr + size as usize >= self.bytes.len() {
-                    break;
-                }
-
-                let msg_type = cmd & !64;
-                let is_compressed = (cmd & 64) == 64;
-                let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
-
-                if demo_cmd == DEM_Packet || demo_cmd == DEM_AnimationData {
-                    self.ptr += size as usize;
-                    continue;
-                }
-                let bytes = match is_compressed {
-                    true => SnapDecoder::new().decompress_vec(self.read_n_bytes(size).unwrap()).unwrap(),
-                    false => self.read_n_bytes(size).unwrap().to_vec(),
-                };
-                let ok: Result<(), DemoParserError> = match demo_cmd {
-                    DEM_SendTables => {
-                        sendtable = Some(Message::parse_from_bytes(&bytes).unwrap());
-                        Ok(())
-                    }
-                    DEM_FileHeader => self.parse_header(&bytes),
-                    DEM_ClassInfo => {
-                        let my_s = sendtable.clone();
-                        let my_b = bytes;
-                        let want_prop = self.wanted_player_props.clone();
-                        let want_prop_og = self.wanted_player_props_og_names.clone();
-                        let real_to_og = self.real_name_to_og_name.clone();
-                        handle = Some(thread::spawn(move || {
-                            Parser::parse_class_info(&my_b, my_s.unwrap(), want_prop, want_prop_og, real_to_og)
-                        }));
-                        Ok(())
-                    }
-                    DEM_SignonPacket => self.parse_packet(&bytes),
-                    DEM_Stop => break,
-                    DEM_FullPacket => {
-                        self.fullpacket_offsets.push(before);
-                        Ok(())
-                    }
-                    _ => Ok(()),
-                };
-                ok?;
+        let mut handles = vec![];
+        loop {
+            // After this we can start spawning threads
+            if self.should_finalize_serial_part(&handle) {
+                self.finalize_serial_part(&mut handle);
             }
+            if self.should_spawn_thread() {
+                self.spawn_thread(&mut handles);
+            }
+            let frame_starts_at = self.ptr;
 
-            // Wait for classinfo thread if it hasn't finished
-            while !self.is_ready_to_spawn_thread() {
-                if handle.is_some() && handle.as_ref().unwrap().is_finished() {
-                    let class_result: ClassInfoThreadResult = handle.take().unwrap().join().unwrap().unwrap();
-                    self.insert_cls_thread_result(class_result);
-                    break;
+            let cmd = self.read_varint()?;
+            let tick = self.read_varint()?;
+            let size = self.read_varint()?;
+            self.tick = tick as i32;
+
+            // Safety check
+            if self.ptr + size as usize >= self.bytes.len() {
+                break;
+            }
+            let msg_type = cmd & !64;
+            let is_compressed = (cmd & 64) == 64;
+            let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
+
+            // Early exit these for performance reasons
+            if demo_cmd == DEM_Packet || demo_cmd == DEM_AnimationData {
+                self.ptr += size as usize;
+                continue;
+            }
+            let bytes = match is_compressed {
+                true => SnapDecoder::new().decompress_vec(self.read_n_bytes(size).unwrap()).unwrap(),
+                false => self.read_n_bytes(size)?.to_vec(),
+            };
+            let ok: Result<(), DemoParserError> = match demo_cmd {
+                DEM_SendTables => {
+                    sendtable = Some(Message::parse_from_bytes(&bytes).unwrap());
+                    Ok(())
                 }
-            }
-            // Demo does not have fullpackets
-            if threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
-                let input = self.create_parser_thread_input(16, true);
-                handles.push(s.spawn(|| {
-                    let mut parser = ParserThread::new(input).unwrap();
-                    parser.start().unwrap();
-                    parser.create_output()
-                }));
-            } else {
-                // spawn rest of the threads
-                while self.fullpacket_offsets.len() > 0 {
-                    let offset = self.fullpacket_offsets.pop().unwrap();
-                    threads_spawned += 1;
-                    let input = self.create_parser_thread_input(offset, false);
-                    handles.push(s.spawn(|| {
-                        let mut parser = ParserThread::new(input).unwrap();
-                        parser.start().unwrap();
-                        parser.create_output()
-                    }));
+                DEM_FileHeader => self.parse_header(&bytes),
+                DEM_ClassInfo => {
+                    handle = self.spawn_clsinfo_thread(sendtable.take(), bytes);
+                    Ok(())
                 }
+                DEM_SignonPacket => self.parse_packet(&bytes),
+                DEM_Stop => break,
+                DEM_FullPacket => {
+                    self.fullpacket_offsets.push(frame_starts_at);
+                    Ok(())
+                }
+                _ => Ok(()),
+            };
+            ok?;
+        }
+        // If clsinfo thread is very slow then need to join it here
+        // since normally the join is done in the above loop
+        self.make_sure_serial_is_done(&mut handle);
+        // if demo does not have fullpackets, spawn one thread that parses entire demo
+        if self.threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
+            let input = self.create_parser_thread_input(16, true);
+            handles.push(thread::spawn(|| {
+                let mut parser = ParserThread::new(input).unwrap();
+                parser.start().unwrap();
+                parser.create_output()
+            }));
+        } else {
+            // spawn rest of the threads if any
+            while self.fullpacket_offsets.len() > 0 {
+                self.spawn_thread(&mut handles);
             }
-            let mut outputs: Vec<DemoOutput> = vec![];
-            for handle in handles {
-                outputs.push(handle.join().unwrap());
-            }
-            Ok(self.combine_thread_outputs(&mut outputs))
-        });
-        self.prop_controller_is_set = false;
-        Ok(out?)
+        }
+        let mut outputs: Vec<DemoOutput> = vec![];
+        for handle in handles {
+            outputs.push(handle.join().unwrap());
+        }
+        Ok(self.combine_thread_outputs(&mut outputs))
     }
-
+    fn make_sure_serial_is_done(&mut self, handle: &mut Option<JoinHandle<Result<ClassInfoThreadResult, DemoParserError>>>) {
+        while !self.is_ready_to_spawn_thread() {
+            if handle.is_some() && handle.as_ref().unwrap().is_finished() {
+                let class_result: ClassInfoThreadResult = handle.take().unwrap().join().unwrap().unwrap();
+                self.insert_cls_thread_result(class_result);
+                break;
+            }
+        }
+    }
+    pub fn spawn_thread(&mut self, handles: &mut Vec<JoinHandle<DemoOutput>>) {
+        let offset = self.fullpacket_offsets.pop().unwrap();
+        let input = self.create_parser_thread_input(offset, false);
+        handles.push(thread::spawn(|| {
+            let mut parser = ParserThread::new(input).unwrap();
+            parser.start().unwrap();
+            parser.create_output()
+        }));
+        self.threads_spawned += 1;
+    }
+    fn should_spawn_thread(&self) -> bool {
+        self.fullpacket_offsets.len() > 0 && self.is_ready_to_spawn_thread()
+    }
+    fn should_finalize_serial_part(&self, handle: &Option<JoinHandle<Result<ClassInfoThreadResult, DemoParserError>>>) -> bool {
+        handle.is_some() && handle.as_ref().unwrap().is_finished()
+    }
+    fn finalize_serial_part(&mut self, handle: &mut Option<JoinHandle<Result<ClassInfoThreadResult, DemoParserError>>>) {
+        let class_result: ClassInfoThreadResult = handle.take().unwrap().join().unwrap().unwrap();
+        self.insert_cls_thread_result(class_result);
+    }
+    fn spawn_clsinfo_thread(
+        &mut self,
+        sendtable: Option<CDemoSendTables>,
+        bytes: Vec<u8>,
+    ) -> Option<JoinHandle<Result<ClassInfoThreadResult, DemoParserError>>> {
+        let my_s = sendtable.clone();
+        let my_b = bytes;
+        let want_prop = self.wanted_player_props.clone();
+        let want_prop_og = self.wanted_player_props_og_names.clone();
+        let real_to_og = self.real_name_to_og_name.clone();
+        Some(thread::spawn(move || {
+            Parser::parse_class_info(&my_b, my_s.unwrap(), want_prop, want_prop_og, real_to_og)
+        }))
+    }
     fn combine_thread_outputs(&mut self, outputs: &mut Vec<DemoOutput>) -> DemoOutput {
         // Combines all inner DemoOutputs into one big output
         outputs.sort_by_key(|x| x.ptr);
