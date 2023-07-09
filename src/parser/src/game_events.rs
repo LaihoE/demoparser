@@ -97,6 +97,11 @@ impl ParserThread {
                             Some(prefix) => prefix,
                             None => return Err(DemoParserError::UnknownPawnPrefix(field.name.clone())),
                         };
+                        // Rename userid to user. userid_name sounds goofy
+                        let prefix = match prefix {
+                            "userid" => "user",
+                            _ => prefix,
+                        };
                         extra_fields.push(self.create_player_name_field(entity_id, prefix));
                         extra_fields.push(self.create_player_steamid_field(entity_id, prefix));
                         extra_fields.extend(self.find_extra_props_events(entity_id, prefix)?);
