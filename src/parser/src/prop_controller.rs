@@ -15,9 +15,10 @@ const NAME_ID: u32 = 6;
 const PLAYER_X_ID: u32 = 7;
 const PLAYER_Y_ID: u32 = 8;
 const PLAYER_Z_ID: u32 = 9;
-
 const BUTTONS_BASEID: u32 = 100000;
 const NORMAL_PROP_BASEID: u32 = 1000;
+
+pub const WEAPON_SKIN_ID: u32 = 420420420;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -74,11 +75,19 @@ impl PropController {
                 someid += 1;
             }
         }
+        if self.wanted_player_props.contains(&("weapon_skin".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: WEAPON_SKIN_ID,
+                prop_type: PropType::Custom,
+                prop_name: "weapon_skin".to_string(),
+                prop_friendly_name: "active_weapon_skin".to_string(),
+            });
+        }
         if self.wanted_player_props.contains(&("weapon_name".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: WEAPON_NAME_ID,
                 prop_type: PropType::Custom,
-                prop_name: "active_weapon_name".to_string(),
+                prop_name: "weapon_name".to_string(),
                 prop_friendly_name: "active_weapon_name".to_string(),
             });
         }
@@ -151,18 +160,20 @@ impl PropController {
         }
         arr
     }
-    fn set_id(&mut self, weap_prop: &str, f: &mut Field) {
+    fn set_id(&mut self, weap_prop: &str, f: &mut Field, is_grenade_or_weapon: bool) {
         match self.name_to_id.get(weap_prop) {
             // If we already have an id for prop of same name then use that id.
             // Mainly for weapon props. For example CAK47.m_iClip1 and CWeaponSCAR20.m_iClip1
             // are the "same" prop. (they have same path and we want to refer to it with one id not ~20)
             Some(id) => {
                 f.prop_id = *id as usize;
+                self.set_special_ids(&weap_prop, is_grenade_or_weapon, *id);
                 return;
             }
             None => {
                 self.name_to_id.insert(weap_prop.to_string(), self.id);
                 f.prop_id = self.id as usize;
+                self.set_special_ids(&weap_prop, is_grenade_or_weapon, self.id);
             }
         }
     }
@@ -184,8 +195,11 @@ impl PropController {
     pub fn handle_prop(&mut self, full_name: &str, f: &mut Field) {
         // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]
         let split_at_dot: Vec<&str> = full_name.split(".").collect();
-        let is_weapon_prop =
-            (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK")) && !split_at_dot[0].contains("Player");
+        let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK"))
+            && !split_at_dot[0].contains("Player")
+            || split_at_dot[0].contains("Knife")
+            || split_at_dot[0].contains("CDEagle");
+
         let is_projectile_prop = (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade"))
             && !split_at_dot[0].contains("Player");
         let is_grenade_or_weapon = is_weapon_prop || is_projectile_prop;
@@ -198,8 +212,7 @@ impl PropController {
             false => full_name.to_string(),
         };
         let prop_already_exists = self.name_to_id.contains_key(&(prop_name).to_string());
-        self.set_special_ids(&prop_name, is_grenade_or_weapon);
-        self.set_id(&prop_name, f);
+        self.set_id(&prop_name, f, is_grenade_or_weapon);
         if !prop_already_exists {
             self.insert_propinfo(&prop_name, f);
         }
@@ -256,37 +269,37 @@ impl PropController {
         }
         false
     }
-    fn set_special_ids(&mut self, name: &str, is_grenade_or_weapon: bool) {
+    fn set_special_ids(&mut self, name: &str, is_grenade_or_weapon: bool, id: u32) {
         if is_grenade_or_weapon {
             match name {
-                "m_nOwnerId" => self.special_ids.grenade_owner_id = Some(self.id),
-                "CBodyComponentBaseAnimGraph.m_vecX" => self.special_ids.m_vec_x_grenade = Some(self.id),
-                "CBodyComponentBaseAnimGraph.m_vecY" => self.special_ids.m_vec_y_grenade = Some(self.id),
-                "CBodyComponentBaseAnimGraph.m_vecZ" => self.special_ids.m_vec_z_grenade = Some(self.id),
-                "CBodyComponentBaseAnimGraph.m_cellX" => self.special_ids.m_cell_x_grenade = Some(self.id),
-                "CBodyComponentBaseAnimGraph.m_cellY" => self.special_ids.m_cell_y_grenade = Some(self.id),
-                "CBodyComponentBaseAnimGraph.m_cellZ" => self.special_ids.m_cell_z_grenade = Some(self.id),
-                "m_iItemDefinitionIndex" => self.special_ids.item_def = Some(self.id),
+                "m_nOwnerId" => self.special_ids.grenade_owner_id = Some(id),
+                "CBodyComponentBaseAnimGraph.m_vecX" => self.special_ids.m_vec_x_grenade = Some(id),
+                "CBodyComponentBaseAnimGraph.m_vecY" => self.special_ids.m_vec_y_grenade = Some(id),
+                "CBodyComponentBaseAnimGraph.m_vecZ" => self.special_ids.m_vec_z_grenade = Some(id),
+                "CBodyComponentBaseAnimGraph.m_cellX" => self.special_ids.m_cell_x_grenade = Some(id),
+                "CBodyComponentBaseAnimGraph.m_cellY" => self.special_ids.m_cell_y_grenade = Some(id),
+                "CBodyComponentBaseAnimGraph.m_cellZ" => self.special_ids.m_cell_z_grenade = Some(id),
+                "m_iItemDefinitionIndex" => self.special_ids.item_def = Some(id),
                 _ => {}
             };
         } else {
             match name {
-                "CCSTeam.m_iTeamNum" => self.special_ids.team_team_num = Some(self.id),
-                "CCSPlayerPawn.m_iTeamNum" => self.special_ids.player_team_pointer = Some(self.id),
-                "CBasePlayerWeapon.m_nOwnerId" => self.special_ids.weapon_owner_pointer = Some(self.id),
-                "CCSPlayerController.m_iTeamNum" => self.special_ids.teamnum = Some(self.id),
-                "CCSPlayerController.m_iszPlayerName" => self.special_ids.player_name = Some(self.id),
-                "CCSPlayerController.m_steamID" => self.special_ids.steamid = Some(self.id),
-                "CCSPlayerController.m_hPlayerPawn" => self.special_ids.player_pawn = Some(self.id),
-                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX" => self.special_ids.cell_x_player = Some(self.id),
-                "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => self.special_ids.buttons = Some(self.id),
-                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX" => self.special_ids.cell_x_offset_player = Some(self.id),
-                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellY" => self.special_ids.cell_y_player = Some(self.id),
-                "CCSPlayerPawn.m_angEyeAngles" => self.special_ids.eye_angles = Some(self.id),
-                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY" => self.special_ids.cell_y_offset_player = Some(self.id),
-                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellZ" => self.special_ids.cell_z_player = Some(self.id),
-                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => self.special_ids.cell_z_offset_player = Some(self.id),
-                "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => self.special_ids.active_weapon = Some(self.id),
+                "CCSTeam.m_iTeamNum" => self.special_ids.team_team_num = Some(id),
+                "CCSPlayerPawn.m_iTeamNum" => self.special_ids.player_team_pointer = Some(id),
+                "CBasePlayerWeapon.m_nOwnerId" => self.special_ids.weapon_owner_pointer = Some(id),
+                "CCSPlayerController.m_iTeamNum" => self.special_ids.teamnum = Some(id),
+                "CCSPlayerController.m_iszPlayerName" => self.special_ids.player_name = Some(id),
+                "CCSPlayerController.m_steamID" => self.special_ids.steamid = Some(id),
+                "CCSPlayerController.m_hPlayerPawn" => self.special_ids.player_pawn = Some(id),
+                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX" => self.special_ids.cell_x_player = Some(id),
+                "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => self.special_ids.buttons = Some(id),
+                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX" => self.special_ids.cell_x_offset_player = Some(id),
+                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellY" => self.special_ids.cell_y_player = Some(id),
+                "CCSPlayerPawn.m_angEyeAngles" => self.special_ids.eye_angles = Some(id),
+                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecY" => self.special_ids.cell_y_offset_player = Some(id),
+                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellZ" => self.special_ids.cell_z_player = Some(id),
+                "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => self.special_ids.cell_z_offset_player = Some(id),
+                "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => self.special_ids.active_weapon = Some(id),
                 _ => {}
             };
         }
@@ -307,7 +320,7 @@ impl PropController {
 mod tests {
     use super::PropController;
     use crate::collect_data::PropType;
-    use crate::prop_controller::{PropInfo, NORMAL_PROP_BASEID, TICK_ID, YAW_ID};
+    use crate::prop_controller::{PropInfo, NORMAL_PROP_BASEID, TICK_ID, WEAPON_SKIN_ID, YAW_ID};
     use crate::prop_controller::{BUTTONS_BASEID, PITCH_ID};
     use crate::prop_controller::{STEAMID_ID, WEAPON_NAME_ID};
     use crate::sendtables::Decoder::BaseDecoder;
@@ -400,8 +413,23 @@ mod tests {
             PropInfo {
                 id: WEAPON_NAME_ID,
                 prop_type: PropType::Custom,
-                prop_name: "active_weapon_name".to_string(),
+                prop_name: "weapon_name".to_string(),
                 prop_friendly_name: "active_weapon_name".to_string()
+            }
+        );
+    }
+    #[test]
+    pub fn test_custom_propinfos_weapon_skin() {
+        let mut pc = PropController::new(vec!["weapon_skin".to_string()], vec![], AHashMap::default());
+        pc.set_custom_propinfos();
+        let pi = pc.prop_infos[0].clone();
+        assert_eq!(
+            pi,
+            PropInfo {
+                id: WEAPON_SKIN_ID,
+                prop_type: PropType::Custom,
+                prop_name: "weapon_skin".to_string(),
+                prop_friendly_name: "active_weapon_skin".to_string()
             }
         );
     }

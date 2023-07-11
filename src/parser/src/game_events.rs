@@ -187,7 +187,10 @@ impl ParserThread {
             let prop = match self.players.get(&entity_id) {
                 Some(player_md) => match self.find_prop(&prop_info, &entity_id, player_md) {
                     Ok(p) => Some(p),
-                    Err(_) => None,
+                    Err(e) => {
+                        // println!("{:?}", e);
+                        None
+                    }
                 },
                 None => None,
             };

@@ -2,6 +2,7 @@ use super::read_bits::DemoParserError;
 use crate::entities_utils::*;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
+use crate::sendtables::DebugFieldAndPath;
 use crate::variants::Variant;
 use ahash::AHashMap;
 use bitter::BitReader;
@@ -90,20 +91,32 @@ impl ParserThread {
         Ok(())
     }
     pub fn decode_entity_update(&mut self, bitreader: &mut Bitreader, entity_id: i32) -> Result<usize, DemoParserError> {
-        let n_paths = self.parse_paths(bitreader, &entity_id)?;
+        let n_updates = self.parse_paths(bitreader, &entity_id)?;
 
         let entity = match self.entities.get_mut(&(entity_id)) {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
-
-        for field_info in &self.paths[..n_paths] {
-            let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-            if field_info.should_parse {
-                entity.props.insert(field_info.prop_id as u32, result);
+        if self.is_debug_mode {
+            for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
+                let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
+                if debug.field.full_name.contains("qAWP") {
+                    println!(
+                        "{:?} {:?} {:?} {} {} {}",
+                        debug.path, debug.field.full_name, result, self.tick, field_info.prop_id, entity.cls_id
+                    );
+                }
+            }
+        } else {
+            for field_info in &self.field_infos[..n_updates] {
+                let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
+                if field_info.should_parse {
+                    entity.props.insert(field_info.prop_id as u32, result);
+                }
+                // entity.props.insert(field_info.prop_id as u32, result);
             }
         }
-        Ok(n_paths)
+        Ok(n_updates)
     }
 
     pub fn parse_paths(&mut self, bitreader: &mut Bitreader, entity_id: &i32) -> Result<usize, DemoParserError> {
@@ -199,11 +212,17 @@ impl ParserThread {
             if symbol == STOP_READING_SYMBOL {
                 break;
             }
-
             do_op(symbol, bitreader, &mut fp)?;
+
+            if self.is_debug_mode {
+                self.debug_fields[idx] = DebugFieldAndPath {
+                    field: class.serializer.debug_find_decoder(&fp, 0, class.name.to_string()),
+                    path: fp.path.clone(),
+                };
+            }
             // We reuse one big vector for holding paths. Purely for performance.
             // Alternatively we could create a new vector in this function and return it.
-            self.paths[idx] = class.serializer.find_decoder(&fp, 0);
+            self.field_infos[idx] = class.serializer.find_decoder(&fp, 0);
             idx += 1;
         }
         Ok(idx)
@@ -297,7 +316,6 @@ impl ParserThread {
             EntityType::Rules => self.rules_entity_id = Some(*entity_id),
             _ => {}
         };
-
         let entity = Entity {
             entity_id: *entity_id,
             cls_id: cls_id,

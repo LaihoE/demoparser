@@ -11,6 +11,8 @@ use crate::other_netmessages::Class;
 use crate::parser::DemoOutput;
 use crate::parser::ParserThreadInput;
 use crate::prop_controller::PropController;
+use crate::sendtables::DebugField;
+use crate::sendtables::DebugFieldAndPath;
 use crate::sendtables::FieldInfo;
 use crate::sendtables::FieldModel;
 use ahash::AHashMap;
@@ -22,6 +24,7 @@ use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use memmap2::Mmap;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use std::env;
 use std::sync::Arc;
 
 // Wont fit in L1, evaluate if worth to use pointer method
@@ -48,7 +51,7 @@ pub struct ParserThread {
     pub rules_entity_id: Option<i32>,
     pub game_events_counter: AHashSet<String>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
-    pub paths: Vec<FieldInfo>,
+    pub field_infos: Vec<FieldInfo>,
     pub projectiles: AHashSet<i32, RandomState>,
     pub fullpackets_parsed: u32,
     pub packets_parsed: u32,
@@ -70,6 +73,8 @@ pub struct ParserThread {
     pub wanted_event: Option<String>,
     pub parse_entities: bool,
     pub parse_projectiles: bool,
+    pub debug_fields: Vec<DebugFieldAndPath>,
+    pub is_debug_mode: bool,
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -141,7 +146,21 @@ impl ParserThread {
             .settings
             .wanted_player_props
             .extend(vec!["tick".to_owned(), "steamid".to_owned(), "name".to_owned()]);
+        let args: Vec<String> = env::args().collect();
+        let debug = if args.len() > 2 { args[2] == "true" } else { false };
         Ok(ParserThread {
+            debug_fields: vec![
+                DebugFieldAndPath {
+                    field: DebugField {
+                        decoder: crate::sendtables::Decoder::NoscaleDecoder,
+                        full_name: "".to_string(),
+                        field: None,
+                    },
+                    path: [0, 0, 0, 0, 0, 0, 0],
+                };
+                8192
+            ],
+            is_debug_mode: debug,
             projectile_records: vec![],
             parse_all_packets: input.parse_all_packets,
             wanted_ticks: input.wanted_ticks,
@@ -165,14 +184,14 @@ impl ParserThread {
             parse_entities: input.settings.parse_ents,
             projectiles: AHashSet::default(),
             // projectile_records: ProjectileRecordVec::new(),
-            baselines: AHashMap::default(),
-            string_tables: vec![],
-            paths: vec![
+            baselines: input.baselines,
+            string_tables: input.string_tables,
+            field_infos: vec![
                 FieldInfo {
                     decoder: crate::sendtables::Decoder::NoscaleDecoder,
                     should_parse: false,
                     prop_id: 0,
-                    controller_prop: None
+                    controller_prop: None,
                 };
                 8192
             ],

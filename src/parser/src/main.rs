@@ -9,12 +9,12 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn main() {
-    let wanted_props = vec!["m_iClip1".to_string()];
+    let wanted_props = vec!["weapon_skin".to_string()];
     // let bytes = fs::read(demo_path).unwrap();
     // let file = File::open(demo_path).unwrap();
     // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test2/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/driv/y/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
     let arc_huf = Arc::new(huf);
@@ -24,7 +24,7 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 10 {
+        if c > 1000 {
             break;
         }
 
@@ -63,11 +63,10 @@ fn main() {
         };
 
         let mut ds = Parser::new(settings);
-        let _d = ds.parse_demo().unwrap();
-        // println!("{:?}", d.df);
+        let d = ds.parse_demo().unwrap();
+        println!("{:?}", d.game_events_counter);
         println!("{:?}", before.elapsed());
 
-        // println!("{:?}", ds.handles);
         // println!("{:#?}", ds.state.cls_by_id);
     }
     println!("TOTAL {:?}", before.elapsed());

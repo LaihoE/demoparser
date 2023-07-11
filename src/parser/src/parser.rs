@@ -9,11 +9,13 @@ use crate::parser_thread_settings::*;
 use crate::parser_threads::demo_cmd_type_from_int;
 use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
+use crate::stringtables::StringTable;
 use crate::variants::PropColumn;
 use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
 use ahash::AHashSet;
 use bitter::BitReader;
+use csgoproto::demo::CDemoFullPacket;
 use csgoproto::demo::EDemoCommands::*;
 use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoPacket, CDemoSendTables};
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
@@ -22,7 +24,9 @@ use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 use std::thread;
+
 use std::thread::JoinHandle;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -53,13 +57,13 @@ impl Parser {
             parse_all_packets: parse_all,
             // arc?
             wanted_ticks: self.wanted_ticks.clone(),
+            string_tables: self.string_tables.clone(),
         }
     }
 
     pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
         Parser::handle_short_header(self.bytes.len(), &self.bytes[..16])?;
         self.ptr = 16;
-        self.fullpacket_offsets.push(16);
         let mut sendtable: Option<CDemoSendTables> = None;
         let mut handle: Option<JoinHandle<Result<_, _>>> = None;
         let mut handles = vec![];
@@ -105,9 +109,11 @@ impl Parser {
                     handle = self.spawn_clsinfo_thread(sendtable.take(), bytes);
                     Ok(())
                 }
+                DEM_Packet => self.parse_packet(&bytes),
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Stop => break,
                 DEM_FullPacket => {
+                    self.parse_full_packet(&bytes).unwrap();
                     self.fullpacket_offsets.push(frame_starts_at);
                     Ok(())
                 }
@@ -119,6 +125,7 @@ impl Parser {
         // since normally the join is done in the above loop
         self.make_sure_serial_is_done(&mut handle);
         // if demo does not have fullpackets, spawn one thread that parses entire demo
+
         if self.threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
             let input = self.create_parser_thread_input(16, true);
             handles.push(thread::spawn(|| {
@@ -181,6 +188,20 @@ impl Parser {
             Parser::parse_class_info(&my_b, my_s.unwrap(), want_prop, want_prop_og, real_to_og)
         }))
     }
+
+    pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
+        for item in &full_packet.string_table.tables {
+            if item.table_name.as_ref().unwrap() == "instancebaseline" {
+                for i in &item.items {
+                    let k = i.str().parse::<u32>().unwrap_or(999999);
+                    self.baselines.insert(k, i.data.as_ref().unwrap().clone());
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn combine_thread_outputs(&mut self, outputs: &mut Vec<DemoOutput>) -> DemoOutput {
         // Combines all inner DemoOutputs into one big output
         outputs.sort_by_key(|x| x.ptr);
@@ -368,6 +389,7 @@ pub struct ParserThreadInput {
     pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,
     pub parse_all_packets: bool,
     pub wanted_ticks: AHashSet<i32>,
+    pub string_tables: Vec<StringTable>,
 }
 
 pub struct ClassInfoThreadResult {

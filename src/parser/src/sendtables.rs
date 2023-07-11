@@ -3,6 +3,7 @@ use crate::decoder::QfMapper;
 use crate::entities_utils::FieldPath;
 use crate::parser_settings::Parser;
 use crate::prop_controller::PropController;
+use crate::prop_controller::WEAPON_SKIN_ID;
 use crate::q_float::QuantalizedFloat;
 use crate::sendtables::Decoder::*;
 use crate::sendtables::FieldModel::*;
@@ -163,14 +164,25 @@ pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
     "CSPlayerBlockingUseAction_t"=> Unsigned64Decoder,
     "MoveMountingAmount_t"=> Unsigned64Decoder,
     "QuestProgress::Reason"=> Unsigned64Decoder,
-
-
 };
+const WEAPON_SKIN_PATH: [i32; 7] = [87, 0, 1, 0, 0, 0, 0];
 
 impl Field {
     pub fn decoder_from_path(&self, path: &FieldPath, pos: usize) -> FieldInfo {
         match self.model {
             FieldModelSimple => {
+                // EHHH IDK WILL HAVE TO DO FOR NOW
+                // Hack as this is the only arraylike prop that works like this
+                // and proper support for these would be much work so lets see if more
+                // arr props are needed, else probably leave it like this.
+                if path.path == WEAPON_SKIN_PATH {
+                    return FieldInfo {
+                        decoder: self.decoder,
+                        should_parse: self.should_parse,
+                        prop_id: WEAPON_SKIN_ID,
+                        controller_prop: self.controller_prop,
+                    };
+                }
                 return FieldInfo {
                     decoder: self.decoder,
                     should_parse: self.should_parse,
@@ -184,7 +196,7 @@ impl Field {
                     should_parse: self.should_parse,
                     prop_id: self.prop_id as u32,
                     controller_prop: self.controller_prop,
-                }
+                };
             }
             FieldModelFixedTable => {
                 if path.last == pos - 1 {
@@ -592,6 +604,7 @@ impl Parser {
                     }
                 }
             }
+
             if my_serializer.name.contains("Player")
                 || my_serializer.name.contains("Controller")
                 || my_serializer.name.contains("Team")
@@ -600,9 +613,12 @@ impl Parser {
                 || my_serializer.name.contains("cell")
                 || my_serializer.name.contains("vec")
                 || my_serializer.name.contains("Projectile")
+                || my_serializer.name.contains("Knife")
+                || my_serializer.name.contains("CDEagle")
             {
                 prop_controller.find_prop_name_paths(&mut my_serializer);
             }
+
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
         prop_controller.set_custom_propinfos();
@@ -615,6 +631,11 @@ pub struct DebugField {
     pub full_name: String,
     pub field: Option<Field>,
     pub decoder: Decoder,
+}
+#[derive(Debug, Clone)]
+pub struct DebugFieldAndPath {
+    pub field: DebugField,
+    pub path: [i32; 7],
 }
 
 fn field_from_msg(field: &ProtoFlattenedSerializerField_t, serializer_msg: &CSVCMsg_FlattenedSerializer) -> Field {

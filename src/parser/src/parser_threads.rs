@@ -39,6 +39,7 @@ impl ParserThread {
             };
 
             let ok = match demo_cmd {
+                DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Packet => self.parse_packet(&bytes),
                 DEM_FullPacket => {
                     match self.parse_all_packets {
@@ -75,6 +76,8 @@ impl ParserThread {
 
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
+                svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
+                svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
                 GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
@@ -82,6 +85,7 @@ impl ParserThread {
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
                 net_SetConVar => self.parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
+
                 _ => Ok(()),
             };
             ok?;
@@ -90,15 +94,6 @@ impl ParserThread {
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
-
-        for item in &full_packet.string_table.tables {
-            if item.table_name.as_ref().unwrap() == "instancebaseline" {
-                for i in &item.items {
-                    let k = i.str().parse::<u32>().unwrap_or(999999);
-                    self.baselines.insert(k, i.data.as_ref().unwrap().clone());
-                }
-            }
-        }
 
         let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
@@ -110,14 +105,16 @@ impl ParserThread {
 
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
+                svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
+                svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
                 net_SetConVar => self.parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
-
                 _ => Ok(()),
             };
+
             ok?
         }
         Ok(())

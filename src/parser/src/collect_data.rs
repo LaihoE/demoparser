@@ -1,9 +1,11 @@
 use super::entities::PlayerMetaData;
 use super::variants::Variant;
 use crate::maps::BUTTONMAP;
+use crate::maps::PAINTKITS;
 use crate::maps::WEAPINDICIES;
 use crate::parser_thread_settings::ParserThread;
 use crate::prop_controller::PropInfo;
+use crate::prop_controller::WEAPON_SKIN_ID;
 use crate::variants::PropColumn;
 use serde::Serialize;
 use std::fmt;
@@ -72,6 +74,9 @@ pub enum PropCollectionError {
     UnknownCoordinateAxis,
     WeaponEntityNotFound,
     WeaponEntityWantedPropNotFound,
+    WeaponSkinFloatConvertionError,
+    WeaponSkinNoSkinMapping,
+    WeaponSkinIdxIncorrectVariant,
 }
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
@@ -125,7 +130,7 @@ impl ParserThread {
                     }
                     Err(_e) => {
                         // Ultimate debugger is to print this error
-                        // println!("{} {:?}", self.tick, _e);
+                        // println!("{} {:?} {}", self.tick, _e, prop_info.prop_name);
                         self.output
                             .entry(prop_info.id)
                             .or_insert_with(|| PropColumn::new())
@@ -428,7 +433,27 @@ impl ParserThread {
             "pitch" => self.find_pitch_or_yaw(entity_id, 0),
             "yaw" => self.find_pitch_or_yaw(entity_id, 1),
             "weapon_name" => self.find_weapon_name(entity_id),
+            "weapon_skin" => self.find_weapon_skin(entity_id),
             _ => Err(PropCollectionError::UnknownCustomPropName),
+        }
+    }
+    // 699999999
+    pub fn find_weapon_skin(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
+        match self.find_weapon_prop(&WEAPON_SKIN_ID, player_entid) {
+            Ok(Variant::F32(f)) => {
+                // The value is stored as a float for some reason
+                if f.fract() == 0.0 && f >= 0.0 {
+                    let idx = f as u32;
+                    match PAINTKITS.get(&idx) {
+                        Some(kit) => Ok(Variant::String(kit.to_string())),
+                        None => Err(PropCollectionError::WeaponSkinNoSkinMapping),
+                    }
+                } else {
+                    return Err(PropCollectionError::WeaponSkinFloatConvertionError);
+                }
+            }
+            Ok(_) => return Err(PropCollectionError::WeaponSkinIdxIncorrectVariant),
+            Err(e) => return Err(e),
         }
     }
     pub fn find_weapon_prop(&self, prop: &u32, player_entid: &i32) -> Result<Variant, PropCollectionError> {
@@ -509,6 +534,7 @@ mod tests {
     use crate::maps::BUTTONMAP;
     use crate::parser_settings::Parser;
     use crate::prop_controller::PropInfo;
+    use crate::prop_controller::WEAPON_SKIN_ID;
     use crate::variants::*;
     use crate::{parser_settings::ParserInputs, parser_thread_settings::ParserThread, prop_controller::PropController};
     use ahash::AHashMap;
@@ -546,6 +572,7 @@ mod tests {
     const GRENADE_ENTITY_ID: i32 = 26;
 
     fn default_setup() -> (ParserThread, PlayerMetaData) {
+        // IDK IS THIS CONSERNING? :D i guess just run out of file descriptors?
         let file = File::open("src/collect_data.rs").unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
@@ -1360,6 +1387,151 @@ mod tests {
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::RulesEntityIdNotSet), prop);
     }
+    #[test]
+    fn test_weapon_skin_found() {
+        let (mut parser_thread, player_md) = default_setup();
+        let mut weapon_props = AHashMap::default();
+        let mut player_props = AHashMap::default();
+        player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
+        weapon_props.insert(WEAPON_SKIN_ID, Variant::F32(344.0));
+
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
+        parser_thread.prop_controller = Arc::new(prop_controller_new);
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let weapon = Entity {
+            cls_id: 0,
+            entity_id: WEAPON_ENTITY_ID,
+            props: weapon_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(weapon.entity_id, weapon.clone());
+
+        let prop_info = PropInfo {
+            id: WEAPON_SKIN_ID,
+            prop_type: PropType::Custom,
+            prop_name: "weapon_skin".to_string(),
+            prop_friendly_name: "weapon_skin".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Ok(Variant::String("DragonLore".to_string())), prop);
+    }
+    #[test]
+    fn test_weapon_skin_no_mapping() {
+        let (mut parser_thread, player_md) = default_setup();
+        let mut weapon_props = AHashMap::default();
+        let mut player_props = AHashMap::default();
+        player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
+        weapon_props.insert(WEAPON_SKIN_ID, Variant::F32(5555555555.0));
+
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
+        parser_thread.prop_controller = Arc::new(prop_controller_new);
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let weapon = Entity {
+            cls_id: 0,
+            entity_id: WEAPON_ENTITY_ID,
+            props: weapon_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(weapon.entity_id, weapon.clone());
+
+        let prop_info = PropInfo {
+            id: WEAPON_SKIN_ID,
+            prop_type: PropType::Custom,
+            prop_name: "weapon_skin".to_string(),
+            prop_friendly_name: "weapon_skin".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Err(PropCollectionError::WeaponSkinNoSkinMapping), prop);
+    }
+    #[test]
+    fn test_weapon_skin_broken_float() {
+        let (mut parser_thread, player_md) = default_setup();
+        let mut weapon_props = AHashMap::default();
+        let mut player_props = AHashMap::default();
+        player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
+        weapon_props.insert(WEAPON_SKIN_ID, Variant::F32(50.555));
+
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
+        parser_thread.prop_controller = Arc::new(prop_controller_new);
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let weapon = Entity {
+            cls_id: 0,
+            entity_id: WEAPON_ENTITY_ID,
+            props: weapon_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(weapon.entity_id, weapon.clone());
+
+        let prop_info = PropInfo {
+            id: WEAPON_SKIN_ID,
+            prop_type: PropType::Custom,
+            prop_name: "weapon_skin".to_string(),
+            prop_friendly_name: "weapon_skin".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Err(PropCollectionError::WeaponSkinFloatConvertionError), prop);
+    }
+    #[test]
+    fn test_weapon_skin_idx_incorrect_variant() {
+        let (mut parser_thread, player_md) = default_setup();
+        let mut weapon_props = AHashMap::default();
+        let mut player_props = AHashMap::default();
+        player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
+        weapon_props.insert(WEAPON_SKIN_ID, Variant::I32(50));
+
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
+        prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
+        parser_thread.prop_controller = Arc::new(prop_controller_new);
+
+        let player = Entity {
+            cls_id: 0,
+            entity_id: PLAYER_ENTITY_ID,
+            props: player_props,
+            entity_type: EntityType::Normal,
+        };
+        let weapon = Entity {
+            cls_id: 0,
+            entity_id: WEAPON_ENTITY_ID,
+            props: weapon_props,
+            entity_type: EntityType::Normal,
+        };
+        parser_thread.entities.insert(player.entity_id, player.clone());
+        parser_thread.entities.insert(weapon.entity_id, weapon.clone());
+
+        let prop_info = PropInfo {
+            id: WEAPON_SKIN_ID,
+            prop_type: PropType::Custom,
+            prop_name: "weapon_skin".to_string(),
+            prop_friendly_name: "weapon_skin".to_string(),
+        };
+        let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
+        assert_eq!(Err(PropCollectionError::WeaponSkinIdxIncorrectVariant), prop);
+    }
+
     #[test]
     fn test_weapon_prop_found() {
         let (mut parser_thread, player_md) = default_setup();
