@@ -615,10 +615,10 @@ impl Parser {
                 || my_serializer.name.contains("Projectile")
                 || my_serializer.name.contains("Knife")
                 || my_serializer.name.contains("CDEagle")
+                || my_serializer.name.contains("Rules")
             {
                 prop_controller.find_prop_name_paths(&mut my_serializer);
             }
-
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
         prop_controller.set_custom_propinfos();
