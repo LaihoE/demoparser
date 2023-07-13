@@ -97,7 +97,14 @@ impl ParserThread {
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
-
+        for item in &full_packet.string_table.tables {
+            if item.table_name.as_ref().unwrap() == "instancebaseline" {
+                for i in &item.items {
+                    let k = i.str().parse::<u32>().unwrap_or(999999);
+                    self.baselines.insert(k, i.data.as_ref().unwrap().clone());
+                }
+            }
+        }
         let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
         // Inner loop

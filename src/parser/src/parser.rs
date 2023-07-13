@@ -121,6 +121,9 @@ impl Parser {
         // If clsinfo thread is very slow then need to join it here
         // since normally the join is done in the above loop
         self.make_sure_serial_is_done(&mut handle);
+        // handles = vec![];
+        // self.threads_spawned = 0;
+        // self.fullpacket_offsets = vec![];
 
         // if demo does not have fullpackets, spawn one thread that parses entire demo
         if self.threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
@@ -243,9 +246,20 @@ impl Parser {
                 big.entry(*k).or_insert(v.clone()).extend_from(v)
             }
         }
+
         big
     }
 }
+/*
+fn fill_nans_with_last(col: &mut PropColumn) {
+    match col.data {
+        Some(crate::variants::VarVec::F32(f)) => {
+            let x =
+            for
+        }
+    }
+}
+*/
 
 impl Parser {
     pub fn is_ready_to_spawn_thread(&self) -> bool {

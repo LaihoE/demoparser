@@ -130,7 +130,7 @@ impl ParserThread {
                     }
                     Err(_e) => {
                         // Ultimate debugger is to print this error
-                        // println!("{} {:?} {}", self.tick, _e, prop_info.prop_name);
+                        println!("{} {:?} {}", self.tick, _e, prop_info.prop_name);
                         self.output
                             .entry(prop_info.id)
                             .or_insert_with(|| PropColumn::new())
