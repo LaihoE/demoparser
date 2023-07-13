@@ -24,6 +24,7 @@ impl ParserThread {
             if self.ptr + size as usize >= self.bytes.len() {
                 break;
             }
+
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
@@ -41,6 +42,7 @@ impl ParserThread {
             let ok = match demo_cmd {
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Packet => self.parse_packet(&bytes),
+
                 DEM_FullPacket => {
                     match self.parse_all_packets {
                         true => self.parse_full_packet(&bytes).unwrap(),
@@ -55,6 +57,7 @@ impl ParserThread {
                     }
                     Ok(())
                 }
+
                 DEM_Stop => break,
                 _ => Ok(()),
             };

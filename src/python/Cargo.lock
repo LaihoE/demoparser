@@ -558,7 +558,7 @@ dependencies = [
 
 [[package]]
 name = "demoparser2"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "ahash 0.8.3",
  "arrow-array 37.0.0",

@@ -1,6 +1,5 @@
 use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
-// use crate::prop_controller::PropInfo;
 use crate::read_bits::DemoParserError;
 use crate::variants::*;
 use ahash::AHashMap;
@@ -187,7 +186,7 @@ impl ParserThread {
             let prop = match self.players.get(&entity_id) {
                 Some(player_md) => match self.find_prop(&prop_info, &entity_id, player_md) {
                     Ok(p) => Some(p),
-                    Err(e) => {
+                    Err(_e) => {
                         // println!("{:?}", e);
                         None
                     }

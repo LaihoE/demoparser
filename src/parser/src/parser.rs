@@ -24,9 +24,7 @@ use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 use std::thread;
-
 use std::thread::JoinHandle;
-use std::time::Instant;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -109,7 +107,6 @@ impl Parser {
                     handle = self.spawn_clsinfo_thread(sendtable.take(), bytes);
                     Ok(())
                 }
-                DEM_Packet => self.parse_packet(&bytes),
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Stop => break,
                 DEM_FullPacket => {
@@ -124,8 +121,8 @@ impl Parser {
         // If clsinfo thread is very slow then need to join it here
         // since normally the join is done in the above loop
         self.make_sure_serial_is_done(&mut handle);
-        // if demo does not have fullpackets, spawn one thread that parses entire demo
 
+        // if demo does not have fullpackets, spawn one thread that parses entire demo
         if self.threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
             let input = self.create_parser_thread_input(16, true);
             handles.push(thread::spawn(|| {
@@ -238,6 +235,9 @@ impl Parser {
     }
     fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
         let mut big: AHashMap<u32, PropColumn> = AHashMap::default();
+        if v.len() == 1 {
+            return v.remove(0);
+        }
         for part_df in v {
             for (k, v) in part_df {
                 big.entry(*k).or_insert(v.clone()).extend_from(v)

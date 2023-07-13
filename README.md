@@ -208,7 +208,8 @@ True/Flase if player is pressing button.
 #### Weapon
 |         Name          | Real name                                                                                                                               |
 | :-------------------: | :----------------------------------- |
-| active_weapon_name  |  - |
+| active_weapon_name  |  m_iItemDefinitionIndex + lookup |
+| active_weapon_skin  |  m_iRawValue32 + lookup |
 | active_weapon_ammo  |  m_iClip1 |
 | total_ammo_left  |  m_pReserveAmmo |
 | item_def_idx  |  m_iItemDefinitionIndex |
@@ -220,7 +221,6 @@ True/Flase if player is pressing button.
 | inventory_position  |  m_iInventoryPosition |
 | is_initialized  |  m_bInitialized |
 | econ_item_attribute_def_idx  | m_iAttributeDefinitionIndex |
-| econ_raw_val_32  | m_iRawValue32 |
 | initial_value  | m_flInitialValue |
 | refundable_currency  | m_nRefundableCurrency |
 | set_bonus | m_bSetBonus |

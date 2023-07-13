@@ -74,19 +74,19 @@ impl ParserThread {
                 }
                 EntityCmd::CreateAndUpdate => {
                     self.create_new_entity(&mut bitreader, &entity_id)?;
-                    self.update_entity(&mut bitreader, entity_id)?;
+                    self.update_entity(&mut bitreader, entity_id, false)?;
                 }
                 EntityCmd::Update => {
-                    self.update_entity(&mut bitreader, entity_id)?;
+                    self.update_entity(&mut bitreader, entity_id, false)?;
                 }
             }
         }
         Ok(())
     }
-    pub fn update_entity(&mut self, bitreader: &mut Bitreader, entity_id: i32) -> Result<(), DemoParserError> {
+    pub fn update_entity(&mut self, bitreader: &mut Bitreader, entity_id: i32, is_baseline: bool) -> Result<(), DemoParserError> {
         let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
         if n_updated_values > 0 {
-            self.gather_extra_info(&entity_id)?;
+            self.gather_extra_info(&entity_id, is_baseline)?;
         }
         Ok(())
     }
@@ -100,11 +100,8 @@ impl ParserThread {
         if self.is_debug_mode {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if debug.field.full_name.contains("qAWP") {
-                    println!(
-                        "{:?} {:?} {:?} {} {} {}",
-                        debug.path, debug.field.full_name, result, self.tick, field_info.prop_id, entity.cls_id
-                    );
+                if debug.field.full_name.contains("123Raw") {
+                    println!("{:?} {:?} {:?}", debug.path, debug.field.full_name, result);
                 }
             }
         } else {
@@ -113,7 +110,6 @@ impl ParserThread {
                 if field_info.should_parse {
                     entity.props.insert(field_info.prop_id as u32, result);
                 }
-                // entity.props.insert(field_info.prop_id as u32, result);
             }
         }
         Ok(n_updates)
@@ -227,7 +223,7 @@ impl ParserThread {
         }
         Ok(idx)
     }
-    pub fn gather_extra_info(&mut self, entity_id: &i32) -> Result<(), DemoParserError> {
+    pub fn gather_extra_info(&mut self, entity_id: &i32, is_baseline: bool) -> Result<(), DemoParserError> {
         // Boring stuff.. function does some bookkeeping
 
         let entity = match self.entities.get(&(entity_id)) {
@@ -239,7 +235,7 @@ impl ParserThread {
             return Ok(());
         }
 
-        if entity.entity_type == EntityType::Team {
+        if entity.entity_type == EntityType::Team && !is_baseline {
             if let Ok(Variant::U32(t)) =
                 self.get_prop_from_ent(self.prop_controller.special_ids.team_team_num.as_ref().unwrap(), entity_id)
             {
@@ -324,11 +320,13 @@ impl ParserThread {
         };
         self.entities.insert(*entity_id, entity);
         // Insert baselines
+
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
             let b = &baseline_bytes.clone();
             let mut br = Bitreader::new(&b);
-            self.update_entity(&mut br, *entity_id)?;
+            self.update_entity(&mut br, *entity_id, true)?;
         }
+
         Ok(())
     }
     pub fn check_entity_type(&self, cls_id: &u32) -> Result<EntityType, DemoParserError> {
