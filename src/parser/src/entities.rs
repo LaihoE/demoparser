@@ -281,7 +281,7 @@ impl ParserThread {
         };
         match player_entid {
             Some(e) => {
-                if e != 2047 && steamid != Some(0) {
+                if e != 2047 && steamid != Some(0) && team_num != Some(1) {
                     self.players.insert(
                         e,
                         PlayerMetaData {
