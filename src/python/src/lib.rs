@@ -1,11 +1,6 @@
-use std::fs;
-
 use crate::arrow::array::*;
 use ahash::AHashMap;
-use ahash::AHashSet;
-use ahash::HashMap;
 use arrow::ffi;
-use cached::instant::Instant;
 use itertools::Itertools;
 use memmap2::MmapOptions;
 use parser::game_events::EventField;
@@ -506,11 +501,11 @@ impl DemoParser {
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
-        let mut real_player_props = match real_player_props {
+        let real_player_props = match real_player_props {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        let mut real_other_props = match real_other_props {
+        let real_other_props = match real_other_props {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
@@ -648,7 +643,6 @@ impl DemoParser {
                         all_series.push(arr_to_py(Box::new(Float32Array::from(data))).unwrap());
                     }
                     Some(VarVec::I32(data)) => {
-                        let before = Instant::now();
                         all_series.push(arr_to_py(Box::new(Int32Array::from(data))).unwrap());
                     }
                     Some(VarVec::U64(data)) => {
