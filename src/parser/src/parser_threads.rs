@@ -12,6 +12,7 @@ use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
 // The parser struct is defined in parser_settings.rs
+// THE CODE IS IN AN AWKWARD STATE DUE TO POSSIBLE BUG IN FULLPACKETS
 impl ParserThread {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
         loop {
@@ -42,7 +43,7 @@ impl ParserThread {
             let ok = match demo_cmd {
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Packet => self.parse_packet(&bytes),
-
+                /*
                 DEM_FullPacket => {
                     match self.parse_all_packets {
                         true => self.parse_full_packet(&bytes).unwrap(),
@@ -57,7 +58,7 @@ impl ParserThread {
                     }
                     Ok(())
                 }
-
+                */
                 DEM_Stop => break,
                 _ => Ok(()),
             };

@@ -70,9 +70,12 @@ impl Parser {
             if self.should_finalize_serial_part(&handle) {
                 self.finalize_serial_part(&mut handle);
             }
+            /*
+            Temporary solution due to bug in fullpackets
             if self.should_spawn_thread() {
                 self.spawn_thread(&mut handles);
             }
+            */
             let frame_starts_at = self.ptr;
 
             let cmd = self.read_varint()?;
@@ -109,11 +112,13 @@ impl Parser {
                 }
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Stop => break,
+                /*
                 DEM_FullPacket => {
                     self.parse_full_packet(&bytes).unwrap();
                     self.fullpacket_offsets.push(frame_starts_at);
                     Ok(())
                 }
+                */
                 _ => Ok(()),
             };
             ok?;
@@ -121,9 +126,11 @@ impl Parser {
         // If clsinfo thread is very slow then need to join it here
         // since normally the join is done in the above loop
         self.make_sure_serial_is_done(&mut handle);
-        // handles = vec![];
-        // self.threads_spawned = 0;
-        // self.fullpacket_offsets = vec![];
+
+        // Temporary solution due to bug in fullpackets
+        handles = vec![];
+        self.threads_spawned = 0;
+        self.fullpacket_offsets = vec![];
 
         // if demo does not have fullpackets, spawn one thread that parses entire demo
         if self.threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
