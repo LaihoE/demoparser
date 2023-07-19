@@ -1,7 +1,9 @@
+use crate::collect_data::ProjectileRecord;
+use crate::parser_thread_settings::{EconItem, PlayerEndMetaData};
 use crate::prop_controller::PropInfo;
 use ahash::HashMap;
 use itertools::Itertools;
-use serde::ser::SerializeMap;
+use serde::ser::{SerializeMap, SerializeStruct};
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -315,6 +317,70 @@ impl Serialize for Variant {
             Variant::U8(u) => serializer.serialize_u8(*u),
             _ => panic!("cant ser: {:?}", self),
         }
+    }
+}
+
+impl Serialize for PlayerEndMetaData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("PlayerEndMetaData", 3)?;
+        state.serialize_field("name", &self.name).unwrap();
+        let steamid = match self.steamid {
+            Some(u) => Some(u.to_string()),
+            None => None,
+        };
+        state.serialize_field("steamid", &steamid).unwrap();
+        state.serialize_field("team_number", &self.team_number).unwrap();
+        state.end()
+    }
+}
+impl Serialize for EconItem {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("EconItem", 14)?;
+        let steamid = match self.steamid {
+            Some(u) => Some(u.to_string()),
+            None => None,
+        };
+        state.serialize_field("steamid", &steamid).unwrap();
+        state.serialize_field("account_id", &self.account_id).unwrap();
+        state.serialize_field("custom_name", &self.custom_name).unwrap();
+        state.serialize_field("def_index", &self.def_index).unwrap();
+        state.serialize_field("dropreason", &self.dropreason).unwrap();
+        state.serialize_field("item_id", &self.item_id).unwrap();
+        state.serialize_field("inventory", &self.inventory).unwrap();
+        state.serialize_field("item_id", &self.item_id).unwrap();
+        state.serialize_field("paint_index", &self.paint_index).unwrap();
+        state.serialize_field("paint_seed", &self.paint_seed).unwrap();
+        state.serialize_field("paint_wear", &self.paint_wear).unwrap();
+        state.serialize_field("quality", &self.quality).unwrap();
+        state.serialize_field("quest_id", &self.quest_id).unwrap();
+        state.serialize_field("rarity", &self.rarity).unwrap();
+        state.end()
+    }
+}
+impl Serialize for ProjectileRecord {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("ProjectileRecord", 7)?;
+        let steamid = match self.steamid {
+            Some(u) => Some(u.to_string()),
+            None => None,
+        };
+        state.serialize_field("steamid", &steamid).unwrap();
+        state.serialize_field("grenade_type", &self.grenade_type).unwrap();
+        state.serialize_field("name", &self.name).unwrap();
+        state.serialize_field("tick", &self.tick).unwrap();
+        state.serialize_field("x", &self.x).unwrap();
+        state.serialize_field("y", &self.y).unwrap();
+        state.serialize_field("z", &self.z).unwrap();
+        state.end()
     }
 }
 

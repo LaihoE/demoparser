@@ -89,7 +89,7 @@ impl fmt::Display for PropCollectionError {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct ProjectileRecord {
     pub steamid: Option<u64>,
     pub name: Option<String>,

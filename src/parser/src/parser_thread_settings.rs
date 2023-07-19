@@ -100,7 +100,7 @@ pub struct ChatMessageRecord {
     pub param3: Option<String>,
     pub param4: Option<String>,
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct EconItem {
     pub account_id: Option<u32>,
     pub item_id: Option<u64>,
@@ -117,7 +117,7 @@ pub struct EconItem {
     pub ent_idx: Option<i32>,
     pub steamid: Option<u64>,
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct PlayerEndMetaData {
     pub steamid: Option<u64>,
     pub name: Option<String>,
