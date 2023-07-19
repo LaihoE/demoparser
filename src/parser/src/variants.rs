@@ -1,7 +1,9 @@
 use crate::prop_controller::PropInfo;
 use ahash::HashMap;
+use itertools::Itertools;
 use serde::ser::SerializeMap;
 use serde::Serialize;
+use serde::{Deserialize, Deserializer};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Variant {
@@ -310,7 +312,7 @@ impl Serialize for Variant {
             Variant::I32(i) => serializer.serialize_i32(*i),
             Variant::String(s) => serializer.serialize_str(s),
             Variant::U32(u) => serializer.serialize_u32(*u),
-            Variant::U64(u) => serializer.serialize_u64(*u),
+            Variant::U64(u) => serializer.serialize_str(&u.to_string()),
             Variant::U8(u) => serializer.serialize_u8(*u),
             _ => panic!("cant ser: {:?}", self),
         }
@@ -342,7 +344,14 @@ impl Serialize for OutputSerdeHelperStruct {
                         map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
                     }
                     Some(VarVec::U64(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
+                        let as_str: Vec<Option<String>> = val
+                            .iter()
+                            .map(|x| match x {
+                                Some(u) => Some(u.to_string()),
+                                None => None,
+                            })
+                            .collect_vec();
+                        map.serialize_entry(&prop_info.prop_friendly_name, &as_str).unwrap();
                     }
                     Some(VarVec::Bool(val)) => {
                         map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
