@@ -37,6 +37,7 @@ bit_reverse = "0.1.8"
 memmap2 = "0.5.10"
 mimalloc = "0.1.37"
 cached = "0.43.0"
+serde_derive = "1.0.171"
 
 
 
