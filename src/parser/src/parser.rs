@@ -257,16 +257,6 @@ impl Parser {
         big
     }
 }
-/*
-fn fill_nans_with_last(col: &mut PropColumn) {
-    match col.data {
-        Some(crate::variants::VarVec::F32(f)) => {
-            let x =
-            for
-        }
-    }
-}
-*/
 
 impl Parser {
     pub fn is_ready_to_spawn_thread(&self) -> bool {

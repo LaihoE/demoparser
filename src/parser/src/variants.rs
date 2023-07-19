@@ -3,7 +3,6 @@ use ahash::HashMap;
 use itertools::Itertools;
 use serde::ser::SerializeMap;
 use serde::Serialize;
-use serde::{Deserialize, Deserializer};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Variant {
