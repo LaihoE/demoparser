@@ -103,6 +103,7 @@ pub enum Decoder {
     BaseDecoder,
     AmmoDecoder,
     QanglePresDecoder,
+    GameModeRulesDecoder,
 }
 
 pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
@@ -595,7 +596,9 @@ impl Parser {
                                 }
                             }
                         }
-
+                        if field.var_name == "m_pGameModeRules" {
+                            field.decoder = GameModeRulesDecoder
+                        }
                         if field.encoder == "qangle_precise" {
                             field.decoder = QanglePresDecoder;
                         }

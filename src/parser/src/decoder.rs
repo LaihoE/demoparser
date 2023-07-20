@@ -43,6 +43,7 @@ impl<'a> Bitreader<'a> {
             VectorFloatCoordDecoder => Ok(Variant::VecXYZ(self.decode_vector_float_coord()?)),
             AmmoDecoder => Ok(Variant::U32(self.decode_ammo()?)),
             QanglePresDecoder => Ok(Variant::VecXYZ(self.decode_qangle_variant_pres()?)),
+            GameModeRulesDecoder => Ok(Variant::U32(self.read_nbits(7)?)),
             _ => panic!("huh {:?}", decoder),
         }
     }
