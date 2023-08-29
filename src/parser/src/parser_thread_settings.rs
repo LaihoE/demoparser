@@ -15,13 +15,13 @@ use crate::sendtables::DebugField;
 use crate::sendtables::DebugFieldAndPath;
 use crate::sendtables::FieldInfo;
 use crate::sendtables::FieldModel;
+use crate::variants::BytesVariant;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
 use ahash::RandomState;
 use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use memmap2::Mmap;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::env;
@@ -36,7 +36,7 @@ pub struct ParserThread {
     pub cls_by_id: Arc<AHashMap<u32, Class>>,
 
     pub ptr: usize,
-    pub bytes: Arc<Mmap>,
+    pub bytes: Arc<BytesVariant>,
     pub parse_all_packets: bool,
     // Parsing state
     pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,

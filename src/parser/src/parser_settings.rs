@@ -8,17 +8,17 @@ use crate::parser_thread_settings::SpecialIDs;
 use crate::prop_controller::PropController;
 use crate::prop_controller::PropInfo;
 use crate::read_bits::DemoParserError;
+use crate::variants::BytesVariant;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use memmap2::Mmap;
 use std::sync::Arc;
 use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub struct ParserInputs {
-    pub bytes: Arc<Mmap>,
+    pub bytes: Arc<BytesVariant>,
     pub real_name_to_og_name: AHashMap<String, String>,
 
     pub wanted_player_props: Vec<String>,
@@ -40,7 +40,7 @@ pub struct Parser {
     pub real_name_to_og_name: AHashMap<String, String>,
     pub fullpacket_offsets: Vec<usize>,
     pub ptr: usize,
-    pub bytes: Arc<Mmap>,
+    pub bytes: Arc<BytesVariant>,
     pub tick: i32,
     pub huf: Arc<Vec<(u32, u8)>>,
     pub settings: ParserInputs,

@@ -44,7 +44,7 @@ pub struct DemoOutput {
 
 impl Parser {
     pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
-        Parser::handle_short_header(self.bytes.len(), &self.bytes[..16])?;
+        Parser::handle_short_header(self.bytes.get_len(), &self.bytes[..16])?;
         self.ptr = 16;
         let mut sendtable = None;
         loop {
@@ -56,7 +56,7 @@ impl Parser {
             self.tick = tick as i32;
 
             // Safety check
-            if self.ptr + size as usize >= self.bytes.len() {
+            if self.ptr + size as usize >= self.bytes.get_len() {
                 break;
             }
             let msg_type = cmd & !64;

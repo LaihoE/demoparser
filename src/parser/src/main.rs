@@ -4,6 +4,7 @@ use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
+use parser::variants::BytesVariant;
 use std::fs;
 use std::fs::File;
 use std::sync::Arc;
@@ -37,12 +38,12 @@ fn main() {
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         mmap.advise(memmap2::Advice::HugePage).unwrap();
 
-        let arc_bytes = Arc::new(mmap);
+        // let arc_bytes = Arc::new(mmap);
         // let demo_path = "/home/laiho/Documents/demos/cs2/driv/mirage.dem";
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: arc_bytes.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
             wanted_event: Some("player_death".to_string()),

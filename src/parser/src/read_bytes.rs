@@ -5,7 +5,7 @@ use crate::parser_thread_settings::ParserThread;
 impl ParserThread {
     #[inline]
     pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], DemoParserError> {
-        if self.ptr + n as usize >= self.bytes.len() {
+        if self.ptr + n as usize >= self.bytes.get_len() {
             return Err(DemoParserError::OutOfBytesError);
         }
         let s = &self.bytes[self.ptr..self.ptr + n as usize];
@@ -23,7 +23,7 @@ impl ParserThread {
                 return Ok(result as u32);
             }
 
-            if self.ptr >= self.bytes.len() {
+            if self.ptr >= self.bytes.get_len() {
                 return Err(DemoParserError::OutOfBytesError);
             }
             b = self.bytes[self.ptr].try_into().unwrap();
@@ -55,7 +55,7 @@ mod tests {
 impl Parser {
     #[inline]
     pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], DemoParserError> {
-        if self.ptr + n as usize >= self.bytes.len() {
+        if self.ptr + n as usize >= self.bytes.get_len() {
             return Err(DemoParserError::OutOfBytesError);
         }
         let s = &self.bytes[self.ptr..self.ptr + n as usize];
@@ -72,7 +72,7 @@ impl Parser {
             if count >= 5 {
                 return Ok(result as u32);
             }
-            if self.ptr >= self.bytes.len() {
+            if self.ptr >= self.bytes.get_len() {
                 return Err(DemoParserError::OutOfBytesError);
             }
             b = self.bytes[self.ptr].try_into().unwrap();
