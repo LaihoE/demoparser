@@ -31,15 +31,16 @@ use std::sync::Arc;
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 
 pub struct ParserThread {
+    pub qf_mapper: Arc<QfMapper>,
+    pub prop_controller: Arc<PropController>,
+    pub cls_by_id: Arc<AHashMap<u32, Class>>,
+
     pub ptr: usize,
     pub bytes: Arc<Mmap>,
     pub parse_all_packets: bool,
     // Parsing state
     pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,
-    pub qf_mapper: Arc<QfMapper>,
-    pub prop_controller: Arc<PropController>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
-    pub cls_by_id: Arc<AHashMap<u32, Class>>,
     pub cls_bits: Option<u32>,
     pub entities: AHashMap<i32, Entity, RandomState>,
     pub tick: i32,
@@ -136,18 +137,25 @@ impl ParserThread {
             header: None,
             player_md: self.player_end_data,
             game_events_counter: self.game_events_counter,
-            prop_info: Arc::new(PropController::new(vec![], vec![], AHashMap::default())),
+            prop_info: PropController::new(vec![], vec![], AHashMap::default()),
             projectiles: self.projectile_records,
             ptr: self.ptr,
         }
     }
-    pub fn new(mut input: ParserThreadInput) -> Result<Self, DemoParserError> {
+    pub fn new(input: ParserThreadInput) -> Result<Self, DemoParserError> {
         input
             .settings
             .wanted_player_props
+            .clone()
             .extend(vec!["tick".to_owned(), "steamid".to_owned(), "name".to_owned()]);
         let args: Vec<String> = env::args().collect();
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
+
+        // Dont allocate vec in release mode
+        let debug_vec_len = match debug {
+            true => 8192,
+            false => 0,
+        };
         Ok(ParserThread {
             debug_fields: vec![
                 DebugFieldAndPath {
@@ -158,13 +166,13 @@ impl ParserThread {
                     },
                     path: [0, 0, 0, 0, 0, 0, 0],
                 };
-                8192
+                debug_vec_len
             ],
             is_debug_mode: debug,
             projectile_records: vec![],
             parse_all_packets: input.parse_all_packets,
-            wanted_ticks: input.wanted_ticks,
-            prop_controller: input.prop_controller,
+            wanted_ticks: input.wanted_ticks.clone(),
+            prop_controller: Arc::new(input.prop_controller),
             qf_mapper: input.qfmap,
             fullpackets_parsed: 0,
             packets_parsed: 0,
@@ -172,7 +180,7 @@ impl ParserThread {
             serializers: AHashMap::default(),
             ptr: input.offset,
             ge_list: input.ge_list.clone(),
-            bytes: input.settings.bytes,
+            bytes: input.settings.bytes.clone(),
             cls_by_id: input.cls_by_id,
             entities: AHashMap::with_capacity(512),
             cls_bits: None,
@@ -180,12 +188,12 @@ impl ParserThread {
             players: BTreeMap::default(),
             output: AHashMap::default(),
             game_events: vec![],
-            wanted_event: input.settings.wanted_event,
+            wanted_event: input.settings.wanted_event.clone(),
             parse_entities: input.settings.parse_ents,
             projectiles: AHashSet::default(),
             // projectile_records: ProjectileRecordVec::new(),
-            baselines: input.baselines,
-            string_tables: input.string_tables,
+            baselines: input.baselines.clone(),
+            string_tables: input.string_tables.clone(),
             field_infos: vec![
                 FieldInfo {
                     decoder: crate::sendtables::Decoder::NoscaleDecoder,
@@ -204,7 +212,7 @@ impl ParserThread {
             item_drops: vec![],
             skins: vec![],
             player_end_data: vec![],
-            huffman_lookup_table: input.settings.huffman_lookup_table,
+            huffman_lookup_table: input.settings.huffman_lookup_table.clone(),
             header: HashMap::default(),
         })
     }

@@ -103,6 +103,7 @@ pub enum Decoder {
     BaseDecoder,
     AmmoDecoder,
     QanglePresDecoder,
+    GameModeRulesDecoder,
 }
 
 pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
@@ -537,10 +538,8 @@ impl Parser {
     // This part is so insanely complicated. There are multiple versions of each serializer and
     // each serializer is this huge nested struct.
     pub fn parse_sendtable(
+        &mut self,
         tables: CDemoSendTables,
-        wanted_props: Vec<String>,
-        wanted_props_og_names: Vec<String>,
-        real_name_to_og_name: AHashMap<String, String>,
     ) -> Result<(AHashMap<String, Serializer>, QfMapper, PropController), DemoParserError> {
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint()?;
@@ -552,7 +551,11 @@ impl Parser {
             map: AHashMap::default(),
         };
         let mut fields: HashMap<i32, Field> = HashMap::default();
-        let mut prop_controller = PropController::new(wanted_props.clone(), wanted_props_og_names, real_name_to_og_name);
+        let mut prop_controller = PropController::new(
+            self.wanted_player_props.clone(),
+            self.wanted_player_props_og_names.clone(),
+            self.real_name_to_og_name.clone(),
+        );
         for serializer in serializer_msg.serializers.iter() {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
@@ -595,7 +598,9 @@ impl Parser {
                                 }
                             }
                         }
-
+                        if field.var_name == "m_pGameModeRules" {
+                            field.decoder = GameModeRulesDecoder
+                        }
                         if field.encoder == "qangle_precise" {
                             field.decoder = QanglePresDecoder;
                         }

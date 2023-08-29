@@ -21,10 +21,10 @@ use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoPacket, CDemoSendTab
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
+use rayon::iter::ParallelIterator;
+use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
-use std::thread;
-use std::thread::JoinHandle;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -37,45 +37,17 @@ pub struct DemoOutput {
     pub header: Option<AHashMap<String, String>>,
     pub player_md: Vec<PlayerEndMetaData>,
     pub game_events_counter: AHashSet<String>,
-    pub prop_info: Arc<PropController>,
+    pub prop_info: PropController,
     pub projectiles: Vec<ProjectileRecord>,
     pub ptr: usize,
 }
 
 impl Parser {
-    pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
-        ParserThreadInput {
-            offset: offset,
-            settings: self.settings.clone(),
-            baselines: self.baselines.clone(),
-            prop_controller: self.prop_controller.clone(),
-            cls_by_id: self.cls_by_id.clone(),
-            qfmap: self.qf_mapper.clone(),
-            ge_list: self.ge_list.clone(),
-            parse_all_packets: parse_all,
-            // arc?
-            wanted_ticks: self.wanted_ticks.clone(),
-            string_tables: self.string_tables.clone(),
-        }
-    }
-
     pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
         Parser::handle_short_header(self.bytes.len(), &self.bytes[..16])?;
         self.ptr = 16;
-        let mut sendtable: Option<CDemoSendTables> = None;
-        let mut handle: Option<JoinHandle<Result<_, _>>> = None;
-        let mut handles = vec![];
+        let mut sendtable = None;
         loop {
-            // After this we can start spawning threads
-            if self.should_finalize_serial_part(&handle) {
-                self.finalize_serial_part(&mut handle);
-            }
-            /*
-            Temporary solution due to bug in fullpackets
-            if self.should_spawn_thread() {
-                self.spawn_thread(&mut handles);
-            }
-            */
             let frame_starts_at = self.ptr;
 
             let cmd = self.read_varint()?;
@@ -107,95 +79,52 @@ impl Parser {
                 }
                 DEM_FileHeader => self.parse_header(&bytes),
                 DEM_ClassInfo => {
-                    handle = self.spawn_clsinfo_thread(sendtable.take(), bytes);
+                    self.parse_class_info(&bytes, sendtable.take().unwrap())?;
                     Ok(())
                 }
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Stop => break,
-                /*
                 DEM_FullPacket => {
                     self.parse_full_packet(&bytes).unwrap();
                     self.fullpacket_offsets.push(frame_starts_at);
                     Ok(())
                 }
-                */
                 _ => Ok(()),
             };
             ok?;
         }
-        // If clsinfo thread is very slow then need to join it here
-        // since normally the join is done in the above loop
-        self.make_sure_serial_is_done(&mut handle);
-
-        // Temporary solution due to bug in fullpackets
-        handles = vec![];
-        self.threads_spawned = 0;
-        self.fullpacket_offsets = vec![];
-
-        // if demo does not have fullpackets, spawn one thread that parses entire demo
-        if self.threads_spawned == 0 && self.fullpacket_offsets.len() == 0 {
-            let input = self.create_parser_thread_input(16, true);
-            handles.push(thread::spawn(|| {
+        let mut outputs: Vec<DemoOutput> = self
+            .fullpacket_offsets
+            .par_iter()
+            .map(|offset| {
+                let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
                 parser.start().unwrap();
                 parser.create_output()
-            }));
-        } else {
-            // spawn rest of the threads if any
-            while self.fullpacket_offsets.len() > 0 {
-                self.spawn_thread(&mut handles);
-            }
-        }
-        let mut outputs: Vec<DemoOutput> = vec![];
-        for handle in handles {
-            outputs.push(handle.join().unwrap());
-        }
+            })
+            .collect();
         Ok(self.combine_thread_outputs(&mut outputs))
     }
-    fn make_sure_serial_is_done(&mut self, handle: &mut Option<JoinHandle<Result<ClassInfoThreadResult, DemoParserError>>>) {
-        while !self.is_ready_to_spawn_thread() {
-            if handle.is_some() && handle.as_ref().unwrap().is_finished() {
-                let class_result: ClassInfoThreadResult = handle.take().unwrap().join().unwrap().unwrap();
-                self.insert_cls_thread_result(class_result);
-                break;
-            }
+    pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
+        // TODO fix, this is hack to get tests to run
+        let cls_by_id = match &self.cls_by_id {
+            Some(cls_by_id) => cls_by_id.clone(),
+            None => Arc::new(AHashMap::default()),
+        };
+        ParserThreadInput {
+            offset: offset,
+            settings: Arc::new(self.settings.clone()),
+            baselines: self.baselines.clone(),
+            prop_controller: self.prop_controller.clone(),
+            cls_by_id: cls_by_id,
+            qfmap: Arc::new(self.qf_mapper.clone()),
+            ge_list: Arc::new(self.ge_list.clone()),
+            parse_all_packets: parse_all,
+            // arc?
+            wanted_ticks: self.wanted_ticks.clone(),
+            string_tables: self.string_tables.clone(),
         }
     }
-    pub fn spawn_thread(&mut self, handles: &mut Vec<JoinHandle<DemoOutput>>) {
-        let offset = self.fullpacket_offsets.pop().unwrap();
-        let input = self.create_parser_thread_input(offset, false);
-        handles.push(thread::spawn(|| {
-            let mut parser = ParserThread::new(input).unwrap();
-            parser.start().unwrap();
-            parser.create_output()
-        }));
-        self.threads_spawned += 1;
-    }
-    fn should_spawn_thread(&self) -> bool {
-        self.fullpacket_offsets.len() > 0 && self.is_ready_to_spawn_thread()
-    }
-    fn should_finalize_serial_part(&self, handle: &Option<JoinHandle<Result<ClassInfoThreadResult, DemoParserError>>>) -> bool {
-        handle.is_some() && handle.as_ref().unwrap().is_finished()
-    }
-    fn finalize_serial_part(&mut self, handle: &mut Option<JoinHandle<Result<ClassInfoThreadResult, DemoParserError>>>) {
-        let class_result: ClassInfoThreadResult = handle.take().unwrap().join().unwrap().unwrap();
-        self.insert_cls_thread_result(class_result);
-    }
-    fn spawn_clsinfo_thread(
-        &mut self,
-        sendtable: Option<CDemoSendTables>,
-        bytes: Vec<u8>,
-    ) -> Option<JoinHandle<Result<ClassInfoThreadResult, DemoParserError>>> {
-        let my_s = sendtable.clone();
-        let my_b = bytes;
-        let want_prop = self.wanted_player_props.clone();
-        let want_prop_og = self.wanted_player_props_og_names.clone();
-        let real_to_og = self.real_name_to_og_name.clone();
-        Some(thread::spawn(move || {
-            Parser::parse_class_info(&my_b, my_s.unwrap(), want_prop, want_prop_og, real_to_og)
-        }))
-    }
-
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
         for item in &full_packet.string_table.tables {
@@ -230,18 +159,6 @@ impl Parser {
             projectiles: outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
             ptr: self.ptr,
         }
-    }
-    fn insert_cls_thread_result(&mut self, mut class_result: ClassInfoThreadResult) {
-        class_result.prop_controller.wanted_player_props = self.wanted_player_props.clone();
-        class_result.prop_controller.wanted_player_og_props = self.wanted_player_props_og_names.clone();
-        class_result.prop_controller.real_name_to_og_name = self.real_name_to_og_name.clone();
-
-        self.qf_map_set = true;
-        self.cls_by_id_set = true;
-        self.prop_controller_is_set = true;
-        self.prop_controller = Arc::new(class_result.prop_controller);
-        self.qf_mapper = Arc::new(class_result.qf_mapper);
-        self.cls_by_id = Arc::new(class_result.cls_by_id);
     }
     fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
         let mut big: AHashMap<u32, PropColumn> = AHashMap::default();
@@ -282,7 +199,7 @@ impl Parser {
                 GE_Source1LegacyGameEventList => {
                     let hm = self.parse_game_event_list(&msg_bytes)?;
                     // this can fail if user re-uses the same parser for multiple funcs
-                    self.ge_list = Arc::new(hm);
+                    self.ge_list = hm;
                     self.ge_list_set = true;
                     Ok(())
                 }
@@ -360,14 +277,8 @@ impl Parser {
         Ok(())
     }
 
-    pub fn parse_class_info(
-        bytes: &[u8],
-        sendtables: CDemoSendTables,
-        want_prop: Vec<String>,
-        want_prop_og: Vec<String>,
-        real_name_to_og_name: AHashMap<String, String>,
-    ) -> Result<ClassInfoThreadResult, DemoParserError> {
-        let (mut serializers, qf_mapper, p) = Parser::parse_sendtable(sendtables, want_prop, want_prop_og, real_name_to_og_name)?;
+    pub fn parse_class_info(&mut self, bytes: &[u8], sendtables: CDemoSendTables) -> Result<(), DemoParserError> {
+        let (mut serializers, qf_mapper, p) = self.parse_sendtable(sendtables)?;
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
         let mut cls_by_id = AHashMap::default();
         for class_t in msg.classes {
@@ -382,19 +293,17 @@ impl Parser {
                 },
             );
         }
-        Ok(ClassInfoThreadResult {
-            cls_by_id: cls_by_id,
-            qf_mapper: qf_mapper,
-            prop_controller: p,
-        })
+        self.cls_by_id = Some(Arc::new(cls_by_id));
+        self.qf_mapper = qf_mapper;
+        self.prop_controller = p;
+        return Ok(());
     }
 }
-
 pub struct ParserThreadInput {
     pub offset: usize,
-    pub settings: ParserInputs,
+    pub settings: Arc<ParserInputs>,
     pub baselines: AHashMap<u32, Vec<u8>>,
-    pub prop_controller: Arc<PropController>,
+    pub prop_controller: PropController,
     pub cls_by_id: Arc<AHashMap<u32, Class>>,
     pub qfmap: Arc<QfMapper>,
     pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,

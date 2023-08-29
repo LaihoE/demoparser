@@ -1,4 +1,5 @@
 use ahash::AHashMap;
+use itertools::Itertools;
 use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
@@ -10,21 +11,24 @@ use std::time::Instant;
 
 fn main() {
     let wanted_props = vec!["weapon_skin".to_string()];
+
+    rayon::ThreadPoolBuilder::new().num_threads(24).build_global().unwrap();
+
     // let bytes = fs::read(demo_path).unwrap();
     // let file = File::open(demo_path).unwrap();
     // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/driv/y/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test2/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
-    let arc_huf = Arc::new(huf);
 
     for path in dir {
         c += 1;
 
         let before = Instant::now();
 
-        if c > 1000 {
+        if c > 1 {
             break;
         }
 
@@ -59,14 +63,19 @@ fn main() {
             only_header: false,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: Arc::new(huf.clone()),
         };
 
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
         println!("{:?}", d.game_events_counter);
         println!("{:?}", before.elapsed());
+        let mut s: Vec<String> = d.game_events_counter.iter().cloned().collect_vec();
+        s.sort();
 
+        for x in s {
+            println!("{:?}", x);
+        }
         // println!("{:#?}", ds.state.cls_by_id);
     }
     println!("TOTAL {:?}", before.elapsed());

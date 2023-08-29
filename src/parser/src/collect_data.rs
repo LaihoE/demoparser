@@ -7,7 +7,6 @@ use crate::parser_thread_settings::ParserThread;
 use crate::prop_controller::PropInfo;
 use crate::prop_controller::WEAPON_SKIN_ID;
 use crate::variants::PropColumn;
-use serde::Serialize;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
