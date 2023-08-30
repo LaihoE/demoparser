@@ -10,6 +10,7 @@ use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
 use parser::read_bits::DemoParserError;
+use parser::variants::BytesVariant;
 use parser::variants::VarVec;
 use parser::variants::Variant;
 use polars::prelude::ArrowField;
@@ -47,12 +48,12 @@ impl DemoParser {
     /// "client_name", "game_directory"
     pub fn parse_header(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
-        let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
+        let mmap = unsafe { MmapOptions::new().map(&file)? };
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: arc_mmap.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -67,7 +68,7 @@ impl DemoParser {
             huffman_lookup_table: arc_huf.clone(),
         };
         let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let _output = match parser.parse_demo() {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
@@ -77,12 +78,12 @@ impl DemoParser {
     /// like this: "mp_roundtime": "1.92", "mp_buytime": "20" ...
     pub fn parse_convars(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
-        let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
+        let mmap = unsafe { MmapOptions::new().map(&file)? };
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: arc_mmap.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -107,12 +108,12 @@ impl DemoParser {
     /// Returns the names of game events present in the demo
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
-        let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
+        let mmap = unsafe { MmapOptions::new().map(&file)? };
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: arc_mmap.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -145,12 +146,12 @@ impl DemoParser {
 
     pub fn parse_grenades(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
-        let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
+        let mmap = unsafe { MmapOptions::new().map(&file)? };
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: arc_mmap.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -215,12 +216,12 @@ impl DemoParser {
     /// 1     8        person2        asdf  TSpawn
     pub fn parse_chat_messages(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
-        let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
+        let mmap = unsafe { MmapOptions::new().map(&file)? };
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: arc_mmap.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -281,12 +282,12 @@ impl DemoParser {
     }
     pub fn parse_player_info(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
-        let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
+        let mmap = unsafe { MmapOptions::new().map(&file)? };
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: arc_mmap.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -330,12 +331,12 @@ impl DemoParser {
     }
     pub fn parse_item_drops(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
-        let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
+        let mmap = unsafe { MmapOptions::new().map(&file)? };
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: arc_mmap.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -416,12 +417,12 @@ impl DemoParser {
     }
     pub fn parse_skins(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let file = File::open(self.path.clone())?;
-        let arc_mmap = Arc::new(unsafe { MmapOptions::new().map(&file)? });
+        let mmap = unsafe { MmapOptions::new().map(&file)? };
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: arc_mmap.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -505,7 +506,7 @@ impl DemoParser {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        let real_other_props = match real_other_props {
+        let _real_other_props = match real_other_props {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
@@ -514,14 +515,12 @@ impl DemoParser {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
         let file = File::open(self.path.clone()).unwrap();
-        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-
-        let arc_mmap = Arc::new(mmap);
+        let mmap = unsafe { MmapOptions::new().map(&file)? };
         let arc_huf = Arc::new(create_huffman_lookup_table());
 
         let settings = ParserInputs {
             real_name_to_og_name: real_name_to_og_name,
-            bytes: arc_mmap.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: real_player_props.clone(),
             wanted_player_props_og_names: wanted_player_props.clone(),
             wanted_other_props: vec![],
@@ -589,7 +588,6 @@ impl DemoParser {
 
         let huf = create_huffman_lookup_table();
         let arc_huf = Arc::new(huf);
-        let b = Arc::new(mmap);
         let mut real_name_to_og_name = AHashMap::default();
         for (real_name, user_friendly_name) in real_props.iter().zip(&wanted_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
@@ -597,7 +595,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: real_name_to_og_name,
-            bytes: b.clone(),
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: real_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
             wanted_other_props: vec![],
@@ -855,19 +853,7 @@ fn to_bool_series(pairs: &Vec<&EventField>, name: &String) -> Series {
     }
     Series::new(name, v)
 }
-fn to_u8_series(pairs: &Vec<&EventField>, name: &String) -> Series {
-    let mut v = vec![];
-    for pair in pairs {
-        match &pair.data {
-            Some(k) => match k {
-                Variant::I32(val) => v.push(Some(*val as u32)),
-                _ => v.push(None),
-            },
-            None => v.push(None),
-        }
-    }
-    Series::new(name, v)
-}
+
 fn to_null_series(pairs: &Vec<&EventField>, name: &String) -> Series {
     // All series are null can pick any type
     let mut v: Vec<Option<i32>> = vec![];
