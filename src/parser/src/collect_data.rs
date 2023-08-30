@@ -537,8 +537,6 @@ mod tests {
     use crate::variants::*;
     use crate::{parser_settings::ParserInputs, parser_thread_settings::ParserThread, prop_controller::PropController};
     use ahash::AHashMap;
-    use memmap2::MmapOptions;
-    use std::fs::File;
     use std::sync::Arc;
 
     use super::PropType;
@@ -571,13 +569,9 @@ mod tests {
     const GRENADE_ENTITY_ID: i32 = 26;
 
     fn default_setup() -> (ParserThread, PlayerMetaData) {
-        // IDK IS THIS CONSERNING? :D i guess just run out of file descriptors?
-        let file = File::open("src/collect_data.rs").unwrap();
-        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: Arc::new(mmap),
+            bytes: Arc::new(BytesVariant::Vec(vec![])),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],

@@ -1,4 +1,6 @@
 use super::{read_bits::DemoParserError, sendtables::Serializer};
+use crate::maps::PAINTKITS;
+use crate::maps::WEAPINDICIES;
 use crate::parser_thread_settings::ChatMessageRecord;
 use crate::parser_thread_settings::EconItem;
 use crate::parser_thread_settings::ParserThread;
@@ -24,6 +26,14 @@ impl ParserThread {
     pub fn parse_item_drops(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let drops: CCSUsrMsg_SendPlayerItemDrops = Message::parse_from_bytes(&bytes).unwrap();
         for item in &drops.entity_updates {
+            let item_name = match WEAPINDICIES.get(&item.defindex.unwrap()) {
+                Some(name) => Some(name.to_string()),
+                None => None,
+            };
+            let skin_name = match PAINTKITS.get(&item.paintindex.unwrap()) {
+                Some(name) => Some(name.to_string()),
+                None => None,
+            };
             self.item_drops.push(EconItem {
                 account_id: item.accountid,
                 item_id: item.itemid,
@@ -39,6 +49,8 @@ impl ParserThread {
                 inventory: item.inventory,
                 ent_idx: item.entindex,
                 steamid: None,
+                item_name: item_name,
+                skin_name: skin_name,
             });
         }
         Ok(())
@@ -91,6 +103,14 @@ impl ParserThread {
             });
             for item in &player.items {
                 if item.itemid() != 0 {
+                    let item_name = match WEAPINDICIES.get(&item.defindex.unwrap()) {
+                        Some(name) => Some(name.to_string()),
+                        None => None,
+                    };
+                    let skin_name = match PAINTKITS.get(&item.paintindex.unwrap()) {
+                        Some(name) => Some(name.to_string()),
+                        None => None,
+                    };
                     self.skins.push(EconItem {
                         account_id: item.accountid,
                         item_id: item.itemid,
@@ -106,6 +126,8 @@ impl ParserThread {
                         inventory: item.inventory,
                         ent_idx: item.entindex,
                         steamid: player.xuid,
+                        item_name: item_name,
+                        skin_name: skin_name,
                     });
                 }
             }

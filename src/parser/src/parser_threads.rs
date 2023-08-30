@@ -22,7 +22,7 @@ impl ParserThread {
             self.tick = tick as i32;
             self.packets_parsed += 1;
 
-            if self.ptr + size as usize >= self.bytes.len() {
+            if self.ptr + size as usize >= self.bytes.get_len() {
                 break;
             }
 

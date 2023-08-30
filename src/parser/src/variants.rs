@@ -3,6 +3,7 @@ use crate::parser_thread_settings::{EconItem, PlayerEndMetaData};
 use crate::prop_controller::PropInfo;
 use ahash::HashMap;
 use itertools::Itertools;
+use memmap2::Mmap;
 use serde::ser::{SerializeMap, SerializeStruct};
 use serde::Serialize;
 
@@ -360,6 +361,8 @@ impl Serialize for EconItem {
         state.serialize_field("quality", &self.quality).unwrap();
         state.serialize_field("quest_id", &self.quest_id).unwrap();
         state.serialize_field("rarity", &self.rarity).unwrap();
+        state.serialize_field("item_name", &self.item_name).unwrap();
+        state.serialize_field("skin_name", &self.skin_name).unwrap();
         state.end()
     }
 }
@@ -381,6 +384,33 @@ impl Serialize for ProjectileRecord {
         state.serialize_field("y", &self.y).unwrap();
         state.serialize_field("z", &self.z).unwrap();
         state.end()
+    }
+}
+#[derive(Debug)]
+pub enum BytesVariant {
+    Mmap(Mmap),
+    Vec(Vec<u8>),
+}
+
+impl<Idx> std::ops::Index<Idx> for BytesVariant
+where
+    Idx: std::slice::SliceIndex<[u8]>,
+{
+    type Output = Idx::Output;
+    #[inline(always)]
+    fn index(&self, i: Idx) -> &Self::Output {
+        match self {
+            Self::Mmap(m) => &m[i],
+            Self::Vec(v) => &v[i],
+        }
+    }
+}
+impl BytesVariant {
+    pub fn get_len(&self) -> usize {
+        match self {
+            Self::Mmap(m) => m.len(),
+            Self::Vec(v) => v.len(),
+        }
     }
 }
 
