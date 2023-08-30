@@ -361,6 +361,8 @@ impl Serialize for EconItem {
         state.serialize_field("quality", &self.quality).unwrap();
         state.serialize_field("quest_id", &self.quest_id).unwrap();
         state.serialize_field("rarity", &self.rarity).unwrap();
+        state.serialize_field("item_name", &self.item_name).unwrap();
+        state.serialize_field("skin_name", &self.skin_name).unwrap();
         state.end()
     }
 }

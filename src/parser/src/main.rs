@@ -69,14 +69,8 @@ fn main() {
 
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
-        println!("{:?}", d.game_events_counter);
+        println!("{:?}", d.skins);
         println!("{:?}", before.elapsed());
-        let mut s: Vec<String> = d.game_events_counter.iter().cloned().collect_vec();
-        s.sort();
-
-        for x in s {
-            println!("{:?}", x);
-        }
         // println!("{:#?}", ds.state.cls_by_id);
     }
     println!("TOTAL {:?}", before.elapsed());

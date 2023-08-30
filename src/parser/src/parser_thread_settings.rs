@@ -117,6 +117,10 @@ pub struct EconItem {
     pub inventory: Option<u32>,
     pub ent_idx: Option<i32>,
     pub steamid: Option<u64>,
+
+    // Custom
+    pub item_name: Option<String>,
+    pub skin_name: Option<String>,
 }
 #[derive(Debug, Clone)]
 pub struct PlayerEndMetaData {

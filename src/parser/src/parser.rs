@@ -95,7 +95,7 @@ impl Parser {
         }
         let mut outputs: Vec<DemoOutput> = self
             .fullpacket_offsets
-            .par_iter()
+            .iter()
             .map(|offset| {
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
