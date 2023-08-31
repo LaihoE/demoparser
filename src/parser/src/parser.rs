@@ -21,6 +21,7 @@ use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoPacket, CDemoSendTab
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
+use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 
@@ -91,9 +92,10 @@ impl Parser {
             };
             ok?;
         }
+        use rayon::iter::ParallelIterator;
         let mut outputs: Vec<DemoOutput> = self
             .fullpacket_offsets
-            .iter()
+            .par_iter()
             .map(|offset| {
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();

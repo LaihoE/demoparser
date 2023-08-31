@@ -13,6 +13,7 @@ use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
+use memmap2::Mmap;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -143,4 +144,20 @@ pub fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoPa
         }
     }
     Ok(real_names)
+}
+use memmap2::MmapOptions;
+use std::fs::File;
+
+pub fn create_mmap(path: String) -> Result<Mmap, DemoParserError> {
+    let file = match File::open(path) {
+        Err(e) => return Err(DemoParserError::FileNotFound(format!("{}", e))),
+        Ok(f) => f,
+    };
+    let mmap = unsafe {
+        match MmapOptions::new().map(&file) {
+            Err(e) => return Err(DemoParserError::FileNotFound(format!("{}", e))),
+            Ok(f) => f,
+        }
+    };
+    Ok(mmap)
 }

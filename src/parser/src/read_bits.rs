@@ -25,6 +25,7 @@ pub enum DemoParserError {
     UnknownEntityHandle(String),
     ClsIdOutOfBounds,
     UnknownGameEventVariant(String), // UnknownEntityHandle(String, V),
+    FileNotFound(String),
 }
 
 impl std::error::Error for DemoParserError {}

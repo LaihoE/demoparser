@@ -29,12 +29,14 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 1 {
+        if c > 100 {
             break;
         }
 
         let file = File::open(path.unwrap().path()).unwrap();
         // let file = File::open("/home/laiho/Documents/demos/cs2/driv/lpk.dem").unwrap();
+
+        println!("{:?}", file);
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         mmap.advise(memmap2::Advice::HugePage).unwrap();
 
@@ -69,9 +71,10 @@ fn main() {
 
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
-        println!("{:?}", d.skins);
-        println!("{:?}", before.elapsed());
+        println!("{:?}", d.game_events);
+        // println!("{:?}", before.elapsed());
         // println!("{:#?}", ds.state.cls_by_id);
+        // println!("{:?}", path.)
     }
     println!("TOTAL {:?}", before.elapsed());
 }
