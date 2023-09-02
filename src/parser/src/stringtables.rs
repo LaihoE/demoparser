@@ -70,10 +70,6 @@ impl Parser {
         flags: i32,
         variant_bit_count: bool,
     ) -> Result<(), DemoParserError> {
-        if name != "instancebaseline" {
-            // eturn Ok(());
-        }
-
         let mut bitreader = Bitreader::new(&bytes);
         let mut idx = -1;
         let mut keys: Vec<String> = vec![];
@@ -214,7 +210,7 @@ impl ParserThread {
         variant_bit_count: bool,
     ) -> Result<(), DemoParserError> {
         if name != "instancebaseline" {
-            // return Ok(());
+            return Ok(());
         }
 
         let mut bitreader = Bitreader::new(&bytes);

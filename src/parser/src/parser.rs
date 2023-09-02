@@ -11,6 +11,7 @@ use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
 use crate::stringtables::StringTable;
 use crate::variants::PropColumn;
+use crate::variants::VarVec;
 use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
 use ahash::AHashSet;
@@ -95,7 +96,7 @@ impl Parser {
         use rayon::iter::ParallelIterator;
         let mut outputs: Vec<DemoOutput> = self
             .fullpacket_offsets
-            .par_iter()
+            .iter()
             .map(|offset| {
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
@@ -167,10 +168,13 @@ impl Parser {
         }
         for part_df in v {
             for (k, v) in part_df {
-                big.entry(*k).or_insert(v.clone()).extend_from(v)
+                if big.contains_key(k) {
+                    big.get_mut(k).unwrap().extend_from(v);
+                } else {
+                    big.insert(*k, v.clone());
+                }
             }
         }
-
         big
     }
 }

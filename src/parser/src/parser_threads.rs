@@ -20,6 +20,9 @@ impl ParserThread {
             let tick = self.read_varint()?;
             let size = self.read_varint()?;
             self.tick = tick as i32;
+            if self.tick < 5000 {
+                println!("{:?}", self.tick);
+            }
             self.packets_parsed += 1;
 
             if self.ptr + size as usize >= self.bytes.get_len() {
@@ -125,7 +128,6 @@ impl ParserThread {
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
                 _ => Ok(()),
             };
-
             ok?
         }
         Ok(())

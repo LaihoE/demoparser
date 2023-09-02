@@ -57,6 +57,8 @@ impl PropColumn {
             num_nones: 0,
         }
     }
+    pub fn new_empty_from(propcol: &PropColumn) {}
+
     pub fn len(&self) -> usize {
         match &self.data {
             Some(VarVec::Bool(b)) => b.len(),
@@ -85,6 +87,23 @@ impl PropColumn {
             },
             Some(VarVec::I32(v)) => match &other.data {
                 Some(VarVec::I32(v_other)) => {
+                    println!("*********************");
+                    println!(
+                        "({:?} {:?}) ({:?} {:?})",
+                        v.first(),
+                        v.last(),
+                        v_other.first(),
+                        v_other.last()
+                    );
+                    println!(
+                        "({:?} {:?}) ({:?} {:?})",
+                        v.iter().min(),
+                        v.iter().max(),
+                        v_other.iter().min(),
+                        v_other.iter().max(),
+                    );
+                    println!("*********************");
+
                     v.extend_from_slice(&v_other);
                 }
                 None => {

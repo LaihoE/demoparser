@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "demoparser2"
 requires-python = ">=3.7"
-dependencies = []
+dependencies = ["pandas", "numpy", "polars", "pyarrow", "tqdm"]
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
