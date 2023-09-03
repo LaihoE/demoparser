@@ -14,7 +14,7 @@ NodeJS: ```npm i @laihoe/demoparser2```
 from demoparser2 import DemoParser
 
 parser = DemoParser("path_to_demo.dem")
-events_df = parser.parse_events("player_death", player_extra=["X", "Y"])
+events_df = parser.parse_event("player_death", player_extra=["X", "Y"])
 ticks_df = parser.parse_ticks(["X", "Y"])
 ```
 #### NodeJS
