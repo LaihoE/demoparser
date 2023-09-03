@@ -21,7 +21,7 @@ ticks_df = parser.parse_ticks(["X", "Y"])
 ```JavaScript
 var {parseEvents, parseTicks} = require('@laihoe/demoparser2');
 
-let events_json = parseEvents("path_to_demo.dem", "player_death", ["X", "Y"])
+let events_json = parseEvent("path_to_demo.dem", "player_death", ["X", "Y"])
 let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 ```
 
