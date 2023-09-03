@@ -2,7 +2,6 @@ use crate::arrow::array::*;
 use ahash::AHashMap;
 use arrow::ffi;
 use itertools::Itertools;
-use memmap2::MmapOptions;
 use parser::game_events::EventField;
 use parser::game_events::GameEvent;
 use parser::parser_settings::create_mmap;
@@ -19,7 +18,6 @@ use polars::prelude::NamedFrom;
 use polars::series::Series;
 use polars_arrow::export::arrow;
 use polars_arrow::prelude::ArrayRef;
-use pyo3::exceptions::PyIndexError;
 use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::prelude::*;
@@ -27,7 +25,6 @@ use pyo3::types::IntoPyDict;
 use pyo3::types::PyDict;
 use pyo3::Python;
 use pyo3::{PyAny, PyObject, PyResult};
-use std::fs::File;
 use std::sync::Arc;
 
 use pyo3::create_exception;
@@ -68,7 +65,7 @@ impl DemoParser {
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: None,
+            wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -106,7 +103,7 @@ impl DemoParser {
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: None,
+            wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -143,7 +140,7 @@ impl DemoParser {
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: Some("".to_string()),
+            wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -189,7 +186,7 @@ impl DemoParser {
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: None,
+            wanted_events: vec![],
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: true,
@@ -267,7 +264,7 @@ impl DemoParser {
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: None,
+            wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -341,7 +338,7 @@ impl DemoParser {
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: None,
+            wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -398,7 +395,7 @@ impl DemoParser {
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: None,
+            wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -492,7 +489,7 @@ impl DemoParser {
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: None,
+            wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -557,10 +554,10 @@ impl DemoParser {
     }
 
     #[args(py_kwargs = "**")]
-    pub fn parse_events(
+    pub fn parse_event(
         &self,
         _py: Python<'_>,
-        event_name: Option<String>,
+        event_name: String,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<Py<PyAny>> {
         let (wanted_player_props, wanted_other_props) = parse_kwargs_event(py_kwargs);
@@ -598,7 +595,7 @@ impl DemoParser {
             wanted_player_props_og_names: wanted_player_props.clone(),
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: event_name.clone(),
+            wanted_events: vec![event_name.clone()],
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -612,34 +609,73 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        let event_series = match series_from_events(&output.game_events) {
+        let event_series = match series_from_event(&output.game_events) {
             Ok(ser) => ser,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        let column_names: Vec<&str> = event_series.iter().map(|x| x.name().clone()).collect();
-        let mut rows = 0;
+        Ok(event_series)
+    }
+    #[args(py_kwargs = "**")]
+    pub fn parse_events(
+        &self,
+        py: Python<'_>,
+        event_name: Vec<String>,
+        py_kwargs: Option<&PyDict>,
+    ) -> PyResult<Py<PyAny>> {
+        let (wanted_player_props, wanted_other_props) = parse_kwargs_event(py_kwargs);
+        let real_player_props = rm_user_friendly_names(&wanted_player_props);
+        let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
-        let mut all_series = vec![];
+        let real_player_props = match real_player_props {
+            Ok(real_props) => real_props,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
+        let _real_other_props = match real_other_props {
+            Ok(real_props) => real_props,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
+        let mut real_name_to_og_name = AHashMap::default();
+        for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
+            real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+        }
+        let mmap = match create_mmap(self.path.clone()) {
+            Ok(mmap) => mmap,
+            Err(e) => {
+                return Err(Exception::new_err(format!(
+                    "{}. File name: {}",
+                    e,
+                    self.path.clone()
+                )))
+            }
+        };
+        let arc_huf = Arc::new(create_huffman_lookup_table());
 
-        for ser in &event_series {
-            rows = ser.len().max(rows);
-            let py_series = rust_series_to_py_series(&ser).unwrap();
-            all_series.push(py_series);
-        }
-        if rows == 0 {
-            // Maybe remove this? kinda annoying to use if some demos have events
-            return Err(PyIndexError::new_err(format!(
-                "No {:?} events found!",
-                event_name.unwrap()
-            )));
-        }
-        Python::with_gil(|py| {
-            let polars = py.import("polars").unwrap();
-            let df = polars.call_method1("DataFrame", (all_series,)).unwrap();
-            df.setattr("columns", column_names.to_object(py)).unwrap();
-            let pandas_df = df.call_method0("to_pandas").unwrap();
-            Ok(pandas_df.to_object(py))
-        })
+        let settings = ParserInputs {
+            real_name_to_og_name: real_name_to_og_name,
+            bytes: Arc::new(BytesVariant::Mmap(mmap)),
+            wanted_player_props: real_player_props.clone(),
+            wanted_player_props_og_names: wanted_player_props.clone(),
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
+            wanted_events: event_name.clone(),
+            parse_ents: true,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: true,
+            count_props: false,
+            only_convars: false,
+            huffman_lookup_table: arc_huf.clone(),
+        };
+        let mut parser = Parser::new(settings);
+        let output = match parser.parse_demo() {
+            Ok(output) => output,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
+        let event_series = match series_from_multiple_events(&output.game_events, py) {
+            Ok(ser) => ser,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
+        Ok(event_series)
     }
 
     #[args(py_kwargs = "**")]
@@ -681,7 +717,7 @@ impl DemoParser {
             wanted_player_props_og_names: wanted_props.clone(),
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_event: None,
+            wanted_events: vec![],
             parse_ents: true,
             wanted_ticks: wanted_ticks,
             parse_projectiles: false,
@@ -844,7 +880,43 @@ pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (Vec<String>, Vec<String>)
     }
 }
 
-pub fn series_from_events(events: &Vec<GameEvent>) -> Result<Vec<Series>, DemoParserError> {
+pub fn series_from_multiple_events(
+    events: &Vec<GameEvent>,
+    py: Python,
+) -> Result<Py<PyAny>, DemoParserError> {
+    let per_ge = events.iter().into_group_map_by(|x| x.name.clone());
+    let mut vv = vec![];
+    for (k, v) in per_ge {
+        let pairs: Vec<EventField> = v.iter().map(|x| x.fields.clone()).flatten().collect();
+        let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
+        let mut series = vec![];
+
+        for (name, vals) in per_key_name {
+            let s = series_from_pairs(&vals, name)?;
+            series.push(s);
+        }
+        series.sort_by_key(|x| x.name().to_string());
+
+        let column_names: Vec<&str> = series.iter().map(|x| x.name().clone()).collect();
+        let mut rows = 0;
+        let mut all_series = vec![];
+        for ser in &series {
+            rows = ser.len().max(rows);
+            let py_series = rust_series_to_py_series(&ser).unwrap();
+            all_series.push(py_series);
+        }
+        let dfp = Python::with_gil(|py| {
+            let polars = py.import("polars").unwrap();
+            let df = polars.call_method1("DataFrame", (all_series,)).unwrap();
+            df.setattr("columns", column_names.to_object(py)).unwrap();
+            let pandas_df = df.call_method0("to_pandas").unwrap();
+            pandas_df.to_object(py)
+        });
+        vv.push((k, dfp));
+    }
+    Ok(vv.to_object(py))
+}
+pub fn series_from_event(events: &Vec<GameEvent>) -> Result<Py<PyAny>, DemoParserError> {
     let pairs: Vec<EventField> = events.iter().map(|x| x.fields.clone()).flatten().collect();
     let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
     let mut series = vec![];
@@ -854,7 +926,23 @@ pub fn series_from_events(events: &Vec<GameEvent>) -> Result<Vec<Series>, DemoPa
         series.push(s);
     }
     series.sort_by_key(|x| x.name().to_string());
-    Ok(series)
+
+    let column_names: Vec<&str> = series.iter().map(|x| x.name().clone()).collect();
+    let mut rows = 0;
+    let mut all_series = vec![];
+    for ser in &series {
+        rows = ser.len().max(rows);
+        let py_series = rust_series_to_py_series(&ser).unwrap();
+        all_series.push(py_series);
+    }
+    let dfp = Python::with_gil(|py| {
+        let polars = py.import("polars").unwrap();
+        let df = polars.call_method1("DataFrame", (all_series,)).unwrap();
+        df.setattr("columns", column_names.to_object(py)).unwrap();
+        let pandas_df = df.call_method0("to_pandas").unwrap();
+        pandas_df.to_object(py)
+    });
+    Ok(dfp)
 }
 fn to_f32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
     let mut v = vec![];

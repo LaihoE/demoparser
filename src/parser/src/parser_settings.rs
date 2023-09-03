@@ -27,7 +27,7 @@ pub struct ParserInputs {
     pub wanted_other_props_og_names: Vec<String>,
 
     pub wanted_ticks: Vec<i32>,
-    pub wanted_event: Option<String>,
+    pub wanted_events: Vec<String>,
     pub parse_ents: bool,
     pub parse_projectiles: bool,
     pub only_header: bool,
@@ -67,7 +67,7 @@ pub struct Parser {
     // Team and rules props
     pub wanted_other_props: Vec<String>,
     pub wanted_other_props_og_names: Vec<String>,
-    pub wanted_event: Option<String>,
+    pub wanted_events: Vec<String>,
     pub parse_entities: bool,
     pub parse_projectiles: bool,
     pub name_to_id: AHashMap<String, u32>,
@@ -118,7 +118,7 @@ impl Parser {
             serializers: AHashMap::default(),
             parse_projectiles: false,
             wanted_player_props: inputs.wanted_player_props.clone(),
-            wanted_event: inputs.wanted_event.clone(),
+            wanted_events: inputs.wanted_events.clone(),
             wanted_ticks: AHashSet::from_iter(inputs.wanted_ticks.iter().cloned()),
             settings: inputs,
             wanted_player_props_og_names: vec![],

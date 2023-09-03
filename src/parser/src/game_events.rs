@@ -36,7 +36,7 @@ impl Parser {
 
 impl ParserThread {
     pub fn parse_event(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        if self.wanted_event.is_none() {
+        if self.wanted_events.len() == 0 {
             return Ok(());
         }
         let event: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
@@ -48,11 +48,12 @@ impl ParserThread {
             }
         };
         self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
-        // Return if this is not our wanted event. (user can only request one event per demo)
-        // This could change in the future.
-        if event_desc.name != self.wanted_event {
+
+        // Return early if this is not a wanted event.
+        if !self.wanted_events.contains(&event_desc.name().to_string()) {
             return Ok(());
         }
+
         let mut event_fields: Vec<EventField> = vec![];
         // Parsing game events is this easy, the complexity comes from adding "extra" fields into events.
         for i in 0..event.keys.len() {

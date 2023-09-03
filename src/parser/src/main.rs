@@ -48,7 +48,7 @@ fn main() {
             bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            wanted_event: Some("player_death".to_string()),
+            wanted_events: vec!["player_death".to_string()],
             //wanted_event: None,
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
@@ -71,7 +71,7 @@ fn main() {
 
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
-        println!("{:?}", d.game_events);
+        println!("{:#?}", d.game_events);
         // println!("{:?}", before.elapsed());
         // println!("{:#?}", ds.state.cls_by_id);
         // println!("{:?}", path.)

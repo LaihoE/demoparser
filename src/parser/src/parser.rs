@@ -11,7 +11,6 @@ use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
 use crate::stringtables::StringTable;
 use crate::variants::PropColumn;
-use crate::variants::VarVec;
 use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
 use ahash::AHashSet;
@@ -22,7 +21,6 @@ use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoPacket, CDemoSendTab
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
-use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
 
@@ -93,7 +91,6 @@ impl Parser {
             };
             ok?;
         }
-        use rayon::iter::ParallelIterator;
         let mut outputs: Vec<DemoOutput> = self
             .fullpacket_offsets
             .iter()

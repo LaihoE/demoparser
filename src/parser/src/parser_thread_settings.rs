@@ -71,7 +71,7 @@ pub struct ParserThread {
     // pub projectile_records: ProjectileRecordVec,
 
     // Settings
-    pub wanted_event: Option<String>,
+    pub wanted_events: Vec<String>,
     pub parse_entities: bool,
     pub parse_projectiles: bool,
     pub debug_fields: Vec<DebugFieldAndPath>,
@@ -192,7 +192,7 @@ impl ParserThread {
             players: BTreeMap::default(),
             output: AHashMap::default(),
             game_events: vec![],
-            wanted_event: input.settings.wanted_event.clone(),
+            wanted_events: input.settings.wanted_events.clone(),
             parse_entities: input.settings.parse_ents,
             projectiles: AHashSet::default(),
             // projectile_records: ProjectileRecordVec::new(),
