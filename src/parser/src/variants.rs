@@ -87,23 +87,6 @@ impl PropColumn {
             },
             Some(VarVec::I32(v)) => match &other.data {
                 Some(VarVec::I32(v_other)) => {
-                    println!("*********************");
-                    println!(
-                        "({:?} {:?}) ({:?} {:?})",
-                        v.first(),
-                        v.last(),
-                        v_other.first(),
-                        v_other.last()
-                    );
-                    println!(
-                        "({:?} {:?}) ({:?} {:?})",
-                        v.iter().min(),
-                        v.iter().max(),
-                        v_other.iter().min(),
-                        v_other.iter().max(),
-                    );
-                    println!("*********************");
-
                     v.extend_from_slice(&v_other);
                 }
                 None => {

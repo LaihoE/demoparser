@@ -44,10 +44,9 @@ impl ParserThread {
             let ok = match demo_cmd {
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Packet => self.parse_packet(&bytes),
-
                 DEM_FullPacket => {
                     match self.parse_all_packets {
-                        true => self.parse_full_packet(&bytes).unwrap(),
+                        true => {} // self.parse_full_packet(&bytes).unwrap(),
                         false => {
                             if self.fullpackets_parsed == 0 {
                                 self.parse_full_packet(&bytes).unwrap();

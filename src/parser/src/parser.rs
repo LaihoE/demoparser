@@ -21,8 +21,11 @@ use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoPacket, CDemoSendTab
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
+use rayon::iter::ParallelIterator;
+use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -83,7 +86,7 @@ impl Parser {
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Stop => break,
                 DEM_FullPacket => {
-                    self.parse_full_packet(&bytes).unwrap();
+                    // self.parse_full_packet(&bytes).unwrap();
                     self.fullpacket_offsets.push(frame_starts_at);
                     Ok(())
                 }
@@ -91,9 +94,14 @@ impl Parser {
             };
             ok?;
         }
+        let input = self.create_parser_thread_input(16, true);
+        let mut parser = ParserThread::new(input).unwrap();
+        parser.start().unwrap();
+        return Ok(parser.create_output());
+
         let mut outputs: Vec<DemoOutput> = self
             .fullpacket_offsets
-            .iter()
+            .par_iter()
             .map(|offset| {
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
@@ -104,7 +112,6 @@ impl Parser {
         Ok(self.combine_thread_outputs(&mut outputs))
     }
     pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
-        // TODO fix, this is hack to get tests to run
         let cls_by_id = match &self.cls_by_id {
             Some(cls_by_id) => cls_by_id.clone(),
             None => Arc::new(AHashMap::default()),

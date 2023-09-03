@@ -43,7 +43,7 @@ impl Parser {
     pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
         if table.name() != "instancebaseline" {
-            // return Ok(());
+            return Ok(());
         }
         let bytes = match table.data_compressed() {
             true => snap::raw::Decoder::new().decompress_vec(table.string_data()).unwrap(),
@@ -177,7 +177,7 @@ impl ParserThread {
                 st.flags,
                 st.var_bit_counts,
             )?,
-            None => return Err(DemoParserError::StringTableNotFound),
+            None => return Ok(()), //return Err(DemoParserError::StringTableNotFound),
         }
         Ok(())
     }

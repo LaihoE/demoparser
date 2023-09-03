@@ -13,14 +13,14 @@ use std::time::Instant;
 fn main() {
     let wanted_props = vec!["weapon_skin".to_string()];
 
-    rayon::ThreadPoolBuilder::new().num_threads(24).build_global().unwrap();
+    // rayon::ThreadPoolBuilder::new().num_threads(24).build_global().unwrap();
 
     // let bytes = fs::read(demo_path).unwrap();
     // let file = File::open(demo_path).unwrap();
     // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test2/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test3/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
 
@@ -29,7 +29,7 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 100 {
+        if c > 1000 {
             break;
         }
 
@@ -71,8 +71,8 @@ fn main() {
 
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
-        println!("{:#?}", d.game_events);
-        // println!("{:?}", before.elapsed());
+        // println!("{:#?}", d.game_events);
+        println!("{:?}", before.elapsed());
         // println!("{:#?}", ds.state.cls_by_id);
         // println!("{:?}", path.)
     }

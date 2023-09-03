@@ -108,7 +108,7 @@ pub enum CoordinateAxis {
 
 impl ParserThread {
     pub fn collect_entities(&mut self) {
-        if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_events.len() == 0 {
+        if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_events.len() != 0 {
             return;
         }
         if self.parse_projectiles {
