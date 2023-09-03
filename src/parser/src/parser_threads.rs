@@ -19,6 +19,7 @@ impl ParserThread {
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
             let size = self.read_varint()?;
+
             self.tick = tick as i32;
 
             self.packets_parsed += 1;

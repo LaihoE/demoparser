@@ -25,7 +25,6 @@ use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
 use std::sync::Arc;
-use std::time::Instant;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -73,6 +72,7 @@ impl Parser {
                 true => SnapDecoder::new().decompress_vec(self.read_n_bytes(size).unwrap()).unwrap(),
                 false => self.read_n_bytes(size)?.to_vec(),
             };
+
             let ok: Result<(), DemoParserError> = match demo_cmd {
                 DEM_SendTables => {
                     sendtable = Some(Message::parse_from_bytes(&bytes).unwrap());
@@ -94,11 +94,6 @@ impl Parser {
             };
             ok?;
         }
-        let input = self.create_parser_thread_input(16, true);
-        let mut parser = ParserThread::new(input).unwrap();
-        parser.start().unwrap();
-        return Ok(parser.create_output());
-
         let mut outputs: Vec<DemoOutput> = self
             .fullpacket_offsets
             .par_iter()
@@ -184,15 +179,6 @@ impl Parser {
 }
 
 impl Parser {
-    pub fn is_ready_to_spawn_thread(&self) -> bool {
-        /*
-        println!(
-            "{} {} {} {}",
-            self.qf_map_set, self.cls_by_id_set, self.ge_list_set, self.prop_controller_is_set
-        );
-        */
-        self.qf_map_set && self.cls_by_id_set && self.ge_list_set && self.prop_controller_is_set
-    }
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
         let packet_data = packet.data.unwrap();

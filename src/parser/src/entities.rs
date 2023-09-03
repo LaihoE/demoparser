@@ -284,25 +284,37 @@ impl ParserThread {
             },
             Err(_) => None,
         };
-        match player_entid {
-            Some(e) => {
-                if e != 2047 && steamid != Some(0) && team_num != Some(1) {
-                    self.players.insert(
-                        e,
-                        PlayerMetaData {
-                            name: name,
-                            team_num: team_num,
-                            player_entity_id: player_entid,
-                            steamid: steamid,
-                            controller_entid: Some(*entity_id),
-                        },
-                    );
+        if let Some(e) = player_entid {
+            if e != 2047 && steamid != Some(0) && team_num != Some(1) {
+                match self.should_remove(steamid) {
+                    Some(eid) => {
+                        self.players.remove(&eid);
+                    }
+                    None => {}
                 }
+                self.players.insert(
+                    e,
+                    PlayerMetaData {
+                        name: name,
+                        team_num: team_num,
+                        player_entity_id: player_entid,
+                        steamid: steamid,
+                        controller_entid: Some(*entity_id),
+                    },
+                );
             }
-            _ => {}
         }
         Ok(())
     }
+    fn should_remove(&self, steamid: Option<u64>) -> Option<i32> {
+        for (entid, player) in &self.players {
+            if player.steamid == steamid {
+                return Some(*entid);
+            }
+        }
+        None
+    }
+
     fn create_new_entity(&mut self, bitreader: &mut Bitreader, entity_id: &i32) -> Result<(), DemoParserError> {
         let cls_id: u32 = bitreader.read_nbits(8)?;
         // Both of these are not used. Don't think they are interesting for the parser

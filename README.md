@@ -153,9 +153,16 @@ True/Flase if player is pressing button.
 
 (buttons is the real value of m_nButtonDownMaskPrev and the others are derived from it)
 
-#### Match info (same for all players)
+#### Match info
 |         Name          | Real name                                                                                                                               |
 | :-------------------: | :----------------------------------- |
+|team_rounds_total|m_iScore|
+|team_surrendered|m_bSurrendered|
+|team_name|m_szTeamname|
+|team_score_overtime|m_scoreOvertime|
+|team_match_stat|m_szTeamMatchStat|
+|team_num_map_victories|m_numMapVictories|
+|team_score_first_half| m_scoreFirstHalf |
 | team_score_second_half | m_scoreSecondHalf |
 | team_clan_name  | m_szClanTeamname |
 | is_freeze_period | m_bFreezePeriod |

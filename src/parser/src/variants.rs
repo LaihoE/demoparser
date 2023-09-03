@@ -57,7 +57,6 @@ impl PropColumn {
             num_nones: 0,
         }
     }
-    pub fn new_empty_from(propcol: &PropColumn) {}
 
     pub fn len(&self) -> usize {
         match &self.data {

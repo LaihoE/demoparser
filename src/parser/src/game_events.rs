@@ -36,7 +36,7 @@ impl Parser {
 
 impl ParserThread {
     pub fn parse_event(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        if self.wanted_events.len() == 0 {
+        if self.wanted_events.len() == 0 && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
         let event: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
@@ -171,9 +171,8 @@ impl ParserThread {
     */
     pub fn find_extra_props_events(&self, entity_id: i32, prefix: &str) -> Result<Vec<EventField>, DemoParserError> {
         let mut extra_pairs = vec![];
-        // prop name:
         for prop_info in &self.prop_controller.prop_infos {
-            // These are meant for entities not used here
+            // These are meant for entities and should not be collected here
             if prop_info.prop_name == "tick" || prop_info.prop_name == "name" || prop_info.prop_name == "steamid" {
                 continue;
             }

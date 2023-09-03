@@ -140,7 +140,7 @@ impl DemoParser {
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
             wanted_other_props_og_names: vec![],
-            wanted_events: vec![],
+            wanted_events: vec!["all".to_string()],
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -611,7 +611,12 @@ impl DemoParser {
         };
         let event_series = match series_from_event(&output.game_events) {
             Ok(ser) => ser,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(_e) => {
+                return Err(Exception::new_err(format!(
+                    "No {:?} events found in demo.",
+                    event_name
+                )))
+            }
         };
         Ok(event_series)
     }
@@ -905,14 +910,16 @@ pub fn series_from_multiple_events(
             let py_series = rust_series_to_py_series(&ser).unwrap();
             all_series.push(py_series);
         }
-        let dfp = Python::with_gil(|py| {
-            let polars = py.import("polars").unwrap();
-            let df = polars.call_method1("DataFrame", (all_series,)).unwrap();
-            df.setattr("columns", column_names.to_object(py)).unwrap();
-            let pandas_df = df.call_method0("to_pandas").unwrap();
-            pandas_df.to_object(py)
-        });
-        vv.push((k, dfp));
+        if rows != 0 {
+            let dfp = Python::with_gil(|py| {
+                let polars = py.import("polars").unwrap();
+                let df = polars.call_method1("DataFrame", (all_series,)).unwrap();
+                df.setattr("columns", column_names.to_object(py)).unwrap();
+                let pandas_df = df.call_method0("to_pandas").unwrap();
+                pandas_df.to_object(py)
+            });
+            vv.push((k, dfp));
+        }
     }
     Ok(vv.to_object(py))
 }
@@ -934,6 +941,9 @@ pub fn series_from_event(events: &Vec<GameEvent>) -> Result<Py<PyAny>, DemoParse
         rows = ser.len().max(rows);
         let py_series = rust_series_to_py_series(&ser).unwrap();
         all_series.push(py_series);
+    }
+    if rows == 0 {
+        return Err(DemoParserError::NoEvents);
     }
     let dfp = Python::with_gil(|py| {
         let polars = py.import("polars").unwrap();

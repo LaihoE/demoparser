@@ -121,7 +121,6 @@ impl ParserThread {
                 // All values come trough here. None if cant be found.
                 match self.find_prop(prop_info, entity_id, player) {
                     Ok(prop) => {
-                        // println!("{} {:?}", prop_info.prop_name, prop);
                         self.output
                             .entry(prop_info.id)
                             .or_insert_with(|| PropColumn::new())
@@ -129,7 +128,6 @@ impl ParserThread {
                     }
                     Err(_e) => {
                         // Ultimate debugger is to print this error
-                        // println!("{} {:?} {}", self.tick, _e, prop_info.prop_name);
                         self.output
                             .entry(prop_info.id)
                             .or_insert_with(|| PropColumn::new())
@@ -315,10 +313,12 @@ impl ParserThread {
             None => return Err(PropCollectionError::SpecialidsItemDefNotSet),
         };
         match self.find_weapon_prop(&item_def_id, entity_id) {
-            Ok(Variant::U32(def_idx)) => match WEAPINDICIES.get(&def_idx) {
-                Some(v) => return Ok(Variant::String(v.to_string())),
-                None => return Err(PropCollectionError::WeaponIdxMappingNotFound),
-            },
+            Ok(Variant::U32(def_idx)) => {
+                match WEAPINDICIES.get(&def_idx) {
+                    Some(v) => return Ok(Variant::String(v.to_string())),
+                    None => return Err(PropCollectionError::WeaponIdxMappingNotFound),
+                };
+            }
             Ok(_) => return Err(PropCollectionError::WeaponDefVariantWrongType),
             Err(e) => Err(e),
         }
