@@ -101,11 +101,7 @@ impl ParserThread {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
                 // self.game_events_counter.insert(debug.field.full_name.clone());
-                if debug
-                    .field
-                    .full_name
-                    .contains("CCSPlayerPawn.CCSPlayer_MovementServices.m_flFallVelocity")
-                {
+                if debug.field.full_name.contains("m_OriginalOwnerXuidLow") {
                     println!("{:?} {:?} {:?}", debug.path, debug.field.full_name, result);
                 }
             }

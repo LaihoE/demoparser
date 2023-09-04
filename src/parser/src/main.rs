@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn main() {
-    let wanted_props = vec!["weapon_skin".to_string()];
+    let wanted_props = vec!["active_weapon_original_owner".to_string()];
 
     // rayon::ThreadPoolBuilder::new().num_threads(24).build_global().unwrap();
     // let bytes = fs::read(demo_path).unwrap();
@@ -46,7 +46,7 @@ fn main() {
             bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            wanted_events: vec!["player_death".to_string()],
+            wanted_events: vec!["item_equip".to_string()],
             //wanted_event: None,
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
@@ -69,7 +69,7 @@ fn main() {
 
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
-        // println!("{:#?}", d.game_events);
+
         println!("{:?}", before.elapsed());
         // println!("{:#?}", ds.state.cls_by_id);
         // println!("{:?}", path.)

@@ -215,6 +215,7 @@ True/Flase if player is pressing button.
 | active_weapon_name  |  m_iItemDefinitionIndex + lookup |
 | active_weapon_skin  |  m_iRawValue32 + lookup |
 | active_weapon_ammo  |  m_iClip1 |
+|active_weapon_original_owner| m_OriginalOwnerXuidLow + m_OriginalOwnerXuidHigh|
 | total_ammo_left  |  m_pReserveAmmo |
 | item_def_idx  |  m_iItemDefinitionIndex |
 | weapon_quality  |  m_iEntityQuality |

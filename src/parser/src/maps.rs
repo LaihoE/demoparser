@@ -1551,6 +1551,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "pitch"=> PropType::Custom,
     "yaw"=> PropType::Custom,
     "weapon_name" => PropType::Custom,
+    "active_weapon_original_owner" => PropType::Custom,
     // Weapon
     "m_flAnimTime" => PropType::Weapon,
     "m_flSimulationTime"=> PropType::Weapon,
@@ -1753,7 +1754,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "IN_WALK" => "IN_WALK",
     "pitch" => "pitch",
     "yaw" => "yaw",
-
+    "active_weapon_original_owner" => "active_weapon_original_owner",
     "buttons" => "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev",
     "team_surrendered" => "CCSTeam.m_bSurrendered",
     "team_rounds_total" => "CCSTeam.m_iScore",

@@ -19,6 +19,7 @@ const BUTTONS_BASEID: u32 = 100000;
 const NORMAL_PROP_BASEID: u32 = 1000;
 
 pub const WEAPON_SKIN_ID: u32 = 420420420;
+pub const WEAPON_ORIGINGAL_OWNER_ID: u32 = 6942000;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -74,6 +75,17 @@ impl PropController {
                 });
                 someid += 1;
             }
+        }
+        if self
+            .wanted_player_props
+            .contains(&("active_weapon_original_owner".to_string()))
+        {
+            self.prop_infos.push(PropInfo {
+                id: WEAPON_ORIGINGAL_OWNER_ID,
+                prop_type: PropType::Custom,
+                prop_name: "active_weapon_original_owner".to_string(),
+                prop_friendly_name: "active_weapon_original_owner".to_string(),
+            });
         }
         if self.wanted_player_props.contains(&("weapon_skin".to_string())) {
             self.prop_infos.push(PropInfo {
@@ -261,6 +273,7 @@ impl PropController {
             || name.contains("CCSPlayerController.m_hPlayerPawn")
             || name.contains("CCSPlayerController.m_bPawnIsAlive")
             || name.contains("m_hActiveWeapon")
+            || name.contains("OriginalOwnerXuid")
         {
             return true;
         }
@@ -280,6 +293,8 @@ impl PropController {
                 "CBodyComponentBaseAnimGraph.m_cellY" => self.special_ids.m_cell_y_grenade = Some(id),
                 "CBodyComponentBaseAnimGraph.m_cellZ" => self.special_ids.m_cell_z_grenade = Some(id),
                 "m_iItemDefinitionIndex" => self.special_ids.item_def = Some(id),
+                "m_OriginalOwnerXuidLow" => self.special_ids.orig_own_low = Some(id),
+                "m_OriginalOwnerXuidHigh" => self.special_ids.orig_own_high = Some(id),
                 _ => {}
             };
         } else {
@@ -300,6 +315,9 @@ impl PropController {
                 "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellZ" => self.special_ids.cell_z_player = Some(id),
                 "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => self.special_ids.cell_z_offset_player = Some(id),
                 "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => self.special_ids.active_weapon = Some(id),
+
+                // "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => self.special_ids.active_weapon = Some(id),
+                // "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => self.special_ids.active_weapon = Some(id),
                 _ => {}
             };
         }

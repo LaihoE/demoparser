@@ -76,6 +76,12 @@ pub enum PropCollectionError {
     WeaponSkinFloatConvertionError,
     WeaponSkinNoSkinMapping,
     WeaponSkinIdxIncorrectVariant,
+    OriginalOwnerXuidIdLowNotSet,
+    OriginalOwnerXuidIdHighNotSet,
+    OriginalOwnerXuidLowNotFound,
+    OriginalOwnerXuidHighNotFound,
+    OriginalOwnerXuidlowIncorrectVariant,
+    OriginalOwnerXuidHighIncorrectVariant,
 }
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
@@ -433,10 +439,34 @@ impl ParserThread {
             "yaw" => self.find_pitch_or_yaw(entity_id, 1),
             "weapon_name" => self.find_weapon_name(entity_id),
             "weapon_skin" => self.find_weapon_skin(entity_id),
+            "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
     }
-    // 699999999
+
+    pub fn find_weapon_original_owner(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        let low_id = match self.prop_controller.special_ids.orig_own_low {
+            Some(id) => id,
+            None => return Err(PropCollectionError::OriginalOwnerXuidIdLowNotSet),
+        };
+        let high_id = match self.prop_controller.special_ids.orig_own_high {
+            Some(id) => id,
+            None => return Err(PropCollectionError::OriginalOwnerXuidIdHighNotSet),
+        };
+        let low_bits = match self.find_weapon_prop(&low_id, entity_id) {
+            Ok(Variant::U32(val)) => val,
+            Ok(_) => return Err(PropCollectionError::OriginalOwnerXuidlowIncorrectVariant),
+            Err(_e) => return Err(PropCollectionError::OriginalOwnerXuidLowNotFound),
+        };
+        let high_bits = match self.find_weapon_prop(&high_id, entity_id) {
+            Ok(Variant::U32(val)) => val,
+            Ok(_) => return Err(PropCollectionError::OriginalOwnerXuidHighIncorrectVariant),
+            Err(_e) => return Err(PropCollectionError::OriginalOwnerXuidHighNotFound),
+        };
+        let combined = (high_bits as u64) << 32 | (low_bits as u64);
+        Ok(Variant::String(combined.to_string()))
+    }
+
     pub fn find_weapon_skin(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
         match self.find_weapon_prop(&WEAPON_SKIN_ID, player_entid) {
             Ok(Variant::F32(f)) => {
