@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+
 use crate::collect_data::ProjectileRecord;
+use crate::game_events::GameEvent;
 use crate::parser_thread_settings::{EconItem, PlayerEndMetaData};
 use crate::prop_controller::PropInfo;
-use ahash::HashMap;
+use ahash::{HashMap, HashMapExt};
 use itertools::Itertools;
 use memmap2::Mmap;
 use serde::ser::{SerializeMap, SerializeStruct};
@@ -420,18 +423,63 @@ pub struct OutputSerdeHelperStruct {
     pub prop_infos: Vec<PropInfo>,
     pub inner: HashMap<u32, PropColumn>,
 }
-
+pub fn soa_to_aos(soa: OutputSerdeHelperStruct) -> Vec<HashMap<String, Option<Variant>>> {
+    let mut total_rows = 0;
+    for (_, v) in &soa.inner {
+        total_rows = v.len();
+    }
+    let mut v = Vec::with_capacity(total_rows);
+    for idx in 0..total_rows {
+        let mut hm: HashMap<String, Option<Variant>> = HashMap::with_capacity(soa.prop_infos.len());
+        for prop_info in &soa.prop_infos {
+            if soa.inner.contains_key(&prop_info.id) {
+                match &soa.inner[&prop_info.id].data {
+                    None => panic!("failed to serialize data"),
+                    Some(VarVec::F32(val)) => match val.get(idx).unwrap() {
+                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::F32(*f))),
+                        None => hm.insert(prop_info.prop_name.clone(), None),
+                    },
+                    Some(VarVec::I32(val)) => match val.get(idx).unwrap() {
+                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::I32(*f))),
+                        None => hm.insert(prop_info.prop_name.clone(), None),
+                    },
+                    Some(VarVec::String(val)) => match val.get(idx).unwrap() {
+                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::String(f.to_string()))),
+                        None => hm.insert(prop_info.prop_name.clone(), None),
+                    },
+                    Some(VarVec::U64(val)) => match val.get(idx).unwrap() {
+                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::String(f.to_string()))),
+                        None => hm.insert(prop_info.prop_name.clone(), None),
+                    },
+                    Some(VarVec::Bool(val)) => match val.get(idx).unwrap() {
+                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::Bool(*f))),
+                        None => hm.insert(prop_info.prop_name.clone(), None),
+                    },
+                    Some(VarVec::U32(val)) => match val.get(idx).unwrap() {
+                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::U32(*f))),
+                        None => hm.insert(prop_info.prop_name.clone(), None),
+                    },
+                };
+            }
+        }
+        v.push(hm);
+    }
+    v
+}
 impl Serialize for OutputSerdeHelperStruct {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        let mut map = serializer.serialize_map(Some(2))?;
+        let mut map = serializer.serialize_map(Some(self.prop_infos.len()))?;
+        let mut idx = 0;
+
         for prop_info in &self.prop_infos {
             if self.inner.contains_key(&prop_info.id) {
                 match &self.inner[&prop_info.id].data {
+                    None => panic!("failed to serialize data"),
                     Some(VarVec::F32(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
+                        map.serialize_entry(&prop_info.prop_name, &val.get(idx)).unwrap();
                     }
                     Some(VarVec::I32(val)) => {
                         map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
@@ -455,7 +503,6 @@ impl Serialize for OutputSerdeHelperStruct {
                     Some(VarVec::U32(val)) => {
                         map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
                     }
-                    None => {}
                 }
             }
         }
