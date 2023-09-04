@@ -270,7 +270,7 @@ pub struct EventField {
     pub name: String,
     pub data: Option<Variant>,
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct GameEvent {
     pub name: String,
     pub fields: Vec<EventField>,
@@ -284,6 +284,21 @@ impl Serialize for EventField {
     {
         let mut map = serializer.serialize_map(Some(2))?;
         map.serialize_entry(&self.name, &self.data).unwrap();
+        map.end()
+    }
+}
+
+impl Serialize for GameEvent {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry(&"tick", &self.tick).unwrap();
+        map.serialize_entry(&"event_name", &self.name).unwrap();
+        for field in &self.fields {
+            map.serialize_entry(&field.name, &field).unwrap();
+        }
         map.end()
     }
 }
