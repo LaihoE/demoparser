@@ -1,5 +1,4 @@
 use ahash::AHashMap;
-use itertools::Itertools;
 use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
@@ -14,7 +13,6 @@ fn main() {
     let wanted_props = vec!["weapon_skin".to_string()];
 
     // rayon::ThreadPoolBuilder::new().num_threads(24).build_global().unwrap();
-
     // let bytes = fs::read(demo_path).unwrap();
     // let file = File::open(demo_path).unwrap();
     // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
@@ -36,7 +34,7 @@ fn main() {
         let file = File::open(path.unwrap().path()).unwrap();
         // let file = File::open("/home/laiho/Documents/demos/cs2/driv/lpk.dem").unwrap();
 
-        println!("{:?}", file);
+        // println!("{:?}", file);
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         mmap.advise(memmap2::Advice::HugePage).unwrap();
 

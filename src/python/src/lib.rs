@@ -154,7 +154,8 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        let ge = pyo3::Python::with_gil(|py| output.game_events_counter.to_object(py));
+        let as_vec = output.game_events_counter.iter().collect_vec();
+        let ge = pyo3::Python::with_gil(|py| as_vec.to_object(py));
         Ok(ge)
     }
 

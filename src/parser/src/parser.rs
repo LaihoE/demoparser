@@ -72,7 +72,6 @@ impl Parser {
                 true => SnapDecoder::new().decompress_vec(self.read_n_bytes(size).unwrap()).unwrap(),
                 false => self.read_n_bytes(size)?.to_vec(),
             };
-
             let ok: Result<(), DemoParserError> = match demo_cmd {
                 DEM_SendTables => {
                     sendtable = Some(Message::parse_from_bytes(&bytes).unwrap());
@@ -86,7 +85,6 @@ impl Parser {
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Stop => break,
                 DEM_FullPacket => {
-                    // self.parse_full_packet(&bytes).unwrap();
                     self.fullpacket_offsets.push(frame_starts_at);
                     Ok(())
                 }
@@ -94,17 +92,26 @@ impl Parser {
             };
             ok?;
         }
-        let mut outputs: Vec<DemoOutput> = self
+        let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
-                parser.start().unwrap();
-                parser.create_output()
+                parser.start()?;
+                Ok(parser.create_output())
             })
             .collect();
-        Ok(self.combine_thread_outputs(&mut outputs))
+
+        // If any thread failed return error
+        let mut ok = vec![];
+        for result in outputs {
+            match result {
+                Err(e) => return Err(e),
+                Ok(r) => ok.push(r),
+            };
+        }
+        Ok(self.combine_thread_outputs(&mut ok))
     }
     pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
         let cls_by_id = match &self.cls_by_id {
