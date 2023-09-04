@@ -277,17 +277,6 @@ pub struct GameEvent {
     pub tick: i32,
 }
 
-impl Serialize for EventField {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(2))?;
-        map.serialize_entry(&self.name, &self.data).unwrap();
-        map.end()
-    }
-}
-
 impl Serialize for GameEvent {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -297,7 +286,7 @@ impl Serialize for GameEvent {
         map.serialize_entry(&"tick", &self.tick).unwrap();
         map.serialize_entry(&"event_name", &self.name).unwrap();
         for field in &self.fields {
-            map.serialize_entry(&field.name, &field).unwrap();
+            map.serialize_entry(&field.name, &field.data).unwrap();
         }
         map.end()
     }
