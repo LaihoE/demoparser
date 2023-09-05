@@ -103,6 +103,7 @@ pub struct ProjectileRecord {
     pub z: Option<f32>,
     pub tick: Option<i32>,
     pub grenade_type: Option<String>,
+    pub entity_id: Option<i32>,
 }
 pub enum CoordinateAxis {
     X,
@@ -309,6 +310,7 @@ impl ParserThread {
                 z: float_z,
                 tick: Some(self.tick),
                 grenade_type: grenade_type,
+                entity_id: Some(*projectile_entid),
             });
         }
     }

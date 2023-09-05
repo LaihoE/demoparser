@@ -202,6 +202,7 @@ impl DemoParser {
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
 
+        let entity_id: Vec<Option<i32>> = output.projectiles.iter().map(|s| s.entity_id).collect();
         let xs: Vec<Option<f32>> = output.projectiles.iter().map(|s| s.x).collect();
         let ys: Vec<Option<f32>> = output.projectiles.iter().map(|s| s.y).collect();
         let ticks: Vec<Option<i32>> = output.projectiles.iter().map(|s| s.tick).collect();
@@ -219,18 +220,25 @@ impl DemoParser {
         // Actually not sure about Z coordinate. Leave out for now.
         // let zs = arr_to_py(Box::new(Float32Array::from(parser.projectile_records.z))).unwrap();
         let ticks = arr_to_py(Box::new(Int32Array::from(ticks))).unwrap();
-
         let grenade_type = arr_to_py(Box::new(Utf8Array::<i32>::from(grenade_type))).unwrap();
         let name = arr_to_py(Box::new(Utf8Array::<i32>::from(name))).unwrap();
-
         let steamids = arr_to_py(Box::new(UInt64Array::from(steamid))).unwrap();
+        let entity_ids = arr_to_py(Box::new(Int32Array::from(entity_id))).unwrap();
 
         let polars = py.import("polars")?;
-        let all_series_py = [xs, ys, ticks, steamids, name, grenade_type].to_object(py);
+        let all_series_py = [xs, ys, ticks, steamids, name, grenade_type, entity_ids].to_object(py);
         Python::with_gil(|py| {
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
             // Set column names
-            let column_names = ["X", "Y", "tick", "thrower_steamid", "name", "grenade_type"];
+            let column_names = [
+                "X",
+                "Y",
+                "tick",
+                "thrower_steamid",
+                "name",
+                "grenade_type",
+                "entity_id",
+            ];
             df.setattr("columns", column_names.to_object(py)).unwrap();
             // Call to_pandas with use_pyarrow_extension_array = true
             let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
