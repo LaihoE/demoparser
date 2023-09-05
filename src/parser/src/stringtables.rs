@@ -51,14 +51,6 @@ impl Parser {
 
     pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
-        /*
-        if table.name() != "instancebaseline" {
-            return Ok(());
-        }
-        if name == "instancebaseline" || name == "userinfo" {
-            return Ok(());
-        }
-        */
         if !(table.name() == "instancebaseline" || table.name() == "userinfo") {
             return Ok(());
         }
@@ -209,7 +201,7 @@ impl ParserThread {
                 st.flags,
                 st.var_bit_counts,
             )?,
-            None => return Ok(()), // return Err(DemoParserError::StringTableNotFound),
+            None => return Ok(()),
         }
         Ok(())
     }
@@ -241,11 +233,6 @@ impl ParserThread {
         flags: i32,
         variant_bit_count: bool,
     ) -> Result<(), DemoParserError> {
-        /*
-        if !(name == "instancebaseline" || name == "userinfo") {
-            return Ok(());
-        }
-        */
         let mut bitreader = Bitreader::new(&bytes);
         let mut idx = -1;
         let mut keys: Vec<String> = vec![];
