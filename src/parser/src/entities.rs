@@ -48,7 +48,10 @@ impl ParserThread {
         if !self.parse_entities {
             return Ok(());
         }
-        let packet_ents: CSVCMsg_PacketEntities = Message::parse_from_bytes(&bytes).unwrap();
+        let packet_ents: CSVCMsg_PacketEntities = match Message::parse_from_bytes(&bytes) {
+            Ok(pe) => pe,
+            Err(_e) => return Err(DemoParserError::MalformedMessage),
+        };
         let n_updates = packet_ents.updated_entries();
 
         let data = match packet_ents.entity_data {
@@ -102,8 +105,9 @@ impl ParserThread {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
                 // self.game_events_counter.insert(debug.field.full_name.clone());
                 if debug.field.full_name.contains("m_OriginalOwnerXuidLow") {
-                    println!("{:?} {:?} {:?}", debug.path, debug.field.full_name, result);
+                    // println!("{:?} {:?} {:?}", debug.path, debug.field.full_name, result);
                 }
+                println!("{:?} {:?} {:?}", debug.path, debug.field.full_name, result);
             }
         } else {
             for field_info in &self.field_infos[..n_updates] {

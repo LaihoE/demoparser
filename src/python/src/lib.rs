@@ -77,7 +77,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings);
         let _output = match parser.parse_demo() {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         Ok(parser.header.to_object(py))
     }
@@ -152,7 +152,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings);
         let output = match parser.parse_demo() {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         let as_vec = output.game_events_counter.iter().collect_vec();
         let ge = pyo3::Python::with_gil(|py| as_vec.to_object(py));
@@ -199,7 +199,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings);
         let output = match parser.parse_demo() {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
 
         let entity_id: Vec<Option<i32>> = output.projectiles.iter().map(|s| s.entity_id).collect();
@@ -285,7 +285,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings);
         let output = match parser.parse_demo() {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         let entids: Vec<Option<i32>> = output.chat_messages.iter().map(|x| x.entity_idx).collect();
         let param1: Vec<Option<String>> = output
@@ -359,7 +359,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings);
         let output = match parser.parse_demo() {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         let steamids: Vec<Option<u64>> = output.player_md.iter().map(|p| p.steamid).collect();
         let team_numbers: Vec<Option<i32>> =
@@ -416,7 +416,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings);
         let output = match parser.parse_demo() {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         let def_index: Vec<Option<u32>> = output.item_drops.iter().map(|x| x.def_index).collect();
         let account_id: Vec<Option<u32>> = output.item_drops.iter().map(|x| x.account_id).collect();
@@ -510,7 +510,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings);
         let output = match parser.parse_demo() {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
 
         let def_idx_vec: Vec<Option<u32>> = output.skins.iter().map(|s| s.def_index).collect();
@@ -616,7 +616,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings);
         let output = match parser.parse_demo() {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         let event_series = match series_from_event(&output.game_events) {
             Ok(ser) => ser,
@@ -683,11 +683,11 @@ impl DemoParser {
         let mut parser = Parser::new(settings);
         let output = match parser.parse_demo() {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         let event_series = match series_from_multiple_events(&output.game_events, py) {
             Ok(ser) => ser,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         Ok(event_series)
     }
@@ -704,7 +704,7 @@ impl DemoParser {
 
         let mut real_props = match real_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         let mmap = match create_mmap(self.path.clone()) {
             Ok(mmap) => mmap,
@@ -744,7 +744,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings);
         let output = match parser.parse_demo() {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         let mut all_series = vec![];
 

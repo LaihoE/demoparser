@@ -68,18 +68,29 @@ impl Parser {
                 self.ptr += size as usize;
                 continue;
             }
+
             let bytes = match is_compressed {
-                true => SnapDecoder::new().decompress_vec(self.read_n_bytes(size).unwrap()).unwrap(),
+                true => match SnapDecoder::new().decompress_vec(self.read_n_bytes(size)?) {
+                    Ok(b) => b,
+                    Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
+                },
                 false => self.read_n_bytes(size)?.to_vec(),
             };
             let ok: Result<(), DemoParserError> = match demo_cmd {
                 DEM_SendTables => {
-                    sendtable = Some(Message::parse_from_bytes(&bytes).unwrap());
+                    sendtable = match Message::parse_from_bytes(&bytes) {
+                        Ok(m) => Some(m),
+                        Err(_e) => return Err(DemoParserError::MalformedMessage),
+                    };
                     Ok(())
                 }
                 DEM_FileHeader => self.parse_header(&bytes),
                 DEM_ClassInfo => {
-                    self.parse_class_info(&bytes, sendtable.take().unwrap())?;
+                    let table = match sendtable.take() {
+                        Some(table) => table,
+                        None => return Err(DemoParserError::NoSendTableMessage),
+                    };
+                    self.parse_class_info(&bytes, table)?;
                     Ok(())
                 }
                 DEM_SignonPacket => self.parse_packet(&bytes),
@@ -249,6 +260,7 @@ impl Parser {
         Ok(())
     }
     fn handle_short_header(file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
+        // println!("{:?}", std::str::from_utf8(&bytes[..8]));
         match std::str::from_utf8(&bytes[..8]) {
             Ok(magic) => match magic {
                 "PBDEMS2\0" => {}

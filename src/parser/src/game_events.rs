@@ -68,6 +68,7 @@ impl ParserThread {
         // Add extra fields
         event_fields.extend(self.find_extra(&event_fields)?);
         // Remove fields that user does nothing with like userid and user_pawn
+        println!("{:?}", event_fields);
         event_fields.retain(|ref x| !INTERNALEVENTFIELDS.contains(&x.name.as_str()));
 
         self.game_events.push(GameEvent {

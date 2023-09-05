@@ -18,7 +18,7 @@ fn main() {
     // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test3/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/test/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
 
@@ -34,7 +34,6 @@ fn main() {
         let file = File::open(path.unwrap().path()).unwrap();
         // let file = File::open("/home/laiho/Documents/demos/cs2/driv/lpk.dem").unwrap();
 
-        // println!("{:?}", file);
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         mmap.advise(memmap2::Advice::HugePage).unwrap();
 
@@ -46,7 +45,7 @@ fn main() {
             bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            wanted_events: vec!["item_equip".to_string()],
+            wanted_events: vec!["other_death".to_string()],
             //wanted_event: None,
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),

@@ -1231,7 +1231,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "SCOREBOARD" =>PropType::Button,
     "USE" =>PropType::Button,
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => PropType::Player,
-
     // TEAM
     "CCSTeam.m_iTeamNum" => PropType::Team,
     "CCSTeam.m_aPlayers" => PropType::Team,

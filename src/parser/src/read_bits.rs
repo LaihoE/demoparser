@@ -17,7 +17,6 @@ pub enum DemoParserError {
     UnknownFile,
     IncorrectMetaDataProp,
     UnknownPropName(String),
-    // FileError(std::io::Error),
     GameEventListNotSet,
     PropTypeNotFound(String),
     GameEventUnknownId(String),
@@ -27,6 +26,8 @@ pub enum DemoParserError {
     UnknownGameEventVariant(String), // UnknownEntityHandle(String, V),
     FileNotFound(String),
     NoEvents,
+    DecompressionFailure(String),
+    NoSendTableMessage,
 }
 
 impl std::error::Error for DemoParserError {}

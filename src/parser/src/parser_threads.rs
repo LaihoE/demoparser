@@ -21,7 +21,6 @@ impl ParserThread {
             let size = self.read_varint()?;
 
             self.tick = tick as i32;
-
             self.packets_parsed += 1;
 
             if self.ptr + size as usize >= self.bytes.get_len() {
@@ -36,9 +35,11 @@ impl ParserThread {
                 self.ptr += size as usize;
                 continue;
             }
-
             let bytes = match is_compressed {
-                true => SnapDecoder::new().decompress_vec(self.read_n_bytes(size)?).unwrap(),
+                true => match SnapDecoder::new().decompress_vec(self.read_n_bytes(size)?) {
+                    Ok(b) => b,
+                    Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
+                },
                 false => self.read_n_bytes(size)?.to_vec(),
             };
 
@@ -47,10 +48,10 @@ impl ParserThread {
                 DEM_Packet => self.parse_packet(&bytes),
                 DEM_FullPacket => {
                     match self.parse_all_packets {
-                        true => {} // self.parse_full_packet(&bytes).unwrap(),
+                        true => {}
                         false => {
                             if self.fullpackets_parsed == 0 {
-                                self.parse_full_packet(&bytes).unwrap();
+                                self.parse_full_packet(&bytes)?;
                                 self.fullpackets_parsed += 1;
                             } else {
                                 break;
@@ -69,7 +70,10 @@ impl ParserThread {
     }
 
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
+        let packet: CDemoPacket = match Message::parse_from_bytes(bytes) {
+            Err(_e) => return Err(DemoParserError::MalformedMessage),
+            Ok(p) => p,
+        };
         let packet_data = packet.data.unwrap();
         let mut bitreader = Bitreader::new(&packet_data);
         // Inner loop
@@ -97,9 +101,12 @@ impl ParserThread {
         Ok(())
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
+        let full_packet: CDemoFullPacket = match Message::parse_from_bytes(bytes) {
+            Err(_e) => return Err(DemoParserError::MalformedMessage),
+            Ok(p) => p,
+        };
         for item in &full_packet.string_table.tables {
-            if item.table_name.as_ref().unwrap() == "instancebaseline" {
+            if item.table_name == Some("instancebaseline".to_string()) {
                 for i in &item.items {
                     let k = i.str().parse::<u32>().unwrap_or(999999);
                     self.baselines.insert(k, i.data.as_ref().unwrap().clone());
@@ -110,9 +117,9 @@ impl ParserThread {
         let mut bitreader = Bitreader::new(p.data());
         // Inner loop
         while bitreader.reader.bits_remaining().unwrap() > 8 {
-            let msg_type = bitreader.read_u_bit_var().unwrap();
-            let size = bitreader.read_varint().unwrap();
-            let msg_bytes = bitreader.read_n_bytes(size as usize).unwrap();
+            let msg_type = bitreader.read_u_bit_var()?;
+            let size = bitreader.read_varint()?;
+            let msg_bytes = bitreader.read_n_bytes(size as usize)?;
 
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
@@ -131,7 +138,10 @@ impl ParserThread {
     }
 
     pub fn parse_server_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let server_info: CSVCMsg_ServerInfo = Message::parse_from_bytes(bytes).unwrap();
+        let server_info: CSVCMsg_ServerInfo = match Message::parse_from_bytes(bytes) {
+            Err(_e) => return Err(DemoParserError::MalformedMessage),
+            Ok(p) => p,
+        };
         let class_count = server_info.max_classes();
         self.cls_bits = Some((class_count as f32 + 1.).log2().ceil() as u32);
         Ok(())
