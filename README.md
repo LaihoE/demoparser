@@ -5,7 +5,7 @@ Python: ```pip install demoparser2```
 
 NodeJS: ```npm i @laihoe/demoparser2```
 
-### Gettings started
+### Getting started
 #### Python
 ```python
 from demoparser2 import DemoParser
