@@ -8,6 +8,7 @@ use crate::parser_thread_settings::SpecialIDs;
 use crate::prop_controller::PropController;
 use crate::prop_controller::PropInfo;
 use crate::read_bits::DemoParserError;
+use crate::stringtables::UserInfo;
 use crate::variants::BytesVariant;
 use ahash::AHashMap;
 use ahash::AHashSet;
@@ -55,6 +56,7 @@ pub struct Parser {
     pub prop_controller_is_set: bool,
     pub ge_list: AHashMap<i32, Descriptor_t>,
     pub qf_mapper: QfMapper,
+    pub stringtable_players: AHashMap<u64, UserInfo>,
 
     pub qf_map_set: bool,
     pub ge_list_set: bool,
@@ -90,6 +92,7 @@ impl Parser {
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
             threads_spawned: 0,
+            stringtable_players: AHashMap::default(),
             only_header: inputs.only_header,
             ge_list_set: false,
             cls_by_id_set: false,

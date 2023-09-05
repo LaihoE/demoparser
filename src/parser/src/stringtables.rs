@@ -1,6 +1,9 @@
 use super::read_bits::{Bitreader, DemoParserError};
 use crate::{parser_settings::Parser, parser_thread_settings::ParserThread};
-use csgoproto::netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable};
+use csgoproto::{
+    netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable},
+    networkbasetypes::CMsgPlayerInfo,
+};
 use protobuf::Message;
 use snap::raw::Decoder;
 
@@ -20,11 +23,17 @@ pub struct StringTableEntry {
     pub key: String,
     pub value: Vec<u8>,
 }
+#[derive(Clone, Debug)]
+pub struct UserInfo {
+    pub steamid: u64,
+    pub name: String,
+    pub userid: i32,
+    pub is_hltv: bool,
+}
 
 impl Parser {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
-
         match self.string_tables.get(table.table_id() as usize) {
             Some(st) => self.parse_string_table(
                 table.string_data().to_vec(),
@@ -42,7 +51,15 @@ impl Parser {
 
     pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
+        /*
         if table.name() != "instancebaseline" {
+            return Ok(());
+        }
+        if name == "instancebaseline" || name == "userinfo" {
+            return Ok(());
+        }
+        */
+        if !(table.name() == "instancebaseline" || table.name() == "userinfo") {
             return Ok(());
         }
         let bytes = match table.data_compressed() {
@@ -138,8 +155,11 @@ impl Parser {
                         value
                     };
                 }
+                if name == "userinfo" {
+                    let player = parse_userinfo(&value)?;
+                    self.stringtable_players.insert(player.steamid, player);
+                }
                 if name == "instancebaseline" {
-                    // Watch out for keys like 42:15 <-- seem to be props that are not used atm
                     match key.parse::<u32>() {
                         Ok(cls_id) => self.baselines.insert(cls_id, value.clone()),
                         Err(_e) => None,
@@ -163,6 +183,18 @@ impl Parser {
         Ok(())
     }
 }
+fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
+    let player = match CMsgPlayerInfo::parse_from_bytes(bytes) {
+        Err(_e) => return Err(DemoParserError::MalformedMessage),
+        Ok(player) => player,
+    };
+    Ok(UserInfo {
+        is_hltv: player.ishltv(),
+        steamid: player.xuid(),
+        name: player.name().to_string(),
+        userid: player.userid(),
+    })
+}
 
 impl ParserThread {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
@@ -177,7 +209,7 @@ impl ParserThread {
                 st.flags,
                 st.var_bit_counts,
             )?,
-            None => return Ok(()), //return Err(DemoParserError::StringTableNotFound),
+            None => return Ok(()), // return Err(DemoParserError::StringTableNotFound),
         }
         Ok(())
     }
@@ -209,10 +241,11 @@ impl ParserThread {
         flags: i32,
         variant_bit_count: bool,
     ) -> Result<(), DemoParserError> {
-        if name != "instancebaseline" {
+        /*
+        if !(name == "instancebaseline" || name == "userinfo") {
             return Ok(());
         }
-
+        */
         let mut bitreader = Bitreader::new(&bytes);
         let mut idx = -1;
         let mut keys: Vec<String> = vec![];

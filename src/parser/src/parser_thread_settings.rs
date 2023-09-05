@@ -15,6 +15,7 @@ use crate::sendtables::DebugField;
 use crate::sendtables::DebugFieldAndPath;
 use crate::sendtables::FieldInfo;
 use crate::sendtables::FieldModel;
+use crate::stringtables::UserInfo;
 use crate::variants::BytesVariant;
 use ahash::AHashMap;
 use ahash::AHashSet;
@@ -34,6 +35,7 @@ pub struct ParserThread {
     pub qf_mapper: Arc<QfMapper>,
     pub prop_controller: Arc<PropController>,
     pub cls_by_id: Arc<AHashMap<u32, Class>>,
+    pub stringtable_players: AHashMap<u64, UserInfo>,
 
     pub ptr: usize,
     pub bytes: Arc<BytesVariant>,
@@ -172,6 +174,7 @@ impl ParserThread {
                 };
                 debug_vec_len
             ],
+            stringtable_players: input.stringtable_players,
             is_debug_mode: debug,
             projectile_records: vec![],
             parse_all_packets: input.parse_all_packets,

@@ -23,11 +23,12 @@ pub enum DemoParserError {
     UnknownPawnPrefix(String),
     UnknownEntityHandle(String),
     ClsIdOutOfBounds,
-    UnknownGameEventVariant(String), // UnknownEntityHandle(String, V),
+    UnknownGameEventVariant(String),
     FileNotFound(String),
     NoEvents,
     DecompressionFailure(String),
     NoSendTableMessage,
+    UserIdNotFound,
 }
 
 impl std::error::Error for DemoParserError {}

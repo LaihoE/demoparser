@@ -10,6 +10,7 @@ use crate::parser_threads::demo_cmd_type_from_int;
 use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
 use crate::stringtables::StringTable;
+use crate::stringtables::UserInfo;
 use crate::variants::PropColumn;
 use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
@@ -141,6 +142,7 @@ impl Parser {
             // arc?
             wanted_ticks: self.wanted_ticks.clone(),
             string_tables: self.string_tables.clone(),
+            stringtable_players: self.stringtable_players.clone(),
         }
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
@@ -260,7 +262,6 @@ impl Parser {
         Ok(())
     }
     fn handle_short_header(file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
-        // println!("{:?}", std::str::from_utf8(&bytes[..8]));
         match std::str::from_utf8(&bytes[..8]) {
             Ok(magic) => match magic {
                 "PBDEMS2\0" => {}
@@ -323,6 +324,7 @@ pub struct ParserThreadInput {
     pub parse_all_packets: bool,
     pub wanted_ticks: AHashSet<i32>,
     pub string_tables: Vec<StringTable>,
+    pub stringtable_players: AHashMap<u64, UserInfo>,
 }
 
 pub struct ClassInfoThreadResult {

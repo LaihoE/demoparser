@@ -1,6 +1,7 @@
 use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::DemoParserError;
+use crate::stringtables::UserInfo;
 use crate::variants::*;
 use ahash::AHashMap;
 use ahash::RandomState;
@@ -68,7 +69,6 @@ impl ParserThread {
         // Add extra fields
         event_fields.extend(self.find_extra(&event_fields)?);
         // Remove fields that user does nothing with like userid and user_pawn
-        println!("{:?}", event_fields);
         event_fields.retain(|ref x| !INTERNALEVENTFIELDS.contains(&x.name.as_str()));
 
         self.game_events.push(GameEvent {
@@ -78,7 +78,24 @@ impl ParserThread {
         });
         Ok(())
     }
-
+    fn find_user_by_userid(&self, userid: i32) -> Option<&UserInfo> {
+        for player in self.stringtable_players.values() {
+            if player.userid == userid {
+                return Some(player);
+            }
+        }
+        return None;
+    }
+    fn entity_id_from_userid(&self, userid: i32) -> Option<i32> {
+        if let Some(userinfo) = self.find_user_by_userid(userid) {
+            for player in self.players.values() {
+                if player.steamid == Some(userinfo.steamid) {
+                    return Some(player.player_entity_id.unwrap());
+                }
+            }
+        }
+        return None;
+    }
     fn find_extra(&self, fields: &Vec<EventField>) -> Result<Vec<EventField>, DemoParserError> {
         let mut extra_fields = vec![];
         // Always add tick to event
@@ -86,36 +103,54 @@ impl ParserThread {
             name: "tick".to_owned(),
             data: Some(Variant::I32(self.tick)),
         });
-
         for field in fields {
-            if field.name.contains("pawn") {
-                match field.data {
-                    Some(Variant::I32(entid_handle)) => {
-                        let entity_id = entid_handle & 0x7FF;
-                        // strip out _pawn from name:  userid_pawn => userid
-                        // this assumes that "pawn" is not used for other key names, only for handles to players
-                        let prefix = match field.name.split("_pawn").next() {
-                            Some(prefix) => prefix,
-                            None => return Err(DemoParserError::UnknownPawnPrefix(field.name.clone())),
-                        };
-                        // Rename userid to user. userid_name sounds goofy
-                        let prefix = match prefix {
-                            "userid" => "user",
-                            _ => prefix,
-                        };
-                        extra_fields.push(self.create_player_name_field(entity_id, prefix));
-                        extra_fields.push(self.create_player_steamid_field(entity_id, prefix));
-                        extra_fields.extend(self.find_extra_props_events(entity_id, prefix)?);
+            // Fields that refer to players
+            let prefix = match field.name.as_str() {
+                "attacker" => "attacker",
+                "userid" => "user",
+                "assister" => "assister",
+                _ => continue,
+            };
+            if let Some(Variant::I32(u)) = field.data {
+                let entity_id = match self.entity_id_from_userid(u) {
+                    Some(eid) => eid,
+                    None => {
+                        // player could not be found --> add None to output
+                        extra_fields.extend(self.generate_empty_fields(prefix));
+                        continue;
                     }
-                    _ => {
-                        return Err(DemoParserError::UnknownEntityHandle(field.name.clone()));
-                    }
-                }
+                };
+                extra_fields.push(self.create_player_name_field(entity_id, prefix));
+                extra_fields.push(self.create_player_steamid_field(entity_id, prefix));
+                extra_fields.extend(self.find_extra_props_events(entity_id, prefix)?);
             }
         }
         // Values from Teams and Rules entity. Not bound to any player so can be added to any event.
-        //extra_fields.extend(self.find_non_player_props());
+        // extra_fields.extend(self.find_non_player_props());
         Ok(extra_fields)
+    }
+    fn generate_empty_fields(&self, prefix: &str) -> Vec<EventField> {
+        let mut extra_fields = vec![];
+        // when pointer fails for some reason we need to add None to output
+        for prop_info in &self.prop_controller.prop_infos {
+            // These are meant for entities and should not be collected here
+            if prop_info.prop_name == "tick" || prop_info.prop_name == "name" || prop_info.prop_name == "steamid" {
+                continue;
+            }
+            extra_fields.push(EventField {
+                name: prefix.to_owned() + "_steamid",
+                data: None,
+            });
+            extra_fields.push(EventField {
+                name: prefix.to_owned() + "_name",
+                data: None,
+            });
+            extra_fields.push(EventField {
+                name: prefix.to_owned() + "_" + &prop_info.prop_friendly_name,
+                data: None,
+            });
+        }
+        extra_fields
     }
     /*
     fn find_non_player_props(&self) -> Vec<EventField> {
