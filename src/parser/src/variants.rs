@@ -387,6 +387,7 @@ impl Serialize for ProjectileRecord {
         state.serialize_field("x", &self.x).unwrap();
         state.serialize_field("y", &self.y).unwrap();
         state.serialize_field("z", &self.z).unwrap();
+        state.serialize_field("entity_id", &self.entity_id).unwrap();
         state.end()
     }
 }
@@ -479,7 +480,7 @@ impl Serialize for OutputSerdeHelperStruct {
                 match &self.inner[&prop_info.id].data {
                     None => panic!("failed to serialize data"),
                     Some(VarVec::F32(val)) => {
-                        map.serialize_entry(&prop_info.prop_name, &val.get(idx)).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
                     }
                     Some(VarVec::I32(val)) => {
                         map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
