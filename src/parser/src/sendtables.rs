@@ -554,7 +554,7 @@ impl Parser {
         let mut prop_controller = PropController::new(
             self.wanted_player_props.clone(),
             self.wanted_player_props_og_names.clone(),
-            self.real_name_to_og_name.clone(),
+            self.wanted_other_props.clone(),
         );
         for serializer in serializer_msg.serializers.iter() {
             let mut my_serializer = Serializer {

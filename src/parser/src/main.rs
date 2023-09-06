@@ -12,7 +12,7 @@ use std::time::Instant;
 fn main() {
     let wanted_props = vec!["active_weapon_original_owner".to_string()];
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test3/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/broken/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
 
@@ -21,7 +21,7 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 1000 {
+        if c > 1 {
             break;
         }
 
@@ -58,6 +58,7 @@ fn main() {
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
         println!("TOTAL {:?}", before.elapsed());
+        println!("{:?}", d.game_events_counter);
     }
     println!("TOTAL {:?}", before.elapsed());
 }

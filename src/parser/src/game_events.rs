@@ -1,5 +1,8 @@
+use crate::collect_data::PropCollectionError;
+use crate::collect_data::PropType;
 use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
+use crate::prop_controller::PropInfo;
 use crate::read_bits::DemoParserError;
 use crate::stringtables::UserInfo;
 use crate::variants::*;
@@ -37,6 +40,7 @@ impl Parser {
 
 impl ParserThread {
     pub fn parse_event(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        // return Ok(());
         if self.wanted_events.len() == 0 && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
@@ -122,11 +126,11 @@ impl ParserThread {
                 };
                 extra_fields.push(self.create_player_name_field(entity_id, prefix));
                 extra_fields.push(self.create_player_steamid_field(entity_id, prefix));
-                extra_fields.extend(self.find_extra_props_events(entity_id, prefix)?);
+                extra_fields.extend(self.find_extra_props_events(entity_id, prefix));
             }
         }
         // Values from Teams and Rules entity. Not bound to any player so can be added to any event.
-        // extra_fields.extend(self.find_non_player_props());
+        extra_fields.extend(self.find_non_player_props());
         Ok(extra_fields)
     }
     fn generate_empty_fields(&self, prefix: &str) -> Vec<EventField> {
@@ -152,62 +156,76 @@ impl ParserThread {
         }
         extra_fields
     }
-    /*
+
     fn find_non_player_props(&self) -> Vec<EventField> {
         let mut extra_fields = vec![];
-        for (prop_name, og_name) in self
-            .wanted_other_props
-            .iter()
-            .zip(&self.wanted_other_props_og_names)
-        {
-            let fields = match TYPEHM.get(&prop_name) {
-                Some(PropType::Team) => self.find_other_team_props(prop_name, og_name),
-                Some(PropType::Rules) => self.find_other_rules_props(prop_name, og_name),
+        println!("{:#?}", self.prop_controller.prop_infos);
+        for prop_info in &self.prop_controller.prop_infos {
+            let fields = match prop_info.prop_type {
+                PropType::Team => self.find_other_team_props(&prop_info),
+                PropType::Rules => self.find_other_rules_props(&prop_info),
                 _ => vec![],
             };
+            println!("{:?}", fields);
             extra_fields.extend(fields);
         }
         extra_fields
     }
 
-    fn find_other_rules_props(&self, prop_info: &PropInfo, og_name: &String) -> Vec<EventField> {
+    fn find_other_rules_props(&self, prop_info: &PropInfo) -> Vec<EventField> {
         let mut extra_fields = vec![];
         let prop = match self.rules_entity_id {
-            Some(entid) => self.get_prop_for_ent(&prop_info.id, &entid),
+            Some(entid) => match self.get_prop_from_ent(&prop_info.id, &entid) {
+                Ok(p) => Some(p),
+                Err(_e) => {
+                    println!("{:?}", _e);
+                    None
+                }
+            },
             None => None,
         };
         extra_fields.push(EventField {
-            name: og_name.to_owned(),
+            name: prop_info.prop_friendly_name.to_owned(),
             data: prop,
         });
         extra_fields
     }
-    fn find_other_team_props(&self, prop_info: &PropInfo, og_name: &String) -> Vec<EventField> {
+    fn find_other_team_props(&self, prop_info: &PropInfo) -> Vec<EventField> {
         let mut extra_fields = vec![];
         let t = self.teams.team2_entid;
         let ct = self.teams.team3_entid;
         let t_prop = match t {
-            Some(entid) => self.get_prop_for_ent(&prop_info.id, &entid),
+            Some(entid) => match self.get_prop_from_ent(&prop_info.id, &entid) {
+                Ok(p) => Some(p),
+                Err(_) => None,
+            },
             None => None,
         };
         let ct_prop = match ct {
-            Some(entid) => self.get_prop_for_ent(&prop_info.id, &entid),
+            Some(entid) => match self.get_prop_from_ent(&prop_info.id, &entid) {
+                Ok(p) => Some(p),
+                Err(_) => None,
+            },
             None => None,
         };
         extra_fields.push(EventField {
-            name: "t_".to_owned() + og_name,
+            name: "t_".to_owned() + &prop_info.prop_friendly_name,
             data: t_prop,
         });
         extra_fields.push(EventField {
-            name: "ct_".to_owned() + og_name,
+            name: "ct_".to_owned() + &prop_info.prop_friendly_name,
             data: ct_prop,
         });
         extra_fields
     }
-    */
-    pub fn find_extra_props_events(&self, entity_id: i32, prefix: &str) -> Result<Vec<EventField>, DemoParserError> {
+
+    pub fn find_extra_props_events(&self, entity_id: i32, prefix: &str) -> Vec<EventField> {
         let mut extra_pairs = vec![];
         for prop_info in &self.prop_controller.prop_infos {
+            // These props are collected in find_non_player_props()
+            if !prop_info.is_player_prop {
+                continue;
+            }
             // These are meant for entities and should not be collected here
             if prop_info.prop_name == "tick" || prop_info.prop_name == "name" || prop_info.prop_name == "steamid" {
                 continue;
@@ -241,7 +259,7 @@ impl ParserThread {
                 }
             }
         }
-        Ok(extra_pairs)
+        extra_pairs
     }
     fn create_player_name_field(&self, entity_id: i32, prefix: &str) -> EventField {
         if entity_id == ENTITYIDNONE {

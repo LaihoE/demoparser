@@ -4,6 +4,7 @@ use crate::netmessage_types::netmessage_type_from_int;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
 use bitter::BitReader;
+use csgoproto::cs_gameevents::ECsgoGameEvents;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
 use netmessage_types::NetmessageType::*;
@@ -38,7 +39,10 @@ impl ParserThread {
             let bytes = match is_compressed {
                 true => match SnapDecoder::new().decompress_vec(self.read_n_bytes(size)?) {
                     Ok(b) => b,
-                    Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
+                    Err(e) => {
+                        println!("Failed at: {:?}", self.tick);
+                        continue;
+                    } // return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
                 },
                 false => self.read_n_bytes(size)?.to_vec(),
             };
