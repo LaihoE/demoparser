@@ -36,6 +36,7 @@ pub struct ParserThread {
     pub prop_controller: Arc<PropController>,
     pub cls_by_id: Arc<AHashMap<u32, Class>>,
     pub stringtable_players: AHashMap<u64, UserInfo>,
+    pub time: f64,
 
     pub ptr: usize,
     pub bytes: Arc<BytesVariant>,
@@ -163,6 +164,7 @@ impl ParserThread {
             false => 0,
         };
         Ok(ParserThread {
+            time: 0.0,
             debug_fields: vec![
                 DebugFieldAndPath {
                     field: DebugField {

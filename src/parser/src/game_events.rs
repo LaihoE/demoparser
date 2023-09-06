@@ -39,7 +39,6 @@ impl Parser {
 
 impl ParserThread {
     pub fn parse_event(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        // return Ok(());
         if self.wanted_events.len() == 0 && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
@@ -54,7 +53,8 @@ impl ParserThread {
         self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
 
         // Return early if this is not a wanted event.
-        if !self.wanted_events.contains(&event_desc.name().to_string()) {
+        if !self.wanted_events.contains(&event_desc.name().to_string()) && self.wanted_events.first() != Some(&"all".to_string())
+        {
             return Ok(());
         }
 
@@ -141,18 +141,18 @@ impl ParserThread {
                 continue;
             }
             extra_fields.push(EventField {
-                name: prefix.to_owned() + "_steamid",
-                data: None,
-            });
-            extra_fields.push(EventField {
-                name: prefix.to_owned() + "_name",
-                data: None,
-            });
-            extra_fields.push(EventField {
                 name: prefix.to_owned() + "_" + &prop_info.prop_friendly_name,
                 data: None,
             });
         }
+        extra_fields.push(EventField {
+            name: prefix.to_owned() + "_steamid",
+            data: None,
+        });
+        extra_fields.push(EventField {
+            name: prefix.to_owned() + "_name",
+            data: None,
+        });
         extra_fields
     }
 

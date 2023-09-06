@@ -17,6 +17,7 @@ use ahash::AHashMap;
 use ahash::AHashSet;
 use bitter::BitReader;
 use csgoproto::demo::CDemoFullPacket;
+use csgoproto::demo::CDemoSyncTick;
 use csgoproto::demo::EDemoCommands::*;
 use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoPacket, CDemoSendTables};
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
@@ -109,7 +110,7 @@ impl Parser {
         }
         let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
             .fullpacket_offsets
-            .par_iter()
+            .iter()
             .map(|offset| {
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
