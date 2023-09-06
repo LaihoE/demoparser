@@ -138,18 +138,18 @@ impl ParserThread {
                 continue;
             }
             extra_fields.push(EventField {
-                name: prefix.to_owned() + "_steamid",
-                data: None,
-            });
-            extra_fields.push(EventField {
-                name: prefix.to_owned() + "_name",
-                data: None,
-            });
-            extra_fields.push(EventField {
                 name: prefix.to_owned() + "_" + &prop_info.prop_friendly_name,
                 data: None,
             });
         }
+        extra_fields.push(EventField {
+            name: prefix.to_owned() + "_steamid",
+            data: None,
+        });
+        extra_fields.push(EventField {
+            name: prefix.to_owned() + "_name",
+            data: None,
+        });
         extra_fields
     }
     /*
