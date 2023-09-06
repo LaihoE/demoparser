@@ -553,8 +553,8 @@ impl Parser {
         let mut fields: HashMap<i32, Field> = HashMap::default();
         let mut prop_controller = PropController::new(
             self.wanted_player_props.clone(),
-            self.wanted_player_props_og_names.clone(),
             self.wanted_other_props.clone(),
+            self.real_name_to_og_name.clone(),
         );
         for serializer in serializer_msg.serializers.iter() {
             let mut my_serializer = Serializer {

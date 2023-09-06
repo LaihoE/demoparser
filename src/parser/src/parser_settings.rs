@@ -99,10 +99,9 @@ impl Parser {
             qf_map_set: false,
             real_name_to_og_name: inputs.real_name_to_og_name.clone(),
             prop_controller: PropController::new(
-                vec![],
-                vec![],
-                inputs.real_name_to_og_name.clone(),
+                inputs.wanted_player_props.clone(),
                 inputs.wanted_other_props.clone(),
+                inputs.real_name_to_og_name.clone(),
             ),
             prop_controller_is_set: false,
             cls_by_id: None,

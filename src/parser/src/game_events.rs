@@ -1,4 +1,3 @@
-use crate::collect_data::PropCollectionError;
 use crate::collect_data::PropType;
 use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
@@ -159,14 +158,12 @@ impl ParserThread {
 
     fn find_non_player_props(&self) -> Vec<EventField> {
         let mut extra_fields = vec![];
-        println!("{:#?}", self.prop_controller.prop_infos);
         for prop_info in &self.prop_controller.prop_infos {
             let fields = match prop_info.prop_type {
                 PropType::Team => self.find_other_team_props(&prop_info),
                 PropType::Rules => self.find_other_rules_props(&prop_info),
                 _ => vec![],
             };
-            println!("{:?}", fields);
             extra_fields.extend(fields);
         }
         extra_fields
@@ -177,10 +174,7 @@ impl ParserThread {
         let prop = match self.rules_entity_id {
             Some(entid) => match self.get_prop_from_ent(&prop_info.id, &entid) {
                 Ok(p) => Some(p),
-                Err(_e) => {
-                    println!("{:?}", _e);
-                    None
-                }
+                Err(_e) => None,
             },
             None => None,
         };

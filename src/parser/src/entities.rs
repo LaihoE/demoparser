@@ -107,7 +107,6 @@ impl ParserThread {
                 if debug.field.full_name.contains("Flash") {
                     // println!("{:?} {:?} {:?}", debug.path, debug.field.full_name, result);
                 }
-                // println!("{:?} {:?} {:?}", debug.path, debug.field.full_name, result);
             }
         } else {
             for field_info in &self.field_infos[..n_updates] {

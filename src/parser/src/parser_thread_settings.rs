@@ -143,7 +143,7 @@ impl ParserThread {
             header: None,
             player_md: self.player_end_data,
             game_events_counter: self.game_events_counter,
-            prop_info: PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]),
+            prop_info: PropController::new(vec![], vec![], AHashMap::default()),
             projectiles: self.projectile_records,
             ptr: self.ptr,
         }

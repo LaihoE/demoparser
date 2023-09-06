@@ -633,7 +633,7 @@ mod tests {
         let (mut parser_thread, player_md) = default_setup();
         let mut player_props = AHashMap::default();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.cell_x_player = Some(CELL_X_PLAYER_ID);
         prop_controller_new.special_ids.cell_y_player = Some(CELL_Y_PLAYER_ID);
         prop_controller_new.special_ids.cell_z_player = Some(CELL_Z_PLAYER_ID);
@@ -675,7 +675,7 @@ mod tests {
         let (mut parser_thread, player_md) = default_setup();
         let mut player_props = AHashMap::default();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_x_grenade = Some(CELL_X_GRENADE);
         prop_controller_new.special_ids.m_cell_y_grenade = Some(CELL_Y_GRENADE);
         prop_controller_new.special_ids.m_cell_z_grenade = Some(CELL_Z_GRENADE);
@@ -783,7 +783,7 @@ mod tests {
     fn test_grenade_specialid_cell_x_not_set() {
         let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("X".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_x_grenade = None;
         parser_thread.prop_controller = Arc::new(prop_controller_new);
         ent.props.remove(&OFFSET_Z_GRENADE).unwrap();
@@ -794,7 +794,7 @@ mod tests {
     fn test_grenade_specialid_cell_y_not_set() {
         let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Y".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_y_grenade = None;
         parser_thread.prop_controller = Arc::new(prop_controller_new);
         ent.props.remove(&OFFSET_Z_GRENADE).unwrap();
@@ -805,7 +805,7 @@ mod tests {
     fn test_grenade_specialid_cell_z_not_set() {
         let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Z".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_z_grenade = None;
         parser_thread.prop_controller = Arc::new(prop_controller_new);
         ent.props.remove(&OFFSET_Z_GRENADE).unwrap();
@@ -816,7 +816,7 @@ mod tests {
     fn test_grenade_specialid_offset_x_not_set() {
         let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("X".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_x_grenade = Some(48);
         prop_controller_new.special_ids.m_vec_x_grenade = None;
         parser_thread.prop_controller = Arc::new(prop_controller_new);
@@ -828,7 +828,7 @@ mod tests {
     fn test_grenade_specialid_offset_y_not_set() {
         let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Y".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_y_grenade = Some(48);
         prop_controller_new.special_ids.m_vec_y_grenade = None;
         parser_thread.prop_controller = Arc::new(prop_controller_new);
@@ -840,7 +840,7 @@ mod tests {
     fn test_grenade_specialid_offset_z_not_set() {
         let (_prop_info, weapon, mut parser_thread, _player_md) = default_coordinate_grenade("Z".to_string());
         let ent = parser_thread.entities.get_mut(&weapon.entity_id).unwrap();
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.m_cell_z_grenade = Some(48);
         prop_controller_new.special_ids.m_vec_z_grenade = None;
         parser_thread.prop_controller = Arc::new(prop_controller_new);
@@ -860,7 +860,7 @@ mod tests {
     #[test]
     fn test_player_specialid_cell_x_not_set() {
         let (prop_info, mut parser_thread, player_md) = default_coordinate("X".to_string());
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.cell_x_player = None;
         parser_thread.prop_controller = Arc::new(prop_controller_new);
         let prop = parser_thread.find_prop(&prop_info, &PLAYER_ENTITY_ID, &player_md);
@@ -869,7 +869,7 @@ mod tests {
     #[test]
     fn test_player_specialid_cell_y_not_set() {
         let (prop_info, mut parser_thread, player_md) = default_coordinate("Y".to_string());
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.cell_y_player = None;
         parser_thread.prop_controller = Arc::new(prop_controller_new);
         let prop = parser_thread.find_prop(&prop_info, &PLAYER_ENTITY_ID, &player_md);
@@ -878,7 +878,7 @@ mod tests {
     #[test]
     fn test_player_specialid_cell_z_not_set() {
         let (prop_info, mut parser_thread, player_md) = default_coordinate("Z".to_string());
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.cell_z_player = None;
         parser_thread.prop_controller = Arc::new(prop_controller_new);
         let prop = parser_thread.find_prop(&prop_info, &PLAYER_ENTITY_ID, &player_md);
@@ -887,7 +887,7 @@ mod tests {
     #[test]
     fn test_player_specialid_offset_x_not_set() {
         let (prop_info, mut parser_thread, player_md) = default_coordinate("X".to_string());
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.cell_x_offset_player = None;
         prop_controller_new.special_ids.cell_x_player = Some(CELL_X_PLAYER_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
@@ -897,7 +897,7 @@ mod tests {
     #[test]
     fn test_player_specialid_offset_y_not_set() {
         let (prop_info, mut parser_thread, player_md) = default_coordinate("Y".to_string());
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.cell_y_offset_player = None;
         prop_controller_new.special_ids.cell_y_player = Some(CELL_Y_PLAYER_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
@@ -907,7 +907,7 @@ mod tests {
     #[test]
     fn test_player_specialid_offset_z_not_set() {
         let (prop_info, mut parser_thread, player_md) = default_coordinate("Z".to_string());
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.cell_z_offset_player = None;
         prop_controller_new.special_ids.cell_z_player = Some(CELL_Z_PLAYER_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
@@ -1159,7 +1159,7 @@ mod tests {
         let mut player_props = AHashMap::default();
         player_props.insert(EYEANGLES_ID, Variant::VecXYZ([3.0, 5.0, 66.0]));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.eye_angles = Some(EYEANGLES_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1186,7 +1186,7 @@ mod tests {
         let mut player_props = AHashMap::default();
         player_props.insert(EYEANGLES_ID, Variant::VecXYZ([3.0, 5.0, 66.0]));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.eye_angles = Some(EYEANGLES_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1213,7 +1213,7 @@ mod tests {
         let mut player_props = AHashMap::default();
         player_props.insert(EYEANGLES_ID, Variant::F32(3.0));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.eye_angles = Some(EYEANGLES_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1240,7 +1240,7 @@ mod tests {
         let player_props = AHashMap::default();
         // player_props.insert(EYEANGLES_ID, Variant::F32(3.0));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.eye_angles = Some(EYEANGLES_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1439,7 +1439,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(WEAPON_SKIN_ID, Variant::F32(344.0));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1476,7 +1476,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(WEAPON_SKIN_ID, Variant::F32(5555555555.0));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1513,7 +1513,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(WEAPON_SKIN_ID, Variant::F32(50.555));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1550,7 +1550,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(WEAPON_SKIN_ID, Variant::I32(50));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1588,7 +1588,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(WANTED_PROP_ID, Variant::U32(33333));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1628,7 +1628,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(ITEMDEF_ID, Variant::U32(33333));
 
-        let prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         // prop_controller_new.special_ids.item_def = Some(ITEMDEF_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1668,7 +1668,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(ITEMDEF_ID, Variant::U32(33333));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         prop_controller_new.special_ids.item_def = Some(ITEMDEF_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
@@ -1706,7 +1706,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(ITEMDEF_ID, Variant::U32(33333));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         prop_controller_new.special_ids.item_def = Some(ITEMDEF_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
@@ -1745,7 +1745,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(ITEMDEF_ID, Variant::F32(33333.4154));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         prop_controller_new.special_ids.item_def = Some(ITEMDEF_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
@@ -1784,7 +1784,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(ITEMDEF_ID, Variant::U32(7));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         prop_controller_new.special_ids.item_def = Some(ITEMDEF_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
@@ -1823,7 +1823,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::U32(WEAPON_ENTITY_ID as u32));
         weapon_props.insert(WANTED_PROP_ID, Variant::U32(33333));
 
-        let prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         // prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1863,7 +1863,7 @@ mod tests {
         player_props.insert(ACTIVE_WEAPON_ID, Variant::F32(69.0));
         weapon_props.insert(WANTED_PROP_ID, Variant::U32(33333));
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.active_weapon = Some(ACTIVE_WEAPON_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1900,7 +1900,7 @@ mod tests {
     fn test_button_prop_found() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.buttons = Some(BUTTONS_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1930,7 +1930,7 @@ mod tests {
     fn test_button_prop_no_map_entry() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.buttons = Some(BUTTONS_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1960,7 +1960,7 @@ mod tests {
     fn test_button_prop_get_entity_err() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.buttons = Some(BUTTONS_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -1991,7 +1991,7 @@ mod tests {
     fn test_button_prop_not_u64_variant() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.buttons = Some(BUTTONS_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -2021,7 +2021,7 @@ mod tests {
     fn test_button_special_id_not_set() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         // prop_controller_new.special_ids.buttons = Some(BUTTONS_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -2051,7 +2051,7 @@ mod tests {
     fn test_team_get_from_entity_err() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -2092,7 +2092,7 @@ mod tests {
     fn test_team_1_prop_found() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -2132,7 +2132,7 @@ mod tests {
     fn test_team_2_prop_found() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -2173,7 +2173,7 @@ mod tests {
     fn test_team_3_prop_found() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -2214,7 +2214,7 @@ mod tests {
     fn test_team_prop_not_found_team_incorrect_variant() {
         let (mut parser_thread, player_md) = default_setup();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -2294,7 +2294,7 @@ mod tests {
         let mut player_props = AHashMap::default();
         let mut team_props = AHashMap::default();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -2335,7 +2335,7 @@ mod tests {
         let mut player_props = AHashMap::default();
         let mut team_props = AHashMap::default();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -2375,7 +2375,7 @@ mod tests {
         let mut player_props = AHashMap::default();
         let grenade_props = AHashMap::default();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
@@ -2407,7 +2407,7 @@ mod tests {
         let mut player_props = AHashMap::default();
         let grenade_props = AHashMap::default();
 
-        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default(), vec![], vec![]);
+        let mut prop_controller_new = PropController::new(vec![], vec![], AHashMap::default());
         prop_controller_new.special_ids.player_team_pointer = Some(PLAYER_TEAM_POINTER_SPECIAL_ID);
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
