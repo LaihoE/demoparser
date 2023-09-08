@@ -140,6 +140,9 @@ impl ParserThread {
             if prop_info.prop_name == "tick" || prop_info.prop_name == "name" || prop_info.prop_name == "steamid" {
                 continue;
             }
+            if !prop_info.is_player_prop {
+                continue;
+            }
             extra_fields.push(EventField {
                 name: prefix.to_owned() + "_" + &prop_info.prop_friendly_name,
                 data: None,
@@ -215,6 +218,7 @@ impl ParserThread {
 
     pub fn find_extra_props_events(&self, entity_id: i32, prefix: &str) -> Vec<EventField> {
         let mut extra_pairs = vec![];
+        // println!("{:#?}", self.prop_controller.prop_infos);
         for prop_info in &self.prop_controller.prop_infos {
             // These props are collected in find_non_player_props()
             if !prop_info.is_player_prop {

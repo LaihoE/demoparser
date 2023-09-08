@@ -17,7 +17,6 @@ use ahash::AHashMap;
 use ahash::AHashSet;
 use bitter::BitReader;
 use csgoproto::demo::CDemoFullPacket;
-use csgoproto::demo::CDemoSyncTick;
 use csgoproto::demo::EDemoCommands::*;
 use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoPacket, CDemoSendTables};
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
@@ -74,10 +73,7 @@ impl Parser {
             let bytes = match is_compressed {
                 true => match SnapDecoder::new().decompress_vec(self.read_n_bytes(size)?) {
                     Ok(b) => b,
-                    Err(_e) => {
-                        println!("Failed at: {:?}", self.tick);
-                        continue;
-                    } // return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
+                    Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
                 },
                 false => self.read_n_bytes(size)?.to_vec(),
             };
@@ -110,7 +106,7 @@ impl Parser {
         }
         let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
             .fullpacket_offsets
-            .iter()
+            .par_iter()
             .map(|offset| {
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
