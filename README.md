@@ -11,14 +11,14 @@ NodeJS: ```npm i @laihoe/demoparser2```
 from demoparser2 import DemoParser
 
 parser = DemoParser("path_to_demo.dem")
-events_df = parser.parse_event("player_death", player_extra=["X", "Y"])
+event_df = parser.parse_event("player_death", player=["X", "Y"], other=["total_rounds_played"])
 ticks_df = parser.parse_ticks(["X", "Y"])
 ```
 #### NodeJS
 ```JavaScript
 var {parseEvents, parseTicks} = require('@laihoe/demoparser2');
 
-let events_json = parseEvent("path_to_demo.dem", "player_death", ["X", "Y"])
+let event_json = parseEvent("path_to_demo.dem", "player_blind", ["X", "Y"], ["total_rounds_played"])
 let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 ```
 
