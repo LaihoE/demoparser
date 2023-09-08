@@ -1,7 +1,4 @@
-use std::collections::BTreeMap;
-
 use crate::collect_data::ProjectileRecord;
-use crate::game_events::GameEvent;
 use crate::parser_thread_settings::{EconItem, PlayerEndMetaData};
 use crate::prop_controller::PropInfo;
 use ahash::{HashMap, HashMapExt};
@@ -473,7 +470,6 @@ impl Serialize for OutputSerdeHelperStruct {
         S: serde::Serializer,
     {
         let mut map = serializer.serialize_map(Some(self.prop_infos.len()))?;
-        let mut idx = 0;
 
         for prop_info in &self.prop_infos {
             if self.inner.contains_key(&prop_info.id) {

@@ -93,7 +93,6 @@ impl ParserThread {
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
                 net_SetConVar => self.parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
-
                 _ => Ok(()),
             };
             ok?;

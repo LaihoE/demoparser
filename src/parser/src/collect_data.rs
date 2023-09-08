@@ -667,6 +667,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: prop_name.clone(),
             prop_friendly_name: prop_name.clone(),
+            is_player_prop: true,
         };
         return (prop_info, parser_thread, player_md);
     }
@@ -708,6 +709,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: prop_name.clone(),
             prop_friendly_name: prop_name.clone(),
+            is_player_prop: true,
         };
         return (prop_info, weapon, parser_thread, player_md);
     }
@@ -1022,6 +1024,7 @@ mod tests {
             prop_type: PropType::Tick,
             prop_name: "tick".to_string(),
             prop_friendly_name: "tick".to_string(),
+            is_player_prop: true,
         };
         parser_thread.tick = 5555555;
         let prop = parser_thread.find_prop(&prop_info, &69, &player_md);
@@ -1036,6 +1039,7 @@ mod tests {
             prop_type: PropType::Steamid,
             prop_name: "steamid".to_string(),
             prop_friendly_name: "steamid".to_string(),
+            is_player_prop: true,
         };
         parser_thread
             .players
@@ -1051,6 +1055,7 @@ mod tests {
             prop_type: PropType::Steamid,
             prop_name: "steamid".to_string(),
             prop_friendly_name: "steamid".to_string(),
+            is_player_prop: true,
         };
         player_md.steamid = None;
         parser_thread
@@ -1067,6 +1072,7 @@ mod tests {
             prop_type: PropType::Name,
             prop_name: "name".to_string(),
             prop_friendly_name: "name".to_string(),
+            is_player_prop: true,
         };
         parser_thread
             .players
@@ -1082,6 +1088,7 @@ mod tests {
             prop_type: PropType::Name,
             prop_name: "name".to_string(),
             prop_friendly_name: "name".to_string(),
+            is_player_prop: true,
         };
         player_md.name = None;
         parser_thread
@@ -1098,6 +1105,7 @@ mod tests {
             prop_type: PropType::Controller,
             prop_name: "WINS".to_string(),
             prop_friendly_name: "WINS".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &999999, &player_md);
         assert_eq!(Err(PropCollectionError::GetPropFromEntEntityNotFound), prop);
@@ -1118,6 +1126,7 @@ mod tests {
             prop_type: PropType::Player,
             prop_name: "WINS".to_string(),
             prop_friendly_name: "WINS".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::GetPropFromEntPropNotFound), prop);
@@ -1139,6 +1148,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "yaw".to_string(),
             prop_friendly_name: "yaw".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::SpecialidsEyeAnglesNotSet), prop);
@@ -1165,6 +1175,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "yaw".to_string(),
             prop_friendly_name: "yaw".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Ok(Variant::F32(5.0)), prop);
@@ -1191,6 +1202,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "pitch".to_string(),
             prop_friendly_name: "pitch".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Ok(Variant::F32(3.0)), prop);
@@ -1217,6 +1229,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "pitch".to_string(),
             prop_friendly_name: "pitch".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::EyeAnglesWrongVariant), prop);
@@ -1243,6 +1256,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "pitch".to_string(),
             prop_friendly_name: "pitch".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::GetPropFromEntPropNotFound), prop);
@@ -1276,6 +1290,7 @@ mod tests {
             prop_type: PropType::Controller,
             prop_name: "WINS".to_string(),
             prop_friendly_name: "WINS".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Ok(Variant::I32(555)), prop);
@@ -1306,6 +1321,7 @@ mod tests {
             prop_type: PropType::Controller,
             prop_name: "WINS".to_string(),
             prop_friendly_name: "WINS".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::GetPropFromEntPropNotFound), prop);
@@ -1337,6 +1353,7 @@ mod tests {
             prop_type: PropType::Controller,
             prop_name: "WINS".to_string(),
             prop_friendly_name: "WINS".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::ControllerEntityIdNotSet), prop);
@@ -1373,6 +1390,7 @@ mod tests {
             prop_type: PropType::Rules,
             prop_name: "WINS".to_string(),
             prop_friendly_name: "WINS".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Ok(Variant::U32(33333)), prop);
@@ -1408,6 +1426,7 @@ mod tests {
             prop_type: PropType::Rules,
             prop_name: "WINS".to_string(),
             prop_friendly_name: "WINS".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::RulesEntityIdNotSet), prop);
@@ -1444,6 +1463,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "weapon_skin".to_string(),
             prop_friendly_name: "weapon_skin".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Ok(Variant::String("DragonLore".to_string())), prop);
@@ -1480,6 +1500,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "weapon_skin".to_string(),
             prop_friendly_name: "weapon_skin".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::WeaponSkinNoSkinMapping), prop);
@@ -1516,6 +1537,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "weapon_skin".to_string(),
             prop_friendly_name: "weapon_skin".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::WeaponSkinFloatConvertionError), prop);
@@ -1552,6 +1574,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "weapon_skin".to_string(),
             prop_friendly_name: "weapon_skin".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::WeaponSkinIdxIncorrectVariant), prop);
@@ -1592,6 +1615,7 @@ mod tests {
             prop_type: PropType::Weapon,
             prop_name: "some".to_string(),
             prop_friendly_name: "some".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Ok(Variant::U32(33333)), prop);
@@ -1631,6 +1655,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "weapon_name".to_string(),
             prop_friendly_name: "weapon_name".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::SpecialidsItemDefNotSet), prop);
@@ -1668,6 +1693,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "weapon_name".to_string(),
             prop_friendly_name: "weapon_name".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::WeaponIdxMappingNotFound), prop);
@@ -1705,6 +1731,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "weapon_name".to_string(),
             prop_friendly_name: "weapon_name".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::GetPropFromEntEntityNotFound), prop);
@@ -1743,6 +1770,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "weapon_name".to_string(),
             prop_friendly_name: "weapon_name".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::WeaponDefVariantWrongType), prop);
@@ -1781,6 +1809,7 @@ mod tests {
             prop_type: PropType::Custom,
             prop_name: "weapon_name".to_string(),
             prop_friendly_name: "weapon_name".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Ok(Variant::String("ak47".to_string())), prop);
@@ -1821,6 +1850,7 @@ mod tests {
             prop_type: PropType::Weapon,
             prop_name: "some".to_string(),
             prop_friendly_name: "some".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::SpecialidsActiveWeaponNotSet), prop);
@@ -1860,6 +1890,7 @@ mod tests {
             prop_type: PropType::Weapon,
             prop_name: "some".to_string(),
             prop_friendly_name: "some".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::WeaponHandleIncorrectVariant), prop);
@@ -1890,6 +1921,7 @@ mod tests {
             prop_type: PropType::Button,
             prop_name: "A".to_string(),
             prop_friendly_name: "A".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Ok(Variant::Bool(true)), prop);
@@ -1919,6 +1951,7 @@ mod tests {
             prop_type: PropType::Button,
             prop_name: "WRONG".to_string(),
             prop_friendly_name: "WRONG".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::ButtonsMapNoEntryFound), prop);
@@ -1948,6 +1981,7 @@ mod tests {
             prop_type: PropType::Button,
             prop_name: "WRONG".to_string(),
             prop_friendly_name: "WRONG".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::GetPropFromEntEntityNotFound), prop);
@@ -1978,6 +2012,7 @@ mod tests {
             prop_type: PropType::Button,
             prop_name: "WRONG".to_string(),
             prop_friendly_name: "WRONG".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::ButtonMaskNotU64Variant), prop);
@@ -2007,6 +2042,7 @@ mod tests {
             prop_type: PropType::Button,
             prop_name: "WRONG".to_string(),
             prop_friendly_name: "WRONG".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Err(PropCollectionError::ButtonsSpecialIDNone), prop);
@@ -2045,6 +2081,7 @@ mod tests {
             prop_type: PropType::Team,
             prop_name: "someprop".to_string(),
             prop_friendly_name: "someprop".to_string(),
+            is_player_prop: true,
         };
         parser_thread.teams.team1_entid = Some(TEAM_ENTITY_ID);
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
@@ -2085,6 +2122,7 @@ mod tests {
             prop_type: PropType::Team,
             prop_name: "someprop".to_string(),
             prop_friendly_name: "someprop".to_string(),
+            is_player_prop: true,
         };
         parser_thread.teams.team1_entid = Some(TEAM_ENTITY_ID);
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
@@ -2124,6 +2162,7 @@ mod tests {
             prop_type: PropType::Team,
             prop_name: "someprop".to_string(),
             prop_friendly_name: "someprop".to_string(),
+            is_player_prop: true,
         };
         parser_thread.teams.team2_entid = Some(TEAM_ENTITY_ID);
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
@@ -2164,6 +2203,7 @@ mod tests {
             prop_type: PropType::Team,
             prop_name: "someprop".to_string(),
             prop_friendly_name: "someprop".to_string(),
+            is_player_prop: true,
         };
         parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
@@ -2204,6 +2244,7 @@ mod tests {
             prop_type: PropType::Team,
             prop_name: "someprop".to_string(),
             prop_friendly_name: "someprop".to_string(),
+            is_player_prop: true,
         };
         parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
@@ -2239,6 +2280,7 @@ mod tests {
             prop_type: PropType::Team,
             prop_name: "someprop".to_string(),
             prop_friendly_name: "someprop".to_string(),
+            is_player_prop: true,
         };
         parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
@@ -2279,6 +2321,7 @@ mod tests {
             prop_type: PropType::Team,
             prop_name: "someprop".to_string(),
             prop_friendly_name: "someprop".to_string(),
+            is_player_prop: true,
         };
         // parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
@@ -2319,6 +2362,7 @@ mod tests {
             prop_type: PropType::Team,
             prop_name: "someprop".to_string(),
             prop_friendly_name: "someprop".to_string(),
+            is_player_prop: true,
         };
         // parser_thread.teams.team3_entid = Some(TEAM_ENTITY_ID);
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
@@ -2407,6 +2451,7 @@ mod tests {
             prop_type: PropType::Player,
             prop_name: "player_prop".to_string(),
             prop_friendly_name: "player_prop".to_string(),
+            is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
         assert_eq!(Ok(Variant::U8(47)), prop);

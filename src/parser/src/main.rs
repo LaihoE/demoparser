@@ -21,7 +21,7 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 1000 {
+        if c > 1 {
             break;
         }
 
@@ -58,6 +58,7 @@ fn main() {
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
         println!("TOTAL {:?}", before.elapsed());
+        println!("{:?}", d.game_events_counter);
     }
     println!("TOTAL {:?}", before.elapsed());
 }

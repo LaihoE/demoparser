@@ -577,12 +577,15 @@ impl DemoParser {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        let _real_other_props = match real_other_props {
+        let real_other_props = match real_other_props {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
         let mut real_name_to_og_name = AHashMap::default();
         for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
+            real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+        }
+        for (real_name, user_friendly_name) in real_other_props.iter().zip(&wanted_other_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
         let mmap = match create_mmap(self.path.clone()) {
@@ -602,7 +605,7 @@ impl DemoParser {
             bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: real_player_props.clone(),
             wanted_player_props_og_names: wanted_player_props.clone(),
-            wanted_other_props: vec![],
+            wanted_other_props: real_other_props,
             wanted_other_props_og_names: vec![],
             wanted_events: vec![event_name.clone()],
             parse_ents: true,
@@ -644,12 +647,15 @@ impl DemoParser {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
-        let _real_other_props = match real_other_props {
+        let real_other_props = match real_other_props {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
         let mut real_name_to_og_name = AHashMap::default();
         for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
+            real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+        }
+        for (real_name, user_friendly_name) in real_other_props.iter().zip(&wanted_other_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
         let mmap = match create_mmap(self.path.clone()) {
@@ -669,7 +675,7 @@ impl DemoParser {
             bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: real_player_props.clone(),
             wanted_player_props_og_names: wanted_player_props.clone(),
-            wanted_other_props: vec![],
+            wanted_other_props: wanted_other_props,
             wanted_other_props_og_names: vec![],
             wanted_events: event_name.clone(),
             parse_ents: true,
@@ -883,6 +889,18 @@ pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (Vec<String>, Vec<String>)
                 None => {}
             }
             match k.get_item("other_extra") {
+                Some(t) => {
+                    other_props = t.extract().unwrap();
+                }
+                None => {}
+            }
+            match k.get_item("player") {
+                Some(t) => {
+                    player_props = t.extract().unwrap();
+                }
+                None => {}
+            }
+            match k.get_item("other") {
                 Some(t) => {
                     other_props = t.extract().unwrap();
                 }

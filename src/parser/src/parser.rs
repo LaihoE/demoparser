@@ -259,6 +259,7 @@ impl Parser {
         self.header
             .insert("demo_version_name".to_string(), header.demo_version_name().to_string());
         self.header.insert("addons".to_string(), header.addons().to_string());
+
         Ok(())
     }
     fn handle_short_header(file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
