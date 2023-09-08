@@ -8,8 +8,8 @@ def parse_header(): -> Dict<str, str>
 def list_game_events(): -> List[str]
 
 
-def parse_event(event_name: str, player_extra=[str]): -> DataFrame
-def parse_events(event_name: [str], player_extra=[str]): -> DataFrame
+def parse_event(event_name: str, player=[str], other=[str]): -> DataFrame
+def parse_events(event_name: [str], player=[str], other=[str]): -> DataFrame
 def parse_ticks(wanted_props: [str], ticks=[int]): -> DataFrame
 ```
 See below for more in-depth explanations of above functions.
