@@ -25,6 +25,7 @@ use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::env;
 use std::sync::Arc;
 
@@ -56,7 +57,7 @@ pub struct ParserThread {
     pub game_events_counter: AHashSet<String>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub field_infos: Vec<FieldInfo>,
-    pub projectiles: AHashSet<i32, RandomState>,
+    pub projectiles: BTreeSet<i32>,
     pub fullpackets_parsed: u32,
     pub packets_parsed: u32,
     pub cnt: AHashMap<FieldModel, u32>,
@@ -199,7 +200,7 @@ impl ParserThread {
             game_events: vec![],
             wanted_events: input.settings.wanted_events.clone(),
             parse_entities: input.settings.parse_ents,
-            projectiles: AHashSet::default(),
+            projectiles: BTreeSet::default(),
             // projectile_records: ProjectileRecordVec::new(),
             baselines: input.baselines.clone(),
             string_tables: input.string_tables.clone(),
