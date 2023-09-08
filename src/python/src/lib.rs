@@ -894,6 +894,18 @@ pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (Vec<String>, Vec<String>)
                 }
                 None => {}
             }
+            match k.get_item("player") {
+                Some(t) => {
+                    player_props = t.extract().unwrap();
+                }
+                None => {}
+            }
+            match k.get_item("other") {
+                Some(t) => {
+                    other_props = t.extract().unwrap();
+                }
+                None => {}
+            }
             (player_props, other_props)
         }
         None => (vec![], vec![]),
