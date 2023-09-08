@@ -268,48 +268,6 @@ True/Flase if player is pressing button.
 | next_secondary_attack_tick  |  m_nNextSecondaryAttackTick |
 | next_secondary_attack_tick_ratio |  m_flNextSecondaryAttackTickRatio |
 
-#### Per round stats (this is quite awkward to use)
-
-|         Name          | Real name                                                                                                                               |
-| :-------------------: | :----------------------------------- |
-| kills_this_round | m_iKills |
-| deaths_this_round | m_iDeaths |
-| assists_this_round | m_iAssists |
-| alive_time_this_round | m_iLiveTime |
-| headshot_kills_this_round | m_iHeadShotKills |
-| damage_this_round | m_iDamage |
-| objective_this_round | m_iObjective |
-| utility_damage_this_round | m_iUtilityDamage |
-| enemies_flashed_this_round | m_iEnemiesFlashed |
-| equipment_value_this_round | m_iEquipmentValue |
-| money_saved_this_round | m_iMoneySaved |
-| kill_reward_this_round | m_iKillReward |
-| cash_earned_this_round | m_iCashEarned |
-
-#### Stats total (so far into the demo)
-|         Name          | Real name                                                                                                                               |
-| :-------------------: | :----------------------------------- |
-| kills_total | m_iKills |
-| deaths_total | m_iDeaths |
-| assists_total | m_iAssists |
-| alive_time_total | m_iLiveTime |
-| headshot_kills_total | m_iHeadShotKills |
-| ace_rounds_total | m_iEnemy5Ks |
-| 4k_rounds_total | m_iEnemy4Ks |
-| 3k_rounds_total | m_iEnemy3Ks |
-| damage_total | m_iDamage |
-| objective_total | m_iObjective |
-| utility_damage_total | m_iUtilityDamage |
-| enemies_flashed_total | m_iEnemiesFlashed |
-| equipment_value_total | m_iEquipmentValue |
-| money_saved_total | m_iMoneySaved |
-| kill_reward_total | m_iKillReward |
-| cash_earned_total | m_iCashEarned |
-
-
-
-
-
 
 
 
