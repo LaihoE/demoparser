@@ -137,16 +137,19 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 True/Flase if player is pressing button.
 |         Name          | Real name                                                                                                                               |
 | :-------------------: | :----------------------------------- |
-|W|m_nButtonDownMaskPrev|
-|A|m_nButtonDownMaskPrev|
-|S|m_nButtonDownMaskPrev|
-|D|m_nButtonDownMaskPrev|
-|left_mouse|m_nButtonDownMaskPrev|
-|right_mouse|m_nButtonDownMaskPrev|
-|reload|m_nButtonDownMaskPrev|
-|score_board|m_nButtonDownMaskPrev|
-|inspect_weapon|m_nButtonDownMaskPrev|
-|buttons|m_nButtonDownMaskPrev|
+|FORWARD|m_nButtonDownMaskPrev|
+|LEFT|m_nButtonDownMaskPrev|
+|RIGHT |m_nButtonDownMaskPrev|
+|BACK|m_nButtonDownMaskPrev|
+|FIRE|m_nButtonDownMaskPrev|
+|RIGHTCLICK |m_nButtonDownMaskPrev|
+|RELOAD |m_nButtonDownMaskPrev|
+|INSPECT|m_nButtonDownMaskPrev|
+|USE|m_nButtonDownMaskPrev|
+|ZOOM |m_nButtonDownMaskPrev|
+|SCOREBOARD|m_nButtonDownMaskPrev|
+|WALK|m_nButtonDownMaskPrev|
+|button|m_nButtonDownMaskPrev|
 
 (buttons is the real value of m_nButtonDownMaskPrev and the others are derived from it)
 

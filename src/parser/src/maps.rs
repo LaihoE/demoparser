@@ -2,16 +2,18 @@ use crate::collect_data::PropType;
 use phf_macros::phf_map;
 
 pub static BUTTONMAP: phf::Map<&'static str, u64> = phf_map! {
-    "A" => 1 << 9,
-    "W" => 1 << 3,
-    "S" => 1 << 4,
-    "D" => 1 << 10,
+    "LEFT" => 1 << 9,
+    "FORWARD" => 1 << 3,
+    "BACK" => 1 << 4,
+    "RIGHT" => 1 << 10,
     "FIRE" => 1 << 0,
     "RIGHTCLICK" => 1 << 11,
     "RELOAD" => 1 << 13,
     "INSPECT" => 1 << 35,
     "USE" => 1 << 5,
     "SCOREBOARD" => 1 << 16,
+    "ZOOM" => 1 << 24,
+    "WALK" => 1 << 18,
 };
 
 // Found in scripts/items/items_game.txt
@@ -1221,15 +1223,19 @@ pub static PAINTKITS: phf::Map<u32, &'static str> = phf_map! {
 };
 
 pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
-    "A" => PropType::Button,
-    "W" => PropType::Button,
-    "S" => PropType::Button,
-    "D" => PropType::Button,
+    "FORWARD" => PropType::Button,
+    "LEFT" => PropType::Button,
+    "RIGHT" => PropType::Button,
+    "BACK" => PropType::Button,
     "FIRE" => PropType::Button,
     "RIGHTCLICK" => PropType::Button,
-    "RELOAD" =>PropType::Button,
+    "RELOAD" => PropType::Button,
+    "INSPECT" => PropType::Button,
+    "USE" => PropType::Button,
+    "ZOOM" => PropType::Button,
     "SCOREBOARD" =>PropType::Button,
-    "USE" =>PropType::Button,
+    "WALK" => PropType::Button,
+
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => PropType::Player,
     // TEAM
     "CCSTeam.m_iTeamNum" => PropType::Team,
@@ -1733,14 +1739,16 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "m_iClip2"=> PropType::Weapon,
     "m_pReserveAmmo"=> PropType::Weapon,
     "m_nViewModelIndex"=> PropType::Weapon,
+
 };
 
 pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_map! {
     "active_weapon_skin" => "weapon_skin",
-    "W" => "W",
-    "A" => "A",
-    "S" => "S",
-    "D" => "D",
+
+    "FORWARD" => "FORWARD",
+    "LEFT" => "LEFT",
+    "RIGHT" => "RIGHT",
+    "BACK" => "BACK",
     "FIRE" => "FIRE",
     "RIGHTCLICK" => "RIGHTCLICK",
     "RELOAD" => "RELOAD",
@@ -1748,11 +1756,11 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "USE" => "USE",
     "ZOOM" => "ZOOM",
     "SCOREBOARD" => "SCOREBOARD",
-    "IN_GRENADE1" => "IN_GRENADE1",
-    "IN_ATTACK2" => "IN_ATTACK2",
-    "IN_WALK" => "IN_WALK",
+    "WALK" => "IN_WALK",
+
     "pitch" => "pitch",
     "yaw" => "yaw",
+
     "active_weapon_original_owner" => "active_weapon_original_owner",
     "buttons" => "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev",
     "team_surrendered" => "CCSTeam.m_bSurrendered",
