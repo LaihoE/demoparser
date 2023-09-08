@@ -432,30 +432,30 @@ pub fn soa_to_aos(soa: OutputSerdeHelperStruct) -> Vec<HashMap<String, Option<Va
         for prop_info in &soa.prop_infos {
             if soa.inner.contains_key(&prop_info.id) {
                 match &soa.inner[&prop_info.id].data {
-                    None => panic!("failed to serialize data"),
+                    None => continue,
                     Some(VarVec::F32(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::F32(*f))),
-                        None => hm.insert(prop_info.prop_name.clone(), None),
+                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::F32(*f))),
+                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
                     Some(VarVec::I32(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::I32(*f))),
-                        None => hm.insert(prop_info.prop_name.clone(), None),
+                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::I32(*f))),
+                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
                     Some(VarVec::String(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::String(f.to_string()))),
-                        None => hm.insert(prop_info.prop_name.clone(), None),
+                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
+                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
                     Some(VarVec::U64(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::String(f.to_string()))),
-                        None => hm.insert(prop_info.prop_name.clone(), None),
+                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
+                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
                     Some(VarVec::Bool(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::Bool(*f))),
-                        None => hm.insert(prop_info.prop_name.clone(), None),
+                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::Bool(*f))),
+                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
                     Some(VarVec::U32(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_name.clone(), Some(Variant::U32(*f))),
-                        None => hm.insert(prop_info.prop_name.clone(), None),
+                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::U32(*f))),
+                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
                 };
             }
