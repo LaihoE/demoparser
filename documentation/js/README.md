@@ -33,7 +33,11 @@ Now our output has 2 new columns: "user_X" and "user_Y":
 0   292  17916    player1  76561111111111111      213.4     874.6
 1   299  59535    player2  76561111111111112      888.6     877.6
 ```
-The player_extra argument does not expose any special "new" data, it is there mostly for convenience. The same info could be gotten with a combination of parse_events() and parse_ticks()
+
+Sometimes you don't want to get a value from the perspective of a player, but rather the "state" of the game. An example of this would be to find out how many rounds have been played. This can be done with the "extraOther" argument:
+```parseEvent("path_to_demo.dem", "bomb_planted", ["X", "Y"], ["total_rounds_played"])```
+Notice that it is only valid to request "game state" props in the "extraOther" argument.
+
 
 
 <br/><br/>

@@ -17,9 +17,9 @@ See below for more in-depth explanations of above functions.
 <br/><br/>
 
 ```Python
-def parse_event(event_name: str, player_extra=List[str]): -> DataFrame
+def parse_event(event_name: str, player=List[str], other=List[str]): -> DataFrame
 ```
-Returns a DataFrame with events of the specified type. The player_extra argument lets you request extra values that are not present in the real game event. For example the event "bomb_planted" has the following columns:
+Returns a DataFrame with events of the specified type. The "player" argument lets you request extra values that are not present in the real game event. For example the event "bomb_planted" has the following columns:
 
 Output from: ```parse_event("bomb_planted")```
 ```
@@ -27,7 +27,7 @@ Output from: ```parse_event("bomb_planted")```
 0   292  17916    player1  76561111111111111
 1   299  59535    player2  76561111111111112
 ```
-We notice that there is not that much info here, so we can add extra columns with the "player_extra" argument. This argument lets you ask for values from the players referred to in the event. For example to know where the bomb was planted we can add "X" and "Y" coordinates to the event in the following way: ```parse_event("bomb_planted", player_extra=["X", "Y"])```
+We notice that there is not that much info here, so we can add extra columns with the "player" argument. This argument lets you ask for values from the players referred to in the event. For example to know where the bomb was planted we can add "X" and "Y" coordinates to the event in the following way: ```parse_event("bomb_planted", player=["X", "Y"])```
 
 Now our output has 2 new columns: "user_X" and "user_Y":
 ```
@@ -35,7 +35,9 @@ Now our output has 2 new columns: "user_X" and "user_Y":
 0   292  17916    player1  76561111111111111      213.4     874.6
 1   299  59535    player2  76561111111111112      888.6     877.6
 ```
-The player_extra argument does not expose any special "new" data, it is there mostly for convenience. The same info could be gotten with a combination of parse_events() and parse_ticks()
+Sometimes you don't want to get a value from the perspective of a player, but rather the "state" of the game. An example of this would be to find out how many rounds have been played. This can be done with the "other" argument:
+```parse_event("bomb_planted", player=["X", "Y"], other=["total_rounds_played"])```
+Notice that it is only valid to request "game state" props in the "other" argument.
 
 
 <br/><br/>

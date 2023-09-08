@@ -153,7 +153,7 @@ True/Flase if player is pressing button.
 
 (buttons is the real value of m_nButtonDownMaskPrev and the others are derived from it)
 
-#### Match info
+#### Game State
 |         Name          | Real name                                                                                                                               |
 | :-------------------: | :----------------------------------- |
 |team_rounds_total|m_iScore|
