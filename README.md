@@ -1,5 +1,12 @@
 # Demo parser for Counter-Strike 2
 
+We now have a discord channel: [Discord](https://discord.gg/xVRqPV7K)
+
+
+Demoparser is a tool for analysing CS2 replay files "demos". All the heavy lifting is done in Rust, but you use it from the comfort of Python/JavaScript.
+The parser takes a slightly different approach to exposing the information in the demo. Rather than letting you hook onto events in a streaming fashion, it lets you "query" the demo similarly to how you would interact with a database. 
+
+
 ### Install
 Python: ```pip install demoparser2```
 
