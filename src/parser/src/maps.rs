@@ -1362,6 +1362,10 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSGameRulesProxy.CCSGameRules.m_nMatchEndCount" => PropType::Rules,
     "CCSGameRulesProxy.CCSGameRules.m_bTeamIntroPeriod" => PropType::Rules,
     // PLAYER CONTROLLER
+    "CCSPlayerController.m_iMVPs" => PropType::Controller,
+    "CCSPlayerController.m_iCompetitiveRankingPredicted_Win"=> PropType::Controller,
+    "CCSPlayerController.m_iCompetitiveRankingPredicted_Loss"=> PropType::Controller,
+    "CCSPlayerController.m_iCompetitiveRankingPredicted_Tie"=> PropType::Controller,
     "CCSPlayerController.m_bHasCommunicationAbuseMute"=> PropType::Controller,
     "CCSPlayerController.m_szCrosshairCodes" => PropType::Controller,
     "CCSPlayerController.m_iPendingTeamNum" => PropType::Controller,
@@ -1760,6 +1764,11 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
 
     "pitch" => "pitch",
     "yaw" => "yaw",
+
+    "rank_if_win" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Win",
+    "rank_if_lose" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Loss",
+    "rank_if_tie" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Tie",
+    "mvps" => "CCSPlayerController.m_iMVPs",
 
     "active_weapon_original_owner" => "active_weapon_original_owner",
     "buttons" => "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev",
