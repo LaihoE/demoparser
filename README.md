@@ -40,6 +40,7 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 | Z |  m_vec + m_cell |
 | health  | m_iHealth |
 | score | m_iScore |
+| mvps| m_iMVPs |
 | is_alive | m_bPawnIsAlive |
 | balance | m_iAccount |
 | life_state  | m_lifeState |
@@ -52,7 +53,10 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 | ever_played_on_team | m_bEverPlayedOnTeam |
 | clan_name | m_szClan |
 | is_coach_team | m_iCoachingTeam |
-| comp_rank | m_iCompetitiveRanking |
+| rank | m_iCompetitiveRanking |
+| rank_if_win| m_iCompetitiveRankingPredicted_Win |
+| rank_if_loss| m_iCompetitiveRankingPredicted_Loss |
+| rank_if_tie| m_iCompetitiveRankingPredicted_Tie |
 | comp_wins | m_iCompetitiveWins |
 | comp_rank_type | m_iCompetitiveRankType |
 | is_controlling_bot | m_bControllingBot |
