@@ -1765,6 +1765,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "pitch" => "pitch",
     "yaw" => "yaw",
 
+    "rank" => "CCSPlayerController.m_iCompetitiveRanking",
     "rank_if_win" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Win",
     "rank_if_loss" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Loss",
     "rank_if_tie" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Tie",
@@ -1835,7 +1836,6 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "ever_played_on_team"=>"CCSPlayerController.m_bEverPlayedOnTeam",
     "clan_name"=>"CCSPlayerController.m_szClan",
     "is_coach_team"=>"CCSPlayerController.m_iCoachingTeam",
-    "comp_rank"=>"CCSPlayerController.m_iCompetitiveRanking",
     "comp_wins"=>"CCSPlayerController.m_iCompetitiveWins",
     "comp_rank_type"=>"CCSPlayerController.m_iCompetitiveRankType",
     "is_controlling_bot"=>"CCSPlayerController.m_bControllingBot",
