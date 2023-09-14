@@ -311,6 +311,9 @@ impl ParserThread {
         None
     }
     pub fn create_custom_event_rank_update(&mut self, msg_bytes: &[u8]) -> Result<(), DemoParserError> {
+        if !self.wanted_events.contains(&"rank_update".to_string()) {
+            return Ok(());
+        }
         let update_msg: CCSUsrMsg_ServerRankUpdate = match Message::parse_from_bytes(&msg_bytes) {
             Ok(m) => m,
             Err(_e) => return Err(DemoParserError::MalformedMessage),
