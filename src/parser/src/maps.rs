@@ -1766,7 +1766,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "yaw" => "yaw",
 
     "rank_if_win" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Win",
-    "rank_if_lose" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Loss",
+    "rank_if_loss" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Loss",
     "rank_if_tie" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Tie",
     "mvps" => "CCSPlayerController.m_iMVPs",
 
