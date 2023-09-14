@@ -47,5 +47,11 @@ class ParserTest(TestCase):
         df = convert_same_dtypes(parser.parse_grenades(), df_correct)
         assert_frame_equal(df, df_correct)
 
+    def test_custom_even_rank_update(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_event("rank_update")
+        df_correct = convert_same_dtypes(df, pd.read_csv("tests/data/python/rank_update.csv"))
+        assert_frame_equal(df, df_correct)
+
 if __name__ == '__main__':
     unittest.main()

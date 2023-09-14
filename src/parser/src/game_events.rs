@@ -7,6 +7,7 @@ use crate::stringtables::UserInfo;
 use crate::variants::*;
 use ahash::AHashMap;
 use ahash::RandomState;
+use csgoproto::cstrike15_usermessages::CCSUsrMsg_ServerRankUpdate;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use csgoproto::netmessages::CSVCMsg_GameEventList;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
@@ -24,6 +25,8 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
     "assister_pawn",
 ];
 const ENTITYIDNONE: i32 = 2047;
+// https://developer.valvesoftware.com/wiki/SteamID
+const STEAMID64INDIVIDUALIDENTIFIER: u64 = 0x0110000100000000;
 
 impl Parser {
     // Message that should come before first game event
@@ -81,7 +84,7 @@ impl ParserThread {
         });
         Ok(())
     }
-    fn find_user_by_userid(&self, userid: i32) -> Option<&UserInfo> {
+    pub fn find_user_by_userid(&self, userid: i32) -> Option<&UserInfo> {
         for player in self.stringtable_players.values() {
             if player.userid == userid {
                 return Some(player);
@@ -89,7 +92,7 @@ impl ParserThread {
         }
         return None;
     }
-    fn entity_id_from_userid(&self, userid: i32) -> Option<i32> {
+    pub fn entity_id_from_userid(&self, userid: i32) -> Option<i32> {
         if let Some(userinfo) = self.find_user_by_userid(userid) {
             for player in self.players.values() {
                 if player.steamid == Some(userinfo.steamid) {
@@ -99,7 +102,7 @@ impl ParserThread {
         }
         return None;
     }
-    fn find_extra(&self, fields: &Vec<EventField>) -> Result<Vec<EventField>, DemoParserError> {
+    pub fn find_extra(&self, fields: &Vec<EventField>) -> Result<Vec<EventField>, DemoParserError> {
         let mut extra_fields = vec![];
         // Always add tick to event
         extra_fields.push(EventField {
@@ -132,7 +135,7 @@ impl ParserThread {
         extra_fields.extend(self.find_non_player_props());
         Ok(extra_fields)
     }
-    fn generate_empty_fields(&self, prefix: &str) -> Vec<EventField> {
+    pub fn generate_empty_fields(&self, prefix: &str) -> Vec<EventField> {
         let mut extra_fields = vec![];
         // when pointer fails for some reason we need to add None to output
         for prop_info in &self.prop_controller.prop_infos {
@@ -159,7 +162,7 @@ impl ParserThread {
         extra_fields
     }
 
-    fn find_non_player_props(&self) -> Vec<EventField> {
+    pub fn find_non_player_props(&self) -> Vec<EventField> {
         let mut extra_fields = vec![];
         for prop_info in &self.prop_controller.prop_infos {
             let fields = match prop_info.prop_type {
@@ -172,7 +175,7 @@ impl ParserThread {
         extra_fields
     }
 
-    fn find_other_rules_props(&self, prop_info: &PropInfo) -> Vec<EventField> {
+    pub fn find_other_rules_props(&self, prop_info: &PropInfo) -> Vec<EventField> {
         let mut extra_fields = vec![];
         let prop = match self.rules_entity_id {
             Some(entid) => match self.get_prop_from_ent(&prop_info.id, &entid) {
@@ -187,7 +190,7 @@ impl ParserThread {
         });
         extra_fields
     }
-    fn find_other_team_props(&self, prop_info: &PropInfo) -> Vec<EventField> {
+    pub fn find_other_team_props(&self, prop_info: &PropInfo) -> Vec<EventField> {
         let mut extra_fields = vec![];
         let t = self.teams.team2_entid;
         let ct = self.teams.team3_entid;
@@ -259,7 +262,7 @@ impl ParserThread {
         }
         extra_pairs
     }
-    fn create_player_name_field(&self, entity_id: i32, prefix: &str) -> EventField {
+    pub fn create_player_name_field(&self, entity_id: i32, prefix: &str) -> EventField {
         if entity_id == ENTITYIDNONE {
             return EventField {
                 name: prefix.to_owned() + "_name",
@@ -278,7 +281,7 @@ impl ParserThread {
             data: data,
         }
     }
-    fn create_player_steamid_field(&self, entity_id: i32, prefix: &str) -> EventField {
+    pub fn create_player_steamid_field(&self, entity_id: i32, prefix: &str) -> EventField {
         if entity_id == ENTITYIDNONE {
             return EventField {
                 name: prefix.to_owned() + "_steamid",
@@ -296,6 +299,68 @@ impl ParserThread {
             name: prefix.to_owned() + "_steamid",
             data: data,
         }
+    }
+    pub fn player_from_steamid32(&self, steamid32: i32) -> Option<i32> {
+        for (_entid, player) in &self.players {
+            if let Some(steamid) = player.steamid {
+                if steamid - STEAMID64INDIVIDUALIDENTIFIER == steamid32 as u64 {
+                    return Some(player.player_entity_id.unwrap());
+                }
+            }
+        }
+        None
+    }
+    pub fn create_custom_event_rank_update(&mut self, msg_bytes: &[u8]) -> Result<(), DemoParserError> {
+        if !self.wanted_events.contains(&"rank_update".to_string()) {
+            return Ok(());
+        }
+        let update_msg: CCSUsrMsg_ServerRankUpdate = match Message::parse_from_bytes(&msg_bytes) {
+            Ok(m) => m,
+            Err(_e) => return Err(DemoParserError::MalformedMessage),
+        };
+
+        for update in update_msg.rank_update {
+            let mut fields = vec![];
+
+            let entity_id = match self.player_from_steamid32(update.account_id.unwrap()) {
+                Some(eid) => eid,
+                None => continue,
+            };
+
+            fields.push(self.create_player_name_field(entity_id, "user"));
+            fields.push(self.create_player_steamid_field(entity_id, "user"));
+            fields.extend(self.find_extra_props_events(entity_id, "user"));
+
+            fields.push(EventField {
+                data: Some(Variant::I32(update.num_wins())),
+                name: "num_wins".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(Variant::I32(update.rank_old())),
+                name: "rank_old".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(Variant::I32(update.rank_new())),
+                name: "rank_new".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(Variant::F32(update.rank_change())),
+                name: "rank_change".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(Variant::I32(update.rank_type_id())),
+                name: "rank_type_id".to_string(),
+            });
+            let ge = GameEvent {
+                name: "rank_update".to_string(),
+                fields: fields,
+                tick: self.tick,
+            };
+            self.game_events.push(ge);
+            self.game_events_counter.insert("rank_update".to_string());
+        }
+
+        Ok(())
     }
 }
 // what is this shit
