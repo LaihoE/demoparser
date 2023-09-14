@@ -105,8 +105,8 @@ impl ParserThread {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
                 // self.game_events_counter.insert(debug.field.full_name.clone());
-                if debug.field.full_name.contains("Time") {
-                    println!("{:?} {:?} {:?}", debug.path, debug.field.full_name, result);
+                if debug.field.full_name.contains("Controller") && self.tick < 200 {
+                    println!("{:?} {:?} {:?} {:?}", debug.path, debug.field.full_name, result, self.tick);
                 }
             }
         } else {
