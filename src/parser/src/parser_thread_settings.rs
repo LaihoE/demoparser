@@ -37,7 +37,6 @@ pub struct ParserThread {
     pub prop_controller: Arc<PropController>,
     pub cls_by_id: Arc<AHashMap<u32, Class>>,
     pub stringtable_players: AHashMap<u64, UserInfo>,
-    pub time: f64,
     pub net_tick: u32,
 
     pub ptr: usize,
@@ -166,7 +165,6 @@ impl ParserThread {
             false => 0,
         };
         Ok(ParserThread {
-            time: 0.0,
             net_tick: 0,
             debug_fields: vec![
                 DebugFieldAndPath {
@@ -265,8 +263,6 @@ pub struct SpecialIDs {
 
     pub orig_own_low: Option<u32>,
     pub orig_own_high: Option<u32>,
-
-    pub is_freeze_time: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -297,7 +293,6 @@ impl SpecialIDs {
             eye_angles: None,
             orig_own_high: None,
             orig_own_low: None,
-            is_freeze_time: None,
         }
     }
 }
