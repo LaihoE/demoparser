@@ -52,6 +52,16 @@ class ParserTest(TestCase):
         df = parser.parse_event("rank_update")
         df_correct = convert_same_dtypes(df, pd.read_csv("tests/data/python/rank_update.csv"))
         assert_frame_equal(df, df_correct)
+    
+    def test_game_time(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["time_last_injury", "game_time"], ticks=[90942])
+        df = df[df["steamid"] == 76561198054530073]
+        time_last_injury = df.iloc[0]["time_last_injury"]
+        game_time = df.iloc[0]["time_last_injury"]
+        # This can also be slightly off is sub tick
+        self.assertEqual(time_last_injury, game_time)
+
 
 if __name__ == '__main__':
     unittest.main()

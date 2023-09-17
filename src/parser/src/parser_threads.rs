@@ -95,15 +95,19 @@ impl ParserThread {
                 net_SetConVar => self.parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
                 CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(&msg_bytes),
-                net_Tick => {
-                    let m: CNETMsg_Tick = Message::parse_from_bytes(&msg_bytes).unwrap();
-                    self.net_tick = m.tick();
-                    Ok(())
-                }
+                net_Tick => self.parse_net_tick(&msg_bytes),
                 _ => Ok(()),
             };
             ok?;
         }
+        Ok(())
+    }
+    pub fn parse_net_tick(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        let message: CNETMsg_Tick = match Message::parse_from_bytes(&bytes) {
+            Ok(message) => message,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
+        self.net_tick = message.tick();
         Ok(())
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
@@ -137,7 +141,7 @@ impl ParserThread {
                 net_SetConVar => self.parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
-                // Convar
+                net_Tick => self.parse_net_tick(&msg_bytes),
                 _ => Ok(()),
             };
             ok?

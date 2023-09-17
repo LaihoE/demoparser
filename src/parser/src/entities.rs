@@ -88,18 +88,13 @@ impl ParserThread {
         Ok(())
     }
     pub fn update_entity(&mut self, bitreader: &mut Bitreader, entity_id: i32, is_baseline: bool) -> Result<(), DemoParserError> {
-        let n_updated_values = self.decode_entity_update(bitreader, entity_id, is_baseline)?;
+        let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
         if n_updated_values > 0 {
             self.gather_extra_info(&entity_id, is_baseline)?;
         }
         Ok(())
     }
-    pub fn decode_entity_update(
-        &mut self,
-        bitreader: &mut Bitreader,
-        entity_id: i32,
-        is_baseline: bool,
-    ) -> Result<usize, DemoParserError> {
+    pub fn decode_entity_update(&mut self, bitreader: &mut Bitreader, entity_id: i32) -> Result<usize, DemoParserError> {
         let n_updates = self.parse_paths(bitreader, &entity_id)?;
 
         let entity = match self.entities.get_mut(&(entity_id)) {
@@ -111,13 +106,10 @@ impl ParserThread {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
                 // self.game_events_counter.insert(debug.field.full_name.clone());
                 if debug.field.full_name.contains("Freeze") {
-                    self.game_events_counter.insert(debug.field.full_name.to_string());
-                    /*
                     println!(
-                        "{:?} {:?} {:?} {:?} {:?} {:?}",
-                        debug.path, debug.field.full_name, result, self.tick, is_baseline, self.net_tick
+                        "{:?} {:?} {:?} {:?} {:?}",
+                        debug.path, debug.field.full_name, result, self.tick, self.net_tick
                     );
-                    */
                 }
             }
         } else {
