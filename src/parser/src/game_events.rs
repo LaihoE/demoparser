@@ -168,6 +168,10 @@ impl ParserThread {
             let fields = match prop_info.prop_type {
                 PropType::Team => self.find_other_team_props(&prop_info),
                 PropType::Rules => self.find_other_rules_props(&prop_info),
+                PropType::GameTime => vec![EventField {
+                    data: Some(Variant::F32(self.net_tick as f32 / 64.0)),
+                    name: "game_time".to_string(),
+                }],
                 _ => vec![],
             };
             extra_fields.extend(fields);

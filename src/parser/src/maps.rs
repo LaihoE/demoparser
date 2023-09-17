@@ -1561,6 +1561,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "yaw"=> PropType::Custom,
     "weapon_name" => PropType::Custom,
     "active_weapon_original_owner" => PropType::Custom,
+    "game_time" => PropType::GameTime,
     // Weapon
     "m_flAnimTime" => PropType::Weapon,
     "m_flSimulationTime"=> PropType::Weapon,
@@ -1765,6 +1766,8 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "pitch" => "pitch",
     "yaw" => "yaw",
 
+    "game_time" => "game_time",
+
     "rank" => "CCSPlayerController.m_iCompetitiveRanking",
     "rank_if_win" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Win",
     "rank_if_loss" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Loss",
@@ -1848,7 +1851,6 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "spawn_time"=>"CCSPlayerController.m_iPawnLifetimeStart",
     "death_time"=>"CCSPlayerController.m_iPawnLifetimeEnd",
     "score"=>"CCSPlayerController.m_iScore",
-    "game_time"=>"CCSPlayerController.m_flSimulationTime",
     "is_connected"=>"CCSPlayerController.m_iConnected",
     "player_name"=>"CCSPlayerController.m_iszPlayerName",
     "player_steamid"=>"CCSPlayerController.m_steamID",
