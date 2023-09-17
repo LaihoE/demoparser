@@ -1907,7 +1907,7 @@ mod tests {
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
         let mut player_props = AHashMap::default();
-        let flag = *BUTTONMAP.get("A").unwrap();
+        let flag = *BUTTONMAP.get("FORWARD").unwrap();
         player_props.insert(BUTTONS_SPECIAL_ID, Variant::U64(flag));
 
         let player = Entity {
@@ -1921,8 +1921,8 @@ mod tests {
         let prop_info = PropInfo {
             id: BUTTONS_SPECIAL_ID,
             prop_type: PropType::Button,
-            prop_name: "A".to_string(),
-            prop_friendly_name: "A".to_string(),
+            prop_name: "FORWARD".to_string(),
+            prop_friendly_name: "FORWARD".to_string(),
             is_player_prop: true,
         };
         let prop = parser_thread.find_prop(&prop_info, &player.entity_id, &player_md);
@@ -1937,7 +1937,7 @@ mod tests {
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
         let mut player_props = AHashMap::default();
-        let flag = *BUTTONMAP.get("A").unwrap();
+        let flag = *BUTTONMAP.get("FORWARD").unwrap();
         player_props.insert(BUTTONS_SPECIAL_ID, Variant::U64(flag));
 
         let player = Entity {
@@ -1967,7 +1967,7 @@ mod tests {
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
         let mut player_props = AHashMap::default();
-        let flag = *BUTTONMAP.get("A").unwrap();
+        let flag = *BUTTONMAP.get("FORWARD").unwrap();
         player_props.insert(BUTTONS_SPECIAL_ID, Variant::U64(flag));
 
         let player = Entity {
@@ -1998,7 +1998,7 @@ mod tests {
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
         let mut player_props = AHashMap::default();
-        let flag = *BUTTONMAP.get("A").unwrap();
+        let flag = *BUTTONMAP.get("FORWARD").unwrap();
         player_props.insert(BUTTONS_SPECIAL_ID, Variant::F32(flag as f32));
 
         let player = Entity {
@@ -2028,7 +2028,7 @@ mod tests {
         parser_thread.prop_controller = Arc::new(prop_controller_new);
 
         let mut player_props = AHashMap::default();
-        let flag = *BUTTONMAP.get("A").unwrap();
+        let flag = *BUTTONMAP.get("FORWARD").unwrap();
         player_props.insert(BUTTONS_SPECIAL_ID, Variant::F32(flag as f32));
 
         let player = Entity {

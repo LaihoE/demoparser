@@ -507,8 +507,8 @@ mod tests {
         );
     }
     #[test]
-    pub fn test_custom_propinfos_a() {
-        let mut pc = PropController::new(vec!["A".to_string()], vec![], AHashMap::default());
+    pub fn test_custom_propinfos_forward() {
+        let mut pc = PropController::new(vec!["FORWARD".to_string()], vec![], AHashMap::default());
         pc.set_custom_propinfos();
         let pi = pc.prop_infos[0].clone();
         assert_eq!(
@@ -516,8 +516,8 @@ mod tests {
             PropInfo {
                 id: BUTTONS_BASEID,
                 prop_type: PropType::Button,
-                prop_name: "A".to_string(),
-                prop_friendly_name: "A".to_string(),
+                prop_name: "FORWARD".to_string(),
+                prop_friendly_name: "FORWARD".to_string(),
                 is_player_prop: true,
             }
         );
