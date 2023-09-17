@@ -21,6 +21,7 @@ pub enum PropType {
     Name,
     Steamid,
     Tick,
+    GameTime,
 }
 #[derive(Debug, PartialEq)]
 // While this is an error, its very common and doesn't exactly signal
@@ -161,6 +162,7 @@ impl ParserThread {
             PropType::Button => return self.get_button_prop(&prop_info, &entity_id),
             PropType::Controller => return self.get_controller_prop(prop_info, player),
             PropType::Rules => return self.get_rules_prop(prop_info),
+            PropType::GameTime => return Ok(Variant::F32(self.net_tick as f32 / 64.0)),
         }
     }
     pub fn get_prop_from_ent(&self, prop_id: &u32, entity_id: &i32) -> Result<Variant, PropCollectionError> {

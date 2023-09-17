@@ -53,7 +53,7 @@ impl ParserThread {
                 return Ok(());
             }
         };
-        self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
+        // self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
 
         // Return early if this is not a wanted event.
         if !self.wanted_events.contains(&event_desc.name().to_string()) && self.wanted_events.first() != Some(&"all".to_string())
@@ -168,6 +168,10 @@ impl ParserThread {
             let fields = match prop_info.prop_type {
                 PropType::Team => self.find_other_team_props(&prop_info),
                 PropType::Rules => self.find_other_rules_props(&prop_info),
+                PropType::GameTime => vec![EventField {
+                    data: Some(Variant::F32(self.net_tick as f32 / 64.0)),
+                    name: "game_time".to_string(),
+                }],
                 _ => vec![],
             };
             extra_fields.extend(fields);

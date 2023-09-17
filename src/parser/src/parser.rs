@@ -106,7 +106,7 @@ impl Parser {
         }
         let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
             .fullpacket_offsets
-            .par_iter()
+            .iter()
             .map(|offset| {
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
@@ -212,7 +212,6 @@ impl Parser {
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 GE_Source1LegacyGameEventList => {
                     let hm = self.parse_game_event_list(&msg_bytes)?;
-                    // this can fail if user re-uses the same parser for multiple funcs
                     self.ge_list = hm;
                     self.ge_list_set = true;
                     Ok(())

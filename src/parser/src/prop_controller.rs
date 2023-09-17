@@ -96,6 +96,25 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if self.wanted_player_props.contains(&("game_time".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: 123456879,
+                prop_type: PropType::GameTime,
+                prop_name: "game_time".to_string(),
+                prop_friendly_name: "game_time".to_string(),
+                is_player_prop: true,
+            });
+        }
+        // Can also be non-player prop
+        if self.wanted_other_props.contains(&("game_time".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: 123456879,
+                prop_type: PropType::GameTime,
+                prop_name: "game_time".to_string(),
+                prop_friendly_name: "game_time".to_string(),
+                is_player_prop: false,
+            });
+        }
         if self.wanted_player_props.contains(&("weapon_skin".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: WEAPON_SKIN_ID,

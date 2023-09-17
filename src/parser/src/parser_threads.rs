@@ -6,6 +6,7 @@ use crate::read_bits::Bitreader;
 use bitter::BitReader;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
+use csgoproto::networkbasetypes::CNETMsg_Tick;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
@@ -94,6 +95,11 @@ impl ParserThread {
                 net_SetConVar => self.parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
                 CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(&msg_bytes),
+                net_Tick => {
+                    let m: CNETMsg_Tick = Message::parse_from_bytes(&msg_bytes).unwrap();
+                    self.net_tick = m.tick();
+                    Ok(())
+                }
                 _ => Ok(()),
             };
             ok?;
@@ -130,6 +136,8 @@ impl ParserThread {
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
                 net_SetConVar => self.parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
+                svc_ServerInfo => self.parse_server_info(&msg_bytes),
+                // Convar
                 _ => Ok(()),
             };
             ok?
