@@ -67,7 +67,7 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 | has_helmet | m_bPawnHasHelmet |
 | spawn_time | m_iPawnLifetimeStart |
 | death_time | m_iPawnLifetimeEnd |
-| game_time | m_flSimulationTime |
+| game_time | net_tick |
 | is_connected | m_iConnected |
 | player_name | m_iszPlayerName |
 | player_steamid | m_steamID |
