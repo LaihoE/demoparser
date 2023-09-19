@@ -20,6 +20,8 @@ const NORMAL_PROP_BASEID: u32 = 1000;
 
 pub const WEAPON_SKIN_ID: u32 = 420420420;
 pub const WEAPON_ORIGINGAL_OWNER_ID: u32 = 6942000;
+pub const MY_WEAPONS_OFFSET: u32 = 500000;
+pub const GRENADE_AMMO_ID: u32 = 1111111;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -93,6 +95,15 @@ impl PropController {
                 prop_type: PropType::Custom,
                 prop_name: "active_weapon_original_owner".to_string(),
                 prop_friendly_name: "active_weapon_original_owner".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("inventory".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: 555555575,
+                prop_type: PropType::Custom,
+                prop_name: "inventory".to_string(),
+                prop_friendly_name: "inventory".to_string(),
                 is_player_prop: true,
             });
         }

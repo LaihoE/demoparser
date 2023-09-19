@@ -1562,6 +1562,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "weapon_name" => PropType::Custom,
     "active_weapon_original_owner" => PropType::Custom,
     "game_time" => PropType::GameTime,
+    "inventory" => PropType::Custom,
     // Weapon
     "m_flAnimTime" => PropType::Weapon,
     "m_flSimulationTime"=> PropType::Weapon,
@@ -1767,6 +1768,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "yaw" => "yaw",
 
     "game_time" => "game_time",
+    "inventory" => "inventory",
 
     "rank" => "CCSPlayerController.m_iCompetitiveRanking",
     "rank_if_win" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Win",

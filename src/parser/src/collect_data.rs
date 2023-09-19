@@ -5,6 +5,7 @@ use crate::maps::PAINTKITS;
 use crate::maps::WEAPINDICIES;
 use crate::parser_thread_settings::ParserThread;
 use crate::prop_controller::PropInfo;
+use crate::prop_controller::MY_WEAPONS_OFFSET;
 use crate::prop_controller::WEAPON_SKIN_ID;
 use crate::variants::PropColumn;
 use std::fmt;
@@ -87,6 +88,7 @@ pub enum PropCollectionError {
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
 const MAX_COORD: f32 = (1 << 14) as f32;
+const MAX_INVENTORY_IDX: u32 = 16;
 
 impl std::error::Error for PropCollectionError {}
 impl fmt::Display for PropCollectionError {
@@ -444,7 +446,53 @@ impl ParserThread {
             "weapon_name" => self.find_weapon_name(entity_id),
             "weapon_skin" => self.find_weapon_skin(entity_id),
             "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
+            "inventory" => self.find_my_inventory(entity_id),
             _ => Err(PropCollectionError::UnknownCustomPropName),
+        }
+    }
+    pub fn find_my_inventory(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        let mut names = vec![];
+        let mut unique_eids = vec![];
+
+        for i in 0..MAX_INVENTORY_IDX {
+            let prop_id = MY_WEAPONS_OFFSET + i;
+            match self.get_prop_from_ent(&(prop_id as u32), entity_id) {
+                Err(_e) => {}
+                Ok(Variant::U32(x)) => {
+                    let eid = (x & ((1 << 14) - 1)) as i32;
+                    // Sometimes multiple references to same eid?
+                    if unique_eids.contains(&eid) {
+                        continue;
+                    }
+                    unique_eids.push(eid);
+                    let res = match self.get_prop_from_ent(&self.prop_controller.special_ids.item_def.unwrap(), &eid) {
+                        Err(_e) => continue,
+                        Ok(def) => def,
+                    };
+                    self.insert_equipment_name(&mut names, res, entity_id);
+                }
+                _ => {}
+            }
+        }
+        Ok(Variant::StringVec(names))
+    }
+    fn insert_equipment_name(&self, names: &mut Vec<String>, res: Variant, player_entid: &i32) {
+        if let Variant::U32(def_idx) = res {
+            match WEAPINDICIES.get(&def_idx) {
+                None => return,
+                Some(weap_name) => {
+                    match weap_name {
+                        // Check how many flashbangs player has (only prop that works like this)
+                        &"flashbang" => {
+                            if let Ok(Variant::U32(2)) = self.get_prop_from_ent(&987654, player_entid) {
+                                names.push(weap_name.to_string());
+                            }
+                        }
+                        _ => {}
+                    }
+                    names.push(weap_name.to_string());
+                }
+            };
         }
     }
 

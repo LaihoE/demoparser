@@ -169,7 +169,7 @@ pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
 const WEAPON_SKIN_PATH: [i32; 7] = [87, 0, 1, 0, 0, 0, 0];
 
 impl Field {
-    pub fn decoder_from_path(&self, path: &FieldPath, pos: usize) -> FieldInfo {
+    pub fn decoder_from_path(&self, path: &FieldPath, pos: usize, parse_inventory: bool) -> FieldInfo {
         match self.model {
             FieldModelSimple => {
                 // EHHH IDK WILL HAVE TO DO FOR NOW
@@ -218,7 +218,7 @@ impl Field {
                 } else {
                     match &self.serializer {
                         Some(ser) => {
-                            return ser.find_decoder(path, pos);
+                            return ser.find_decoder(path, pos, parse_inventory);
                         }
                         None => panic!("no serializer for path"),
                     }
@@ -245,7 +245,7 @@ impl Field {
                 if path.last >= pos + 1 {
                     match &self.serializer {
                         Some(ser) => {
-                            return ser.find_decoder(path, pos + 1);
+                            return ser.find_decoder(path, pos + 1, parse_inventory);
                         }
                         None => panic!("no serializer for path"),
                     }
@@ -498,15 +498,43 @@ pub struct Serializer {
     pub name: String,
     pub fields: Vec<Field>,
 }
+const FLASH_AMMO_PATH: [i32; 7] = [86, 2, 14, 0, 0, 0, 0];
+use crate::prop_controller::GRENADE_AMMO_ID;
+use crate::prop_controller::MY_WEAPONS_OFFSET;
 
 impl Serializer {
-    pub fn find_decoder(&self, path: &FieldPath, pos: usize) -> FieldInfo {
-        self.fields[path.path[pos] as usize].decoder_from_path(path, pos + 1)
+    pub fn find_decoder(&self, path: &FieldPath, pos: usize, parse_inventory: bool) -> FieldInfo {
+        // Edge case for now...
+        if parse_inventory {
+            if let Some(info) = self.find_inventory_info(path) {
+                return info;
+            }
+        }
+        self.fields[path.path[pos] as usize].decoder_from_path(path, pos + 1, parse_inventory)
     }
     pub fn debug_find_decoder(&self, path: &FieldPath, pos: usize, prop_name: String) -> DebugField {
         let idx = path.path[pos];
         let f = &self.fields[idx as usize];
         f.debug_decoder_from_path(path, pos + 1, prop_name)
+    }
+    fn find_inventory_info(&self, path: &FieldPath) -> Option<FieldInfo> {
+        if path.path == FLASH_AMMO_PATH && self.name == "CCSPlayerPawn" {
+            return Some(FieldInfo {
+                controller_prop: None,
+                decoder: UnsignedDecoder,
+                should_parse: true,
+                prop_id: GRENADE_AMMO_ID,
+            });
+        }
+        if path.path[0] == 86 && path.path[1] == 0 && self.name == "CCSPlayerPawn" && path.last == 2 {
+            return Some(FieldInfo {
+                controller_prop: None,
+                decoder: UnsignedDecoder,
+                should_parse: true,
+                prop_id: MY_WEAPONS_OFFSET + path.path[2] as u32,
+            });
+        }
+        None
     }
 }
 

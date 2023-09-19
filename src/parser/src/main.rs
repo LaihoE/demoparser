@@ -1,4 +1,11 @@
 use ahash::AHashMap;
+use arrow2::array::*;
+use arrow2::datatypes::DataType;
+use arrow2::datatypes::Field;
+use arrow2::datatypes::PhysicalType;
+use arrow2::offset::Offsets;
+use arrow2::offset::OffsetsBuffer;
+use arrow_data::{ArrayData, ArrayDataBuilder};
 use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
@@ -10,7 +17,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn main() {
-    let wanted_props = vec!["active_weapon_original_owner".to_string()];
+    let wanted_props = vec!["inventory".to_string()];
     let before = Instant::now();
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test3/").unwrap();
     let mut c = 0;
@@ -57,10 +64,11 @@ fn main() {
 
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
-        println!("TOTAL {:?}", before.elapsed());
-        for x in d.game_events_counter {
-            println!("{:?}", x);
-        }
+        use arrow2::bitmap::Bitmap;
+        let i: Offsets<i32> = Offsets::new();
+
+        use polars::df;
+        use polars::prelude::NamedFrom;
     }
     println!("TOTAL {:?}", before.elapsed());
 }
