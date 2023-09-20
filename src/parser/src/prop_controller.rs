@@ -275,10 +275,12 @@ impl PropController {
         let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK"))
             && !split_at_dot[0].contains("Player")
             || split_at_dot[0].contains("Knife")
-            || split_at_dot[0].contains("CDEagle");
+            || split_at_dot[0].contains("CDEagle")
+            || split_at_dot[0].contains("C4");
 
-        let is_projectile_prop = (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade"))
-            && !split_at_dot[0].contains("Player");
+        let is_projectile_prop =
+            (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
+                && !split_at_dot[0].contains("Player");
         let is_grenade_or_weapon = is_weapon_prop || is_projectile_prop;
 
         // Strip first part of name from grenades and weapons.
@@ -340,7 +342,9 @@ impl PropController {
             || name.contains("CCSPlayerController.m_hPlayerPawn")
             || name.contains("CCSPlayerController.m_bPawnIsAlive")
             || name.contains("m_hActiveWeapon")
+            || name.contains("Weapons")
             || name.contains("OriginalOwnerXuid")
+            || name.contains("Flash")
         {
             return true;
         }

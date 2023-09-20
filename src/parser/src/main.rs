@@ -64,11 +64,7 @@ fn main() {
 
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
-        use arrow2::bitmap::Bitmap;
-        let i: Offsets<i32> = Offsets::new();
-
-        use polars::df;
-        use polars::prelude::NamedFrom;
+        println!("TOTAL {:?}", before.elapsed());
     }
     println!("TOTAL {:?}", before.elapsed());
 }

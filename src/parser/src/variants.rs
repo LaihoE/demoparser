@@ -4,7 +4,7 @@ use crate::prop_controller::PropInfo;
 use ahash::{HashMap, HashMapExt};
 use itertools::Itertools;
 use memmap2::Mmap;
-use serde::ser::{SerializeMap, SerializeStruct};
+use serde::ser::{SerializeMap, SerializeSeq, SerializeStruct};
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -296,6 +296,10 @@ impl VarVec {
                     panic!("Tried to push a {:?} into a {:?} column", item, self);
                 }
             },
+            Some(Variant::StringVec(p)) => match self {
+                VarVec::StringVec(f) => f.push(p),
+                _ => {}
+            },
             None => self.push_none(),
             _ => panic!("bad type for prop: {:?}", item),
         }
@@ -343,6 +347,13 @@ impl Serialize for Variant {
             Variant::U32(u) => serializer.serialize_u32(*u),
             Variant::U64(u) => serializer.serialize_str(&u.to_string()),
             Variant::U8(u) => serializer.serialize_u8(*u),
+            Variant::StringVec(v) => {
+                let mut s = serializer.serialize_seq(Some(v.len())).unwrap();
+                for item in v {
+                    s.serialize_element(item).unwrap();
+                }
+                s.end()
+            }
             _ => panic!("cant ser: {:?}", self),
         }
     }
