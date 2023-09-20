@@ -38,6 +38,7 @@ pub struct ParserThread {
     pub cls_by_id: Arc<AHashMap<u32, Class>>,
     pub stringtable_players: AHashMap<u64, UserInfo>,
     pub net_tick: u32,
+    pub parse_inventory: bool,
 
     pub ptr: usize,
     pub bytes: Arc<BytesVariant>,
@@ -165,6 +166,7 @@ impl ParserThread {
             false => 0,
         };
         Ok(ParserThread {
+            parse_inventory: input.prop_controller.wanted_player_props.contains(&"inventory".to_string()),
             net_tick: 0,
             debug_fields: vec![
                 DebugFieldAndPath {
