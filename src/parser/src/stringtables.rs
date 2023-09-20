@@ -51,9 +51,11 @@ impl Parser {
 
     pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
+
         if !(table.name() == "instancebaseline" || table.name() == "userinfo") {
             return Ok(());
         }
+
         let bytes = match table.data_compressed() {
             true => snap::raw::Decoder::new().decompress_vec(table.string_data()).unwrap(),
             false => table.string_data().to_vec(),
@@ -148,8 +150,9 @@ impl Parser {
                     };
                 }
                 if name == "userinfo" {
-                    let player = parse_userinfo(&value)?;
-                    self.stringtable_players.insert(player.steamid, player);
+                    if let Ok(player) = parse_userinfo(&value) {
+                        self.stringtable_players.insert(player.steamid, player);
+                    }
                 }
                 if name == "instancebaseline" {
                     match key.parse::<u32>() {
@@ -301,8 +304,12 @@ impl ParserThread {
                         value
                     };
                 }
+                if name == "userinfo" {
+                    if let Ok(player) = parse_userinfo(&value) {
+                        self.stringtable_players.insert(player.steamid, player);
+                    }
+                }
                 if name == "instancebaseline" {
-                    // Watch out for keys like 42:15 <-- seem to be props that are not used atm
                     match key.parse::<u32>() {
                         Ok(cls_id) => self.baselines.insert(cls_id, value.clone()),
                         Err(_e) => None,

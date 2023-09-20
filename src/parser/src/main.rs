@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn main() {
-    let wanted_props = vec!["active_weapon_original_owner".to_string()];
+    let wanted_props = vec!["X".to_string()];
     let before = Instant::now();
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test3/").unwrap();
     let mut c = 0;
@@ -21,7 +21,7 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 100 {
+        if c > 1000 {
             break;
         }
 
@@ -58,9 +58,6 @@ fn main() {
         let mut ds = Parser::new(settings);
         let d = ds.parse_demo().unwrap();
         println!("TOTAL {:?}", before.elapsed());
-        for x in d.game_events_counter {
-            println!("{:?}", x);
-        }
     }
     println!("TOTAL {:?}", before.elapsed());
 }

@@ -104,11 +104,10 @@ impl ParserThread {
         if self.is_debug_mode {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                // self.game_events_counter.insert(debug.field.full_name.clone());
-                if debug.field.full_name.contains("Freeze") {
+                if debug.field.full_name.contains("CWeaponMAC10") {
                     println!(
-                        "{:?} {:?} {:?} {:?} {:?}",
-                        debug.path, debug.field.full_name, result, self.tick, self.net_tick
+                        "{:?} {:?} {:?} {:?} {:?} {:?}",
+                        debug.path, debug.field.full_name, result, self.tick, self.net_tick, field_info.prop_id
                     );
                 }
             }
@@ -226,7 +225,7 @@ impl ParserThread {
             }
             // We reuse one big vector for holding paths. Purely for performance.
             // Alternatively we could create a new vector in this function and return it.
-            self.field_infos[idx] = class.serializer.find_decoder(&fp, 0);
+            self.field_infos[idx] = class.serializer.find_decoder(&fp, 0, self.parse_inventory);
             idx += 1;
         }
         Ok(idx)

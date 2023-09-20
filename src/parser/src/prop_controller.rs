@@ -20,6 +20,8 @@ const NORMAL_PROP_BASEID: u32 = 1000;
 
 pub const WEAPON_SKIN_ID: u32 = 420420420;
 pub const WEAPON_ORIGINGAL_OWNER_ID: u32 = 6942000;
+pub const MY_WEAPONS_OFFSET: u32 = 500000;
+pub const GRENADE_AMMO_ID: u32 = 1111111;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -93,6 +95,15 @@ impl PropController {
                 prop_type: PropType::Custom,
                 prop_name: "active_weapon_original_owner".to_string(),
                 prop_friendly_name: "active_weapon_original_owner".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("inventory".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: 555555575,
+                prop_type: PropType::Custom,
+                prop_name: "inventory".to_string(),
+                prop_friendly_name: "inventory".to_string(),
                 is_player_prop: true,
             });
         }
@@ -264,10 +275,12 @@ impl PropController {
         let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK"))
             && !split_at_dot[0].contains("Player")
             || split_at_dot[0].contains("Knife")
-            || split_at_dot[0].contains("CDEagle");
+            || split_at_dot[0].contains("CDEagle")
+            || split_at_dot[0].contains("C4");
 
-        let is_projectile_prop = (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade"))
-            && !split_at_dot[0].contains("Player");
+        let is_projectile_prop =
+            (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
+                && !split_at_dot[0].contains("Player");
         let is_grenade_or_weapon = is_weapon_prop || is_projectile_prop;
 
         // Strip first part of name from grenades and weapons.
@@ -329,7 +342,9 @@ impl PropController {
             || name.contains("CCSPlayerController.m_hPlayerPawn")
             || name.contains("CCSPlayerController.m_bPawnIsAlive")
             || name.contains("m_hActiveWeapon")
+            || name.contains("Weapons")
             || name.contains("OriginalOwnerXuid")
+            || name.contains("Flash")
         {
             return true;
         }

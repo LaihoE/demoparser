@@ -565,7 +565,7 @@ impl DemoParser {
     #[args(py_kwargs = "**")]
     pub fn parse_event(
         &self,
-        _py: Python<'_>,
+        py: Python<'_>,
         event_name: String,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<Py<PyAny>> {
@@ -621,7 +621,7 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
-        let event_series = match series_from_event(&output.game_events) {
+        let event_series = match series_from_event(&output.game_events, py) {
             Ok(ser) => ser,
             Err(_e) => {
                 return Err(Exception::new_err(format!(
@@ -701,8 +701,8 @@ impl DemoParser {
     #[args(py_kwargs = "**")]
     pub fn parse_ticks(
         &self,
-        _py: Python,
-        mut wanted_props: Vec<String>,
+        py: Python,
+        wanted_props: Vec<String>,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<PyObject> {
         let (_, wanted_ticks) = parse_kwargs_ticks(py_kwargs);
@@ -753,46 +753,43 @@ impl DemoParser {
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         let mut all_series = vec![];
+        let mut all_pyobjects = vec![];
+        let prop_infos = output.prop_info.prop_infos;
+        let mut df_column_names_arrow = vec![];
+        let mut df_column_names_py = vec![];
 
-        wanted_props.push("tick".to_owned());
-        wanted_props.push("steamid".to_owned());
-        wanted_props.push("name".to_owned());
-
-        real_props.push("tick".to_owned());
-        real_props.push("steamid".to_owned());
-        real_props.push("name".to_owned());
-
-        let mut prop_infos = output.prop_info.prop_infos.clone();
-        prop_infos.sort_by_key(|x| x.prop_name.clone());
-        real_props.sort();
-
-        let df_columns = prop_infos
-            .iter()
-            .map(|x| x.prop_friendly_name.clone())
-            .collect_vec();
-
-        for (prop_name, prop_info) in real_props.iter().zip(prop_infos) {
+        for prop_info in prop_infos {
             if output.df.contains_key(&prop_info.id) {
                 match &output.df[&prop_info.id].data {
                     Some(VarVec::F32(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
                         all_series.push(arr_to_py(Box::new(Float32Array::from(data))).unwrap());
                     }
                     Some(VarVec::I32(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
                         all_series.push(arr_to_py(Box::new(Int32Array::from(data))).unwrap());
                     }
                     Some(VarVec::U64(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
                         all_series.push(arr_to_py(Box::new(UInt64Array::from(data))).unwrap());
                     }
                     Some(VarVec::U32(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
                         all_series.push(arr_to_py(Box::new(UInt32Array::from(data))).unwrap());
                     }
                     Some(VarVec::Bool(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
                         all_series.push(arr_to_py(Box::new(BooleanArray::from(data))).unwrap());
                     }
                     Some(VarVec::String(data)) => {
-                        let s = Series::new(prop_name, data);
+                        df_column_names_arrow.push(prop_info.prop_friendly_name.clone());
+                        let s = Series::new(&prop_info.prop_friendly_name.clone(), data);
                         let py_series = rust_series_to_py_series(&s).unwrap();
                         all_series.push(py_series);
+                    }
+                    Some(VarVec::StringVec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.to_object(py))
                     }
                     _ => {}
                 }
@@ -802,8 +799,21 @@ impl DemoParser {
             let polars = py.import("polars")?;
             let all_series_py = all_series.to_object(py);
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
-            df.setattr("columns", df_columns.to_object(py)).unwrap();
+            df.setattr("columns", df_column_names_arrow.to_object(py))
+                .unwrap();
             let pandas_df = df.call_method0("to_pandas").unwrap();
+            for (pyobj, col_name) in all_pyobjects.iter().zip(&df_column_names_py) {
+                pandas_df
+                    .call_method1("insert", (0, col_name, pyobj))
+                    .unwrap();
+            }
+            df_column_names_arrow.extend(df_column_names_py);
+            df_column_names_arrow.sort();
+            let kwargs = vec![("axis", 1)].into_py_dict(py);
+            let args = (df_column_names_arrow,);
+            pandas_df
+                .call_method("reindex", args, Some(kwargs))
+                .unwrap();
             Ok(pandas_df.to_object(py))
         })
     }
@@ -921,28 +931,54 @@ pub fn series_from_multiple_events(
     for (k, v) in per_ge {
         let pairs: Vec<EventField> = v.iter().map(|x| x.fields.clone()).flatten().collect();
         let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
-        let mut series = vec![];
+
+        let mut series_columns = vec![];
+        let mut py_columns = vec![];
+        let mut rows = 0;
 
         for (name, vals) in per_key_name {
-            let s = series_from_pairs(&vals, name)?;
-            series.push(s);
+            match column_from_pairs(&vals, name, py)? {
+                DataFrameColumn::Pyany(p) => py_columns.push((p, name)),
+                DataFrameColumn::Series(s) => {
+                    rows = s.len().max(rows);
+                    series_columns.push((s, name))
+                }
+            };
         }
-        series.sort_by_key(|x| x.name().to_string());
+        let mut series_col_names: Vec<String> = series_columns
+            .iter()
+            .map(|(_, name)| name.to_string())
+            .collect();
+        let series_columns: Vec<PyObject> = series_columns
+            .iter()
+            .map(|(ser, _)| rust_series_to_py_series(&ser).unwrap())
+            .collect();
+        let py_col_names: Vec<String> = py_columns
+            .iter()
+            .map(|(_, name)| name.to_string())
+            .collect();
 
-        let column_names: Vec<&str> = series.iter().map(|x| x.name().clone()).collect();
-        let mut rows = 0;
-        let mut all_series = vec![];
-        for ser in &series {
-            rows = ser.len().max(rows);
-            let py_series = rust_series_to_py_series(&ser).unwrap();
-            all_series.push(py_series);
-        }
         if rows != 0 {
             let dfp = Python::with_gil(|py| {
                 let polars = py.import("polars").unwrap();
-                let df = polars.call_method1("DataFrame", (all_series,)).unwrap();
-                df.setattr("columns", column_names.to_object(py)).unwrap();
+                let all_series_py = series_columns.to_object(py);
+                let df = polars.call_method1("DataFrame", (all_series_py,)).unwrap();
+                df.setattr("columns", series_col_names.to_object(py))
+                    .unwrap();
                 let pandas_df = df.call_method0("to_pandas").unwrap();
+                for (pyobj, col_name) in py_columns {
+                    pandas_df
+                        .call_method1("insert", (0, col_name, pyobj))
+                        .unwrap();
+                }
+                let pandas_df = pandas_df.call_method0("to_pandas").unwrap();
+                series_col_names.extend(py_col_names);
+                series_col_names.sort();
+                let kwargs = vec![("axis", 1)].into_py_dict(py);
+                let args = (series_col_names,);
+                pandas_df
+                    .call_method("reindex", args, Some(kwargs))
+                    .unwrap();
                 pandas_df.to_object(py)
             });
             vv.push((k, dfp));
@@ -950,38 +986,71 @@ pub fn series_from_multiple_events(
     }
     Ok(vv.to_object(py))
 }
-pub fn series_from_event(events: &Vec<GameEvent>) -> Result<Py<PyAny>, DemoParserError> {
+
+pub enum DataFrameColumn {
+    Series(Series),
+    Pyany(pyo3::Py<PyAny>),
+}
+
+pub fn series_from_event(
+    events: &Vec<GameEvent>,
+    py: Python,
+) -> Result<Py<PyAny>, DemoParserError> {
     let pairs: Vec<EventField> = events.iter().map(|x| x.fields.clone()).flatten().collect();
     let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
-    let mut series = vec![];
+
+    let mut series_columns = vec![];
+    let mut py_columns = vec![];
+    let mut rows = 0;
 
     for (name, vals) in per_key_name {
-        let s = series_from_pairs(&vals, name)?;
-        series.push(s);
+        match column_from_pairs(&vals, name, py)? {
+            DataFrameColumn::Pyany(p) => py_columns.push((p, name)),
+            DataFrameColumn::Series(s) => {
+                rows = s.len().max(rows);
+                series_columns.push((s, name))
+            }
+        };
     }
-    series.sort_by_key(|x| x.name().to_string());
-
-    let column_names: Vec<&str> = series.iter().map(|x| x.name().clone()).collect();
-    let mut rows = 0;
-    let mut all_series = vec![];
-    for ser in &series {
-        rows = ser.len().max(rows);
-        let py_series = rust_series_to_py_series(&ser).unwrap();
-        all_series.push(py_series);
-    }
+    let mut series_col_names: Vec<String> = series_columns
+        .iter()
+        .map(|(_, name)| name.to_string())
+        .collect();
+    let series_columns: Vec<PyObject> = series_columns
+        .iter()
+        .map(|(ser, _)| rust_series_to_py_series(&ser).unwrap())
+        .collect();
+    let py_col_names: Vec<String> = py_columns
+        .iter()
+        .map(|(_, name)| name.to_string())
+        .collect();
     if rows == 0 {
         return Err(DemoParserError::NoEvents);
     }
     let dfp = Python::with_gil(|py| {
         let polars = py.import("polars").unwrap();
-        let df = polars.call_method1("DataFrame", (all_series,)).unwrap();
-        df.setattr("columns", column_names.to_object(py)).unwrap();
+        let all_series_py = series_columns.to_object(py);
+        let df = polars.call_method1("DataFrame", (all_series_py,)).unwrap();
+        df.setattr("columns", series_col_names.to_object(py))
+            .unwrap();
         let pandas_df = df.call_method0("to_pandas").unwrap();
+        for (pyobj, col_name) in py_columns {
+            pandas_df
+                .call_method1("insert", (0, col_name, pyobj))
+                .unwrap();
+        }
+        series_col_names.extend(py_col_names);
+        series_col_names.sort();
+        let kwargs = vec![("axis", 1)].into_py_dict(py);
+        let args = (series_col_names,);
+        pandas_df
+            .call_method("reindex", args, Some(kwargs))
+            .unwrap();
         pandas_df.to_object(py)
     });
     Ok(dfp)
 }
-fn to_f32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+fn to_f32_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
@@ -992,9 +1061,9 @@ fn to_f32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
             None => v.push(None),
         }
     }
-    Series::new(name, v)
+    DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_u32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+fn to_u32_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
@@ -1005,9 +1074,9 @@ fn to_u32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
             None => v.push(None),
         }
     }
-    Series::new(name, v)
+    DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_i32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+fn to_i32_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
@@ -1018,9 +1087,9 @@ fn to_i32_series(pairs: &Vec<&EventField>, name: &String) -> Series {
             None => v.push(None),
         }
     }
-    Series::new(name, v)
+    DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_u64_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+fn to_u64_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
@@ -1031,9 +1100,23 @@ fn to_u64_series(pairs: &Vec<&EventField>, name: &String) -> Series {
             None => v.push(None),
         }
     }
-    Series::new(name, v)
+    DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_string_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+fn to_py_col(pairs: &Vec<&EventField>, name: &String, py: Python) -> DataFrameColumn {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(k) => match k {
+                Variant::StringVec(val) => v.push(Some(val.clone())),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    DataFrameColumn::Pyany(v.to_object(py))
+}
+
+fn to_string_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
@@ -1044,10 +1127,10 @@ fn to_string_series(pairs: &Vec<&EventField>, name: &String) -> Series {
             None => v.push(None),
         }
     }
-    Series::new(name, v)
+    DataFrameColumn::Series(Series::new(name, v))
 }
 
-fn to_bool_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+fn to_bool_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
@@ -1058,22 +1141,23 @@ fn to_bool_series(pairs: &Vec<&EventField>, name: &String) -> Series {
             None => v.push(None),
         }
     }
-    Series::new(name, v)
+    DataFrameColumn::Series(Series::new(name, v))
 }
 
-fn to_null_series(pairs: &Vec<&EventField>, name: &String) -> Series {
+fn to_null_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     // All series are null can pick any type
     let mut v: Vec<Option<i32>> = vec![];
     for _ in pairs {
         v.push(None);
     }
-    Series::new(name, v)
+    DataFrameColumn::Series(Series::new(name, v))
 }
 
-pub fn series_from_pairs(
+pub fn column_from_pairs(
     pairs: &Vec<&EventField>,
     name: &String,
-) -> Result<Series, DemoParserError> {
+    py: Python,
+) -> Result<DataFrameColumn, DemoParserError> {
     let field_type = find_type_of_vals(pairs)?;
 
     let s = match field_type {
@@ -1084,6 +1168,7 @@ pub fn series_from_pairs(
         Some(Variant::I32(_)) => to_i32_series(pairs, name),
         Some(Variant::U64(_)) => to_u64_series(pairs, name),
         Some(Variant::String(_)) => to_string_series(pairs, name),
+        Some(Variant::StringVec(_)) => to_py_col(pairs, name, py),
         _ => panic!("unkown ge key: {:?}", field_type),
     };
     Ok(s)
@@ -1099,6 +1184,7 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
             Some(Variant::String(s)) => Some(Variant::String(s.clone())),
             Some(Variant::U64(u)) => Some(Variant::U64(*u)),
             Some(Variant::U32(u)) => Some(Variant::U32(*u)),
+            Some(Variant::StringVec(u)) => Some(Variant::StringVec(vec![])),
             None => None,
             _ => {
                 return Err(DemoParserError::UnknownGameEventVariant(pair.name.clone()));
