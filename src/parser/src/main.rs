@@ -1,11 +1,4 @@
 use ahash::AHashMap;
-use arrow2::array::*;
-use arrow2::datatypes::DataType;
-use arrow2::datatypes::Field;
-use arrow2::datatypes::PhysicalType;
-use arrow2::offset::Offsets;
-use arrow2::offset::OffsetsBuffer;
-use arrow_data::{ArrayData, ArrayDataBuilder};
 use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
@@ -17,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn main() {
-    let wanted_props = vec!["inventory".to_string()];
+    let wanted_props = vec!["X".to_string()];
     let before = Instant::now();
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test3/").unwrap();
     let mut c = 0;
@@ -28,7 +21,7 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 100 {
+        if c > 1000 {
             break;
         }
 

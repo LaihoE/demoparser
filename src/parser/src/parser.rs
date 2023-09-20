@@ -97,6 +97,7 @@ impl Parser {
                 DEM_SignonPacket => self.parse_packet(&bytes),
                 DEM_Stop => break,
                 DEM_FullPacket => {
+                    self.parse_full_packet(&bytes).unwrap();
                     self.fullpacket_offsets.push(frame_starts_at);
                     Ok(())
                 }
@@ -104,7 +105,13 @@ impl Parser {
             };
             ok?;
         }
-
+        /*
+        let input = self.create_parser_thread_input(16, true);
+        let mut parser = ParserThread::new(input).unwrap();
+        parser.start()?;
+        let mut ok = parser.create_output();
+        return Ok(self.combine_thread_outputs(&mut vec![ok]));
+        */
         let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
             .fullpacket_offsets
             .par_iter()
@@ -126,6 +133,7 @@ impl Parser {
         }
         Ok(self.combine_thread_outputs(&mut ok))
     }
+    // fn parse_stringtables_cmd(bytes: &[u8]) -> Result<(), DemoParserError> {}
     pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
         let cls_by_id = match &self.cls_by_id {
             Some(cls_by_id) => cls_by_id.clone(),
