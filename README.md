@@ -43,6 +43,7 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 | mvps| m_iMVPs |
 | is_alive | m_bPawnIsAlive |
 | balance | m_iAccount |
+| inventory| _ |
 | life_state  | m_lifeState |
 | pitch  | m_angEyeAngles[0] |
 | yaw  | m_angEyeAngles[1] |
