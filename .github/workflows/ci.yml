@@ -3,6 +3,7 @@ name: Python application
 on:
   push:
     branches: ["main"]
+
 permissions:
   contents: read
 
@@ -11,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10"]
-        target: [x86_64]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        target: [x86_64, aarch64]
     defaults:
       run:
         working-directory: ./src/python
