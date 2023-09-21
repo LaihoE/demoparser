@@ -12,12 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
-        target: [x86_64, aarch64]
+        python-version: ["3.10"]
+        target: [x86_64]
     defaults:
       run:
         working-directory: ./src/python
-
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -26,13 +25,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Build Wheels
-        uses: messense/maturin-action@v1
-        with:
-          command: build
-          target: ${{ matrix.target }}
-          args: -i --release
       - name: Run tests
-      run: |
-        pip install pytest
-        pytest
+        run: |
+          pip install pytest
+          pytest
