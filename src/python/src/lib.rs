@@ -971,15 +971,16 @@ pub fn series_from_multiple_events(
                         .call_method1("insert", (0, col_name, pyobj))
                         .unwrap();
                 }
-                let pandas_df = pandas_df.call_method0("to_pandas").unwrap();
+
                 series_col_names.extend(py_col_names);
                 series_col_names.sort();
+
                 let kwargs = vec![("axis", 1)].into_py_dict(py);
                 let args = (series_col_names,);
-                pandas_df
+                let df = pandas_df
                     .call_method("reindex", args, Some(kwargs))
                     .unwrap();
-                pandas_df.to_object(py)
+                df.to_object(py)
             });
             vv.push((k, dfp));
         }
@@ -1043,10 +1044,10 @@ pub fn series_from_event(
         series_col_names.sort();
         let kwargs = vec![("axis", 1)].into_py_dict(py);
         let args = (series_col_names,);
-        pandas_df
+        let df = pandas_df
             .call_method("reindex", args, Some(kwargs))
             .unwrap();
-        pandas_df.to_object(py)
+        df.to_object(py)
     });
     Ok(dfp)
 }

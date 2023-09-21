@@ -57,7 +57,7 @@ impl Parser {
             self.tick = tick as i32;
 
             if self.should_early_exit() {
-                break;
+                // break;
             }
 
             // Safety check
