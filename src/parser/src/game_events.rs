@@ -315,6 +315,8 @@ impl ParserThread {
         None
     }
     pub fn create_custom_event_rank_update(&mut self, msg_bytes: &[u8]) -> Result<(), DemoParserError> {
+        self.game_events_counter.insert("rank_update".to_string());
+
         if !self.wanted_events.contains(&"rank_update".to_string()) {
             return Ok(());
         }
