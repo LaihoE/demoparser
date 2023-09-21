@@ -3,10 +3,10 @@ name: Python application
 on:
   push:
     branches: ["main"]
-
 permissions:
   contents: read
 
+jobs:
   linux:
     runs-on: ubuntu-latest
     strategy:
