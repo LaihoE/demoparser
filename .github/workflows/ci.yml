@@ -30,8 +30,10 @@ jobs:
         with:
           command: build
           target: ${{ matrix.target }}
-          args: --release -m src/python/Cargo.toml
-
+          args: --release --out dist --sdist -m src/python/Cargo.toml
+      - name: Install built wheel
+        run: |
+          pip install demoparser2 dist --force-reinstall
       - name: Run tests
         run: |
           pip install pytest
