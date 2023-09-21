@@ -81,6 +81,7 @@ pub struct Parser {
     pub prop_out_id: u8,
     pub only_header: bool,
     pub prop_infos: Vec<PropInfo>,
+    pub largest_wanted_tick: i32,
 
     pub header: AHashMap<String, String>,
     pub threads_spawned: u32,
@@ -92,6 +93,7 @@ impl Parser {
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
             threads_spawned: 0,
+            largest_wanted_tick: *inputs.wanted_ticks.iter().max().unwrap_or(&999999999),
             stringtable_players: AHashMap::default(),
             only_header: inputs.only_header,
             ge_list_set: false,

@@ -56,6 +56,10 @@ impl Parser {
             let size = self.read_varint()?;
             self.tick = tick as i32;
 
+            if self.should_early_exit() {
+                break;
+            }
+
             // Safety check
             if self.ptr + size as usize >= self.bytes.get_len() {
                 break;
@@ -64,7 +68,7 @@ impl Parser {
             let is_compressed = (cmd & 64) == 64;
             let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
 
-            // Early exit these for performance reasons
+            // skip these for performance reasons
             if demo_cmd == DEM_Packet || demo_cmd == DEM_AnimationData {
                 self.ptr += size as usize;
                 continue;
@@ -125,6 +129,21 @@ impl Parser {
             };
         }
         Ok(self.combine_thread_outputs(&mut ok))
+    }
+    fn should_early_exit(&self) -> bool {
+        if self.only_header && !self.header.is_empty() {
+            return true;
+        }
+        if !self.wanted_ticks.is_empty() {
+            // odd ticks in beginning of demo
+            if self.tick > 1000000 {
+                return false;
+            }
+            if self.largest_wanted_tick < self.tick {
+                return true;
+            }
+        }
+        false
     }
     // fn parse_stringtables_cmd(bytes: &[u8]) -> Result<(), DemoParserError> {}
     pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
