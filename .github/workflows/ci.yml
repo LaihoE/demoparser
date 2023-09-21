@@ -25,6 +25,8 @@ jobs:
       - name: Setup Python and Run Tests
         working-directory: ./src/python
         run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
           pip install pytest maturin patchelf
           maturin develop --release
           pytest
