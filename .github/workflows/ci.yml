@@ -25,6 +25,13 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Build Wheels
+        uses: messense/maturin-action@v1
+        with:
+          command: build
+          target: ${{ matrix.target }}
+          args: -i --release
+
       - name: Run tests
         run: |
           pip install pytest
