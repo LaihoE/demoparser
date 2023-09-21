@@ -25,7 +25,6 @@ jobs:
       - name: Setup Python and Run Tests
         working-directory: ./src/python
         run: |
-          python3 -m pip install .
-          pip install pytest maturin
+          pip install pytest maturin patchelf
           maturin develop --release
           pytest
