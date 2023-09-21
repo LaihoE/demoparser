@@ -1,0 +1,82 @@
+name: Python application
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        target: [x86, x64]
+    defaults:
+      run:
+        working-directory: ./src/python
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build Wheels
+        uses: messense/maturin-action@v1
+        with:
+          command: publish
+          target: ${{ matrix.target }}
+          args: -i ${{ matrix.python-version }} --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --no-sdist --skip-existing -m src/python/Cargo.toml
+
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        target: [x86_64, aarch64]
+    defaults:
+      run:
+        working-directory: ./src/python
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build Wheels
+        uses: messense/maturin-action@v1
+        with:
+          command: publish
+          target: ${{ matrix.target }}
+          args: -i ${{ matrix.python-version }} --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --no-sdist --skip-existing -m src/python/Cargo.toml
+
+  macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        target: [x86_64, aarch64]
+    defaults:
+      run:
+        working-directory: ./src/python
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build Wheels
+        uses: messense/maturin-action@v1
+        with:
+          command: publish
+          target: ${{ matrix.target }}
+          args: -i ${{ matrix.python-version }} --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --no-sdist --skip-existing -m src/python/Cargo.toml
