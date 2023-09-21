@@ -28,5 +28,10 @@ jobs:
           python3 -m venv .venv
           source .venv/bin/activate
           pip install pytest maturin patchelf
+
+          cd tests/data/
+          7z x test_data.zip
+          cd ../..
+
           maturin develop --release
           pytest
