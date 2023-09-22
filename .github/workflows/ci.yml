@@ -52,6 +52,14 @@ jobs:
           cd tests/
           unzip data.zip -d data/
           cd ../..
+
+      - name: unzip demo from py dir
+        working-directory: ./src/python
+        run: |
+          cd tests/data/
+          7z x test_data.zip
+          cd ../..
+
       - name: Test
         working-directory: ./src/node
         run: |
