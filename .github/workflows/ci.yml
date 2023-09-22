@@ -50,7 +50,7 @@ jobs:
         working-directory: ./src/node
         run: |
           cd tests/
-          7z x data.zip
+          unzip data.zip -d data/
           cd ../..
       - name: Test
         working-directory: ./src/node
