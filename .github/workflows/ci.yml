@@ -35,15 +35,18 @@ jobs:
           pytest
   test-js:
     runs-on: ubuntu-latest
-      steps:
-        - uses: actions-rs/toolchain@v1
-        - uses: actions/setup-node@v3
-        - name: build
-          run: yarn build
-        - name: unzip
-          run: |
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node.js and Build
+        uses: actions/setup-node@v2
+        with:
+          node-version: "18" # Replace with the desired Node.js version
+      - name: Build
+        run: yarn build
+      - name: Unzip Test Data
+        run: |
           cd tests/
           7z x test_data.zip
           cd ../..
-        - name: test
-          run: npm test
+      - name: Test
+        run: npm test
