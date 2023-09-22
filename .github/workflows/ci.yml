@@ -42,6 +42,7 @@ jobs:
         with:
           node-version: "18" # Replace with the desired Node.js version
       - name: Build
+        working-directory: ./src/python
         run: yarn build
       - name: Unzip Test Data
         run: |
