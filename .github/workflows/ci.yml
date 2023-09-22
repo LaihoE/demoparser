@@ -47,6 +47,7 @@ jobs:
           yarn global add @napi-rs/cli
           yarn build
       - name: Unzip Test Data
+        working-directory: ./src/node
         run: |
           cd tests/
           7z x test_data.zip
