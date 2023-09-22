@@ -54,4 +54,6 @@ jobs:
           cd ../..
       - name: Test
         working-directory: ./src/node
-        run: npm test
+        run: |
+          npm install --save-dev jest
+          npm test
