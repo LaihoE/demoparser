@@ -43,8 +43,9 @@ jobs:
           node-version: "18" # Replace with the desired Node.js version
       - name: Build
         working-directory: ./src/node
-        run: yarn global add @napi-rs/cli
-        run: yarn build
+        run: |
+          yarn global add @napi-rs/cli
+          yarn build
       - name: Unzip Test Data
         run: |
           cd tests/
