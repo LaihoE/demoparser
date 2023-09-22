@@ -53,4 +53,5 @@ jobs:
           7z x data.zip
           cd ../..
       - name: Test
+        working-directory: ./src/node
         run: npm test
