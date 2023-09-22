@@ -1,0 +1,21 @@
+{
+  "name": "@laihoe/demoparser2-linux-x64-musl",
+  "version": "0.8.1",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "main": "demoparser2.linux-x64-musl.node",
+  "files": [
+    "demoparser2.linux-x64-musl.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  },
+  "libc": [
+    "musl"
+  ]
+}
