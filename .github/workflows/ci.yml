@@ -1,9 +1,6 @@
 name: Test
 
 on:
-  push:
-    branches: ["nodetests"]
-
   pull_request:
     branches:
       - main
