@@ -1,0 +1,18 @@
+{
+  "name": "@laihoe/demoparser2-win32-arm64-msvc",
+  "version": "0.8.1",
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "main": "demoparser2.win32-arm64-msvc.node",
+  "files": [
+    "demoparser2.win32-arm64-msvc.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}

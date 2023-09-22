@@ -1,0 +1,18 @@
+{
+  "name": "@laihoe/demoparser2-freebsd-x64",
+  "version": "0.8.1",
+  "os": [
+    "freebsd"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "main": "demoparser2.freebsd-x64.node",
+  "files": [
+    "demoparser2.freebsd-x64.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}

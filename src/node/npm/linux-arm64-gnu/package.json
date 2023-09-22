@@ -1,0 +1,21 @@
+{
+  "name": "@laihoe/demoparser2-linux-arm64-gnu",
+  "version": "0.8.1",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "main": "demoparser2.linux-arm64-gnu.node",
+  "files": [
+    "demoparser2.linux-arm64-gnu.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  },
+  "libc": [
+    "glibc"
+  ]
+}

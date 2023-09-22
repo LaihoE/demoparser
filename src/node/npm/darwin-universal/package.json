@@ -1,0 +1,15 @@
+{
+  "name": "@laihoe/demoparser2-darwin-universal",
+  "version": "0.8.1",
+  "os": [
+    "darwin"
+  ],
+  "main": "demoparser2.darwin-universal.node",
+  "files": [
+    "demoparser2.darwin-universal.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}
