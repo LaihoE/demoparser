@@ -791,6 +791,10 @@ impl DemoParser {
                         df_column_names_py.push(prop_info.prop_friendly_name);
                         all_pyobjects.push(data.to_object(py))
                     }
+                    Some(VarVec::U64Vec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.to_object(py))
+                    }
                     _ => {}
                 }
             }
@@ -1103,12 +1107,25 @@ fn to_u64_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_py_col(pairs: &Vec<&EventField>, name: &String, py: Python) -> DataFrameColumn {
+fn to_py_string_col(pairs: &Vec<&EventField>, name: &String, py: Python) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
             Some(k) => match k {
                 Variant::StringVec(val) => v.push(Some(val.clone())),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    DataFrameColumn::Pyany(v.to_object(py))
+}
+fn to_py_u64_col(pairs: &Vec<&EventField>, name: &String, py: Python) -> DataFrameColumn {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(k) => match k {
+                Variant::U64Vec(val) => v.push(Some(val.clone())),
                 _ => v.push(None),
             },
             None => v.push(None),
@@ -1169,7 +1186,8 @@ pub fn column_from_pairs(
         Some(Variant::I32(_)) => to_i32_series(pairs, name),
         Some(Variant::U64(_)) => to_u64_series(pairs, name),
         Some(Variant::String(_)) => to_string_series(pairs, name),
-        Some(Variant::StringVec(_)) => to_py_col(pairs, name, py),
+        Some(Variant::StringVec(_)) => to_py_string_col(pairs, name, py),
+        Some(Variant::U64Vec(_)) => to_py_u64_col(pairs, name, py),
         _ => panic!("unkown ge key: {:?}", field_type),
     };
     Ok(s)
@@ -1185,7 +1203,8 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
             Some(Variant::String(s)) => Some(Variant::String(s.clone())),
             Some(Variant::U64(u)) => Some(Variant::U64(*u)),
             Some(Variant::U32(u)) => Some(Variant::U32(*u)),
-            Some(Variant::StringVec(u)) => Some(Variant::StringVec(vec![])),
+            Some(Variant::StringVec(_u)) => Some(Variant::StringVec(vec![])),
+            Some(Variant::U64Vec(_u)) => Some(Variant::U64Vec(vec![])),
             None => None,
             _ => {
                 return Err(DemoParserError::UnknownGameEventVariant(pair.name.clone()));

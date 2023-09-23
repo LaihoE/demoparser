@@ -460,19 +460,18 @@ impl ParserThread {
     pub fn find_spotted(&self, entity_id: &i32, prop_info: &PropInfo) -> Result<Variant, PropCollectionError> {
         match self.get_prop_from_ent(&prop_info.id, entity_id) {
             Ok(Variant::U32(mask)) => {
-                return Ok(Variant::StringVec(self.steamids_from_mask(mask)));
-                Ok(Variant::Bool(false))
+                return Ok(Variant::U64Vec(self.steamids_from_mask(mask)));
             }
             Ok(_) => return Err(PropCollectionError::SpottedIncorrectVariant),
             Err(e) => return Err(e),
         }
     }
-    fn steamids_from_mask(&self, uid: u32) -> Vec<String> {
+    fn steamids_from_mask(&self, uid: u32) -> Vec<u64> {
         let mut steamids = vec![];
         for i in 0..16 {
             if (uid & (1 << i)) != 0 {
                 if let Some(user) = self.find_user_by_controller_id((i + 1) as i32) {
-                    steamids.push(user.steamid.unwrap().clone().to_string())
+                    steamids.push(user.steamid.unwrap_or(0))
                 }
             }
         }
