@@ -2,6 +2,7 @@
 /target
 *.dem
 .vscode/
+__pycache__/
 venv
 .venv
 *.py
