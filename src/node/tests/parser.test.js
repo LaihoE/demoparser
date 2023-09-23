@@ -27,7 +27,7 @@ const ALL_PROPS = ['active_weapon_skin', 'FORWARD', 'LEFT', 'RIGHT', 'BACK', 'FI
 'looking_at_weapon', 'holding_look_at_weapon', 'next_attack_time', 'duck_time_ms', 'max_speed', 'max_fall_velo',
 'duck_amount', 'duck_speed', 'duck_overrdie', 'old_jump_pressed', 'jump_until', 'jump_velo', 'fall_velo', 'in_crouch',
 'crouch_state', 'ducked', 'ducking', 'in_duck_jump', 'allow_auto_movement', 'jump_time_ms', 'last_duck_time', 'is_rescuing',
-'weapon_purchases_this_match', 'weapon_purchases_this_round', 'spotted', 'spotted_mask', 'time_last_injury',
+'weapon_purchases_this_match', 'weapon_purchases_this_round', 'spotted', 'approximate_spotted_by', 'time_last_injury',
 'direction_last_injury', 'player_state', 'passive_items', 'is_scoped', 'is_walking', 'resume_zoom', 'is_defusing', 
 'is_grabbing_hostage', 'blocking_use_in_progess', 'molotov_damage_time', 'moved_since_spawn', 'in_bomb_zone', 
 'in_buy_zone', 'in_no_defuse_area', 'killed_by_taser', 'move_state', 'which_bomb_zone', 'in_hostage_rescue_zone',
