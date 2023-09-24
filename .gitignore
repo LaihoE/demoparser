@@ -4,7 +4,6 @@
 .vscode/
 venv
 .venv
-*.py
 flamegraph.svg
 perf.data
 perf.data.old
