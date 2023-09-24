@@ -24,9 +24,10 @@ jobs:
           source .venv/bin/activate
           pip install pytest maturin patchelf
 
-          cd tests/data/
-          7z x test_data.zip
-          cd ../..
+          cd tests/
+          unzip test_demo.zip -d data/
+          unzip zipped_testdata.zip -d data/
+          cd ..
 
           maturin develop --release
           pytest
@@ -38,24 +39,25 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: "18" # Replace with the desired Node.js version
-      - name: Build
-        working-directory: ./src/node
-        run: |
-          yarn global add @napi-rs/cli
-          yarn build
+
       - name: Unzip Test Data
         working-directory: ./src/node
         run: |
           cd tests/
-          unzip data.zip -d data/
+          unzip zipped_testdata.zip -d data/
           cd ../..
 
       - name: unzip demo from py dir
         working-directory: ./src/python
         run: |
-          cd tests/data/
-          7z x test_data.zip
+          cd tests/
+          7z x test_demo.zip
           cd ../..
+      - name: Build
+        working-directory: ./src/node
+        run: |
+          yarn global add @napi-rs/cli
+          yarn build
 
       - name: Test
         working-directory: ./src/node

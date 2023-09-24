@@ -1,4 +1,5 @@
 use crate::collect_data::PropType;
+use crate::entities::PlayerMetaData;
 use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
 use crate::prop_controller::PropInfo;
@@ -87,6 +88,14 @@ impl ParserThread {
     pub fn find_user_by_userid(&self, userid: i32) -> Option<&UserInfo> {
         for player in self.stringtable_players.values() {
             if player.userid == userid {
+                return Some(player);
+            }
+        }
+        return None;
+    }
+    pub fn find_user_by_controller_id(&self, userid: i32) -> Option<&PlayerMetaData> {
+        for (_, player) in &self.players {
+            if player.controller_entid == Some(userid) {
                 return Some(player);
             }
         }
@@ -225,7 +234,6 @@ impl ParserThread {
 
     pub fn find_extra_props_events(&self, entity_id: i32, prefix: &str) -> Vec<EventField> {
         let mut extra_pairs = vec![];
-        // println!("{:#?}", self.prop_controller.prop_infos);
         for prop_info in &self.prop_controller.prop_infos {
             // These props are collected in find_non_player_props()
             if !prop_info.is_player_prop {

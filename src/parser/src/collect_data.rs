@@ -84,6 +84,7 @@ pub enum PropCollectionError {
     OriginalOwnerXuidHighNotFound,
     OriginalOwnerXuidlowIncorrectVariant,
     OriginalOwnerXuidHighIncorrectVariant,
+    SpottedIncorrectVariant,
 }
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
@@ -159,7 +160,7 @@ impl ParserThread {
             PropType::Steamid => return self.create_steamid(player),
             PropType::Player => return self.get_prop_from_ent(&prop_info.id, &entity_id),
             PropType::Team => return self.find_team_prop(&prop_info.id, &entity_id),
-            PropType::Custom => self.create_custom_prop(prop_info.prop_name.as_str(), entity_id),
+            PropType::Custom => self.create_custom_prop(prop_info.prop_name.as_str(), entity_id, prop_info),
             PropType::Weapon => return self.find_weapon_prop(&prop_info.id, &entity_id),
             PropType::Button => return self.get_button_prop(&prop_info, &entity_id),
             PropType::Controller => return self.get_controller_prop(prop_info, player),
@@ -436,7 +437,12 @@ impl ParserThread {
             None => Err(PropCollectionError::SpecialidsEyeAnglesNotSet),
         }
     }
-    pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+    pub fn create_custom_prop(
+        &self,
+        prop_name: &str,
+        entity_id: &i32,
+        prop_info: &PropInfo,
+    ) -> Result<Variant, PropCollectionError> {
         match prop_name {
             "X" => self.collect_cell_coordinate_player(CoordinateAxis::X, entity_id),
             "Y" => self.collect_cell_coordinate_player(CoordinateAxis::Y, entity_id),
@@ -447,8 +453,29 @@ impl ParserThread {
             "weapon_skin" => self.find_weapon_skin(entity_id),
             "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
             "inventory" => self.find_my_inventory(entity_id),
+            "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
+    }
+    pub fn find_spotted(&self, entity_id: &i32, prop_info: &PropInfo) -> Result<Variant, PropCollectionError> {
+        match self.get_prop_from_ent(&prop_info.id, entity_id) {
+            Ok(Variant::U32(mask)) => {
+                return Ok(Variant::U64Vec(self.steamids_from_mask(mask)));
+            }
+            Ok(_) => return Err(PropCollectionError::SpottedIncorrectVariant),
+            Err(e) => return Err(e),
+        }
+    }
+    fn steamids_from_mask(&self, uid: u32) -> Vec<u64> {
+        let mut steamids = vec![];
+        for i in 0..16 {
+            if (uid & (1 << i)) != 0 {
+                if let Some(user) = self.find_user_by_controller_id((i + 1) as i32) {
+                    steamids.push(user.steamid.unwrap_or(0))
+                }
+            }
+        }
+        steamids
     }
     pub fn find_my_inventory(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
         let mut names = vec![];
