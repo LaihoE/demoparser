@@ -110,7 +110,7 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 | weapon_purchases_this_match  | m_iWeaponPurchasesThisMatch |
 | weapon_purchases_this_round  | m_iWeaponPurchasesThisRound |
 | spotted  | m_bSpotted |
-| spotted_mask  | m_bSpottedByMask |
+| approximate_spotted_by  | m_bSpottedByMask |
 | time_last_injury  | m_flTimeOfLastInjury |
 | direction_last_injury  | m_nRelativeDirectionOfLastInjury |
 | player_state  | m_iPlayerState |
