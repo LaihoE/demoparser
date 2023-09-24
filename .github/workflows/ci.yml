@@ -27,7 +27,7 @@ jobs:
           cd tests/
           unzip test_demo.zip -d data/
           unzip zipped_testdata.zip -d data/
-          cd ../..
+          cd ..
 
           maturin develop --release
           pytest
