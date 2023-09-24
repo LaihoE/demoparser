@@ -29,6 +29,13 @@ let event_json = parseEvent("path_to_demo.dem", "player_death", ["X", "Y"], ["to
 let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 ```
 
+### Examples in Python and JavaScript
+- [Examples](./examples)
+
+### Scuffed Documentaion
+- [Documentaion](./documentation)
+
+
 
 ### List of fields the parser supports:
 
