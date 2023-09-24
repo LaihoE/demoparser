@@ -25,7 +25,9 @@ jobs:
           pip install pytest maturin patchelf
 
           cd tests/data/
-          7z x test_data.zip
+          7z x test_demo.zip
+          7z x zipped_testdata.zip
+          mv test.dem data/test.dem
           cd ../..
 
           maturin develop --release
@@ -53,8 +55,8 @@ jobs:
       - name: unzip demo from py dir
         working-directory: ./src/python
         run: |
-          cd tests/data/
-          7z x test_data.zip
+          cd tests/
+          7z x test_demo.zip
           cd ../..
 
       - name: Test
