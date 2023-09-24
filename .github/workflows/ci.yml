@@ -24,10 +24,9 @@ jobs:
           source .venv/bin/activate
           pip install pytest maturin patchelf
 
-          cd tests/data/
-          7z x test_demo.zip
-          7z x zipped_testdata.zip
-          mv test.dem data/test.dem
+          cd tests/
+          unzip test_demo.zip -d data/
+          unzip zipped_testdata.zip -d data/
           cd ../..
 
           maturin develop --release
