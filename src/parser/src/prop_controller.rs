@@ -107,6 +107,15 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if self.wanted_player_props.contains(&("entity_id".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: 789456021,
+                prop_type: PropType::Custom,
+                prop_name: "entity_id".to_string(),
+                prop_friendly_name: "entity_id".to_string(),
+                is_player_prop: true,
+            });
+        }
         if self.wanted_player_props.contains(&("game_time".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: 123456879,
