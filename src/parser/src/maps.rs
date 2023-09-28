@@ -1485,6 +1485,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_killType" => PropType::Controller,
     "CCSPlayerController.m_iPing"=> PropType::Controller,
 
+    "entity_id" => PropType::Custom,
     "CCSPlayerPawn.m_MoveCollide" => PropType::Player,
     "CCSPlayerPawn.m_MoveType" => PropType::Player,
     "CCSPlayerPawn.m_iTeamNum" => PropType::Player,
@@ -1770,7 +1771,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
 
     "game_time" => "game_time",
     "inventory" => "inventory",
-
+    "entity_id" => "entity_id",
 
     "rank" => "CCSPlayerController.m_iCompetitiveRanking",
     "rank_if_win" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Win",

@@ -454,6 +454,7 @@ impl ParserThread {
             "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
             "inventory" => self.find_my_inventory(entity_id),
             "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
+            "entity_id" => return Ok(Variant::I32(*entity_id)),
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
     }
