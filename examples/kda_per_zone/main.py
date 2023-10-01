@@ -1,8 +1,8 @@
 from demoparser2 import DemoParser
 
-MY_STEAMID = 76561198194694750
+MY_STEAMID = 765611111111111
 
-parser = DemoParser("/home/laiho/Documents/programming/rust/cs2/src/python/test.dem")
+parser = DemoParser("path_to_demo.dem")
 df = parser.parse_event("player_death", player=["last_place_name"])
 
 df["attacker_steamid"] = df["attacker_steamid"].astype(int)
