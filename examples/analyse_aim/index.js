@@ -1,4 +1,4 @@
-var {parseTicks, parseEvent} = require('../../src/node/index');
+var {parseTicks, parseEvent} = require('@laihoe/demoparser2');
 
 const filePath = "path/to/demo.dem"
 
