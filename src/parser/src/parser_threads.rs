@@ -72,7 +72,9 @@ impl ParserThread {
     }
     fn packet_orderer(&self, packet: &NetmessageType) -> i32 {
         match packet {
-            svc_PacketEntities => -1,
+            svc_PacketEntities => 0,
+            svc_CreateStringTable => 1,
+            svc_UpdateStringTable => 2,
             _ => 100,
         }
     }

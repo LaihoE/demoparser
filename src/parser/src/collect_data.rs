@@ -455,8 +455,20 @@ impl ParserThread {
             "inventory" => self.find_my_inventory(entity_id),
             "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
             "entity_id" => return Ok(Variant::I32(*entity_id)),
+            "is_alive" => return self.find_is_alive(entity_id),
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
+    }
+    pub fn find_is_alive(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        match self.prop_controller.special_ids.life_state {
+            Some(id) => match self.get_prop_from_ent(&id, entity_id) {
+                Ok(Variant::U32(0)) => return Ok(Variant::Bool(true)),
+                Ok(_) => {}
+                Err(_) => {}
+            },
+            None => {}
+        }
+        Ok(Variant::Bool(false))
     }
     pub fn find_spotted(&self, entity_id: &i32, prop_info: &PropInfo) -> Result<Variant, PropCollectionError> {
         match self.get_prop_from_ent(&prop_info.id, entity_id) {

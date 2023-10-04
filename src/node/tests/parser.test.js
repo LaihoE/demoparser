@@ -3,7 +3,7 @@ var {parseEvent, parseEvents,parseTicks, parsePlayerInfo, parseGrenades, listGam
 const fs = require('fs');
 
 
-const filePath = "../python/tests/test.dem"
+const filePath = "../python/tests/data/test.dem"
 const wantedTicks = Array.from({ length: 100000 }, (_, x) => x).filter(x => x % 100 === 0);
 
 
