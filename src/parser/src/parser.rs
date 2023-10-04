@@ -56,10 +56,6 @@ impl Parser {
             let size = self.read_varint()?;
             self.tick = tick as i32;
 
-            if self.should_early_exit() {
-                // break;
-            }
-
             // Safety check
             if self.ptr + size as usize >= self.bytes.get_len() {
                 break;
@@ -137,21 +133,7 @@ impl Parser {
         }
         Ok(self.combine_thread_outputs(&mut ok))
     }
-    fn should_early_exit(&self) -> bool {
-        if self.only_header && !self.header.is_empty() {
-            return true;
-        }
-        if !self.wanted_ticks.is_empty() {
-            // odd ticks in beginning of demo
-            if self.tick > 1000000 {
-                return false;
-            }
-            if self.largest_wanted_tick < self.tick {
-                return true;
-            }
-        }
-        false
-    }
+
     // fn parse_stringtables_cmd(bytes: &[u8]) -> Result<(), DemoParserError> {}
     pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
         let cls_by_id = match &self.cls_by_id {
