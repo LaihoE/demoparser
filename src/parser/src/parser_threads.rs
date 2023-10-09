@@ -1,6 +1,7 @@
 use super::netmessage_types;
 use super::read_bits::DemoParserError;
 use crate::netmessage_types::netmessage_type_from_int;
+use crate::netmessage_types::NetmessageType;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
 use bitter::BitReader;
@@ -69,7 +70,14 @@ impl ParserThread {
         }
         Ok(())
     }
-
+    fn packet_orderer(&self, packet: &NetmessageType) -> i32 {
+        match packet {
+            svc_PacketEntities => 0,
+            svc_CreateStringTable => 1,
+            svc_UpdateStringTable => 2,
+            _ => 100,
+        }
+    }
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let packet: CDemoPacket = match Message::parse_from_bytes(bytes) {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
@@ -78,12 +86,19 @@ impl ParserThread {
         let packet_data = packet.data.unwrap();
         let mut bitreader = Bitreader::new(&packet_data);
         // Inner loop
+        let mut msgs = vec![];
+
         while bitreader.reader.has_bits_remaining(8) {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
             let msg_bytes = bitreader.read_n_bytes(size as usize)?;
+            msgs.push((msg_bytes, netmessage_type_from_int(msg_type as i32)));
+        }
 
-            let ok = match netmessage_type_from_int(msg_type as i32) {
+        msgs.sort_by_key(|x| self.packet_orderer(&x.1));
+
+        for (msg_bytes, msg_type) in msgs {
+            let ok = match msg_type {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),

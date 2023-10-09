@@ -265,6 +265,7 @@ pub struct SpecialIDs {
 
     pub orig_own_low: Option<u32>,
     pub orig_own_high: Option<u32>,
+    pub life_state: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -295,6 +296,7 @@ impl SpecialIDs {
             eye_angles: None,
             orig_own_high: None,
             orig_own_low: None,
+            life_state: None,
         }
     }
 }

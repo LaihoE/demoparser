@@ -111,32 +111,15 @@ function genTickProp(prop){
   const jsonData = JSON.stringify(events, null, 6);
   const fileName = `tests/data/per_prop/${prop}.json`;
   fs.writeFileSync(fileName, jsonData);
-
-  /*
-  console.log(`test('${prop}', () => {`)
-  console.log(`    let tick_correct = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_prop/${prop}.json")));`)
-  console.log(`    let ticks = JSON.stringify(parseTicks(filePath, ["${prop}"], wantedTicks));`)
-  console.log(`    expect(ticks).toBe(tick_correct);`)
-  console.log(`});`)
-  */
 }
 function genEventTest(event_name){
   let events = parseEvent(filePath, event_name);
   const jsonData = JSON.stringify(events, null, 6);
   const fileName = `tests/data/per_event/${event_name}.json`;
   fs.writeFileSync(fileName, jsonData);
-
-  /*
-  console.log(`test('${event_name}', () => {`)
-  console.log(`    let eventCorrect = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_event/${event_name}.json")));`)
-  console.log(`    let event = JSON.stringify(parseEvent(filePath, "${event_name}"));`)
-  console.log(`    expect(event).toBe(eventCorrect);`)
-  console.log(`});`)
-  */
 }
 
-genEventWithProps();
-genEventsWithProps();
+
 
 /*
 genListGameEvents();
@@ -153,4 +136,24 @@ for (let i = 0; i < eventNames.length; i++){
 }
 
 zipAll();
+
+genEventWithProps();
+genEventsWithProps();
 */
+
+// genEventWithProps();
+// genEventsWithProps();
+
+/*
+const wantedEvents = ["item_pickup"]
+for (let i = 0; i < wantedEvents.length; i++){
+  genEventTest(wantedEvents[i])
+}
+
+const wantedProps = ["is_alive"]
+for (let i = 0; i < wantedProps.length; i++){
+  genTickProp(wantedProps[i])
+}
+*/
+
+zipAll();

@@ -1389,7 +1389,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerController.m_bCanControlObservedBot" => PropType::Controller,
     "CCSPlayerController.m_hPlayerPawn" => PropType::Controller,
     "CCSPlayerController.m_hObserverPawn" => PropType::Controller,
-    "CCSPlayerController.m_bPawnIsAlive" => PropType::Controller,
     "CCSPlayerController.m_iPawnHealth" => PropType::Controller,
     "CCSPlayerController.m_iPawnArmor" => PropType::Controller,
     "CCSPlayerController.m_bPawnHasDefuser" => PropType::Controller,
@@ -1564,6 +1563,8 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "game_time" => PropType::GameTime,
     "inventory" => PropType::Custom,
     "CCSPlayerPawn.m_bSpottedByMask" => PropType::Custom,
+    "is_alive" => PropType::Custom,
+
 
     // Weapon
     "m_flAnimTime" => PropType::Weapon,
@@ -1772,6 +1773,8 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "game_time" => "game_time",
     "inventory" => "inventory",
     "entity_id" => "entity_id",
+    "is_alive"=>"is_alive",
+
 
     "rank" => "CCSPlayerController.m_iCompetitiveRanking",
     "rank_if_win" => "CCSPlayerController.m_iCompetitiveRankingPredicted_Win",
@@ -1849,7 +1852,8 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "is_controlling_bot"=>"CCSPlayerController.m_bControllingBot",
     "has_controlled_bot_this_round"=>"CCSPlayerController.m_bHasControlledBotThisRound",
     "can_control_bot"=>"CCSPlayerController.m_bCanControlObservedBot",
-    "is_alive"=>"CCSPlayerController.m_bPawnIsAlive",
+
+
     "armor"=>"CCSPlayerController.m_iPawnArmor",
     "has_defuser"=>"CCSPlayerController.m_bPawnHasDefuser",
     "has_helmet"=>"CCSPlayerController.m_bPawnHasHelmet",

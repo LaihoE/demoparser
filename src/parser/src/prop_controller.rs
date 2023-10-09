@@ -107,6 +107,15 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if self.wanted_player_props.contains(&("is_alive".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: 555555575,
+                prop_type: PropType::Custom,
+                prop_name: "is_alive".to_string(),
+                prop_friendly_name: "is_alive".to_string(),
+                is_player_prop: true,
+            });
+        }
         if self.wanted_player_props.contains(&("entity_id".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: 789456021,
@@ -354,6 +363,7 @@ impl PropController {
             || name.contains("Weapons")
             || name.contains("OriginalOwnerXuid")
             || name.contains("Flash")
+            || name.contains("m_lifeState")
         {
             return true;
         }
@@ -395,6 +405,7 @@ impl PropController {
                 "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellZ" => self.special_ids.cell_z_player = Some(id),
                 "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => self.special_ids.cell_z_offset_player = Some(id),
                 "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => self.special_ids.active_weapon = Some(id),
+                "CCSPlayerPawn.m_lifeState" => self.special_ids.life_state = Some(id),
                 _ => {}
             };
         }
