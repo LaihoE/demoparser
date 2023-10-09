@@ -23,6 +23,7 @@ use pyo3::ffi::Py_uintptr_t;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
 use pyo3::types::PyDict;
+use pyo3::types::PyList;
 use pyo3::Python;
 use pyo3::{PyAny, PyObject, PyResult};
 use std::sync::Arc;
@@ -623,12 +624,7 @@ impl DemoParser {
         };
         let event_series = match series_from_event(&output.game_events, py) {
             Ok(ser) => ser,
-            Err(_e) => {
-                return Err(Exception::new_err(format!(
-                    "No {:?} events found in demo.",
-                    event_name
-                )))
-            }
+            Err(_e) => return Ok(PyList::empty(py).into()),
         };
         Ok(event_series)
     }
