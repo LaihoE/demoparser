@@ -65,7 +65,7 @@ while bitreader.reader.has_bits_remaining(8) {
     };
 ```
 (slightly simplified from source code)
-
+ 
 The main message types are:
 
 - svc_CreateStringTable

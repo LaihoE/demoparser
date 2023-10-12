@@ -288,6 +288,9 @@ True/Flase if player is pressing button.
 | next_secondary_attack_tick_ratio |  m_flNextSecondaryAttackTickRatio |
 
 
+## Other parsers
+Go: https://github.com/markus-wa/demoinfocs-golang
+C#: https://github.com/saul/demofile-net
 
 
 ## Acknowledgements
