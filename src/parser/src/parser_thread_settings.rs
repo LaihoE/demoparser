@@ -55,6 +55,7 @@ pub struct ParserThread {
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
     pub rules_entity_id: Option<i32>,
+    pub c4_entity_id: Option<i32>,
     pub game_events_counter: AHashSet<String>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub field_infos: Vec<FieldInfo>,
@@ -179,6 +180,7 @@ impl ParserThread {
                 };
                 debug_vec_len
             ],
+            c4_entity_id: None,
             stringtable_players: input.stringtable_players,
             is_debug_mode: debug,
             projectile_records: vec![],
@@ -266,10 +268,13 @@ pub struct SpecialIDs {
     pub orig_own_low: Option<u32>,
     pub orig_own_high: Option<u32>,
     pub life_state: Option<u32>,
+
+    pub h_owner_entity: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
         SpecialIDs {
+            h_owner_entity: None,
             teamnum: None,
             player_name: None,
             steamid: None,

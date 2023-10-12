@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn main() {
-    let wanted_props = vec!["CCSPlayerPawn.m_bSpottedByMask".to_string()];
+    let wanted_props = vec!["inventory".to_string()];
     let before = Instant::now();
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test3/").unwrap();
     let mut c = 0;
@@ -34,8 +34,8 @@ fn main() {
             bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            //wanted_events: vec!["player_blind".to_string()],
-            wanted_events: vec![],
+            wanted_events: vec!["player_blind".to_string()],
+            //wanted_events: vec![],
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
                 "CCSTeam.m_szTeamname".to_string(),
