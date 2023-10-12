@@ -5,6 +5,7 @@ use crate::maps::PAINTKITS;
 use crate::maps::WEAPINDICIES;
 use crate::parser_thread_settings::ParserThread;
 use crate::prop_controller::PropInfo;
+use crate::prop_controller::GRENADE_AMMO_ID;
 use crate::prop_controller::MY_WEAPONS_OFFSET;
 use crate::prop_controller::WEAPON_SKIN_ID;
 use crate::variants::PropColumn;
@@ -524,18 +525,37 @@ impl ParserThread {
                     match weap_name {
                         // Check how many flashbangs player has (only prop that works like this)
                         &"flashbang" => {
-                            if let Ok(Variant::U32(2)) = self.get_prop_from_ent(&987654, player_entid) {
+                            if let Ok(Variant::U32(2)) = self.get_prop_from_ent(&GRENADE_AMMO_ID, player_entid) {
                                 names.push(weap_name.to_string());
                             }
+                            names.push(weap_name.to_string());
                         }
-                        _ => {}
+                        // c4 seems bugged. Find c4 entity and check owner from it.
+                        &"c4" => {
+                            if let Some(c4_owner_id) = self.find_c4_owner() {
+                                if *player_entid == c4_owner_id {
+                                    names.push(weap_name.to_string());
+                                }
+                            }
+                        }
+                        _ => {
+                            names.push(weap_name.to_string());
+                        }
                     }
-                    names.push(weap_name.to_string());
                 }
             };
         }
     }
-
+    fn find_c4_owner(&self) -> Option<i32> {
+        if let Some(c4ent) = self.c4_entity_id {
+            if let Some(id) = self.prop_controller.special_ids.h_owner_entity {
+                if let Ok(Variant::U32(u)) = self.get_prop_from_ent(&id, &c4ent) {
+                    return Some((u & 0x7FF) as i32);
+                }
+            }
+        }
+        None
+    }
     pub fn find_weapon_original_owner(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
         let low_id = match self.prop_controller.special_ids.orig_own_low {
             Some(id) => id,

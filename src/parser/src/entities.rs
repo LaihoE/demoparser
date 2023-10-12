@@ -36,6 +36,7 @@ pub enum EntityType {
     Projectile,
     Team,
     Normal,
+    C4,
 }
 enum EntityCmd {
     Delete,
@@ -104,7 +105,7 @@ impl ParserThread {
         if self.is_debug_mode {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if debug.field.full_name.contains("CCSPlayerPawn.m_bSpottedByMask") {
+                if debug.field.full_name.contains("m_hOwnerEntity") {
                     println!(
                         "{:?} {:?} {:?} {:?} {:?} {:?}",
                         debug.path, debug.field.full_name, result, self.tick, self.net_tick, field_info.prop_id
@@ -329,6 +330,7 @@ impl ParserThread {
                 self.projectiles.insert(*entity_id);
             }
             EntityType::Rules => self.rules_entity_id = Some(*entity_id),
+            EntityType::C4 => self.c4_entity_id = Some(*entity_id),
             _ => {}
         };
         let entity = Entity {
@@ -359,6 +361,7 @@ impl ParserThread {
             "CCSPlayerController" => return Ok(EntityType::PlayerController),
             "CCSGameRulesProxy" => return Ok(EntityType::Rules),
             "CCSTeam" => return Ok(EntityType::Team),
+            "CC4" => return Ok(EntityType::C4),
             _ => {}
         }
         if class.name.contains("Projectile") {
