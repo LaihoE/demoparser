@@ -1,9 +1,6 @@
 // @generated
 extern crate protobuf;
 
-pub mod c_peer2peer_netmessages;
-pub mod clientmessages;
-pub mod connectionless_netmessages;
 pub mod cs_gameevents;
 pub mod cs_usercmd;
 pub mod cstrike15_gcmessages;
@@ -15,27 +12,11 @@ pub mod enums_clientserver;
 pub mod fatdemo;
 pub mod gameevents;
 pub mod gcsdk_gcmessages;
-pub mod gcsystemmsgs;
 pub mod netmessages;
 pub mod network_connection;
 pub mod networkbasetypes;
 pub mod networksystem_protomessages;
-pub mod steamdatagram_messages_auth;
-pub mod steamdatagram_messages_sdr;
 pub mod steammessages;
-pub mod steammessages_cloud_steamworkssdk;
-pub mod steammessages_gamenetworkingui;
-pub mod steammessages_helprequest_steamworkssdk;
-pub mod steammessages_oauth_steamworkssdk;
-pub mod steammessages_player_steamworkssdk;
-pub mod steammessages_publishedfile_steamworkssdk;
-pub mod steammessages_steamlearn_steamworkssdk;
-pub mod steammessages_unified_base_steamworkssdk;
-pub mod steamnetworkingsockets_messages;
-pub mod steamnetworkingsockets_messages_certs;
-pub mod steamnetworkingsockets_messages_udp;
 pub mod te;
-pub mod uifontfile_format;
 pub mod usercmd;
 pub mod usermessages;
-pub mod valveextensions;
