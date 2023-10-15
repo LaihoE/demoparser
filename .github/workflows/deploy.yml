@@ -28,7 +28,7 @@ jobs:
           override: true
 
       - name: Build Wheels
-      - uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v1
         with:
           command: publish
           target: ${{ matrix.target }}
@@ -52,7 +52,7 @@ jobs:
           override: true
 
       - name: Build Wheels
-      - uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v1
         with:
           command: publish
           target: ${{ matrix.target }}
@@ -76,7 +76,7 @@ jobs:
           override: true
 
       - name: Build Wheels
-      - uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v1
         with:
           command: publish
           target: ${{ matrix.target }}
