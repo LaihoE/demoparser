@@ -289,8 +289,9 @@ True/Flase if player is pressing button.
 
 
 ## Other parsers
-Go: https://github.com/markus-wa/demoinfocs-golang
-C#: https://github.com/saul/demofile-net
+Go: https://github.com/markus-wa/demoinfocs-golang  
+C#: https://github.com/saul/demofile-net  
+Python: https://github.com/pnxenopoulos/awpy
 
 
 ## Acknowledgements
