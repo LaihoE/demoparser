@@ -68,24 +68,6 @@ impl ParserThread {
             let ge = &event.keys[i];
             let desc = &event_desc.keys[i];
             let val = parse_key(ge);
-            if desc.name() == "entityid" {
-                if let Some(Variant::I32(id)) = val {
-                    if let Some(ent) = self.entities.get(&id) {
-                        let o = self.get_prop_from_ent(&self.prop_controller.special_ids.grenade_owner_id.unwrap(), &id);
-                        let e = self.get_prop_from_ent(&self.prop_controller.special_ids.h_owner_entity.unwrap(), &id);
-
-                        println!("{:?} {:?}", o, e);
-
-                        if let Some(c) = self.cls_by_id.get(&ent.cls_id) {
-                            for (k, v) in &ent.props {
-                                // println!("{:?} {:?}", self.prop_controller.id_to_name.get(&k), v);
-                            }
-                        }
-                        // panic!()
-                    }
-                }
-                // println!("{:?} {:?}", desc.name(), val);
-            }
             event_fields.push(EventField {
                 name: desc.name().to_owned(),
                 data: val,

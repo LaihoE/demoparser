@@ -656,10 +656,8 @@ impl Parser {
                 || my_serializer.name.contains("Inc")
                 || my_serializer.name.contains("Infer")
             {
-                // prop_controller.find_prop_name_paths(&mut my_serializer);
+                prop_controller.find_prop_name_paths(&mut my_serializer);
             }
-            prop_controller.find_prop_name_paths(&mut my_serializer);
-
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
         prop_controller.set_custom_propinfos();
