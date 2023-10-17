@@ -105,7 +105,7 @@ impl ParserThread {
         if self.is_debug_mode {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if debug.field.full_name.contains("m_hOwnerEntity") {
+                if debug.field.full_name.contains("CMolotovProjectile") {
                     println!(
                         "{:?} {:?} {:?} {:?} {:?} {:?}",
                         debug.path, debug.field.full_name, result, self.tick, self.net_tick, field_info.prop_id
@@ -116,8 +116,9 @@ impl ParserThread {
             for field_info in &self.field_infos[..n_updates] {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
                 if field_info.should_parse {
-                    entity.props.insert(field_info.prop_id as u32, result);
+                    //entity.props.insert(field_info.prop_id as u32, result);
                 }
+                entity.props.insert(field_info.prop_id as u32, result);
             }
         }
         Ok(n_updates)

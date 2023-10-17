@@ -258,7 +258,7 @@ impl ParserThread {
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
         if let Some(ent) = self.entities.get(&entity_id) {
             if let Some(cls) = self.cls_by_id.get(&ent.cls_id).as_ref() {
-                if !cls.name.contains("Grenade") {
+                if !(cls.name.contains("Grenade") || cls.name.contains("Project")) {
                     return None;
                 }
                 // remove extra from name: CSmokeGrenadeProjectile --> SmokeGrenade

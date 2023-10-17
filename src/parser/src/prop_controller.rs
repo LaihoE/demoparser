@@ -246,11 +246,13 @@ impl PropController {
             // are the "same" prop. (they have same path and we want to refer to it with one id not ~20)
             Some(id) => {
                 f.prop_id = *id as usize;
+                self.id_to_name.insert(*id, weap_prop.to_string());
                 self.set_special_ids(&weap_prop, is_grenade_or_weapon, *id);
                 return;
             }
             None => {
                 self.name_to_id.insert(weap_prop.to_string(), self.id);
+                self.id_to_name.insert(self.id, weap_prop.to_string());
                 f.prop_id = self.id as usize;
                 self.set_special_ids(&weap_prop, is_grenade_or_weapon, self.id);
             }
@@ -294,7 +296,10 @@ impl PropController {
             && !split_at_dot[0].contains("Player")
             || split_at_dot[0].contains("Knife")
             || split_at_dot[0].contains("CDEagle")
-            || split_at_dot[0].contains("C4");
+            || split_at_dot[0].contains("C4")
+            || split_at_dot[0].contains("Molo")
+            || split_at_dot[0].contains("Inc")
+            || split_at_dot[0].contains("Infer");
 
         let is_projectile_prop =
             (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))

@@ -105,13 +105,13 @@ impl Parser {
             };
             ok?;
         }
-        /*
+
         let input = self.create_parser_thread_input(16, true);
         let mut parser = ParserThread::new(input).unwrap();
         parser.start()?;
         let x = parser.create_output();
         return Ok(self.combine_thread_outputs(&mut vec![x]));
-        */
+
         let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
             .fullpacket_offsets
             .par_iter()
