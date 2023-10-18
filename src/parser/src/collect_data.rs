@@ -1,6 +1,7 @@
 use super::entities::PlayerMetaData;
 use super::variants::Variant;
 use crate::maps::BUTTONMAP;
+use crate::maps::GRENADE_FRIENDLY_NAMES;
 use crate::maps::PAINTKITS;
 use crate::maps::WEAPINDICIES;
 use crate::parser_thread_settings::ParserThread;
@@ -258,17 +259,12 @@ impl ParserThread {
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
         if let Some(ent) = self.entities.get(&entity_id) {
             if let Some(cls) = self.cls_by_id.get(&ent.cls_id).as_ref() {
-                if !cls.name.contains("Grenade") {
-                    return None;
+                match GRENADE_FRIENDLY_NAMES.get(&cls.name) {
+                    Some(name) => return Some(name.to_string()),
+                    None => {
+                        return None;
+                    }
                 }
-                // remove extra from name: CSmokeGrenadeProjectile --> SmokeGrenade
-                // Todo maybe make names like this: smoke_grenade or just "smoke"
-                let mut clean_name = cls.name[1..].split_at(cls.name.len() - 11).0;
-                // Seems like the only exception
-                if clean_name == "BaseCSGrenade" {
-                    clean_name = "HeGrenade"
-                }
-                return Some(clean_name.to_owned());
             }
         }
         None
@@ -276,7 +272,10 @@ impl ParserThread {
 
     pub fn collect_projectiles(&mut self) {
         for projectile_entid in &self.projectiles {
-            let grenade_type = self.find_grenade_type(projectile_entid);
+            let grenade_type = match self.find_grenade_type(projectile_entid) {
+                Some(t) => t,
+                None => continue,
+            };
             let steamid = self.find_thrower_steamid(projectile_entid);
             let name = self.find_thrower_name(projectile_entid);
             let x = self.collect_cell_coordinate_grenade(CoordinateAxis::X, projectile_entid);
@@ -315,7 +314,7 @@ impl ParserThread {
                 y: float_y,
                 z: float_z,
                 tick: Some(self.tick),
-                grenade_type: grenade_type,
+                grenade_type: Some(grenade_type),
                 entity_id: Some(*projectile_entid),
             });
         }
