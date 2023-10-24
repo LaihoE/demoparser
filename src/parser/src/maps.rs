@@ -2022,3 +2022,12 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "next_secondary_attack_tick" => "m_nNextSecondaryAttackTick",
     "next_secondary_attack_tick_ratio"=> "m_flNextSecondaryAttackTickRatio",
 };
+
+pub static GRENADE_FRIENDLY_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
+    "CDecoyProjectile" => "decoy",
+    "CSmokeGrenadeProjectile" => "smoke",
+    "CMolotovProjectile" => "molotov",
+    "CBaseCSGrenadeProjectile" => "he_grenade",
+    // "CFlashbang" => "flashbang",
+    "CFlashbangProjectile" => "flashbang_projectile",
+};
