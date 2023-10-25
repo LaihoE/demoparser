@@ -12,7 +12,7 @@ use std::time::Instant;
 fn main() {
     let wanted_props = vec!["inventory".to_string()];
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test3/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
 

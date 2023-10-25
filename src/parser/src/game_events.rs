@@ -124,10 +124,23 @@ impl ParserThread {
                 "attacker" => "attacker",
                 "userid" => "user",
                 "assister" => "assister",
+                // edge case in some events
+                "entityid" => {
+                    let field_names: Vec<&String> = fields.iter().map(|x| &x.name).collect();
+                    if field_names.contains(&&"userid".to_string()) {
+                        continue;
+                    } else {
+                        "user"
+                    }
+                }
                 _ => continue,
             };
             if let Some(Variant::I32(u)) = field.data {
-                let entity_id = match self.entity_id_from_userid(u) {
+                let entity_id = match field.name.as_str() {
+                    "entityid" => self.grenade_owner_entid_from_grenade(&field.data),
+                    _ => self.entity_id_from_userid(u),
+                };
+                let entity_id = match entity_id {
                     Some(eid) => eid,
                     None => {
                         // player could not be found --> add None to output
@@ -143,6 +156,18 @@ impl ParserThread {
         // Values from Teams and Rules entity. Not bound to any player so can be added to any event.
         extra_fields.extend(self.find_non_player_props());
         Ok(extra_fields)
+    }
+    pub fn grenade_owner_entid_from_grenade(&self, id_field: &Option<Variant>) -> Option<i32> {
+        let prop_id = match self.prop_controller.special_ids.grenade_owner_id {
+            Some(id) => id,
+            None => return None,
+        };
+        if let Some(Variant::I32(id)) = id_field {
+            if let Ok(Variant::U32(entity_id)) = self.get_prop_from_ent(&prop_id, &id) {
+                return Some((entity_id & 0x7ff) as i32);
+            }
+        }
+        None
     }
     pub fn generate_empty_fields(&self, prefix: &str) -> Vec<EventField> {
         let mut extra_fields = vec![];

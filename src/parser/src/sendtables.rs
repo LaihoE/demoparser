@@ -652,6 +652,9 @@ impl Parser {
                 || my_serializer.name.contains("C4")
                 || my_serializer.name.contains("Grenade")
                 || my_serializer.name.contains("Flash")
+                || my_serializer.name.contains("Molo")
+                || my_serializer.name.contains("Inc")
+                || my_serializer.name.contains("Infer")
             {
                 prop_controller.find_prop_name_paths(&mut my_serializer);
             }

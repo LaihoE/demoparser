@@ -105,11 +105,7 @@ impl ParserThread {
         if self.is_debug_mode {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if debug
-                    .field
-                    .full_name
-                    .contains("CCSPlayerController_ActionTrackingServices.m_iDamage")
-                {
+                if debug.field.full_name.contains("CMolotovProjectile") {
                     println!(
                         "{:?} {:?} {:?} {:?} {:?} {:?}",
                         debug.path, debug.field.full_name, result, self.tick, self.net_tick, field_info.prop_id

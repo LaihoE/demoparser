@@ -72,10 +72,11 @@ impl ParserThread {
     }
     fn packet_orderer(&self, packet: &NetmessageType) -> i32 {
         match packet {
-            svc_PacketEntities => 0,
-            svc_CreateStringTable => 1,
-            svc_UpdateStringTable => 2,
-            _ => 100,
+            svc_CreateStringTable => 1001,
+            svc_UpdateStringTable => 1000,
+            GE_Source1LegacyGameEvent => 999,
+            svc_PacketEntities => 90,
+            _ => 0,
         }
     }
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
