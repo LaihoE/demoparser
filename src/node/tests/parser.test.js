@@ -30,7 +30,7 @@ test('parse_header', () => {
     let event = parseHeader(filePath)
     expect(JSON.stringify(event)).toBe(correct_events);
 });
-/*
+/* 
 fuck this
 test('parse_grenades', () => {
     let correct_events = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/grenades.json")));
