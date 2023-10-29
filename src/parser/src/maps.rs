@@ -2027,7 +2027,6 @@ pub static GRENADE_FRIENDLY_NAMES: phf::Map<&'static str, &'static str> = phf_ma
     "CDecoyProjectile" => "decoy",
     "CSmokeGrenadeProjectile" => "smoke",
     "CMolotovProjectile" => "molotov",
-    "CBaseCSGrenadeProjectile" => "he_grenade",
-    "CFlashbang" => "flashbang",
+    "CHEGrenadeProjectile" => "he_grenade",
     "CFlashbangProjectile" => "flashbang",
 };
