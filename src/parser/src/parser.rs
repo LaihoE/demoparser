@@ -291,8 +291,8 @@ impl Parser {
         // hmmmm not sure where the 18 comes from if the header is only 16?
         // can be used to check that file ends early
         let file_length_expected = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) + 18;
-        let missing_bytes = file_length_expected - file_len as u32;
-        if missing_bytes != 0 {
+        let missing_percentage = 100.0 - (file_len as f32 / file_length_expected as f32 * 100.0);
+        if missing_percentage > 10.0 {
             return Err(DemoParserError::DemoEndsEarly(format!(
                 "demo ends early. Expected legth: {}, file lenght: {}. Missing: {:.2}%",
                 file_length_expected,
