@@ -105,6 +105,9 @@ impl Parser {
             };
             ok?;
         }
+        if !self.fullpacket_offsets.contains(&16) {
+            self.fullpacket_offsets.push(16);
+        }
         /*
         let input = self.create_parser_thread_input(16, true);
         let mut parser = ParserThread::new(input).unwrap();
@@ -116,6 +119,7 @@ impl Parser {
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
+                println!("{}", offset);
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
                 parser.start()?;
