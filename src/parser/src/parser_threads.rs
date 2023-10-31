@@ -13,8 +13,6 @@ use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
-// The parser struct is defined in parser_settings.rs
-// THE CODE IS IN AN AWKWARD STATE DUE TO POSSIBLE BUG IN FULLPACKETS
 impl ParserThread {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
         loop {
@@ -100,7 +98,7 @@ impl ParserThread {
 
         for (msg_bytes, msg_type) in msgs {
             let ok = match msg_type {
-                svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
+                svc_PacketEntities => self.parse_packet_ents(&msg_bytes, false),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
@@ -148,7 +146,7 @@ impl ParserThread {
             let msg_bytes = bitreader.read_n_bytes(size as usize)?;
 
             let ok = match netmessage_type_from_int(msg_type as i32) {
-                svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
+                svc_PacketEntities => self.parse_packet_ents(&msg_bytes, true),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),

@@ -45,7 +45,7 @@ enum EntityCmd {
 }
 
 impl ParserThread {
-    pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+    pub fn parse_packet_ents(&mut self, bytes: &[u8], is_fullpacket: bool) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
         }
@@ -78,7 +78,7 @@ impl ParserThread {
                     self.entities.remove(&entity_id);
                 }
                 EntityCmd::CreateAndUpdate => {
-                    self.create_new_entity(&mut bitreader, &entity_id)?;
+                    self.create_new_entity(&mut bitreader, &entity_id, is_fullpacket)?;
                     self.update_entity(&mut bitreader, entity_id, false)?;
                 }
                 EntityCmd::Update => {
@@ -105,7 +105,7 @@ impl ParserThread {
         if self.is_debug_mode {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if debug.field.full_name.contains("Flash") {
+                if debug.field.full_name.contains("Cross") {
                     println!(
                         "{:?} {:?} {:?} {:?} {:?} {:?}",
                         debug.path, debug.field.full_name, result, self.tick, self.net_tick, field_info.prop_id
@@ -318,13 +318,21 @@ impl ParserThread {
         None
     }
 
-    fn create_new_entity(&mut self, bitreader: &mut Bitreader, entity_id: &i32) -> Result<(), DemoParserError> {
+    fn create_new_entity(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: &i32,
+        is_fullpacket: bool,
+    ) -> Result<(), DemoParserError> {
         let cls_id: u32 = bitreader.read_nbits(8)?;
         // Both of these are not used. Don't think they are interesting for the parser
         let _serial = bitreader.read_nbits(NSERIALBITS)?;
         let _unknown = bitreader.read_varint();
 
         let entity_type = self.check_entity_type(&cls_id)?;
+        if entity_type == EntityType::PlayerController {
+            println!("{} {} {}", self.tick, entity_id, is_fullpacket);
+        }
         match entity_type {
             EntityType::Projectile => {
                 self.projectiles.insert(*entity_id);
@@ -364,7 +372,7 @@ impl ParserThread {
             "CC4" => return Ok(EntityType::C4),
             _ => {}
         }
-        if class.name.contains("Projectile") || class.name.contains("Flash") {
+        if class.name.contains("Projectile") {
             return Ok(EntityType::Projectile);
         }
         return Ok(EntityType::Normal);
