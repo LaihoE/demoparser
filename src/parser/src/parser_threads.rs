@@ -67,7 +67,6 @@ impl ParserThread {
             ok?;
             self.collect_entities();
         }
-        println!("started_at: {} ended_at: {}", started_at, self.ptr);
         Ok(())
     }
     fn packet_orderer(&self, packet: &NetmessageType) -> i32 {
