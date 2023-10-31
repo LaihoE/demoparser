@@ -105,6 +105,9 @@ impl Parser {
             };
             ok?;
         }
+        if !self.fullpacket_offsets.contains(&16) {
+            self.fullpacket_offsets.push(16);
+        }
         /*
         let input = self.create_parser_thread_input(16, true);
         let mut parser = ParserThread::new(input).unwrap();
@@ -228,10 +231,15 @@ impl Parser {
                 }
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
+                svc_ClearAllStringTables => self.clear_stringtables(),
                 _ => Ok(()),
             };
             ok?
         }
+        Ok(())
+    }
+    fn clear_stringtables(&mut self) -> Result<(), DemoParserError> {
+        self.string_tables = vec![];
         Ok(())
     }
 
@@ -287,8 +295,8 @@ impl Parser {
         // hmmmm not sure where the 18 comes from if the header is only 16?
         // can be used to check that file ends early
         let file_length_expected = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) + 18;
-        let missing_bytes = file_length_expected - file_len as u32;
-        if missing_bytes != 0 {
+        let missing_percentage = 100.0 - (file_len as f32 / file_length_expected as f32 * 100.0);
+        if missing_percentage > 10.0 {
             return Err(DemoParserError::DemoEndsEarly(format!(
                 "demo ends early. Expected legth: {}, file lenght: {}. Missing: {:.2}%",
                 file_length_expected,

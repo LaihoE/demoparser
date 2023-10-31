@@ -12,6 +12,7 @@ use csgoproto::cstrike15_usermessages::CCSUsrMsg_ServerRankUpdate;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use csgoproto::netmessages::CSVCMsg_GameEventList;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
+use csgoproto::networkbasetypes::CNETMsg_SetConVar;
 use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
 use protobuf::Message;
 use serde::ser::SerializeMap;
@@ -25,6 +26,9 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
     "attacker_pawn",
     "assister_pawn",
 ];
+
+static REMOVEDEVENTS: &'static [&str] = &["server_cvar"];
+
 const ENTITYIDNONE: i32 = 2047;
 // https://developer.valvesoftware.com/wiki/SteamID
 const STEAMID64INDIVIDUALIDENTIFIER: u64 = 0x0110000100000000;
@@ -61,7 +65,9 @@ impl ParserThread {
         {
             return Ok(());
         }
-
+        if REMOVEDEVENTS.contains(&event_desc.name()) {
+            return Ok(());
+        }
         let mut event_fields: Vec<EventField> = vec![];
         // Parsing game events is this easy, the complexity comes from adding "extra" fields into events.
         for i in 0..event.keys.len() {
@@ -347,9 +353,44 @@ impl ParserThread {
         }
         None
     }
+
+    pub fn create_custom_event_parse_convars(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        self.game_events_counter.insert("server_cvar".to_string());
+        if !self.wanted_events.contains(&"server_cvar".to_string()) {
+            return Ok(());
+        }
+        let convar: CNETMsg_SetConVar = match Message::parse_from_bytes(&bytes) {
+            Ok(m) => m,
+            Err(_e) => return Err(DemoParserError::MalformedMessage),
+        };
+        for cv in &convar.convars {
+            let mut fields = vec![];
+            for var in &cv.cvars {
+                fields.push(EventField {
+                    data: Some(Variant::String(var.value().to_owned())),
+                    name: "value".to_string(),
+                });
+                fields.push(EventField {
+                    data: Some(Variant::String(var.name().to_string())),
+                    name: "name".to_string(),
+                });
+                fields.push(EventField {
+                    data: Some(Variant::I32(self.tick)),
+                    name: "tick".to_string(),
+                });
+            }
+            let ge = GameEvent {
+                name: "server_cvar".to_string(),
+                fields: fields,
+                tick: self.tick,
+            };
+            self.game_events.push(ge);
+            self.game_events_counter.insert("server_cvar".to_string());
+        }
+        Ok(())
+    }
     pub fn create_custom_event_rank_update(&mut self, msg_bytes: &[u8]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("rank_update".to_string());
-
         if !self.wanted_events.contains(&"rank_update".to_string()) {
             return Ok(());
         }

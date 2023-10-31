@@ -13,10 +13,9 @@ use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
-// The parser struct is defined in parser_settings.rs
-// THE CODE IS IN AN AWKWARD STATE DUE TO POSSIBLE BUG IN FULLPACKETS
 impl ParserThread {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
+        let started_at = self.ptr;
         loop {
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
@@ -52,7 +51,7 @@ impl ParserThread {
                     match self.parse_all_packets {
                         true => {}
                         false => {
-                            if self.fullpackets_parsed == 0 {
+                            if self.fullpackets_parsed == 0 && started_at != 16 {
                                 self.parse_full_packet(&bytes)?;
                                 self.fullpackets_parsed += 1;
                             } else {
@@ -108,10 +107,11 @@ impl ParserThread {
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
-                net_SetConVar => self.parse_convars(&msg_bytes),
+                net_SetConVar => self.create_custom_event_parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
                 CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(&msg_bytes),
                 net_Tick => self.parse_net_tick(&msg_bytes),
+                svc_ClearAllStringTables => self.clear_stringtables(),
                 _ => Ok(()),
             };
             ok?;
@@ -154,14 +154,19 @@ impl ParserThread {
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
-                net_SetConVar => self.parse_convars(&msg_bytes),
+                net_SetConVar => self.create_custom_event_parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
                 net_Tick => self.parse_net_tick(&msg_bytes),
+                svc_ClearAllStringTables => self.clear_stringtables(),
                 _ => Ok(()),
             };
             ok?
         }
+        Ok(())
+    }
+    fn clear_stringtables(&mut self) -> Result<(), DemoParserError> {
+        self.string_tables = vec![];
         Ok(())
     }
 

@@ -22,6 +22,10 @@ pub const WEAPON_SKIN_ID: u32 = 420420420;
 pub const WEAPON_ORIGINGAL_OWNER_ID: u32 = 6942000;
 pub const MY_WEAPONS_OFFSET: u32 = 500000;
 pub const GRENADE_AMMO_ID: u32 = 1111111;
+pub const INVENTORY_ID: u32 = 100000000;
+pub const IS_ALIVE_ID: u32 = 100000001;
+pub const GAME_TIME_ID: u32 = 100000002;
+pub const ENTITY_ID_ID: u32 = 100000003;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -100,7 +104,7 @@ impl PropController {
         }
         if self.wanted_player_props.contains(&("inventory".to_string())) {
             self.prop_infos.push(PropInfo {
-                id: 555555575,
+                id: INVENTORY_ID,
                 prop_type: PropType::Custom,
                 prop_name: "inventory".to_string(),
                 prop_friendly_name: "inventory".to_string(),
@@ -109,7 +113,7 @@ impl PropController {
         }
         if self.wanted_player_props.contains(&("is_alive".to_string())) {
             self.prop_infos.push(PropInfo {
-                id: 555555575,
+                id: IS_ALIVE_ID,
                 prop_type: PropType::Custom,
                 prop_name: "is_alive".to_string(),
                 prop_friendly_name: "is_alive".to_string(),
@@ -118,7 +122,7 @@ impl PropController {
         }
         if self.wanted_player_props.contains(&("entity_id".to_string())) {
             self.prop_infos.push(PropInfo {
-                id: 789456021,
+                id: ENTITY_ID_ID,
                 prop_type: PropType::Custom,
                 prop_name: "entity_id".to_string(),
                 prop_friendly_name: "entity_id".to_string(),
@@ -127,7 +131,7 @@ impl PropController {
         }
         if self.wanted_player_props.contains(&("game_time".to_string())) {
             self.prop_infos.push(PropInfo {
-                id: 123456879,
+                id: GAME_TIME_ID,
                 prop_type: PropType::GameTime,
                 prop_name: "game_time".to_string(),
                 prop_friendly_name: "game_time".to_string(),
@@ -137,7 +141,7 @@ impl PropController {
         // Can also be non-player prop
         if self.wanted_other_props.contains(&("game_time".to_string())) {
             self.prop_infos.push(PropInfo {
-                id: 123456879,
+                id: GAME_TIME_ID,
                 prop_type: PropType::GameTime,
                 prop_name: "game_time".to_string(),
                 prop_friendly_name: "game_time".to_string(),

@@ -105,7 +105,7 @@ impl ParserThread {
         if self.is_debug_mode {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if debug.field.full_name.contains("Flash") {
+                if debug.field.full_name.contains("Cross") {
                     println!(
                         "{:?} {:?} {:?} {:?} {:?} {:?}",
                         debug.path, debug.field.full_name, result, self.tick, self.net_tick, field_info.prop_id
@@ -364,7 +364,7 @@ impl ParserThread {
             "CC4" => return Ok(EntityType::C4),
             _ => {}
         }
-        if class.name.contains("Projectile") || class.name.contains("Flash") {
+        if class.name.contains("Projectile") {
             return Ok(EntityType::Projectile);
         }
         return Ok(EntityType::Normal);
