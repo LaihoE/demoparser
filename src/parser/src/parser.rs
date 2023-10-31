@@ -231,10 +231,15 @@ impl Parser {
                 }
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
+                svc_ClearAllStringTables => self.clear_stringtables(),
                 _ => Ok(()),
             };
             ok?
         }
+        Ok(())
+    }
+    fn clear_stringtables(&mut self) -> Result<(), DemoParserError> {
+        self.string_tables = vec![];
         Ok(())
     }
 

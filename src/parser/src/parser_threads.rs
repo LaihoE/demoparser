@@ -110,6 +110,7 @@ impl ParserThread {
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
                 CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(&msg_bytes),
                 net_Tick => self.parse_net_tick(&msg_bytes),
+                svc_ClearAllStringTables => self.clear_stringtables(),
                 _ => Ok(()),
             };
             ok?;
@@ -156,10 +157,15 @@ impl ParserThread {
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
                 net_Tick => self.parse_net_tick(&msg_bytes),
+                svc_ClearAllStringTables => self.clear_stringtables(),
                 _ => Ok(()),
             };
             ok?
         }
+        Ok(())
+    }
+    fn clear_stringtables(&mut self) -> Result<(), DemoParserError> {
+        self.string_tables = vec![];
         Ok(())
     }
 
