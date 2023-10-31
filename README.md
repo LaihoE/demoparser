@@ -59,7 +59,6 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 | pending_team_num | m_iPendingTeamNum |
 | player_color | m_iCompTeammateColor |
 | ever_played_on_team | m_bEverPlayedOnTeam |
-| clan_name | m_szClan |
 | is_coach_team | m_iCoachingTeam |
 | rank | m_iCompetitiveRanking |
 | rank_if_win| m_iCompetitiveRankingPredicted_Win |
