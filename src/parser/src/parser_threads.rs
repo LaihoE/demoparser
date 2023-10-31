@@ -15,6 +15,7 @@ use EDemoCommands::*;
 
 impl ParserThread {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
+        let started_at = self.ptr;
         loop {
             let cmd = self.read_varint()?;
             let tick = self.read_varint()?;
@@ -50,7 +51,7 @@ impl ParserThread {
                     match self.parse_all_packets {
                         true => {}
                         false => {
-                            if self.fullpackets_parsed == 0 {
+                            if self.fullpackets_parsed == 0 && started_at != 16 {
                                 self.parse_full_packet(&bytes)?;
                                 self.fullpackets_parsed += 1;
                             } else {
@@ -66,6 +67,7 @@ impl ParserThread {
             ok?;
             self.collect_entities();
         }
+        println!("started_at: {} ended_at: {}", started_at, self.ptr);
         Ok(())
     }
     fn packet_orderer(&self, packet: &NetmessageType) -> i32 {
