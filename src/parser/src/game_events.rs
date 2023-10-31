@@ -353,41 +353,6 @@ impl ParserThread {
         }
         None
     }
-    pub fn create_custom_event_skins(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        self.game_events_counter.insert("server_cvar".to_string());
-        if !self.wanted_events.contains(&"server_cvar".to_string()) {
-            return Ok(());
-        }
-        let convar: CNETMsg_SetConVar = match Message::parse_from_bytes(&bytes) {
-            Ok(m) => m,
-            Err(_e) => return Err(DemoParserError::MalformedMessage),
-        };
-        for cv in &convar.convars {
-            let mut fields = vec![];
-            for var in &cv.cvars {
-                fields.push(EventField {
-                    data: Some(Variant::String(var.value().to_owned())),
-                    name: "value".to_string(),
-                });
-                fields.push(EventField {
-                    data: Some(Variant::String(var.name().to_string())),
-                    name: "name".to_string(),
-                });
-                fields.push(EventField {
-                    data: Some(Variant::I32(self.tick)),
-                    name: "tick".to_string(),
-                });
-            }
-            let ge = GameEvent {
-                name: "server_cvar".to_string(),
-                fields: fields,
-                tick: self.tick,
-            };
-            self.game_events.push(ge);
-            self.game_events_counter.insert("server_cvar".to_string());
-        }
-        Ok(())
-    }
 
     pub fn create_custom_event_parse_convars(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("server_cvar".to_string());

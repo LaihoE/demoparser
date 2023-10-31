@@ -119,7 +119,6 @@ impl Parser {
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
-                println!("{}", offset);
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
                 parser.start()?;

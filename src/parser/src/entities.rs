@@ -45,7 +45,7 @@ enum EntityCmd {
 }
 
 impl ParserThread {
-    pub fn parse_packet_ents(&mut self, bytes: &[u8], is_fullpacket: bool) -> Result<(), DemoParserError> {
+    pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
         }
@@ -78,7 +78,7 @@ impl ParserThread {
                     self.entities.remove(&entity_id);
                 }
                 EntityCmd::CreateAndUpdate => {
-                    self.create_new_entity(&mut bitreader, &entity_id, is_fullpacket)?;
+                    self.create_new_entity(&mut bitreader, &entity_id)?;
                     self.update_entity(&mut bitreader, entity_id, false)?;
                 }
                 EntityCmd::Update => {
@@ -318,21 +318,13 @@ impl ParserThread {
         None
     }
 
-    fn create_new_entity(
-        &mut self,
-        bitreader: &mut Bitreader,
-        entity_id: &i32,
-        is_fullpacket: bool,
-    ) -> Result<(), DemoParserError> {
+    fn create_new_entity(&mut self, bitreader: &mut Bitreader, entity_id: &i32) -> Result<(), DemoParserError> {
         let cls_id: u32 = bitreader.read_nbits(8)?;
         // Both of these are not used. Don't think they are interesting for the parser
         let _serial = bitreader.read_nbits(NSERIALBITS)?;
         let _unknown = bitreader.read_varint();
 
         let entity_type = self.check_entity_type(&cls_id)?;
-        if entity_type == EntityType::PlayerController {
-            println!("{} {} {}", self.tick, entity_id, is_fullpacket);
-        }
         match entity_type {
             EntityType::Projectile => {
                 self.projectiles.insert(*entity_id);
