@@ -27,6 +27,7 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
     "assister_pawn",
 ];
 
+static ENTITIES_FIRST_EVENTS: &'static [&str] = &["inferno_startburn", "decoy_started", "inferno_expire"];
 static REMOVEDEVENTS: &'static [&str] = &["server_cvar"];
 
 const ENTITYIDNONE: i32 = 2047;
@@ -46,16 +47,16 @@ impl Parser {
 }
 
 impl ParserThread {
-    pub fn parse_event(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+    pub fn parse_event(&mut self, bytes: &[u8]) -> Result<Option<GameEvent>, DemoParserError> {
         if self.wanted_events.len() == 0 && self.wanted_events.first() != Some(&"all".to_string()) {
-            return Ok(());
+            return Ok(None);
         }
         let event: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
         // Check if this events id is found in our game event list
         let event_desc = match self.ge_list.get(&event.eventid()) {
             Some(desc) => desc,
             None => {
-                return Ok(());
+                return Ok(None);
             }
         };
         self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
@@ -63,10 +64,10 @@ impl ParserThread {
         // Return early if this is not a wanted event.
         if !self.wanted_events.contains(&event_desc.name().to_string()) && self.wanted_events.first() != Some(&"all".to_string())
         {
-            return Ok(());
+            return Ok(None);
         }
         if REMOVEDEVENTS.contains(&event_desc.name()) {
-            return Ok(());
+            return Ok(None);
         }
         let mut event_fields: Vec<EventField> = vec![];
         // Parsing game events is this easy, the complexity comes from adding "extra" fields into events.
@@ -79,18 +80,42 @@ impl ParserThread {
                 data: val,
             });
         }
-        // Add extra fields
-        event_fields.extend(self.find_extra(&event_fields)?);
-        // Remove fields that user does nothing with like userid and user_pawn
-        event_fields.retain(|ref x| !INTERNALEVENTFIELDS.contains(&x.name.as_str()));
-
-        self.game_events.push(GameEvent {
-            fields: event_fields,
-            name: event_desc.name().to_string(),
-            tick: self.tick,
-        });
+        if ENTITIES_FIRST_EVENTS.contains(&event_desc.name()) {
+            let event = GameEvent {
+                fields: event_fields,
+                name: event_desc.name().to_string(),
+                tick: self.tick,
+            };
+            return Ok(Some(event));
+        } else {
+            // Add extra fields
+            event_fields.extend(self.find_extra(&event_fields)?);
+            // Remove fields that user does nothing with like userid and user_pawn
+            event_fields.retain(|ref x| !INTERNALEVENTFIELDS.contains(&x.name.as_str()));
+            let event = GameEvent {
+                fields: event_fields,
+                name: event_desc.name().to_string(),
+                tick: self.tick,
+            };
+            self.game_events.push(event);
+        }
+        Ok(None)
+    }
+    pub fn resolve_wrong_order_event(&mut self, events: &mut Vec<GameEvent>) -> Result<(), DemoParserError> {
+        for event in events {
+            event.fields.extend(self.find_extra(&event.fields)?);
+            // Remove fields that user does nothing with like userid and user_pawn
+            event.fields.retain(|ref x| !INTERNALEVENTFIELDS.contains(&x.name.as_str()));
+            let event = GameEvent {
+                fields: event.fields.clone(),
+                name: event.name.to_string(),
+                tick: self.tick,
+            };
+            self.game_events.push(event);
+        }
         Ok(())
     }
+
     pub fn find_user_by_userid(&self, userid: i32) -> Option<&UserInfo> {
         for player in self.stringtable_players.values() {
             if player.userid == userid {
