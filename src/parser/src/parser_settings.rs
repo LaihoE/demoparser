@@ -2,6 +2,7 @@ use super::sendtables::Serializer;
 use super::stringtables::StringTable;
 use crate::decoder::QfMapper;
 use crate::maps::FRIENDLY_NAMES_MAPPING;
+use crate::maps::NON_MULTITHREADABLE_PROPS;
 use crate::other_netmessages::Class;
 use crate::parser_thread_settings::PlayerEndMetaData;
 use crate::parser_thread_settings::SpecialIDs;
@@ -85,6 +86,7 @@ pub struct Parser {
 
     pub header: AHashMap<String, String>,
     pub threads_spawned: u32,
+    pub is_multithreadable: bool,
 }
 
 impl Parser {
@@ -93,6 +95,7 @@ impl Parser {
         let arc_huf = inputs.huffman_lookup_table.clone();
         Parser {
             threads_spawned: 0,
+            is_multithreadable: check_multithreadability(&inputs.wanted_player_props),
             largest_wanted_tick: *inputs.wanted_ticks.iter().max().unwrap_or(&999999999),
             stringtable_players: AHashMap::default(),
             only_header: inputs.only_header,
@@ -142,6 +145,14 @@ impl Parser {
             header: AHashMap::default(),
         }
     }
+}
+fn check_multithreadability(player_props: &[String]) -> bool {
+    for name in player_props {
+        if NON_MULTITHREADABLE_PROPS.contains(name) {
+            return false;
+        }
+    }
+    true
 }
 
 pub fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoParserError> {
