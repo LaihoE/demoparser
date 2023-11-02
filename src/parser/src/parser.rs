@@ -108,13 +108,21 @@ impl Parser {
         if !self.fullpacket_offsets.contains(&16) {
             self.fullpacket_offsets.push(16);
         }
-        /*
+
+        if self.is_multithreadable {
+            self.parse_demo_multithread()
+        } else {
+            self.parse_demo_single_thread()
+        }
+    }
+    fn parse_demo_single_thread(&mut self) -> Result<DemoOutput, DemoParserError> {
         let input = self.create_parser_thread_input(16, true);
         let mut parser = ParserThread::new(input).unwrap();
         parser.start()?;
         let x = parser.create_output();
         return Ok(self.combine_thread_outputs(&mut vec![x]));
-        */
+    }
+    fn parse_demo_multithread(&mut self) -> Result<DemoOutput, DemoParserError> {
         let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
             .fullpacket_offsets
             .par_iter()
@@ -125,8 +133,7 @@ impl Parser {
                 Ok(parser.create_output())
             })
             .collect();
-
-        // If any thread failed return error
+        // check for errors
         let mut ok = vec![];
         for result in outputs {
             match result {

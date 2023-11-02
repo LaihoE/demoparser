@@ -1,5 +1,6 @@
 use crate::collect_data::PropType;
 use phf_macros::phf_map;
+use phf_macros::phf_set;
 
 pub static BUTTONMAP: phf::Map<&'static str, u64> = phf_map! {
     "LEFT" => 1 << 9,
@@ -2029,4 +2030,23 @@ pub static GRENADE_FRIENDLY_NAMES: phf::Map<&'static str, &'static str> = phf_ma
     "CMolotovProjectile" => "molotov",
     "CHEGrenadeProjectile" => "he_grenade",
     "CFlashbangProjectile" => "flashbang",
+};
+pub static NON_MULTITHREADABLE_PROPS: phf::Set<&'static str> = phf_set! {
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iUtilityDamage",
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iCashEarned",
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemiesFlashed",
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iDamage",
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iObjective",
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flFallVelocity",
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_flLastDuckTime",
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDucked",
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bInCrouch",
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nCrouchState",
+    "CCSPlayerPawn.CCSPlayer_WeaponServices.m_flNextAttack",
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nDuckTimeMsecs",
+    "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iLiveTime",
+    "m_pReserveAmmo",
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bInDuckJump",
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDucking",
+    "CCSPlayerPawn.CCSPlayer_MovementServices.m_nJumpTimeMsecs",
 };
