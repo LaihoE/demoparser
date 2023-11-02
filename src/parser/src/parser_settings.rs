@@ -147,10 +147,8 @@ impl Parser {
     }
 }
 fn check_multithreadability(player_props: &[String]) -> bool {
-    println!("{:?}", player_props);
     for name in player_props {
         if NON_MULTITHREADABLE_PROPS.contains(name) {
-            println!("CONTAIN {}", name);
             return false;
         }
     }
