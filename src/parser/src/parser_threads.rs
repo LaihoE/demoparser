@@ -73,8 +73,8 @@ impl ParserThread {
         match packet {
             svc_CreateStringTable => 1001,
             svc_UpdateStringTable => 1000,
-            GE_Source1LegacyGameEvent => 999,
-            svc_PacketEntities => 90,
+            GE_Source1LegacyGameEvent => 90,
+            svc_PacketEntities => 999,
             _ => 0,
         }
     }
@@ -96,6 +96,7 @@ impl ParserThread {
         }
 
         msgs.sort_by_key(|x| self.packet_orderer(&x.1));
+        let mut wrong_order_events = vec![];
 
         for (msg_bytes, msg_type) in msgs {
             let ok = match msg_type {
@@ -103,7 +104,6 @@ impl ParserThread {
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 svc_ServerInfo => self.parse_server_info(&msg_bytes),
-                GE_Source1LegacyGameEvent => self.parse_event(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
@@ -112,9 +112,20 @@ impl ParserThread {
                 CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(&msg_bytes),
                 net_Tick => self.parse_net_tick(&msg_bytes),
                 svc_ClearAllStringTables => self.clear_stringtables(),
+                GE_Source1LegacyGameEvent => match self.parse_event(&msg_bytes) {
+                    Ok(Some(event)) => {
+                        wrong_order_events.push(event);
+                        Ok(())
+                    }
+                    Ok(None) => Ok(()),
+                    Err(e) => return Err(e),
+                },
                 _ => Ok(()),
             };
             ok?;
+        }
+        if !wrong_order_events.is_empty() {
+            self.resolve_wrong_order_event(&mut wrong_order_events)?;
         }
         Ok(())
     }
