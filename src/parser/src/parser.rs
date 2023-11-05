@@ -120,6 +120,10 @@ impl Parser {
         let mut parser = ParserThread::new(input).unwrap();
         parser.start()?;
         let x = parser.create_output();
+        for prop in &self.added_temp_props {
+            self.wanted_player_props.retain(|x| x != prop);
+            self.prop_controller.prop_infos.retain(|x| &x.prop_name != prop);
+        }
         return Ok(self.combine_thread_outputs(&mut vec![x]));
     }
     fn parse_demo_multithread(&mut self) -> Result<DemoOutput, DemoParserError> {
@@ -133,6 +137,7 @@ impl Parser {
                 Ok(parser.create_output())
             })
             .collect();
+
         // check for errors
         let mut ok = vec![];
         for result in outputs {
@@ -140,6 +145,10 @@ impl Parser {
                 Err(e) => return Err(e),
                 Ok(r) => ok.push(r),
             };
+        }
+        for prop in &self.added_temp_props {
+            self.wanted_player_props.retain(|x| x != prop);
+            self.prop_controller.prop_infos.retain(|x| &x.prop_name != prop);
         }
         Ok(self.combine_thread_outputs(&mut ok))
     }
