@@ -8,8 +8,15 @@ use crate::parser_thread_settings::ParserThread;
 use crate::prop_controller::PropInfo;
 use crate::prop_controller::GRENADE_AMMO_ID;
 use crate::prop_controller::MY_WEAPONS_OFFSET;
+use crate::prop_controller::PLAYER_X_ID;
+use crate::prop_controller::PLAYER_Y_ID;
+use crate::prop_controller::PLAYER_Z_ID;
+use crate::prop_controller::STEAMID_ID;
+use crate::prop_controller::TICK_ID;
 use crate::prop_controller::WEAPON_SKIN_ID;
+
 use crate::variants::PropColumn;
+use crate::variants::VarVec;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -87,6 +94,7 @@ pub enum PropCollectionError {
     OriginalOwnerXuidlowIncorrectVariant,
     OriginalOwnerXuidHighIncorrectVariant,
     SpottedIncorrectVariant,
+    VelocityNotFound,
 }
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
@@ -162,7 +170,7 @@ impl ParserThread {
             PropType::Steamid => return self.create_steamid(player),
             PropType::Player => return self.get_prop_from_ent(&prop_info.id, &entity_id),
             PropType::Team => return self.find_team_prop(&prop_info.id, &entity_id),
-            PropType::Custom => self.create_custom_prop(prop_info.prop_name.as_str(), entity_id, prop_info),
+            PropType::Custom => self.create_custom_prop(prop_info.prop_name.as_str(), entity_id, prop_info, player),
             PropType::Weapon => return self.find_weapon_prop(&prop_info.id, &entity_id),
             PropType::Button => return self.get_button_prop(&prop_info, &entity_id),
             PropType::Controller => return self.get_controller_prop(prop_info, player),
@@ -258,7 +266,7 @@ impl ParserThread {
 
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
         if let Some(ent) = self.entities.get(&entity_id) {
-            if let Some(cls) = self.cls_by_id.get(&ent.cls_id).as_ref() {
+            if let Some(cls) = self.cls_by_id.get(&ent.cls_id) {
                 match GRENADE_FRIENDLY_NAMES.get(&cls.name) {
                     Some(name) => return Some(name.to_string()),
                     None => {
@@ -442,11 +450,16 @@ impl ParserThread {
         prop_name: &str,
         entity_id: &i32,
         prop_info: &PropInfo,
+        player: &PlayerMetaData,
     ) -> Result<Variant, PropCollectionError> {
         match prop_name {
             "X" => self.collect_cell_coordinate_player(CoordinateAxis::X, entity_id),
             "Y" => self.collect_cell_coordinate_player(CoordinateAxis::Y, entity_id),
             "Z" => self.collect_cell_coordinate_player(CoordinateAxis::Z, entity_id),
+            "velocity" => self.collect_velocity(player),
+            "velocity_X" => self.collect_velocity_axis(player, CoordinateAxis::X),
+            "velocity_Y" => self.collect_velocity_axis(player, CoordinateAxis::Y),
+            "velocity_Z" => self.collect_velocity_axis(player, CoordinateAxis::Z),
             "pitch" => self.find_pitch_or_yaw(entity_id, 0),
             "yaw" => self.find_pitch_or_yaw(entity_id, 1),
             "weapon_name" => self.find_weapon_name(entity_id),
@@ -459,6 +472,90 @@ impl ParserThread {
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
     }
+    pub fn collect_velocity(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        if let Some(s) = player.steamid {
+            let steamids = self.output.get(&STEAMID_ID);
+            let indicies = self.find_wanted_indicies(steamids, s);
+
+            let x = self.velocity_from_indicies(&indicies, CoordinateAxis::X)?;
+            let y = self.velocity_from_indicies(&indicies, CoordinateAxis::Y)?;
+
+            if let (Variant::F32(x), Variant::F32(y)) = (x, y) {
+                return Ok(Variant::F32((f32::powi(x, 2) + f32::powi(y, 2)).sqrt()));
+            }
+        }
+        return Err(PropCollectionError::PlayerNotFound);
+    }
+    pub fn collect_velocity_axis(&self, player: &PlayerMetaData, axis: CoordinateAxis) -> Result<Variant, PropCollectionError> {
+        if let Some(s) = player.steamid {
+            let steamids = self.output.get(&STEAMID_ID);
+            let indicies = self.find_wanted_indicies(steamids, s);
+            return Ok(self.velocity_from_indicies(&indicies, axis)?);
+        }
+        return Err(PropCollectionError::PlayerNotFound);
+    }
+    fn find_most_recent_coordinate_idx(&self, optv: Option<&PropColumn>, wanted_steamid: u64) -> Option<usize> {
+        if let Some(v) = optv {
+            if let Some(VarVec::U64(steamid_vec)) = &v.data {
+                for idx in (0..steamid_vec.len()).rev() {
+                    if steamid_vec[idx] == Some(wanted_steamid) {
+                        return Some(idx);
+                    }
+                }
+            }
+        }
+        None
+    }
+    fn find_64_ticks_ago_coordinate_idx(&self, optv: Option<&PropColumn>, wanted_steamid: u64) -> Option<usize> {
+        if let VarVec::U64(steamid_vec) = optv?.data.as_ref()? {
+            if let VarVec::I32(ticks) = self.output.get(&TICK_ID)?.data.as_ref()? {
+                // iterate backwards until steamid is our wanted player and > 1sec ago
+                for idx in (0..steamid_vec.len()).rev() {
+                    let sid = steamid_vec[idx];
+                    if let Some(tick) = ticks[idx] {
+                        if sid == Some(wanted_steamid) && tick < (self.tick - 64) {
+                            return Some(idx);
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+    fn find_wanted_indicies(&self, optv: Option<&PropColumn>, wanted_steamid: u64) -> Vec<usize> {
+        let idx1 = self.find_most_recent_coordinate_idx(optv, wanted_steamid);
+        let idx2 = self.find_64_ticks_ago_coordinate_idx(optv, wanted_steamid);
+        if let (Some(idx1), Some(idx2)) = (idx1, idx2) {
+            return vec![idx1, idx2];
+        }
+        vec![]
+    }
+
+    fn velocity_from_indicies(&self, indicies: &[usize], axis: CoordinateAxis) -> Result<Variant, PropCollectionError> {
+        let col = match axis {
+            CoordinateAxis::X => self.output.get(&PLAYER_X_ID),
+            CoordinateAxis::Y => self.output.get(&PLAYER_Y_ID),
+            CoordinateAxis::Z => self.output.get(&PLAYER_Z_ID),
+        };
+        if let Some(c) = col {
+            if let Some((Some(v1), Some(v2))) = self.index_coordinates_from_propcol(c, indicies) {
+                return Ok(Variant::F32(v1 - v2));
+            }
+        }
+        return Err(PropCollectionError::VelocityNotFound);
+    }
+    fn index_coordinates_from_propcol(&self, propcol: &PropColumn, indicies: &[usize]) -> Option<(Option<f32>, Option<f32>)> {
+        if indicies.len() != 2 {
+            return None;
+        }
+        if let Some(VarVec::F32(steamid_vec)) = &propcol.data {
+            let first = steamid_vec[indicies[0]];
+            let second = steamid_vec[indicies[1]];
+            return Some((first, second));
+        }
+        None
+    }
+
     pub fn find_is_alive(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
         match self.prop_controller.special_ids.life_state {
             Some(id) => match self.get_prop_from_ent(&id, entity_id) {
