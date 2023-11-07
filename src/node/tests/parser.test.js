@@ -1346,11 +1346,6 @@ test('inventory', () => {
     let ticks = JSON.stringify(parseTicks(filePath, ["inventory"], wantedTicks));
     expect(ticks).toBe(tick_correct);
 });
-// EVENT
-// EVENT
-// EVENT
-// EVENT
-// EVENT
 test('smokegrenade_expired', () => {
     let eventCorrect = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_event/smokegrenade_expired.json")));
     let event = JSON.stringify(parseEvent(filePath, "smokegrenade_expired"));
@@ -1600,4 +1595,25 @@ test('player_connect', () => {
     let eventCorrect = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_event/player_connect.json")));
     let event = JSON.stringify(parseEvent(filePath, "player_connect"));
     expect(event).toBe(eventCorrect);
+});
+
+test('velocity', () => {
+    let tick_correct = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_prop/velocity.json")));
+    let ticks = JSON.stringify(parseTicks(filePath, ["velocity"], wantedTicks));
+    expect(ticks).toBe(tick_correct);
+});
+test('velocity_X', () => {
+    let tick_correct = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_prop/velocity_X.json")));
+    let ticks = JSON.stringify(parseTicks(filePath, ["velocity_X"], wantedTicks));
+    expect(ticks).toBe(tick_correct);
+});
+test('velocity_Y', () => {
+    let tick_correct = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_prop/velocity_Y.json")));
+    let ticks = JSON.stringify(parseTicks(filePath, ["velocity_Y"], wantedTicks));
+    expect(ticks).toBe(tick_correct);
+});
+test('velocity_Z', () => {
+    let tick_correct = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_prop/velocity_Z.json")));
+    let ticks = JSON.stringify(parseTicks(filePath, ["velocity_Z"], wantedTicks));
+    expect(ticks).toBe(tick_correct);
 });

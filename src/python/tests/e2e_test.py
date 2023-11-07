@@ -1897,6 +1897,31 @@ class ParserTest(TestCase):
         df = parser.parse_event("cs_pre_restart")
         df_correct = pd.read_parquet("tests/data/per_event/cs_pre_restart.parquet")
         assert_frame_equal(df, df_correct)
+    
+    def test_velocity(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["velocity"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/velocity.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_velocity_X(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["velocity_X"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/velocity_X.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_velocity_Y(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["velocity_Y"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/velocity_Y.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_velocity_Z(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["velocity_Z"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/velocity_Z.parquet")
+        assert_frame_equal(df, df_correct)
+
 
 
 if __name__ == '__main__':

@@ -39,6 +39,7 @@ pub struct ParserInputs {
 }
 
 pub struct Parser {
+    pub added_temp_props: Vec<String>,
     pub real_name_to_og_name: AHashMap<String, String>,
     pub fullpacket_offsets: Vec<usize>,
     pub ptr: usize,
@@ -88,12 +89,30 @@ pub struct Parser {
     pub threads_spawned: u32,
     pub is_multithreadable: bool,
 }
+fn needs_velocity(props: &[String]) -> bool {
+    for prop in props {
+        if prop.contains("velo") {
+            return true;
+        }
+    }
+    false
+}
 
 impl Parser {
-    pub fn new(inputs: ParserInputs) -> Self {
+    pub fn new(mut inputs: ParserInputs) -> Self {
         let arc_bytes = inputs.bytes.clone();
         let arc_huf = inputs.huffman_lookup_table.clone();
+
+        let mut added_temp_props = vec![];
+        if needs_velocity(&inputs.wanted_player_props) {
+            inputs
+                .wanted_player_props
+                .extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
+            added_temp_props.extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
+        }
+
         Parser {
+            added_temp_props: added_temp_props,
             threads_spawned: 0,
             is_multithreadable: check_multithreadability(&inputs.wanted_player_props),
             largest_wanted_tick: *inputs.wanted_ticks.iter().max().unwrap_or(&999999999),

@@ -9,12 +9,12 @@ use ahash::AHashMap;
 const WEAPON_NAME_ID: u32 = 1;
 const YAW_ID: u32 = 2;
 const PITCH_ID: u32 = 3;
-const TICK_ID: u32 = 4;
-const STEAMID_ID: u32 = 5;
+pub const TICK_ID: u32 = 4;
+pub const STEAMID_ID: u32 = 5;
 const NAME_ID: u32 = 6;
-const PLAYER_X_ID: u32 = 7;
-const PLAYER_Y_ID: u32 = 8;
-const PLAYER_Z_ID: u32 = 9;
+pub const PLAYER_X_ID: u32 = 7;
+pub const PLAYER_Y_ID: u32 = 8;
+pub const PLAYER_Z_ID: u32 = 9;
 const BUTTONS_BASEID: u32 = 100000;
 const NORMAL_PROP_BASEID: u32 = 1000;
 
@@ -26,6 +26,10 @@ pub const INVENTORY_ID: u32 = 100000000;
 pub const IS_ALIVE_ID: u32 = 100000001;
 pub const GAME_TIME_ID: u32 = 100000002;
 pub const ENTITY_ID_ID: u32 = 100000003;
+pub const VELOCITY_X_ID: u32 = 100000004;
+pub const VELOCITY_Y_ID: u32 = 100000005;
+pub const VELOCITY_Z_ID: u32 = 100000006;
+pub const VELOCITY_ID: u32 = 100000007;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -108,6 +112,42 @@ impl PropController {
                 prop_type: PropType::Custom,
                 prop_name: "inventory".to_string(),
                 prop_friendly_name: "inventory".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("velocity_X".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: VELOCITY_X_ID,
+                prop_type: PropType::Custom,
+                prop_name: "velocity_X".to_string(),
+                prop_friendly_name: "velocity_X".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("velocity_Y".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: VELOCITY_Y_ID,
+                prop_type: PropType::Custom,
+                prop_name: "velocity_Y".to_string(),
+                prop_friendly_name: "velocity_Y".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("velocity_Z".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: VELOCITY_Z_ID,
+                prop_type: PropType::Custom,
+                prop_name: "velocity_Z".to_string(),
+                prop_friendly_name: "velocity_Z".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("velocity".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: VELOCITY_ID,
+                prop_type: PropType::Custom,
+                prop_name: "velocity".to_string(),
+                prop_friendly_name: "velocity".to_string(),
                 is_player_prop: true,
             });
         }
