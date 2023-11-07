@@ -1,6 +1,7 @@
 use super::read_bits::{Bitreader, DemoParserError};
 use crate::decoder::QfMapper;
 use crate::entities_utils::FieldPath;
+use crate::parser_settings::needs_velocity;
 use crate::parser_settings::Parser;
 use crate::prop_controller::PropController;
 use crate::prop_controller::WEAPON_SKIN_ID;
@@ -661,6 +662,9 @@ impl Parser {
             serializers.insert(my_serializer.name.clone(), my_serializer);
         }
         prop_controller.set_custom_propinfos();
+        if !self.wanted_events.is_empty() && needs_velocity(&self.wanted_player_props) {
+            prop_controller.event_with_velocity = true;
+        }
         Ok((serializers, qf_mapper, prop_controller))
     }
 }

@@ -89,7 +89,7 @@ pub struct Parser {
     pub threads_spawned: u32,
     pub is_multithreadable: bool,
 }
-fn needs_velocity(props: &[String]) -> bool {
+pub fn needs_velocity(props: &[String]) -> bool {
     for prop in props {
         if prop.contains("velo") {
             return true;

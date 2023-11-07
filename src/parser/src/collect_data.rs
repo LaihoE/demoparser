@@ -131,8 +131,10 @@ pub enum CoordinateAxis {
 
 impl ParserThread {
     pub fn collect_entities(&mut self) {
-        if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_events.len() != 0 {
-            return;
+        if !self.prop_controller.event_with_velocity {
+            if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_events.len() != 0 {
+                return;
+            }
         }
         if self.parse_projectiles {
             self.collect_projectiles();
@@ -483,7 +485,7 @@ impl ParserThread {
             let y = self.velocity_from_indicies(&indicies, CoordinateAxis::Y)?;
 
             if let (Variant::F32(x), Variant::F32(y)) = (x, y) {
-                return Ok(Variant::F32((f32::powi(x, 2) + f32::powi(y, 2)).sqrt()));
+                return Ok(Variant::F32((f32::powi(x, 2) + f32::powi(y, 2)).sqrt() * 64.0));
             }
         }
         return Err(PropCollectionError::PlayerNotFound);
@@ -508,40 +510,14 @@ impl ParserThread {
         }
         None
     }
-    fn find_under_64_ticks_ago_coordinate_idx(&self, steamid_vec: &Vec<Option<u64>>, wanted_steamid: u64) -> Option<usize> {
-        // We have less than 64 ticks of data. Take oldest value.
-        for idx in 0..steamid_vec.len() {
-            let sid = steamid_vec[idx];
-            if sid == Some(wanted_steamid) {
-                return Some(idx);
-            }
-        }
-        None
-    }
-    fn has_less_than_64_ticks(&self, v: &Vec<Option<i32>>) -> bool {
-        if let Some(first_tick) = v.iter().position(|x| x.is_some()) {
-            if let Some(last_tick) = v.iter().rposition(|x| x.is_some()) {
-                return (v[last_tick].unwrap() - v[first_tick].unwrap()) < 64;
-            }
-        }
-        // Shouldn't happen
-        false
-    }
-
-    fn find_64_ticks_ago_coordinate_idx(&self, optv: Option<&PropColumn>, wanted_steamid: u64) -> Option<usize> {
+    fn find_last_coordinate_idx(&self, optv: Option<&PropColumn>, wanted_steamid: u64, cur_idx: Option<usize>) -> Option<usize> {
+        let cur_idx = cur_idx?;
         if let VarVec::U64(steamid_vec) = optv?.data.as_ref()? {
-            if let VarVec::I32(ticks) = self.output.get(&TICK_ID)?.data.as_ref()? {
-                if self.has_less_than_64_ticks(ticks) {
-                    return self.find_under_64_ticks_ago_coordinate_idx(steamid_vec, wanted_steamid);
-                }
-                // iterate backwards until steamid is our wanted player and > 1sec ago
-                for idx in (0..steamid_vec.len()).rev() {
-                    let sid = steamid_vec[idx];
-                    if let Some(tick) = ticks[idx] {
-                        if sid == Some(wanted_steamid) && tick <= (self.tick - 64) {
-                            return Some(idx);
-                        }
-                    }
+            // iterate backwards until steamid is our wanted player and > 1sec ago
+            for idx in (0..steamid_vec.len()).rev() {
+                let sid = steamid_vec[idx];
+                if sid == Some(wanted_steamid) && idx != cur_idx {
+                    return Some(idx);
                 }
             }
         }
@@ -549,7 +525,7 @@ impl ParserThread {
     }
     fn find_wanted_indicies(&self, optv: Option<&PropColumn>, wanted_steamid: u64) -> Vec<usize> {
         let idx1 = self.find_most_recent_coordinate_idx(optv, wanted_steamid);
-        let idx2 = self.find_64_ticks_ago_coordinate_idx(optv, wanted_steamid);
+        let idx2 = self.find_last_coordinate_idx(optv, wanted_steamid, idx1);
         if let (Some(idx1), Some(idx2)) = (idx1, idx2) {
             return vec![idx1, idx2];
         }

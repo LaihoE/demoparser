@@ -43,6 +43,7 @@ pub struct PropController {
     pub real_name_to_og_name: AHashMap<String, String>,
     pub name_to_special_id: AHashMap<String, u32>,
     pub wanted_other_props: Vec<String>,
+    pub event_with_velocity: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -77,6 +78,7 @@ impl PropController {
             name_to_special_id: AHashMap::default(),
             wanted_other_props: wanted_other_props,
             real_name_to_og_name: real_name_to_og_name,
+            event_with_velocity: false,
         }
     }
     pub fn set_custom_propinfos(&mut self) {
