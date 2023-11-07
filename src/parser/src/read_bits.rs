@@ -29,6 +29,7 @@ pub enum DemoParserError {
     DecompressionFailure(String),
     NoSendTableMessage,
     UserIdNotFound,
+    EventListFallbackNotFound(String),
 }
 
 impl std::error::Error for DemoParserError {}

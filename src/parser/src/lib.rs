@@ -2,6 +2,7 @@ pub mod collect_data;
 pub mod decoder;
 pub mod entities;
 pub mod entities_utils;
+pub mod fallbackbytes;
 pub mod game_events;
 pub mod maps;
 pub mod netmessage_types;

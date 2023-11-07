@@ -105,9 +105,7 @@ impl Parser {
             };
             ok?;
         }
-        if !self.fullpacket_offsets.contains(&16) {
-            self.fullpacket_offsets.push(16);
-        }
+        self.check_needed()?;
 
         if self.is_multithreadable {
             self.parse_demo_multithread()
@@ -115,6 +113,16 @@ impl Parser {
             self.parse_demo_single_thread()
         }
     }
+    fn check_needed(&mut self) -> Result<(), DemoParserError> {
+        if !self.fullpacket_offsets.contains(&16) {
+            self.fullpacket_offsets.push(16);
+        }
+        if self.ge_list.is_empty() {
+            self.parse_fallback_event_list()?;
+        }
+        Ok(())
+    }
+
     fn parse_demo_single_thread(&mut self) -> Result<DemoOutput, DemoParserError> {
         let input = self.create_parser_thread_input(16, true);
         let mut parser = ParserThread::new(input).unwrap();
