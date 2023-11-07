@@ -149,7 +149,10 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 | is_strafing  | m_bStrafing |
 | round_start_equip_value  | m_unRoundStartEquipmentValue |
 | current_equip_value  | m_unCurrentEquipmentValue |
-| time  | m_flSimulationTime |
+| velocity  | - |
+| velocity_X  | - |
+| velocity_Y  | - |
+| velocity_Z  | - |
 
 #### Buttons 
 True/Flase if player is pressing button.
