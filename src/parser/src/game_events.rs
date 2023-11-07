@@ -44,6 +44,14 @@ impl Parser {
         }
         Ok(hm)
     }
+    pub fn parse_fallback_event_list(&mut self) -> Result<(), DemoParserError> {
+        use crate::fallbackbytes::GAME_EVENT_LIST_FALLBACK_BYTES;
+        let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(&GAME_EVENT_LIST_FALLBACK_BYTES).unwrap();
+        for event_desc in event_list.descriptors {
+            self.ge_list.insert(event_desc.eventid(), event_desc);
+        }
+        Ok(())
+    }
 }
 
 impl ParserThread {
