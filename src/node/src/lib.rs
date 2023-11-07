@@ -5,22 +5,24 @@ extern crate napi_derive;
 use ahash::AHashMap;
 use memmap2::MmapOptions;
 use napi::bindgen_prelude::*;
-use napi::Error;
+use napi::Either;
 use parser::parser_settings::rm_user_friendly_names;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
+use parser::read_bits::DemoParserError;
 use parser::variants::soa_to_aos;
 use parser::variants::BytesVariant;
 use parser::variants::OutputSerdeHelperStruct;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
+use std::result::Result;
 use std::sync::Arc;
 
 #[napi]
-pub fn parse_chat_messages(path_or_buf: Either<String, Buffer>) -> Result<Value> {
-  let bytes = resolve_byte_type(path_or_buf);
+pub fn parse_chat_messages(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
+  let bytes = resolve_byte_type(path_or_buf)?;
   let arc_huf = Arc::new(create_huffman_lookup_table());
 
   let settings = ParserInputs {
@@ -53,8 +55,8 @@ pub fn parse_chat_messages(path_or_buf: Either<String, Buffer>) -> Result<Value>
 }
 
 #[napi]
-pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> Result<Value> {
-  let bytes = resolve_byte_type(path_or_buf);
+pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
+  let bytes = resolve_byte_type(path_or_buf)?;
 
   let arc_huf = Arc::new(create_huffman_lookup_table());
   let settings = ParserInputs {
@@ -87,8 +89,8 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> Result<Value> {
 }
 
 #[napi]
-pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> Result<Value> {
-  let bytes = resolve_byte_type(path_or_buf);
+pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
+  let bytes = resolve_byte_type(path_or_buf)?;
   let arc_huf = Arc::new(create_huffman_lookup_table());
 
   let settings = ParserInputs {
@@ -120,8 +122,8 @@ pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> Result<Value> {
   Ok(s)
 }
 #[napi]
-pub fn parse_header(path_or_buf: Either<String, Buffer>) -> Result<Value> {
-  let bytes = resolve_byte_type(path_or_buf);
+pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
+  let bytes = resolve_byte_type(path_or_buf)?;
   let arc_huf = Arc::new(create_huffman_lookup_table());
 
   let settings = ParserInputs {
@@ -161,7 +163,7 @@ pub fn parse_event(
   event_name: String,
   player_extra: Option<Vec<String>>,
   other_extra: Option<Vec<String>>,
-) -> Result<Value> {
+) -> napi::Result<Value> {
   let player_props = match player_extra {
     Some(p) => p,
     None => vec![],
@@ -187,7 +189,7 @@ pub fn parse_event(
     real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
   }
 
-  let bytes = resolve_byte_type(path_or_buf);
+  let bytes = resolve_byte_type(path_or_buf)?;
   let arc_huf = Arc::new(create_huffman_lookup_table());
 
   let settings = ParserInputs {
@@ -223,7 +225,7 @@ pub fn parse_events(
   event_names: Option<Vec<String>>,
   player_extra: Option<Vec<String>>,
   other_extra: Option<Vec<String>>,
-) -> Result<Value> {
+) -> napi::Result<Value> {
   let event_names = match event_names {
     None => return Err(Error::new(Status::InvalidArg, "No events provided!")),
     Some(v) => v,
@@ -253,7 +255,7 @@ pub fn parse_events(
     real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
   }
 
-  let bytes = resolve_byte_type(path_or_buf);
+  let bytes = resolve_byte_type(path_or_buf)?;
   let arc_huf = Arc::new(create_huffman_lookup_table());
 
   let settings = ParserInputs {
@@ -290,13 +292,13 @@ pub fn parse_ticks(
   wanted_props: Vec<String>,
   wanted_ticks: Option<Vec<i32>>,
   struct_of_arrays: Option<bool>,
-) -> Result<Value> {
+) -> napi::Result<Value> {
   let mut real_names = match rm_user_friendly_names(&wanted_props) {
     Ok(names) => names,
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
   };
 
-  let bytes = resolve_byte_type(path_or_buf);
+  let bytes = resolve_byte_type(path_or_buf)?;
   let arc_huf = Arc::new(create_huffman_lookup_table());
   let mut real_name_to_og_name = AHashMap::default();
 
@@ -364,8 +366,8 @@ pub fn parse_ticks(
 }
 
 #[napi]
-pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> Result<Value> {
-  let bytes = resolve_byte_type(path_or_buf);
+pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
+  let bytes = resolve_byte_type(path_or_buf)?;
   let arc_huf = Arc::new(create_huffman_lookup_table());
 
   let settings = ParserInputs {
@@ -396,14 +398,19 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> Result<Value> {
   Ok(s)
 }
 
-use napi::Either;
-fn resolve_byte_type(path_or_buf: Either<String, Buffer>) -> BytesVariant {
+fn resolve_byte_type(path_or_buf: Either<String, Buffer>) -> Result<BytesVariant, napi::Error> {
   match path_or_buf {
     Either::A(path) => {
-      let file = File::open(path.clone()).unwrap();
-      let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-      BytesVariant::Mmap(mmap)
+      let file = match File::open(path.clone()) {
+        Ok(f) => f,
+        Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+      };
+      let mmap = match unsafe { MmapOptions::new().map(&file) } {
+        Ok(mmap) => mmap,
+        Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+      };
+      Ok(BytesVariant::Mmap(mmap))
     }
-    Either::B(buf) => BytesVariant::Vec(buf.into()),
+    Either::B(buf) => Ok(BytesVariant::Vec(buf.into())),
   }
 }
