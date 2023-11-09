@@ -10,22 +10,9 @@ async function run_wasm() {
     document.getElementById("file_picker").addEventListener(
         "change",
         function () {
-
             let file = this.files[0];
-            var startTime = performance.now()
-
-            var weaponName = document.getElementById("event_name").value;
-            var nRoundKills = document.getElementById("event_name").value;
-
-
             myWorker.postMessage({ file: file });
             myWorker.onmessage = function (e) {
-                var endTime = performance.now()
-                console.log(`Parsing took: ${(endTime - startTime) / 1000} seconds`)
-
-                let gameEndTick = e.data[e.data.length -1 ].tick;
-                console.log(gameEndTick)
-
                 generateTableFromData(e.data)
             };
         },
@@ -34,7 +21,6 @@ async function run_wasm() {
 }
 
 function generateTableFromData(events) {
-    console.log(events)
 
     const tbl = document.createElement("table");
     const tblBody = document.createElement("tbody");
