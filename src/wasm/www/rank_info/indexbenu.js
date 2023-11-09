@@ -2,10 +2,10 @@
 async function run_wasm() {
     // Load the Wasm file by awaiting the Promise returned by `wasm_bindgen`
     // `wasm_bindgen` was imported in `index.html`
-    await wasm_bindgen('./pkg/demoparser2_bg.wasm');
+    await wasm_bindgen('../pkg/demoparser2_bg.wasm');
 
     // Create a worker in JS. The worker also uses Rust functions
-    var myWorker = new Worker('./worker.js');
+    var myWorker = new Worker('./worker2.js');
 
     document.getElementById("file_picker").addEventListener(
         "change",
@@ -13,10 +13,6 @@ async function run_wasm() {
 
             let file = this.files[0];
             var startTime = performance.now()
-
-            var weaponName = document.getElementById("event_name").value;
-            var nRoundKills = document.getElementById("event_name").value;
-
 
             myWorker.postMessage({ file: file });
             myWorker.onmessage = function (e) {

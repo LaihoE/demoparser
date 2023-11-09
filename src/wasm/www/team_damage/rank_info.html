@@ -10,25 +10,31 @@
 
 <body>
   <div id=wrapper>
-    <h1>hi</h1>
 
     <div id="Page1">
       Content of page 1
-      <a href="rank_info/rank_info.html" onclick="return show('Page2','Page1');">Show page 2</a>
+      <a href="../index.html" onclick="return show('Page2','Page1');">Show page 2</a>
     </div>
-  
+
+    <h1>
+      Find rank info and number of MM wins.</h1>
     <p>
-      <label for="file_picker"></label>
+      (ONLY FROM MM DEMOS)
+    </p>
+
+
+    <p>
+      <label for="file_picker">Choose a demo:</label>
       <input type="file" id="file_picker" name="file_picker">
     </p>
 
   </div>
 
   <!-- Here, we have to load the generated JS file directly in the document -->
-  <script src='./pkg/demoparser2.js'>
+  <script src='../pkg/demoparser2.js'>
   </script>
   <!-- Note that there is NO `type="module"` in the script tag -->
-  <script src="./index.js"></script>
+  <script src="./indexbenu.js"></script>
 
   <script>  function show(shown, hidden) {
     document.getElementById(shown).style.display='block';
@@ -36,7 +42,6 @@
     return false;
   }</script>
 
-  
 </body>
 
 </html>
