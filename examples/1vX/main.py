@@ -28,5 +28,5 @@ max_round = deaths["total_rounds_played"].max() + 1
 for round_idx in range(0, max_round):
     clutcher_steamid = find_if_1vx(deaths, round_idx, round_ends, df, X)
     if clutcher_steamid != None:
-        print("a", clutcher_steamid, file)
+        print(f"round: {round_idx} {clutcher_steamid} clutched a 1v{X}")
 
