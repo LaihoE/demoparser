@@ -97,6 +97,7 @@ pub enum PropCollectionError {
     OriginalOwnerXuidHighIncorrectVariant,
     SpottedIncorrectVariant,
     VelocityNotFound,
+    useridNotFound,
 }
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
@@ -473,8 +474,17 @@ impl ParserThread {
             "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
             "entity_id" => return Ok(Variant::I32(*entity_id)),
             "is_alive" => return self.find_is_alive(entity_id),
+            "user_id" => return self.get_userid(player),
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
+    }
+    pub fn get_userid(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        for (_, st_player) in &self.stringtable_players {
+            if player.steamid == Some(st_player.steamid) {
+                return Ok(Variant::I32(st_player.userid));
+            }
+        }
+        Err(PropCollectionError::useridNotFound)
     }
     pub fn collect_velocity(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         if let Some(s) = player.steamid {
