@@ -1,6 +1,6 @@
 [package]
 name = "demoparser2"
-version = "0.14.1"
+version = "0.15.0"
 edition = "2021"
 
 
@@ -36,7 +36,7 @@ overflow-checks = false
 [profile.release]
 #debug = true
 
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-panic = "abort"
+#opt-level = 3
+#lto = "fat"
+#codegen-units = 1
+#panic = "abort"
