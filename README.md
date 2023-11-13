@@ -153,7 +153,7 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 | velocity_X  | - |
 | velocity_Y  | - |
 | velocity_Z  | - |
-
+| agent_skin  | - |
 #### Buttons 
 True/Flase if player is pressing button.
 |         Name          | Real name                                                                                                                               |
