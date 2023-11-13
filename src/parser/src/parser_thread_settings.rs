@@ -270,6 +270,7 @@ pub struct SpecialIDs {
     pub life_state: Option<u32>,
 
     pub h_owner_entity: Option<u32>,
+    pub agent_skin_idx: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -302,6 +303,7 @@ impl SpecialIDs {
             orig_own_high: None,
             orig_own_low: None,
             life_state: None,
+            agent_skin_idx: None,
         }
     }
 }

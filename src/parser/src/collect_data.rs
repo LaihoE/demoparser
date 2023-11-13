@@ -2,6 +2,7 @@ use itertools::Itertools;
 
 use super::entities::PlayerMetaData;
 use super::variants::Variant;
+use crate::maps::AGENTSMAP;
 use crate::maps::BUTTONMAP;
 use crate::maps::GRENADE_FRIENDLY_NAMES;
 use crate::maps::PAINTKITS;
@@ -97,6 +98,10 @@ pub enum PropCollectionError {
     OriginalOwnerXuidHighIncorrectVariant,
     SpottedIncorrectVariant,
     VelocityNotFound,
+    AgentIdNotFound,
+    AgentIncorrectVariant,
+    AgentPropNotFound,
+    AgentSpecialIdNotSet,
 }
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
@@ -152,6 +157,7 @@ impl ParserThread {
                             .push(Some(prop));
                     }
                     Err(_e) => {
+                        println!("{:?}", _e);
                         // Ultimate debugger is to print this error
                         self.output
                             .entry(prop_info.id)
@@ -177,7 +183,7 @@ impl ParserThread {
             PropType::Custom => self.create_custom_prop(prop_info.prop_name.as_str(), entity_id, prop_info, player),
             PropType::Weapon => return self.find_weapon_prop(&prop_info.id, &entity_id),
             PropType::Button => return self.get_button_prop(&prop_info, &entity_id),
-            PropType::Controller => return self.get_controller_prop(prop_info, player),
+            PropType::Controller => return self.get_controller_prop(&prop_info.id, player),
             PropType::Rules => return self.get_rules_prop(prop_info),
             PropType::GameTime => return Ok(Variant::F32(self.net_tick as f32 / 64.0)),
         }
@@ -227,9 +233,9 @@ impl ParserThread {
             None => return Err(PropCollectionError::RulesEntityIdNotSet),
         }
     }
-    pub fn get_controller_prop(&self, prop_info: &PropInfo, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+    pub fn get_controller_prop(&self, prop_id: &u32, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         match player.controller_entid {
-            Some(entid) => return self.get_prop_from_ent(&prop_info.id, &entid),
+            Some(entid) => return self.get_prop_from_ent(prop_id, &entid),
             None => return Err(PropCollectionError::ControllerEntityIdNotSet),
         }
     }
@@ -473,7 +479,22 @@ impl ParserThread {
             "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
             "entity_id" => return Ok(Variant::I32(*entity_id)),
             "is_alive" => return self.find_is_alive(entity_id),
+            "agent_skin" => return self.find_agent_skin(player),
             _ => Err(PropCollectionError::UnknownCustomPropName),
+        }
+    }
+    pub fn find_agent_skin(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        let id = match self.prop_controller.special_ids.agent_skin_idx {
+            Some(i) => i,
+            None => return Err(PropCollectionError::AgentSpecialIdNotSet),
+        };
+        match self.get_controller_prop(&id, player) {
+            Ok(Variant::U32(agent_id)) => match AGENTSMAP.get(&agent_id) {
+                Some(agent) => return Ok(Variant::String(agent.to_string())),
+                None => return Err(PropCollectionError::AgentIdNotFound),
+            },
+            Ok(_) => return Err(PropCollectionError::AgentIncorrectVariant),
+            Err(_) => return Err(PropCollectionError::AgentPropNotFound),
         }
     }
     pub fn collect_velocity(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
