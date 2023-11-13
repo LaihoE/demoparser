@@ -16,6 +16,7 @@ use ahash::AHashSet;
 use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use memmap2::Mmap;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -58,7 +59,7 @@ pub struct Parser {
     pub prop_controller_is_set: bool,
     pub ge_list: AHashMap<i32, Descriptor_t>,
     pub qf_mapper: QfMapper,
-    pub stringtable_players: AHashMap<u64, UserInfo>,
+    pub stringtable_players: BTreeMap<u64, UserInfo>,
 
     pub qf_map_set: bool,
     pub ge_list_set: bool,
@@ -116,7 +117,7 @@ impl Parser {
             threads_spawned: 0,
             is_multithreadable: check_multithreadability(&inputs.wanted_player_props),
             largest_wanted_tick: *inputs.wanted_ticks.iter().max().unwrap_or(&999999999),
-            stringtable_players: AHashMap::default(),
+            stringtable_players: BTreeMap::default(),
             only_header: inputs.only_header,
             ge_list_set: false,
             cls_by_id_set: false,

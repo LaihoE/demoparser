@@ -25,6 +25,7 @@ use protobuf::Message;
 use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -106,6 +107,7 @@ impl Parser {
             ok?;
         }
         self.check_needed()?;
+        return self.parse_demo_single_thread();
 
         if self.is_multithreadable {
             self.parse_demo_multithread()
@@ -366,7 +368,7 @@ pub struct ParserThreadInput {
     pub parse_all_packets: bool,
     pub wanted_ticks: AHashSet<i32>,
     pub string_tables: Vec<StringTable>,
-    pub stringtable_players: AHashMap<u64, UserInfo>,
+    pub stringtable_players: BTreeMap<u64, UserInfo>,
 }
 
 pub struct ClassInfoThreadResult {
