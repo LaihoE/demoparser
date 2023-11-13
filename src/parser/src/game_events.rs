@@ -126,14 +126,6 @@ impl ParserThread {
     }
 
     pub fn find_user_by_userid(&self, userid: i32) -> Option<&UserInfo> {
-        println!(
-            "{:?}",
-            self.stringtable_players
-                .iter()
-                .map(|x| (x.1.userid, x.1.name.clone(), x.0))
-                .collect_vec()
-        );
-
         for player in self.stringtable_players.values() {
             if player.userid == userid {
                 return Some(player);

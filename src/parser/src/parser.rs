@@ -107,7 +107,6 @@ impl Parser {
             ok?;
         }
         self.check_needed()?;
-        return self.parse_demo_single_thread();
 
         if self.is_multithreadable {
             self.parse_demo_multithread()
