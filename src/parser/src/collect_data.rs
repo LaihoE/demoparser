@@ -157,7 +157,6 @@ impl ParserThread {
                             .push(Some(prop));
                     }
                     Err(_e) => {
-                        println!("{:?}", _e);
                         // Ultimate debugger is to print this error
                         self.output
                             .entry(prop_info.id)
