@@ -120,7 +120,7 @@ impl PropController {
         }
         if self.wanted_player_props.contains(&("user_id".to_string())) {
             self.prop_infos.push(PropInfo {
-                id: VELOCITY_Y_ID,
+                id: USERID_ID,
                 prop_type: PropType::Custom,
                 prop_name: "user_id".to_string(),
                 prop_friendly_name: "user_id".to_string(),
