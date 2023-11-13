@@ -30,6 +30,7 @@ pub const VELOCITY_X_ID: u32 = 100000004;
 pub const VELOCITY_Y_ID: u32 = 100000005;
 pub const VELOCITY_Z_ID: u32 = 100000006;
 pub const VELOCITY_ID: u32 = 100000007;
+pub const USERID_ID: u32 = 100000008;
 
 pub const AGENT_SKIN_ID: u32 = 100000009;
 
@@ -116,6 +117,15 @@ impl PropController {
                 prop_type: PropType::Custom,
                 prop_name: "inventory".to_string(),
                 prop_friendly_name: "inventory".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("user_id".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERID_ID,
+                prop_type: PropType::Custom,
+                prop_name: "user_id".to_string(),
+                prop_friendly_name: "user_id".to_string(),
                 is_player_prop: true,
             });
         }

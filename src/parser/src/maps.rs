@@ -1697,6 +1697,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_flDeathTime" => PropType::Player,
     // Custom
     "X"=> PropType::Custom,
+    "user_id"=> PropType::Custom,
     "Y"=> PropType::Custom,
     "Z"=> PropType::Custom,
     "pitch"=> PropType::Custom,
@@ -1997,7 +1998,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "has_controlled_bot_this_round"=>"CCSPlayerController.m_bHasControlledBotThisRound",
     "can_control_bot"=>"CCSPlayerController.m_bCanControlObservedBot",
 
-
+    "user_id" => "user_id",
     "armor"=>"CCSPlayerController.m_iPawnArmor",
     "has_defuser"=>"CCSPlayerController.m_bPawnHasDefuser",
     "has_helmet"=>"CCSPlayerController.m_bPawnHasHelmet",
