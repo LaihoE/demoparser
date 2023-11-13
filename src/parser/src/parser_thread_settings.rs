@@ -36,7 +36,7 @@ pub struct ParserThread {
     pub qf_mapper: Arc<QfMapper>,
     pub prop_controller: Arc<PropController>,
     pub cls_by_id: Arc<AHashMap<u32, Class>>,
-    pub stringtable_players: AHashMap<u64, UserInfo>,
+    pub stringtable_players: BTreeMap<u64, UserInfo>,
     pub net_tick: u32,
     pub parse_inventory: bool,
 

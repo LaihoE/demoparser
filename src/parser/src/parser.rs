@@ -26,6 +26,7 @@ use protobuf::Message;
 use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -376,7 +377,7 @@ pub struct ParserThreadInput {
     pub parse_all_packets: bool,
     pub wanted_ticks: AHashSet<i32>,
     pub string_tables: Vec<StringTable>,
-    pub stringtable_players: AHashMap<u64, UserInfo>,
+    pub stringtable_players: BTreeMap<u64, UserInfo>,
 }
 
 pub struct ClassInfoThreadResult {
