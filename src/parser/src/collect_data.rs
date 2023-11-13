@@ -480,6 +480,7 @@ impl ParserThread {
             "entity_id" => return Ok(Variant::I32(*entity_id)),
             "is_alive" => return self.find_is_alive(entity_id),
             "user_id" => return self.get_userid(player),
+            "agent_skin" => return self.find_agent_skin(player),
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
     }
