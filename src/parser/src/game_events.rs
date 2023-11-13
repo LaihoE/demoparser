@@ -14,6 +14,7 @@ use csgoproto::netmessages::CSVCMsg_GameEventList;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
 use csgoproto::networkbasetypes::CNETMsg_SetConVar;
 use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
+use itertools::Itertools;
 use protobuf::Message;
 use serde::ser::SerializeMap;
 use serde::Serialize;
@@ -141,6 +142,16 @@ impl ParserThread {
         return None;
     }
     pub fn entity_id_from_userid(&self, userid: i32) -> Option<i32> {
+        if let Some(userinfo) = self.find_user_by_userid(userid) {
+            for player in self.players.values() {
+                if player.steamid == Some(userinfo.steamid) {
+                    return Some(player.player_entity_id.unwrap());
+                }
+            }
+        }
+        return None;
+    }
+    pub fn entity_userid_from_entityid(&self, userid: i32) -> Option<i32> {
         if let Some(userinfo) = self.find_user_by_userid(userid) {
             for player in self.players.values() {
                 if player.steamid == Some(userinfo.steamid) {

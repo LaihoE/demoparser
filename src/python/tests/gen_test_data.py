@@ -53,5 +53,8 @@ for event in wanted_events:
 wanted_prop = "is_alive"
 gen_prop_test(wanted_prop)"""
 
+wanted_props = ["velocity", "velocity_X", "velocity_Y", "velocity_Z"]
+for prop in wanted_props:
+    gen_prop_test(prop)
 
-gen_event_with_prop_tests()
+# gen_event_with_prop_tests()

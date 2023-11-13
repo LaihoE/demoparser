@@ -36,7 +36,7 @@ pub struct ParserThread {
     pub qf_mapper: Arc<QfMapper>,
     pub prop_controller: Arc<PropController>,
     pub cls_by_id: Arc<AHashMap<u32, Class>>,
-    pub stringtable_players: AHashMap<u64, UserInfo>,
+    pub stringtable_players: BTreeMap<u64, UserInfo>,
     pub net_tick: u32,
     pub parse_inventory: bool,
 
@@ -270,6 +270,7 @@ pub struct SpecialIDs {
     pub life_state: Option<u32>,
 
     pub h_owner_entity: Option<u32>,
+    pub agent_skin_idx: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -302,6 +303,7 @@ impl SpecialIDs {
             orig_own_high: None,
             orig_own_low: None,
             life_state: None,
+            agent_skin_idx: None,
         }
     }
 }

@@ -151,7 +151,9 @@ impl Parser {
                 }
                 if name == "userinfo" {
                     if let Ok(player) = parse_userinfo(&value) {
-                        self.stringtable_players.insert(player.steamid, player);
+                        if player.steamid != 0 {
+                            self.stringtable_players.insert(player.steamid, player);
+                        }
                     }
                 }
                 if name == "instancebaseline" {
@@ -178,7 +180,7 @@ impl Parser {
         Ok(())
     }
 }
-fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
+pub fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
     let player = match CMsgPlayerInfo::parse_from_bytes(bytes) {
         Err(_e) => return Err(DemoParserError::MalformedMessage),
         Ok(player) => player,
@@ -204,7 +206,9 @@ impl ParserThread {
                 st.flags,
                 st.var_bit_counts,
             )?,
-            None => return Ok(()),
+            None => {
+                return Ok(());
+            }
         }
         Ok(())
     }
@@ -306,7 +310,9 @@ impl ParserThread {
                 }
                 if name == "userinfo" {
                     if let Ok(player) = parse_userinfo(&value) {
-                        self.stringtable_players.insert(player.steamid, player);
+                        if player.steamid != 0 {
+                            self.stringtable_players.insert(player.steamid, player);
+                        }
                     }
                 }
                 if name == "instancebaseline" {

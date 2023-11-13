@@ -9,6 +9,7 @@ use crate::parser_thread_settings::*;
 use crate::parser_threads::demo_cmd_type_from_int;
 use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
+use crate::stringtables::parse_userinfo;
 use crate::stringtables::StringTable;
 use crate::stringtables::UserInfo;
 use crate::variants::PropColumn;
@@ -25,6 +26,7 @@ use protobuf::Message;
 use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -189,6 +191,15 @@ impl Parser {
                 for i in &item.items {
                     let k = i.str().parse::<u32>().unwrap_or(999999);
                     self.baselines.insert(k, i.data.as_ref().unwrap().clone());
+                }
+            }
+            if item.table_name == Some("userinfo".to_string()) {
+                for i in &item.items {
+                    if let Ok(player) = parse_userinfo(&i.data()) {
+                        if player.steamid != 0 {
+                            self.stringtable_players.insert(player.steamid, player);
+                        }
+                    }
                 }
             }
         }
@@ -366,7 +377,7 @@ pub struct ParserThreadInput {
     pub parse_all_packets: bool,
     pub wanted_ticks: AHashSet<i32>,
     pub string_tables: Vec<StringTable>,
-    pub stringtable_players: AHashMap<u64, UserInfo>,
+    pub stringtable_players: BTreeMap<u64, UserInfo>,
 }
 
 pub struct ClassInfoThreadResult {

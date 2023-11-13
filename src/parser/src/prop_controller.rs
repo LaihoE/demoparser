@@ -32,6 +32,8 @@ pub const VELOCITY_Z_ID: u32 = 100000006;
 pub const VELOCITY_ID: u32 = 100000007;
 pub const USERID_ID: u32 = 100000008;
 
+pub const AGENT_SKIN_ID: u32 = 100000009;
+
 #[derive(Clone, Debug)]
 pub struct PropController {
     pub id: u32,
@@ -236,6 +238,15 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if self.wanted_player_props.contains(&("agent_skin".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: AGENT_SKIN_ID,
+                prop_type: PropType::Custom,
+                prop_name: "agent_skin".to_string(),
+                prop_friendly_name: "agent_skin".to_string(),
+                is_player_prop: true,
+            });
+        }
         if self.wanted_player_props.contains(&("X".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: PLAYER_X_ID,
@@ -415,11 +426,7 @@ impl PropController {
         };
         if name.contains("CCSTeam.m_iTeamNum")
             || name.contains("CCSPlayerPawn.m_iTeamNum")
-            || name.contains("CCSPlayerController.m_iTeamNum")
-            || name.contains("CCSPlayerController.m_iszPlayerName")
-            || name.contains("CCSPlayerController.m_steamID")
-            || name.contains("CCSPlayerController.m_hPlayerPawn")
-            || name.contains("CCSPlayerController.m_bPawnIsAlive")
+            || name.contains("CCSPlayerController")
             || name.contains("m_hActiveWeapon")
             || name.contains("Weapons")
             || name.contains("OriginalOwnerXuid")
@@ -468,6 +475,7 @@ impl PropController {
                 "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecZ" => self.special_ids.cell_z_offset_player = Some(id),
                 "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => self.special_ids.active_weapon = Some(id),
                 "CCSPlayerPawn.m_lifeState" => self.special_ids.life_state = Some(id),
+                "CCSPlayerController.m_nPawnCharacterDefIndex" => self.special_ids.agent_skin_idx = Some(id),
                 _ => {}
             };
         }

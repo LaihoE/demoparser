@@ -4,6 +4,7 @@ use crate::netmessage_types::netmessage_type_from_int;
 use crate::netmessage_types::NetmessageType;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
+use crate::stringtables::parse_userinfo;
 use bitter::BitReader;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
@@ -147,6 +148,15 @@ impl ParserThread {
                 for i in &item.items {
                     let k = i.str().parse::<u32>().unwrap_or(999999);
                     self.baselines.insert(k, i.data.as_ref().unwrap().clone());
+                }
+            }
+            if item.table_name == Some("userinfo".to_string()) {
+                for i in &item.items {
+                    if let Ok(player) = parse_userinfo(&i.data()) {
+                        if player.steamid != 0 {
+                            self.stringtable_players.insert(player.steamid, player);
+                        }
+                    }
                 }
             }
         }
