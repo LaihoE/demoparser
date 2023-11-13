@@ -178,7 +178,7 @@ impl Parser {
         Ok(())
     }
 }
-fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
+pub fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
     let player = match CMsgPlayerInfo::parse_from_bytes(bytes) {
         Err(_e) => return Err(DemoParserError::MalformedMessage),
         Ok(player) => player,
