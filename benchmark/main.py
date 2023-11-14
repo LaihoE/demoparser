@@ -1,6 +1,6 @@
 from demoparser2 import DemoParser
 import time
-
+import glob
 
 files = glob.glob("/path/to/demos/*")
 
