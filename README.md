@@ -43,11 +43,11 @@ Benchmarked 50 demos containing a mix of (MM, Faceit, HLTV) demos. Total size: 4
 |device|CPU cores|total time|MB/s|
 | :-------------------:| :-----------------------------------  | :----------------------------------- |:----------------------------------- |
 gaming PC|12|6.14s|749|
-Thinkpad t14|4|14.00s|328|
+ThinkPad T14 gen 2|4|14.00s|328|
 
-Gaming pc specs: CPU: Ryzen 5900x, SSD: Samsung 980 pro NVME
-Thinkpad specs: CPU: i5-1335g7, SSD: Toshiba XG6 NVME
-Both devices run Ubuntu 20.04
+Gaming pc specs: CPU: Ryzen 5900x, SSD: Samsung 980 pro NVME  
+Thinkpad specs: CPU: i5-1335g7, SSD: Toshiba XG6 NVME  
+Both devices run Ubuntu 20.04  
 
 ### List of fields the parser supports:
 
