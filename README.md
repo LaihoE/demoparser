@@ -36,6 +36,18 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 - [Documentaion](./documentation)
 
 
+### Performance
+The benchmark finds the coordinates of all player deaths. Code: [Benchmark](./benchmark)  
+
+Benchmarked 50 demos containing a mix of (MM, Faceit, HLTV) demos. Total size: 4.6GB
+|device|CPU cores|total time|MB/s|
+| :-------------------:| :-----------------------------------  | :----------------------------------- |:----------------------------------- |
+gaming PC|12|6.14s|749|
+Thinkpad t14|4|14.00s|328|
+
+Gaming pc specs: CPU: Ryzen 5900x, SSD: Samsung 980 pro NVME
+Thinkpad specs: CPU: i5-1335g7, SSD: Toshiba XG6 NVME
+Both devices run Ubuntu 20.04
 
 ### List of fields the parser supports:
 
