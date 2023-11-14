@@ -166,6 +166,9 @@ Both devices run Ubuntu 20.04
 | velocity_Y  | - |
 | velocity_Z  | - |
 | agent_skin  | - |
+| user_id  | - |
+| entity_id  | - |
+
 #### Buttons 
 True/Flase if player is pressing button.
 |         Name          | Real name                                                                                                                               |
