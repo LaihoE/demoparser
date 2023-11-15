@@ -9,8 +9,9 @@ async function run_wasm() {
 
     document.getElementById("file_picker").addEventListener(
         "change",
-        function () {
+        async function () {
             let file = this.files[0];
+
             myWorker.postMessage({ file: file });
             myWorker.onmessage = function (e) {
                 generateTableFromData(e.data)

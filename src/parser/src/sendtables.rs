@@ -665,6 +665,8 @@ impl Parser {
         if !self.wanted_events.is_empty() && needs_velocity(&self.wanted_player_props) {
             prop_controller.event_with_velocity = true;
         }
+        prop_controller.id_to_name = AHashMap::default();
+        prop_controller.name_to_id = AHashMap::default();
         Ok((serializers, qf_mapper, prop_controller))
     }
 }

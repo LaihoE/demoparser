@@ -136,6 +136,7 @@ impl ParserThread {
                 return;
             }
         }
+        panic!("HUHU");
         if self.parse_projectiles {
             self.collect_projectiles();
         }

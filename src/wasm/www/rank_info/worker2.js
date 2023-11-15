@@ -1,6 +1,4 @@
-importScripts('../pkg/demoparser2.js');
-
-const { parse_events, parse_chat_messages, parse_skins, parse_ticks } = wasm_bindgen;
+import init, { parse_events, initThreadPool  } from './pkg/demoparser2.js';
 
 // We compiled with `--target no-modules`, which does not create a module. The generated bindings
 // can be loaded in web workers in all modern browsers.

@@ -1,5 +1,7 @@
+import init, { parse_events, initThreadPool  } from './pkg/demoparser2.js';
 
 async function run_wasm() {
+    await init();
     // Load the Wasm file by awaiting the Promise returned by `wasm_bindgen`
     // `wasm_bindgen` was imported in `index.html`
     await wasm_bindgen('../pkg/demoparser2_bg.wasm');
