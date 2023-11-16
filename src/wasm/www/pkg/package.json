@@ -1,0 +1,17 @@
+{
+  "name": "demoparser2",
+  "collaborators": [
+    "LaihoE"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "demoparser2_bg.wasm",
+    "demoparser2.js",
+    "demoparser2.d.ts"
+  ],
+  "module": "demoparser2.js",
+  "types": "demoparser2.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
