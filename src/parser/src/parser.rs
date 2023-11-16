@@ -135,7 +135,6 @@ impl Parser {
         return Ok(self.combine_thread_outputs(&mut vec![x]));
     }
     fn parse_demo_multithread(&mut self) -> Result<DemoOutput, DemoParserError> {
-        use crate::game_events::EventField;
         let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
             .fullpacket_offsets
             .par_iter()
@@ -144,30 +143,6 @@ impl Parser {
                 let mut parser = ParserThread::new(input).unwrap();
                 parser.start()?;
                 Ok(parser.create_output())
-
-                /*
-                Ok(DemoOutput {
-                    chat_messages: vec![],
-                    df: AHashMap::default(),
-                    game_events: vec![GameEvent {
-                        fields: vec![EventField {
-                            data: Some(crate::variants::Variant::StringVec(ra)),
-                        }],
-                        name: "DEBUG".to_string(),
-                        tick: 0,
-                    }],
-                    skins: vec![],
-                    item_drops: vec![],
-                    convars: AHashMap::default(),
-                    header: None,
-                    player_md: vec![],
-                    game_events_counter: AHashSet::default(),
-                    prop_info: PropController::new(vec![], vec![], AHashMap::default()),
-                    projectiles: vec![],
-                    ptr: 0,
-                })
-                */
-                //Ok(parser.create_output())
             })
             .collect();
 
@@ -195,7 +170,7 @@ impl Parser {
         ParserThreadInput {
             offset: offset,
             settings: Arc::new(self.settings.clone()),
-            baselines: AHashMap::default(),
+            baselines: self.baselines.clone(),
             prop_controller: self.prop_controller.clone(),
             cls_by_id: cls_by_id,
             qfmap: Arc::new(self.qf_mapper.clone()),
