@@ -6,35 +6,70 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" sizes="any" type="image/svg+xml" href="/images/favicon.svg">
+  <style>
+    th {
+        font-weight: bold;
+    }
+</style>
 </head>
 
 <body>
   <div id=wrapper>
-    <h1>Demoparser69</h1>
+    <h1>List all kills in a demo</h1>  
     <p>
-      In this example, we compile our WASM code without creating ES modules. The worker is
-      spawned in `index.js` using JS directly.
-    </p>
-    <p>
-      <b>Open the JS console (F12) to see the script output</b>
-    </p>
-
-    <p>
-      <input type="text" id="event_name" name="event_name">
-
-
-      <label for="file_picker">Choose a file to read its first byte using Rust:</label>
+      <label for="file_picker"></label>
       <input type="file" id="file_picker" name="file_picker">
     </p>
-
   </div>
+  <script type="module">
+    import init, { parseEvent  } from './pkg/demoparser2.js';
+    await init();
+    document.getElementById("file_picker").addEventListener(
+        "change",
+        async function () {
+            var startTime = performance.now()
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const uint8Array = new Uint8Array(event.target.result);               
+                let result = parseEvent(uint8Array, "player_death", [], ["total_rounds_played", "is_warmup_period"]);
+                generateTableFromData(result)
+            };
+            reader.readAsArrayBuffer(this.files[0]);
+        },
+        false
+    );
 
-  <!-- Here, we have to load the generated JS file directly in the document -->
-  <script src='./pkg/wasmparser.js'>
-  </script>
-  <!-- Note that there is NO `type="module"` in the script tag -->
-  <script src="./index.js"></script>
-
+    function generateTableFromData(eventsNoFilter) {
+        let events = eventsNoFilter.filter(x => x.get("is_warmup_period") === false);
+        const columnNames = ["attacker_name", "user_name", "tick", "total_rounds_played", "weapon"];
+        
+        const table = document.createElement("table");
+        table.setAttribute("border", "2");
+        
+        const tblBody = document.createElement("tbody");
+        
+        events.forEach((event, rowIndex) => {
+            const row = table.insertRow(rowIndex);
+            columnNames.forEach((columnName, cellIndex) => {
+                row.insertCell(cellIndex).innerHTML = event.get(columnName);
+            });
+        });
+        
+        table.appendChild(tblBody);
+        
+        // Create header row after appending tblBody
+        const header = table.createTHead();
+        const headerRow = header.insertRow(0);
+        columnNames.forEach((columnName, index) => {
+            headerRow.insertCell(index).innerHTML = columnName;
+        });
+        const tableContainer = document.createElement("div");
+        tableContainer.style.height = "600px";
+        tableContainer.style.overflowY = "auto";
+        tableContainer.appendChild(table);
+        
+        document.body.appendChild(tableContainer);
+    }
+</script> 
 </body>
-
 </html>

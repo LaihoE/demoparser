@@ -33,7 +33,6 @@ fn main() {
         "CFlashbang"
         "CFlashbangProjectile"
         */
-
         let file = File::open("/home/laiho/Documents/q.dem").unwrap();
         //let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };

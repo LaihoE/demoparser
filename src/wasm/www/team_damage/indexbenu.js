@@ -2,10 +2,10 @@
 async function run_wasm() {
     // Load the Wasm file by awaiting the Promise returned by `wasm_bindgen`
     // `wasm_bindgen` was imported in `index.html`
-    await wasm_bindgen('./pkg/wasmparser_bg.wasm');
+    await wasm_bindgen('../pkg/demoparser2_bg.wasm');
 
     // Create a worker in JS. The worker also uses Rust functions
-    var myWorker = new Worker('./worker.js');
+    var myWorker = new Worker('./worker2.js');
 
     document.getElementById("file_picker").addEventListener(
         "change",
@@ -13,20 +13,25 @@ async function run_wasm() {
 
             let file = this.files[0];
             var startTime = performance.now()
-            var event_name = document.getElementById("event_name").value;
 
-            myWorker.postMessage({ file: file, event_name: event_name });
+            myWorker.postMessage({ file: file });
             myWorker.onmessage = function (e) {
                 var endTime = performance.now()
-                console.log(`Parsing took: ${(endTime - startTime) / 1000} seconds`)
-                generateTableFromData(e.data.output)
+                generateTableFromData(e.data)
             };
         },
         false
     );
 }
 
-function generateTableFromData(events) {
+function generateTableFromData(eventsNoFilter) {
+    console.log(eventsNoFilter);
+    let events = eventsNoFilter.filter(x => x.get("attacker_team_name") === x.get("user_team_name"));
+
+    console.log(events);
+    
+    console.log("RAM RANCH")
+
 
     const tbl = document.createElement("table");
     const tblBody = document.createElement("tbody");

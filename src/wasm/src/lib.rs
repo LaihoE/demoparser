@@ -1,199 +1,155 @@
-/*
+use parser::parser_settings::rm_user_friendly_names;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
-use parser::variants::Variant;
-use serde::{Deserialize, Serialize};
+use parser::parser_thread_settings::create_huffman_lookup_table;
+use parser::variants::soa_to_aos;
+use parser::variants::BytesVariant;
+use parser::variants::OutputSerdeHelperStruct;
 use std::collections::HashMap;
-use std::io::Read;
+use std::sync::Arc;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_file_reader::WebSysFile;
-use web_sys::console;
-
-#[derive(Serialize, Deserialize)]
-pub struct Example {
-    pub output: Vec<HashMap<String, String>>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ChatMessages {
-    pub output: Vec<HashMap<String, Option<String>>>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Skins {
-    pub output: Vec<HashMap<String, Option<String>>>,
-}
-#[derive(Serialize, Deserialize)]
-pub struct Ticks {
-    pub output: HashMap<String, Vec<String>>,
-}
 
 #[wasm_bindgen]
-pub fn parse_chat_messages(file: web_sys::File) -> Result<JsValue, JsError> {
-    let mut wf = WebSysFile::new(file);
-    let mut buf = vec![];
-    wf.read_to_end(&mut buf).unwrap();
-
-    let settings = ParserInputs {
-        bytes: &buf,
-        wanted_player_props: vec![],
-        wanted_player_props_og_names: vec![],
-        wanted_other_props: vec![],
-        wanted_other_props_og_names: vec![],
-        wanted_event: Some("-".to_owned()),
-        parse_ents: false,
-        wanted_ticks: vec![],
-        parse_projectiles: false,
-        only_header: true,
-        count_props: false,
-        only_convars: false,
+pub fn parseEvent(
+    file: Vec<u8>,
+    event_name: Option<String>,
+    wanted_player_props: Option<Vec<JsValue>>,
+    wanted_other_props: Option<Vec<JsValue>>,
+) -> Result<JsValue, JsError> {
+    let player_props = match wanted_player_props {
+        Some(p) => p.iter().map(|s| s.as_string().unwrap()).collect::<Vec<_>>(),
+        None => vec![],
     };
-
-    let mut parser = match Parser::new(settings) {
-        Ok(parser) => parser,
+    let other_props = match wanted_other_props {
+        Some(p) => p.iter().map(|s| s.as_string().unwrap()).collect::<Vec<_>>(),
+        None => vec![],
+    };
+    let real_names_player = match rm_user_friendly_names(&player_props) {
+        Ok(names) => names,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
-    match parser.start() {
-        Ok(_) => {}
+    let real_other_props = match rm_user_friendly_names(&other_props) {
+        Ok(names) => names,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
-    let mut messages = vec![];
-    for i in 0..parser.chat_messages.param1.len() {
-        let mut hm: HashMap<String, Option<String>> = HashMap::default();
-        hm.insert(
-            "entid".to_string(),
-            Some(parser.chat_messages.entity_idx[i].unwrap_or(0).to_string()),
-        );
-        hm.insert("param1".to_string(), parser.chat_messages.param1[i].clone());
-        hm.insert("param2".to_string(), parser.chat_messages.param2[i].clone());
-        hm.insert("param3".to_string(), parser.chat_messages.param3[i].clone());
-        hm.insert("param4".to_string(), parser.chat_messages.param4[i].clone());
-        messages.push(hm);
+
+    let mut real_name_to_og_name = HashMap::default();
+    for (real_name, user_friendly_name) in real_names_player.iter().zip(&player_props) {
+        real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
     }
-
-    Ok(serde_wasm_bindgen::to_value(&ChatMessages { output: messages }).unwrap())
-}
-#[wasm_bindgen]
-pub fn parse_skins(file: web_sys::File) -> Result<JsValue, JsError> {
-    let mut wf = WebSysFile::new(file);
-    let mut buf = vec![];
-    wf.read_to_end(&mut buf).unwrap();
-
-    let settings = ParserInputs {
-        bytes: &buf,
-        wanted_player_props: vec![],
-        wanted_player_props_og_names: vec![],
-        wanted_other_props: vec![],
-        wanted_other_props_og_names: vec![],
-        wanted_event: Some("-".to_owned()),
-        parse_ents: false,
-        wanted_ticks: vec![],
-        parse_projectiles: false,
-        only_header: true,
-        count_props: false,
-        only_convars: false,
-    };
-
-    let mut parser = match Parser::new(settings) {
-        Ok(parser) => parser,
-        Err(e) => return Err(JsError::new(&format!("{}", e))),
-    };
-    match parser.start() {
-        Ok(_) => {}
-        Err(e) => return Err(JsError::new(&format!("{}", e))),
-    };
-
-    let mut messages = vec![];
-    for i in 0..parser.skins.ent_idx.len() {
-        let mut hm: HashMap<String, Option<String>> = HashMap::default();
-        hm.insert(
-            "def_index".to_string(),
-            Some(parser.chat_messages.entity_idx[i].unwrap_or(0).to_string()),
-        );
-        hm.insert(
-            "item_id".to_string(),
-            Some(parser.skins.item_id[i].unwrap_or(0).to_string().clone()),
-        );
-        hm.insert(
-            "paint_index".to_string(),
-            Some(parser.skins.paint_index[i].unwrap_or(0).to_string().clone()),
-        );
-        hm.insert(
-            "paint_seed".to_string(),
-            Some(parser.skins.paint_seed[i].unwrap_or(0).to_string().clone()),
-        );
-        hm.insert(
-            "paint_wear".to_string(),
-            Some(parser.skins.paint_wear[i].unwrap_or(0).to_string().clone()),
-        );
-        hm.insert(
-            "steamid".to_string(),
-            Some(parser.skins.steamid[i].unwrap_or(0).to_string().clone()),
-        );
-        hm.insert(
-            "custom_name".to_string(),
-            parser.skins.custom_name[i].clone(),
-        );
-        messages.push(hm);
+    for (real_name, user_friendly_name) in real_other_props.iter().zip(&other_props) {
+        real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
     }
-    Ok(serde_wasm_bindgen::to_value(&Skins { output: messages }).unwrap())
-}
-
-#[wasm_bindgen]
-pub fn parse_events(file: web_sys::File, event_name: Option<String>) -> Result<JsValue, JsError> {
-    let mut wf = WebSysFile::new(file);
-    let mut buf = vec![];
-    wf.read_to_end(&mut buf).unwrap();
-
+    let arc_huf = Arc::new(create_huffman_lookup_table());
     let settings = ParserInputs {
-        bytes: &buf,
-        wanted_player_props: vec![],
+        bytes: Arc::new(BytesVariant::Vec(file)),
+        wanted_player_props: real_names_player,
         wanted_player_props_og_names: vec![],
-        wanted_other_props: vec![],
+        wanted_other_props: real_other_props,
         wanted_other_props_og_names: vec![],
-        wanted_event: Some(event_name.unwrap()),
+        real_name_to_og_name: real_name_to_og_name.into(),
+        wanted_events: vec![event_name.unwrap_or("none".to_string())],
         parse_ents: true,
         wanted_ticks: vec![],
         parse_projectiles: false,
         only_header: false,
         count_props: false,
         only_convars: false,
+        huffman_lookup_table: arc_huf,
     };
+    let mut parser = Parser::new(settings);
+    parser.is_multithreadable = false;
 
-    let mut parser = match Parser::new(settings) {
-        Ok(parser) => parser,
+    let output = match parser.parse_demo() {
+        Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
-    match parser.start() {
-        Ok(_) => {}
+    match serde_wasm_bindgen::to_value(&output.game_events) {
+        Ok(s) => Ok(s),
         Err(e) => return Err(JsError::new(&format!("{}", e))),
-    };
-
-    let mut js_events: Vec<HashMap<String, String>> = vec![];
-
-    for event in parser.game_events {
-        let mut js_hm_this_event: HashMap<String, String> = HashMap::default();
-        for f in event.fields {
-            js_hm_this_event.insert(f.name, to_string_js(f.data.unwrap_or(Variant::I32(0))));
-        }
-        js_events.push(js_hm_this_event);
-    }
-    return Ok(serde_wasm_bindgen::to_value(&Example { output: js_events }).unwrap());
-}
-
-pub fn to_string_js(val: Variant) -> String {
-    match val {
-        Variant::String(f) => f.to_string(),
-        Variant::F32(f) => f.to_string(),
-        Variant::U64(f) => f.to_string(),
-        Variant::Bool(f) => f.to_string(),
-        Variant::I32(f) => f.to_string(),
-        _ => "Missing".to_string(),
     }
 }
 
-/// Logs a string to the browser's console
-fn log_to_browser(log_msg: String) {
-    console::log_1(&log_msg.into());
+#[wasm_bindgen]
+pub fn parseTicks(
+    file: Vec<u8>,
+    wanted_props: Option<Vec<JsValue>>,
+    wanted_ticks: Option<Vec<i32>>,
+    struct_of_arrays: Option<bool>,
+) -> Result<JsValue, JsError> {
+    let wanted_props = match wanted_props {
+        Some(p) => p.iter().map(|s| s.as_string().unwrap()).collect::<Vec<_>>(),
+        None => vec![],
+    };
+
+    let mut real_names = match rm_user_friendly_names(&wanted_props) {
+        Ok(names) => names,
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
+    };
+    let arc_huf = Arc::new(create_huffman_lookup_table());
+    let mut real_name_to_og_name = HashMap::default();
+
+    for (real_name, user_friendly_name) in real_names.iter().zip(&wanted_props) {
+        real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+    }
+    let wanted_ticks = match wanted_ticks {
+        Some(t) => t,
+        None => vec![],
+    };
+
+    let settings = ParserInputs {
+        real_name_to_og_name: real_name_to_og_name.into(),
+        bytes: Arc::new(BytesVariant::Vec(file)),
+        wanted_player_props: real_names.clone(),
+        wanted_player_props_og_names: wanted_props.clone(),
+        wanted_other_props: vec![],
+        wanted_other_props_og_names: vec![],
+        wanted_events: vec![],
+        parse_ents: true,
+        wanted_ticks: wanted_ticks,
+        parse_projectiles: false,
+        only_header: false,
+        count_props: false,
+        only_convars: false,
+        huffman_lookup_table: arc_huf.clone(),
+    };
+    let mut parser = Parser::new(settings);
+    parser.is_multithreadable = false;
+
+    let output = match parser.parse_demo() {
+        Ok(output) => output,
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
+    };
+    real_names.push("tick".to_owned());
+    real_names.push("steamid".to_owned());
+    real_names.push("name".to_owned());
+
+    let mut prop_infos = output.prop_info.prop_infos.clone();
+    prop_infos.sort_by_key(|x| x.prop_name.clone());
+    real_names.sort();
+
+    let helper = OutputSerdeHelperStruct {
+        prop_infos: prop_infos,
+        inner: output.df.into(),
+    };
+
+    let is_soa = match struct_of_arrays {
+        Some(true) => true,
+        _ => false,
+    };
+
+    if is_soa {
+        let s = match serde_wasm_bindgen::to_value(&helper) {
+            Ok(s) => s,
+            Err(e) => return Err(JsError::new(&format!("{}", e))),
+        };
+        return Ok(s);
+    } else {
+        let result = soa_to_aos(helper);
+        let s = match serde_wasm_bindgen::to_value(&result) {
+            Ok(s) => s,
+            Err(e) => return Err(JsError::new(&format!("{}", e))),
+        };
+        Ok(s)
+    }
 }
-*/
