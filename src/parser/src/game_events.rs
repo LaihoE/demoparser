@@ -127,6 +127,12 @@ impl ParserThread {
 
     pub fn find_user_by_userid(&self, userid: i32) -> Option<&UserInfo> {
         for player in self.stringtable_players.values() {
+            if player.userid & 0xFF == userid {
+                return Some(player);
+            }
+        }
+        // Fallback for old demos?
+        for player in self.stringtable_players.values() {
             if player.userid == userid {
                 return Some(player);
             }
@@ -142,16 +148,6 @@ impl ParserThread {
         return None;
     }
     pub fn entity_id_from_userid(&self, userid: i32) -> Option<i32> {
-        if let Some(userinfo) = self.find_user_by_userid(userid) {
-            for player in self.players.values() {
-                if player.steamid == Some(userinfo.steamid) {
-                    return Some(player.player_entity_id.unwrap());
-                }
-            }
-        }
-        return None;
-    }
-    pub fn entity_userid_from_entityid(&self, userid: i32) -> Option<i32> {
         if let Some(userinfo) = self.find_user_by_userid(userid) {
             for player in self.players.values() {
                 if player.steamid == Some(userinfo.steamid) {
