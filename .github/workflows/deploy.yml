@@ -13,7 +13,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
         target: [x86, x64]
     defaults:
       run:
@@ -28,7 +28,7 @@ jobs:
           override: true
 
       - name: Build Wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v1.40.7
         with:
           command: publish
           target: ${{ matrix.target }}
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
         target: [x86_64, aarch64]
     defaults:
       run:
@@ -52,7 +52,7 @@ jobs:
           override: true
 
       - name: Build Wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v1.40.7
         with:
           command: publish
           target: ${{ matrix.target }}
@@ -62,7 +62,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
         target: [x86_64, aarch64]
     defaults:
       run:
@@ -76,7 +76,7 @@ jobs:
           override: true
 
       - name: Build Wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v1.40.7
         with:
           command: publish
           target: ${{ matrix.target }}
