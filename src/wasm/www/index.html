@@ -22,7 +22,7 @@
     </p>
   </div>
   <script type="module">
-    import init, { parseEvent  } from './pkg/demoparser2.js';
+    import init, { parseEvent, listGameEvents, parseGrenades, parseHeader  } from './pkg/demoparser2.js';
     await init();
     document.getElementById("file_picker").addEventListener(
         "change",
@@ -31,8 +31,10 @@
             const reader = new FileReader();
             reader.onload = function (event) {
                 const uint8Array = new Uint8Array(event.target.result);               
-                let result = parseEvent(uint8Array, "player_death", [], ["total_rounds_played", "is_warmup_period"]);
-                generateTableFromData(result)
+                // let result = parseEvent(uint8Array, "player_death", [], ["total_rounds_played", "is_warmup_period"]);
+                let result = parseHeader(uint8Array)
+                console.log(result)
+                // generateTableFromData(result)
             };
             reader.readAsArrayBuffer(this.files[0]);
         },

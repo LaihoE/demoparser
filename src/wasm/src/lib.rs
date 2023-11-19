@@ -6,6 +6,7 @@ use parser::variants::soa_to_aos;
 use parser::variants::BytesVariant;
 use parser::variants::OutputSerdeHelperStruct;
 use std::collections::HashMap;
+use std::iter::FromIterator;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
@@ -65,6 +66,36 @@ pub fn parseEvent(
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
     match serde_wasm_bindgen::to_value(&output.game_events) {
+        Ok(s) => Ok(s),
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
+    }
+}
+#[wasm_bindgen]
+pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
+    let arc_huf = Arc::new(create_huffman_lookup_table());
+    let settings = ParserInputs {
+        real_name_to_og_name: HashMap::default().into(),
+        bytes: Arc::new(parser::variants::BytesVariant::Vec(fileBytes)),
+        wanted_player_props: vec![],
+        wanted_player_props_og_names: vec![],
+        wanted_other_props: vec![],
+        wanted_other_props_og_names: vec![],
+        wanted_events: vec!["all".to_string()],
+        parse_ents: false,
+        wanted_ticks: vec![],
+        parse_projectiles: false,
+        only_header: false,
+        count_props: false,
+        only_convars: false,
+        huffman_lookup_table: arc_huf.clone(),
+    };
+    let mut parser = Parser::new(settings);
+    let output = match parser.parse_demo() {
+        Ok(output) => output,
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
+    };
+    let v = Vec::from_iter(output.game_events_counter.iter());
+    match serde_wasm_bindgen::to_value(&v) {
         Ok(s) => Ok(s),
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     }
@@ -151,5 +182,70 @@ pub fn parseTicks(
             Err(e) => return Err(JsError::new(&format!("{}", e))),
         };
         Ok(s)
+    }
+}
+
+#[wasm_bindgen]
+pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
+    let arc_huf = Arc::new(create_huffman_lookup_table());
+
+    let settings = ParserInputs {
+        real_name_to_og_name: HashMap::default().into(),
+        bytes: Arc::new(parser::variants::BytesVariant::Vec(file)),
+        wanted_player_props: vec![],
+        wanted_player_props_og_names: vec![],
+        wanted_other_props: vec![],
+        wanted_other_props_og_names: vec![],
+        wanted_events: vec![],
+        parse_ents: true,
+        wanted_ticks: vec![],
+        parse_projectiles: true,
+        only_header: true,
+        count_props: false,
+        only_convars: false,
+        huffman_lookup_table: arc_huf.clone(),
+    };
+    let mut parser = Parser::new(settings);
+    let output = match parser.parse_demo() {
+        Ok(output) => output,
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
+    };
+    let v = Vec::from_iter(output.projectiles.iter());
+    match serde_wasm_bindgen::to_value(&v) {
+        Ok(s) => Ok(s),
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
+    }
+}
+
+#[wasm_bindgen]
+pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
+    let arc_huf = Arc::new(create_huffman_lookup_table());
+
+    let settings = ParserInputs {
+        real_name_to_og_name: HashMap::default().into(),
+        bytes: Arc::new(parser::variants::BytesVariant::Vec(file)),
+        wanted_player_props: vec![],
+        wanted_player_props_og_names: vec![],
+        wanted_other_props: vec![],
+        wanted_other_props_og_names: vec![],
+        wanted_events: vec![],
+        parse_ents: false,
+        wanted_ticks: vec![],
+        parse_projectiles: true,
+        only_header: true,
+        count_props: false,
+        only_convars: false,
+        huffman_lookup_table: arc_huf.clone(),
+    };
+    let mut parser = Parser::new(settings);
+    let output = match parser.parse_demo() {
+        Ok(output) => output,
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
+    };
+    let mut hm: HashMap<String, String> = HashMap::default();
+    hm.extend(parser.header);
+    match serde_wasm_bindgen::to_value(&hm) {
+        Ok(s) => Ok(s),
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
     }
 }
