@@ -9,6 +9,14 @@
 */
 export function parseEvent(file: Uint8Array, event_name?: string, wanted_player_props?: any[], wanted_other_props?: any[]): any;
 /**
+* @param {Uint8Array} file
+* @param {any[] | undefined} event_names
+* @param {any[] | undefined} wanted_player_props
+* @param {any[] | undefined} wanted_other_props
+* @returns {any}
+*/
+export function parseEvents(file: Uint8Array, event_names?: any[], wanted_player_props?: any[], wanted_other_props?: any[]): any;
+/**
 * @param {Uint8Array} fileBytes
 * @returns {any}
 */
@@ -37,6 +45,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly parseEvent: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
+  readonly parseEvents: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
   readonly listGameEvents: (a: number, b: number, c: number) => void;
   readonly parseTicks: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
   readonly parseGrenades: (a: number, b: number, c: number) => void;
