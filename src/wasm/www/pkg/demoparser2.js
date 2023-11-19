@@ -27,14 +27,14 @@ cachedTextDecoder.decode();
 let cachedUint8Memory0 = null;
 
 function getUint8Memory0() {
-    if (cachedUint8Memory0 === null || cachedUint8Memory0.buffer !== wasm.memory.buffer) {
+    if (cachedUint8Memory0 === null || cachedUint8Memory0.byteLength === 0) {
         cachedUint8Memory0 = new Uint8Array(wasm.memory.buffer);
     }
     return cachedUint8Memory0;
 }
 
 function getStringFromWasm0(ptr, len) {
-    return cachedTextDecoder.decode(getUint8Memory0().slice(ptr, ptr + len));
+    return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
 }
 
 function addHeapObject(obj) {
@@ -50,14 +50,18 @@ let WASM_VECTOR_LEN = 0;
 
 const cachedTextEncoder = new TextEncoder('utf-8');
 
-const encodeString = function (arg, view) {
+const encodeString = (typeof cachedTextEncoder.encodeInto === 'function'
+    ? function (arg, view) {
+    return cachedTextEncoder.encodeInto(arg, view);
+}
+    : function (arg, view) {
     const buf = cachedTextEncoder.encode(arg);
     view.set(buf);
     return {
         read: arg.length,
         written: buf.length
     };
-};
+});
 
 function passStringToWasm0(arg, malloc, realloc) {
 
@@ -104,7 +108,7 @@ function isLikeNone(x) {
 let cachedInt32Memory0 = null;
 
 function getInt32Memory0() {
-    if (cachedInt32Memory0 === null || cachedInt32Memory0.buffer !== wasm.memory.buffer) {
+    if (cachedInt32Memory0 === null || cachedInt32Memory0.byteLength === 0) {
         cachedInt32Memory0 = new Int32Array(wasm.memory.buffer);
     }
     return cachedInt32Memory0;
@@ -185,7 +189,7 @@ function passArray8ToWasm0(arg, malloc) {
 let cachedUint32Memory0 = null;
 
 function getUint32Memory0() {
-    if (cachedUint32Memory0 === null || cachedUint32Memory0.buffer !== wasm.memory.buffer) {
+    if (cachedUint32Memory0 === null || cachedUint32Memory0.byteLength === 0) {
         cachedUint32Memory0 = new Uint32Array(wasm.memory.buffer);
     }
     return cachedUint32Memory0;
@@ -231,6 +235,59 @@ export function parseEvent(file, event_name, wanted_player_props, wanted_other_p
     }
 }
 
+/**
+* @param {Uint8Array} file
+* @param {any[] | undefined} event_names
+* @param {any[] | undefined} wanted_player_props
+* @param {any[] | undefined} wanted_other_props
+* @returns {any}
+*/
+export function parseEvents(file, event_names, wanted_player_props, wanted_other_props) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passArray8ToWasm0(file, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        var ptr1 = isLikeNone(event_names) ? 0 : passArrayJsValueToWasm0(event_names, wasm.__wbindgen_malloc);
+        var len1 = WASM_VECTOR_LEN;
+        var ptr2 = isLikeNone(wanted_player_props) ? 0 : passArrayJsValueToWasm0(wanted_player_props, wasm.__wbindgen_malloc);
+        var len2 = WASM_VECTOR_LEN;
+        var ptr3 = isLikeNone(wanted_other_props) ? 0 : passArrayJsValueToWasm0(wanted_other_props, wasm.__wbindgen_malloc);
+        var len3 = WASM_VECTOR_LEN;
+        wasm.parseEvents(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        var r2 = getInt32Memory0()[retptr / 4 + 2];
+        if (r2) {
+            throw takeObject(r1);
+        }
+        return takeObject(r0);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+* @param {Uint8Array} fileBytes
+* @returns {any}
+*/
+export function listGameEvents(fileBytes) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passArray8ToWasm0(fileBytes, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.listGameEvents(retptr, ptr0, len0);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        var r2 = getInt32Memory0()[retptr / 4 + 2];
+        if (r2) {
+            throw takeObject(r1);
+        }
+        return takeObject(r0);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
 function passArray32ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 4);
     getUint32Memory0().set(arg, ptr / 4);
@@ -254,6 +311,50 @@ export function parseTicks(file, wanted_props, wanted_ticks, struct_of_arrays) {
         var ptr2 = isLikeNone(wanted_ticks) ? 0 : passArray32ToWasm0(wanted_ticks, wasm.__wbindgen_malloc);
         var len2 = WASM_VECTOR_LEN;
         wasm.parseTicks(retptr, ptr0, len0, ptr1, len1, ptr2, len2, isLikeNone(struct_of_arrays) ? 0xFFFFFF : struct_of_arrays ? 1 : 0);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        var r2 = getInt32Memory0()[retptr / 4 + 2];
+        if (r2) {
+            throw takeObject(r1);
+        }
+        return takeObject(r0);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+* @param {Uint8Array} file
+* @returns {any}
+*/
+export function parseGrenades(file) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passArray8ToWasm0(file, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.parseGrenades(retptr, ptr0, len0);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        var r2 = getInt32Memory0()[retptr / 4 + 2];
+        if (r2) {
+            throw takeObject(r1);
+        }
+        return takeObject(r0);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+* @param {Uint8Array} file
+* @returns {any}
+*/
+export function parseHeader(file) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passArray8ToWasm0(file, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.parseHeader(retptr, ptr0, len0);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
         var r2 = getInt32Memory0()[retptr / 4 + 2];
@@ -327,6 +428,10 @@ function getImports() {
         getInt32Memory0()[arg0 / 4 + 1] = len0;
         getInt32Memory0()[arg0 / 4 + 0] = ptr0;
     };
+    imports.wbg.__wbindgen_object_clone_ref = function(arg0) {
+        const ret = getObject(arg0);
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbindgen_is_object = function(arg0) {
         const val = getObject(arg0);
         const ret = typeof(val) === 'object' && val !== null;
@@ -345,10 +450,6 @@ function getImports() {
     };
     imports.wbg.__wbindgen_string_new = function(arg0, arg1) {
         const ret = getStringFromWasm0(arg0, arg1);
-        return addHeapObject(ret);
-    };
-    imports.wbg.__wbindgen_object_clone_ref = function(arg0) {
-        const ret = getObject(arg0);
         return addHeapObject(ret);
     };
     imports.wbg.__wbg_set_841ac57cff3d672b = function(arg0, arg1, arg2) {
@@ -382,11 +483,11 @@ function getImports() {
         const ret = typeof(getObject(arg0)) === 'function';
         return ret;
     };
-    imports.wbg.__wbg_getRandomValues_3774744e221a22ad = function() { return handleError(function (arg0, arg1) {
-        getObject(arg0).getRandomValues(getObject(arg1));
-    }, arguments) };
     imports.wbg.__wbg_randomFillSync_e950366c42764a07 = function() { return handleError(function (arg0, arg1) {
         getObject(arg0).randomFillSync(takeObject(arg1));
+    }, arguments) };
+    imports.wbg.__wbg_getRandomValues_3774744e221a22ad = function() { return handleError(function (arg0, arg1) {
+        getObject(arg0).getRandomValues(getObject(arg1));
     }, arguments) };
     imports.wbg.__wbg_new_b525de17f44a8943 = function() {
         const ret = new Array();
@@ -481,7 +582,7 @@ function getImports() {
 }
 
 function initMemory(imports, maybe_memory) {
-    imports.wbg.memory = maybe_memory || new WebAssembly.Memory({initial:25,maximum:16384,shared:true});
+
 }
 
 function finalizeInit(instance, module) {
@@ -491,14 +592,14 @@ function finalizeInit(instance, module) {
     cachedUint32Memory0 = null;
     cachedUint8Memory0 = null;
 
-    wasm.__wbindgen_start();
+
     return wasm;
 }
 
-function initSync(module, maybe_memory) {
+function initSync(module) {
     const imports = getImports();
 
-    initMemory(imports, maybe_memory);
+    initMemory(imports);
 
     if (!(module instanceof WebAssembly.Module)) {
         module = new WebAssembly.Module(module);
@@ -509,7 +610,7 @@ function initSync(module, maybe_memory) {
     return finalizeInit(instance, module);
 }
 
-async function init(input, maybe_memory) {
+async function init(input) {
     if (typeof input === 'undefined') {
         input = new URL('demoparser2_bg.wasm', import.meta.url);
     }
@@ -519,7 +620,7 @@ async function init(input, maybe_memory) {
         input = fetch(input);
     }
 
-    initMemory(imports, maybe_memory);
+    initMemory(imports);
 
     const { instance, module } = await load(await input, imports);
 

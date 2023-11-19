@@ -41,10 +41,5 @@
     "test": "jest",
     "universal": "napi universal",
     "version": "napi version"
-  },
-  "packageManager": "yarn@3.6.0",
-  "dependencies": {
-    "archiver": "^6.0.1",
-    "unzipper": "^0.10.14"
   }
 }
