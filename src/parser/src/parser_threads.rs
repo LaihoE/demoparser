@@ -24,9 +24,6 @@ impl ParserThread {
             let size = self.read_varint()?;
 
             self.tick = tick as i32;
-            if self.tick == 130404 {
-                println!("{:?}", tick);
-            }
             self.packets_parsed += 1;
 
             if self.ptr + size as usize >= self.bytes.get_len() {
@@ -68,9 +65,7 @@ impl ParserThread {
                     }
                     Ok(())
                 }
-                DEM_Stop => {
-                    break;
-                }
+                DEM_Stop => break,
                 _ => Ok(()),
             };
             ok?;
@@ -185,7 +180,6 @@ impl ParserThread {
                     }
                     Ok(())
                 }
-                // svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
