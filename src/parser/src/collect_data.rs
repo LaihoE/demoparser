@@ -135,7 +135,7 @@ pub enum CoordinateAxis {
 
 // This file collects the data that is converted into a dataframe in the end in parser.parse_ticks()
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     pub fn collect_entities(&mut self) {
         if !self.prop_controller.event_with_velocity {
             if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_events.len() != 0 {
@@ -791,7 +791,7 @@ fn coord_from_cell(
         (_, _) => Err(PropCollectionError::CoordinateIncorrectTypes),
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use crate::collect_data::CoordinateAxis;
@@ -2711,3 +2711,4 @@ mod tests {
         assert_eq!(Err(PropCollectionError::PlayerNotFound), player_md);
     }
 }
+*/

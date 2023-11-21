@@ -44,7 +44,7 @@ enum EntityCmd {
     Update,
 }
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());

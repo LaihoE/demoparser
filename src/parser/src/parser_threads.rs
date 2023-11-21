@@ -14,7 +14,7 @@ use protobuf::Message;
 use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     pub fn start(&mut self) -> Result<(), DemoParserError> {
         let started_at = self.ptr;
         loop {

@@ -32,26 +32,26 @@ use std::sync::Arc;
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 
-pub struct ParserThread {
-    pub qf_mapper: Arc<QfMapper>,
-    pub prop_controller: Arc<PropController>,
-    pub cls_by_id: Arc<AHashMap<u32, Class>>,
+pub struct ParserThread<'a> {
+    pub qf_mapper: &'a QfMapper,
+    pub prop_controller: &'a PropController,
+    pub cls_by_id: &'a AHashMap<u32, Class>,
     pub stringtable_players: BTreeMap<u64, UserInfo>,
     pub net_tick: u32,
     pub parse_inventory: bool,
 
     pub ptr: usize,
-    pub bytes: Arc<BytesVariant>,
+    pub bytes: &'a BytesVariant,
     pub parse_all_packets: bool,
     // Parsing state
-    pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,
+    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_bits: Option<u32>,
     pub entities: AHashMap<i32, Entity, RandomState>,
     pub tick: i32,
     pub players: BTreeMap<i32, PlayerMetaData>,
     pub teams: Teams,
-    pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
+    pub huffman_lookup_table: &'a Vec<(u32, u8)>,
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
     pub rules_entity_id: Option<i32>,
@@ -99,7 +99,7 @@ impl Teams {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct ChatMessageRecord {
     pub entity_idx: Option<i32>,
     pub param1: Option<String>,
@@ -135,7 +135,7 @@ pub struct PlayerEndMetaData {
     pub team_number: Option<i32>,
 }
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     pub fn create_output(self) -> DemoOutput {
         DemoOutput {
             chat_messages: self.chat_messages,
@@ -152,7 +152,7 @@ impl ParserThread {
             ptr: self.ptr,
         }
     }
-    pub fn new(input: ParserThreadInput) -> Result<Self, DemoParserError> {
+    pub fn new(input: ParserThreadInput<'a>) -> Result<Self, DemoParserError> {
         input
             .settings
             .wanted_player_props
@@ -186,16 +186,16 @@ impl ParserThread {
             projectile_records: vec![],
             parse_all_packets: input.parse_all_packets,
             wanted_ticks: input.wanted_ticks.clone(),
-            prop_controller: Arc::new(input.prop_controller),
-            qf_mapper: input.qfmap,
+            prop_controller: &input.prop_controller,
+            qf_mapper: &input.qfmap,
             fullpackets_parsed: 0,
             packets_parsed: 0,
             cnt: AHashMap::default(),
             serializers: AHashMap::default(),
             ptr: input.offset,
-            ge_list: input.ge_list.clone(),
-            bytes: input.settings.bytes.clone(),
-            cls_by_id: input.cls_by_id,
+            ge_list: input.ge_list,
+            bytes: &input.settings.bytes,
+            cls_by_id: &input.cls_by_id,
             entities: AHashMap::with_capacity(512),
             cls_bits: None,
             tick: -99999,
@@ -226,7 +226,7 @@ impl ParserThread {
             item_drops: vec![],
             skins: vec![],
             player_end_data: vec![],
-            huffman_lookup_table: input.settings.huffman_lookup_table.clone(),
+            huffman_lookup_table: &input.settings.huffman_lookup_table,
             header: HashMap::default(),
         })
     }

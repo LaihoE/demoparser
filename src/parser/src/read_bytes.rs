@@ -2,7 +2,7 @@ use super::read_bits::DemoParserError;
 use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     #[inline]
     pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], DemoParserError> {
         if self.ptr + n as usize >= self.bytes.get_len() {
@@ -52,7 +52,7 @@ mod tests {
     }
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     #[inline]
     pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], DemoParserError> {
         if self.ptr + n as usize >= self.bytes.get_len() {

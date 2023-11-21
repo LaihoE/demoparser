@@ -45,7 +45,7 @@ pub struct DemoOutput {
     pub ptr: usize,
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
         Parser::handle_short_header(self.bytes.get_len(), &self.bytes[..16])?;
         self.ptr = 16;
@@ -165,18 +165,14 @@ impl Parser {
 
     // fn parse_stringtables_cmd(bytes: &[u8]) -> Result<(), DemoParserError> {}
     pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
-        let cls_by_id = match &self.cls_by_id {
-            Some(cls_by_id) => cls_by_id.clone(),
-            None => Arc::new(AHashMap::default()),
-        };
         ParserThreadInput {
             offset: offset,
-            settings: Arc::new(self.settings.clone()),
+            settings: &self.settings,
             baselines: self.baselines.clone(),
-            prop_controller: self.prop_controller.clone(),
-            cls_by_id: cls_by_id,
-            qfmap: Arc::new(self.qf_mapper.clone()),
-            ge_list: Arc::new(self.ge_list.clone()),
+            prop_controller: &self.prop_controller,
+            cls_by_id: &self.cls_by_id.as_ref().unwrap(),
+            qfmap: &self.qf_mapper,
+            ge_list: &self.ge_list,
             parse_all_packets: parse_all,
             // arc?
             wanted_ticks: self.wanted_ticks.clone(),
@@ -246,7 +242,7 @@ impl Parser {
     }
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
         let packet_data = packet.data.unwrap();
@@ -366,14 +362,14 @@ impl Parser {
         return Ok(());
     }
 }
-pub struct ParserThreadInput {
+pub struct ParserThreadInput<'a> {
     pub offset: usize,
-    pub settings: Arc<ParserInputs>,
+    pub settings: &'a ParserInputs<'a>,
     pub baselines: AHashMap<u32, Vec<u8>>,
-    pub prop_controller: PropController,
-    pub cls_by_id: Arc<AHashMap<u32, Class>>,
-    pub qfmap: Arc<QfMapper>,
-    pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,
+    pub prop_controller: &'a PropController,
+    pub cls_by_id: &'a AHashMap<u32, Class>,
+    pub qfmap: &'a QfMapper,
+    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub parse_all_packets: bool,
     pub wanted_ticks: AHashSet<i32>,
     pub string_tables: Vec<StringTable>,
