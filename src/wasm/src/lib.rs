@@ -155,6 +155,8 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         huffman_lookup_table: arc_huf.clone(),
     };
     let mut parser = Parser::new(settings);
+    parser.is_multithreadable = false;
+
     let output = match parser.parse_demo() {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
@@ -271,6 +273,8 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
         huffman_lookup_table: arc_huf.clone(),
     };
     let mut parser = Parser::new(settings);
+    parser.is_multithreadable = false;
+
     let output = match parser.parse_demo() {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
@@ -303,6 +307,7 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         huffman_lookup_table: arc_huf.clone(),
     };
     let mut parser = Parser::new(settings);
+    parser.is_multithreadable = false;
     let output = match parser.parse_demo() {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
