@@ -9,7 +9,6 @@ use std::collections::HashMap;
 use std::iter::FromIterator;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
-use web_sys::console;
 
 #[wasm_bindgen]
 pub fn parseEvent(
