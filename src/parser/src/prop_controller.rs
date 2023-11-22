@@ -388,6 +388,9 @@ impl PropController {
         if self.should_parse(&prop_name) {
             f.should_parse = true;
         }
+        if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {
+            f.prop_id = MY_WEAPONS_OFFSET as usize;
+        }
         self.id += 1;
     }
 

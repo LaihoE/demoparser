@@ -506,12 +506,22 @@ use crate::prop_controller::MY_WEAPONS_OFFSET;
 impl Serializer {
     pub fn find_decoder(&self, path: &FieldPath, pos: usize, parse_inventory: bool) -> FieldInfo {
         // Edge case for now...
+        /*
         if parse_inventory {
             if let Some(info) = self.find_inventory_info(path) {
                 return info;
             }
         }
-        self.fields[path.path[pos] as usize].decoder_from_path(path, pos + 1, parse_inventory)
+        */
+        let mut fi = self.fields[path.path[pos] as usize].decoder_from_path(path, pos + 1, parse_inventory);
+        // The first index in the array tells you the length
+        if fi.prop_id == MY_WEAPONS_OFFSET {
+            if path.last == 1 {
+            } else {
+                fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
+            }
+        }
+        fi
     }
     pub fn debug_find_decoder(&self, path: &FieldPath, pos: usize, prop_name: String) -> DebugField {
         let idx = path.path[pos];

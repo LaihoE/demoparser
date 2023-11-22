@@ -100,16 +100,16 @@ pub fn needs_velocity(props: &[String]) -> bool {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(inputs: &'a ParserInputs<'a>) -> Self {
+    pub fn new(inputs: &'a mut ParserInputs<'a>) -> Self {
         let mut added_temp_props = vec![];
-        /*
+
         if needs_velocity(&inputs.wanted_player_props) {
             inputs
                 .wanted_player_props
                 .extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
             added_temp_props.extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
         }
-        */
+
         Parser {
             added_temp_props: added_temp_props,
             threads_spawned: 0,

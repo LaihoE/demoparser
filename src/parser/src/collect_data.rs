@@ -103,6 +103,7 @@ pub enum PropCollectionError {
     AgentPropNotFound,
     AgentSpecialIdNotSet,
     UseridNotFound,
+    InventoryMaxNotFound,
 }
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
@@ -622,7 +623,17 @@ impl<'a> ParserThread<'a> {
         let mut names = vec![];
         let mut unique_eids = vec![];
 
-        for i in 0..MAX_INVENTORY_IDX {
+        match self.find_is_alive(entity_id) {
+            Ok(Variant::Bool(true)) => {}
+            _ => return Ok(Variant::StringVec(vec![])),
+        };
+
+        let inventory_max_len = match self.get_prop_from_ent(&(MY_WEAPONS_OFFSET as u32), entity_id) {
+            Ok(Variant::U32(p)) => p,
+            _ => return Err(PropCollectionError::InventoryMaxNotFound),
+        };
+
+        for i in 1..inventory_max_len + 1 {
             let prop_id = MY_WEAPONS_OFFSET + i;
             match self.get_prop_from_ent(&(prop_id as u32), entity_id) {
                 Err(_e) => {}

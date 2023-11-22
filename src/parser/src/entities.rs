@@ -105,7 +105,7 @@ impl<'a> ParserThread<'a> {
         if self.is_debug_mode {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if debug.field.full_name.contains("Cross") {
+                if debug.field.full_name.contains("Weapons") {
                     println!(
                         "{:?} {:?} {:?} {:?} {:?} {:?}",
                         debug.path, debug.field.full_name, result, self.tick, self.net_tick, field_info.prop_id

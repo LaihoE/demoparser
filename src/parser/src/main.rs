@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn main() {
-    let wanted_props = vec!["X".to_string()];
+    let wanted_props = vec!["inventory".to_string()];
     let before = Instant::now();
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/mm/").unwrap();
     let mut c = 0;
