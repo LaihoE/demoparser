@@ -4,6 +4,8 @@ use crate::netmessage_types::netmessage_type_from_int;
 use crate::netmessage_types::NetmessageType;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
+use crate::read_bytes::read_varint;
+use crate::read_bytes::ProtoPacketParser;
 use crate::stringtables::parse_userinfo;
 use bitter::BitReader;
 use csgoproto::demo::*;
@@ -15,17 +17,17 @@ use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
 impl<'a> ParserThread<'a> {
-    pub fn start(&mut self) -> Result<(), DemoParserError> {
+    pub fn start(&mut self, outer_bytes: &[u8]) -> Result<(), DemoParserError> {
         let started_at = self.ptr;
+        let mut buf = vec![0_u8; 8192 * 15];
+        let mut buf2 = vec![0_u8; 1_000_000];
         loop {
-            let cmd = self.read_varint()?;
-            let tick = self.read_varint()?;
-            let size = self.read_varint()?;
-
+            let cmd = read_varint(outer_bytes, &mut self.ptr)?;
+            let tick = read_varint(outer_bytes, &mut self.ptr)?;
+            let size = read_varint(outer_bytes, &mut self.ptr)?;
             self.tick = tick as i32;
-            self.packets_parsed += 1;
-
-            if self.ptr + size as usize >= self.bytes.get_len() {
+            // Safety check
+            if self.ptr + size as usize >= outer_bytes.len() {
                 break;
             }
 
@@ -37,17 +39,20 @@ impl<'a> ParserThread<'a> {
                 self.ptr += size as usize;
                 continue;
             }
+            let s = &outer_bytes[self.ptr..self.ptr + size as usize];
+            self.ptr += size as usize;
+
             let bytes = match is_compressed {
-                true => match SnapDecoder::new().decompress_vec(self.read_n_bytes(size)?) {
-                    Ok(b) => b,
+                true => match SnapDecoder::new().decompress(s, &mut buf2) {
+                    Ok(idx) => &buf2[..idx],
                     Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
                 },
-                false => self.read_n_bytes(size)?.to_vec(),
+                false => s,
             };
 
             let ok = match demo_cmd {
-                DEM_SignonPacket => self.parse_packet(&bytes),
-                DEM_Packet => self.parse_packet(&bytes),
+                DEM_SignonPacket => self.parse_packet(&bytes, &mut buf),
+                DEM_Packet => self.parse_packet(&bytes, &mut buf),
                 DEM_FullPacket => {
                     match self.parse_all_packets {
                         true => {}
@@ -79,54 +84,50 @@ impl<'a> ParserThread<'a> {
             _ => 0,
         }
     }
-    pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+    pub fn parse_packet(&mut self, bytes: &[u8], buf: &mut [u8]) -> Result<(), DemoParserError> {
+        /*
         let packet: CDemoPacket = match Message::parse_from_bytes(bytes) {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
             Ok(p) => p,
         };
         let packet_data = packet.data.unwrap();
         let mut bitreader = Bitreader::new(&packet_data);
-        // Inner loop
-        let mut msgs = vec![];
+        */
 
-        while bitreader.reader.has_bits_remaining(8) {
+        let mut p = ProtoPacketParser {
+            bytes: bytes,
+            start: 0,
+            end: 0,
+            ptr: 0,
+        };
+        p.read_proto_packet().unwrap();
+        let mut bitreader = Bitreader::new(&bytes[p.start..p.end]);
+
+        // Inner loop
+        // Inner loop
+        while bitreader.reader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
-            let msg_bytes = bitreader.read_n_bytes(size as usize)?;
-            msgs.push((msg_bytes, netmessage_type_from_int(msg_type as i32)));
-        }
 
-        msgs.sort_by_key(|x| self.packet_orderer(&x.1));
-        let mut wrong_order_events = vec![];
+            //let mut msg_bytes = vec![0; size as usize];
+            bitreader.read_n_bytes_mut(size as usize, buf)?;
+            let msg_bytes = &buf[..size as usize];
 
-        for (msg_bytes, msg_type) in msgs {
-            let ok = match msg_type {
+            let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
-                svc_ServerInfo => self.parse_server_info(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
                 net_SetConVar => self.create_custom_event_parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
-                CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(&msg_bytes),
+                svc_ServerInfo => self.parse_server_info(&msg_bytes),
                 net_Tick => self.parse_net_tick(&msg_bytes),
                 svc_ClearAllStringTables => self.clear_stringtables(),
-                GE_Source1LegacyGameEvent => match self.parse_event(&msg_bytes) {
-                    Ok(Some(event)) => {
-                        wrong_order_events.push(event);
-                        Ok(())
-                    }
-                    Ok(None) => Ok(()),
-                    Err(e) => return Err(e),
-                },
                 _ => Ok(()),
             };
-            ok?;
-        }
-        if !wrong_order_events.is_empty() {
-            self.resolve_wrong_order_event(&mut wrong_order_events)?;
+            ok?
         }
         Ok(())
     }
@@ -162,11 +163,17 @@ impl<'a> ParserThread<'a> {
         }
         let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
+        let mut buf = vec![0; 500_000];
+        let mut packet_ents: CSVCMsg_PacketEntities = CSVCMsg_PacketEntities::new();
+
         // Inner loop
         while bitreader.reader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
-            let msg_bytes = bitreader.read_n_bytes(size as usize)?;
+            //let mut msg_bytes = vec![0; size as usize];
+            bitreader.read_n_bytes_mut(size as usize, &mut buf)?;
+
+            let msg_bytes = &buf[..size as usize];
 
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),

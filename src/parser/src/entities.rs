@@ -2,6 +2,7 @@ use super::read_bits::DemoParserError;
 use crate::entities_utils::*;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
+use crate::read_bytes::Reader;
 use crate::sendtables::DebugFieldAndPath;
 use crate::variants::Variant;
 use ahash::AHashMap;
@@ -49,16 +50,98 @@ impl<'a> ParserThread<'a> {
         if !self.parse_entities {
             return Ok(());
         }
+        let mut reader = Reader {
+            bytes: &bytes,
+            ptr: 0,
+            active_spawngroup_handle: 0,
+            max_entries: 0,
+            update_baseline: false,
+            updated_entries: 0,
+            is_delta: false,
+            baseline: 0,
+            delta_from: 0,
+            entity_data: vec![],
+            pending_full_frame: false,
+            max_spawngroup_creationsequence: 0,
+            last_cmd_number: 0,
+            serialized_entities: vec![],
+            server_tick: 0,
+            data_end: 0,
+            data_start: 0,
+        };
+        loop {
+            let varint = reader.read_varint().unwrap();
+            let is_done = reader.read(varint);
+            if is_done {
+                break;
+            }
+        }
+
+        /*
+        packet_ents.merge_from_bytes(&bytes).unwrap();
+
         let packet_ents: CSVCMsg_PacketEntities = match Message::parse_from_bytes(&bytes) {
             Ok(pe) => pe,
             Err(_e) => return Err(DemoParserError::MalformedMessage),
         };
+        println!("{:?}", bytes);
+        println!("{:?}", packet_ents);
+        panic!();
+
         let n_updates = packet_ents.updated_entries();
 
-        let data = match packet_ents.entity_data {
+        let data = match &packet_ents.entity_data {
             Some(data) => data,
             None => return Err(DemoParserError::MalformedMessage),
         };
+        */
+        let mut bitreader = Bitreader::new(&bytes[reader.data_start..reader.data_end]);
+        let mut entity_id: i32 = -1;
+        // println!("{:?}", reader.updated_entries);
+        for _ in 0..reader.updated_entries {
+            entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
+            // Read 2 bits to know which operation should be done to the entity.
+            let cmd = match bitreader.read_nbits(2)? {
+                0b01 => EntityCmd::Delete,
+                0b11 => EntityCmd::Delete,
+                0b10 => EntityCmd::CreateAndUpdate,
+                0b00 => EntityCmd::Update,
+                _ => panic!("impossible cmd"),
+            };
+            match cmd {
+                EntityCmd::Delete => {
+                    self.projectiles.remove(&entity_id);
+                    self.entities.remove(&entity_id);
+                }
+                EntityCmd::CreateAndUpdate => {
+                    self.create_new_entity(&mut bitreader, &entity_id)?;
+                    self.update_entity(&mut bitreader, entity_id, false)?;
+                }
+                EntityCmd::Update => {
+                    self.update_entity(&mut bitreader, entity_id, false)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn parse_packet_entsq(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        if !self.parse_entities {
+            return Ok(());
+        }
+
+        let packet_ents: CSVCMsg_PacketEntities = match Message::parse_from_bytes(&bytes) {
+            Ok(pe) => pe,
+            Err(_e) => return Err(DemoParserError::MalformedMessage),
+        };
+
+        let n_updates = packet_ents.updated_entries();
+
+        let data = match &packet_ents.entity_data {
+            Some(data) => data,
+            None => return Err(DemoParserError::MalformedMessage),
+        };
+
         let mut bitreader = Bitreader::new(&data);
         let mut entity_id: i32 = -1;
 

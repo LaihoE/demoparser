@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct ParserInputs<'a> {
-    pub bytes: &'a BytesVariant,
+    // pub bytes: &'a BytesVariant,
     pub real_name_to_og_name: AHashMap<String, String>,
 
     pub wanted_player_props: Vec<String>,
@@ -44,7 +44,7 @@ pub struct Parser<'a> {
     pub real_name_to_og_name: AHashMap<String, String>,
     pub fullpacket_offsets: Vec<usize>,
     pub ptr: usize,
-    pub bytes: &'a BytesVariant,
+    // pub bytes: &'a BytesVariant,
     pub tick: i32,
     pub huf: &'a Vec<(u32, u8)>,
     pub settings: &'a ParserInputs<'a>,
@@ -100,15 +100,8 @@ pub fn needs_velocity(props: &[String]) -> bool {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(inputs: &'a mut ParserInputs<'a>) -> Self {
+    pub fn new(inputs: &'a ParserInputs<'a>) -> Self {
         let mut added_temp_props = vec![];
-
-        if needs_velocity(&inputs.wanted_player_props) {
-            inputs
-                .wanted_player_props
-                .extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
-            added_temp_props.extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
-        }
 
         Parser {
             added_temp_props: added_temp_props,
@@ -132,7 +125,7 @@ impl<'a> Parser<'a> {
             maps_ready: false,
             name_to_id: AHashMap::default(),
             convars: AHashMap::default(),
-            bytes: inputs.bytes,
+            // bytes: inputs.bytes,
             string_tables: vec![],
             fullpacket_offsets: vec![],
             ptr: 0,

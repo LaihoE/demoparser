@@ -9,6 +9,9 @@ use crate::parser_thread_settings::*;
 use crate::parser_threads::demo_cmd_type_from_int;
 use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
+use crate::read_bytes::read_proto_packet;
+use crate::read_bytes::read_varint;
+use crate::read_bytes::ProtoPacketParser;
 use crate::stringtables::parse_userinfo;
 use crate::stringtables::StringTable;
 use crate::stringtables::UserInfo;
@@ -46,20 +49,20 @@ pub struct DemoOutput {
 }
 
 impl<'a> Parser<'a> {
-    pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
-        Parser::handle_short_header(self.bytes.get_len(), &self.bytes[..16])?;
+    pub fn parse_demo(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
+        // Parser::handle_short_header(self.bytes.get_len(), &self.bytes[..16])?;
         self.ptr = 16;
         let mut sendtable = None;
+        let mut buf = vec![0_u8; 10_000_000];
         loop {
             let frame_starts_at = self.ptr;
 
-            let cmd = self.read_varint()?;
-            let tick = self.read_varint()?;
-            let size = self.read_varint()?;
+            let cmd = read_varint(outer_bytes, &mut self.ptr)?;
+            let tick = read_varint(outer_bytes, &mut self.ptr)?;
+            let size = read_varint(outer_bytes, &mut self.ptr)?;
             self.tick = tick as i32;
-
             // Safety check
-            if self.ptr + size as usize >= self.bytes.get_len() {
+            if self.ptr + size as usize >= outer_bytes.len() {
                 break;
             }
             let msg_type = cmd & !64;
@@ -71,13 +74,15 @@ impl<'a> Parser<'a> {
                 self.ptr += size as usize;
                 continue;
             }
+            let s = &outer_bytes[self.ptr..self.ptr + size as usize];
+            self.ptr += size as usize;
 
             let bytes = match is_compressed {
-                true => match SnapDecoder::new().decompress_vec(self.read_n_bytes(size)?) {
-                    Ok(b) => b,
+                true => match SnapDecoder::new().decompress(s, &mut buf) {
+                    Ok(idx) => &buf[..idx],
                     Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
                 },
-                false => self.read_n_bytes(size)?.to_vec(),
+                false => s,
             };
             let ok: Result<(), DemoParserError> = match demo_cmd {
                 DEM_SendTables => {
@@ -110,9 +115,9 @@ impl<'a> Parser<'a> {
         self.check_needed()?;
 
         if self.is_multithreadable {
-            self.parse_demo_multithread()
+            self.parse_demo_multithread(outer_bytes)
         } else {
-            self.parse_demo_single_thread()
+            self.parse_demo_single_thread(outer_bytes)
         }
     }
     fn check_needed(&mut self) -> Result<(), DemoParserError> {
@@ -125,10 +130,10 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn parse_demo_single_thread(&mut self) -> Result<DemoOutput, DemoParserError> {
+    fn parse_demo_single_thread(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
         let input = self.create_parser_thread_input(16, true);
         let mut parser = ParserThread::new(input).unwrap();
-        parser.start()?;
+        parser.start(outer_bytes)?;
         let x = parser.create_output();
         for prop in &self.added_temp_props {
             self.wanted_player_props.retain(|x| x != prop);
@@ -136,14 +141,14 @@ impl<'a> Parser<'a> {
         }
         return Ok(self.combine_thread_outputs(&mut vec![x]));
     }
-    fn parse_demo_multithread(&mut self) -> Result<DemoOutput, DemoParserError> {
+    fn parse_demo_multithread(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
         let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
-                parser.start()?;
+                parser.start(outer_bytes)?;
                 Ok(parser.create_output())
             })
             .collect();
@@ -244,9 +249,14 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
-        let packet_data = packet.data.unwrap();
-        let mut bitreader = Bitreader::new(&packet_data);
+        let mut p = ProtoPacketParser {
+            bytes: bytes,
+            start: 0,
+            end: 0,
+            ptr: 0,
+        };
+        p.read_proto_packet().unwrap();
+        let mut bitreader = Bitreader::new(&bytes[p.start..p.end]);
         // Inner loop
         while bitreader.reader.has_bits_remaining(8) {
             let msg_type = bitreader.read_u_bit_var()?;

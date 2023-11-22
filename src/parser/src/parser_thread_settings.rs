@@ -41,7 +41,7 @@ pub struct ParserThread<'a> {
     pub parse_inventory: bool,
 
     pub ptr: usize,
-    pub bytes: &'a BytesVariant,
+    // pub bytes: &'a BytesVariant,
     pub parse_all_packets: bool,
     // Parsing state
     pub ge_list: &'a AHashMap<i32, Descriptor_t>,
@@ -194,7 +194,7 @@ impl<'a> ParserThread<'a> {
             serializers: AHashMap::default(),
             ptr: input.offset,
             ge_list: input.ge_list,
-            bytes: &input.settings.bytes,
+            // bytes: &input.settings.bytes,
             cls_by_id: &input.cls_by_id,
             entities: AHashMap::with_capacity(512),
             cls_bits: None,

@@ -33,14 +33,13 @@ fn main() {
         "CFlashbang"
         "CFlashbangProjectile"
         */
-        //let file = File::open("/home/laiho/Documents/q.dem").unwrap();
-        let file = File::open(path.unwrap().path()).unwrap();
+        let file = File::open("/home/laiho/Documents/programming/python/map/1.dem").unwrap();
+        // let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         mmap.advise(memmap2::Advice::HugePage).unwrap();
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: &BytesVariant::Mmap(mmap),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
             wanted_events: vec!["player_blind".to_string()],
@@ -65,10 +64,12 @@ fn main() {
         };
 
         let mut ds = Parser::new(&settings);
-        let d = ds.parse_demo().unwrap();
-        for x in d.game_events_counter {
-            println!("{:?}", x);
-        }
+        ds.is_multithreadable = true;
+        let file = File::open("/home/laiho/Documents/programming/python/map/1.dem").unwrap();
+        // let file = File::open(path.unwrap().path()).unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+        mmap.advise(memmap2::Advice::HugePage).unwrap();
+        let d = ds.parse_demo(&mmap).unwrap();
         println!("TOTAL {:?}", before.elapsed());
     }
     println!("TOTAL {:?}", before.elapsed());
