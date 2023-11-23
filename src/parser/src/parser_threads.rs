@@ -1,7 +1,6 @@
 use super::netmessage_types;
 use super::read_bits::DemoParserError;
 use crate::netmessage_types::netmessage_type_from_int;
-use crate::netmessage_types::NetmessageType;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
 use crate::read_bytes::read_varint;
@@ -75,41 +74,16 @@ impl<'a> ParserThread<'a> {
         }
         Ok(())
     }
-    fn packet_orderer(&self, packet: &NetmessageType) -> i32 {
-        match packet {
-            svc_CreateStringTable => 1001,
-            svc_UpdateStringTable => 1000,
-            GE_Source1LegacyGameEvent => 90,
-            svc_PacketEntities => 999,
-            _ => 0,
-        }
-    }
+
     pub fn parse_packet(&mut self, bytes: &[u8], buf: &mut [u8]) -> Result<(), DemoParserError> {
-        /*
-        let packet: CDemoPacket = match Message::parse_from_bytes(bytes) {
-            Err(_e) => return Err(DemoParserError::MalformedMessage),
-            Ok(p) => p,
-        };
-        let packet_data = packet.data.unwrap();
-        let mut bitreader = Bitreader::new(&packet_data);
-        */
+        let mut packet_parser = ProtoPacketParser::new(bytes);
+        packet_parser.read_proto_packet()?;
+        let mut bitreader = Bitreader::new(&bytes[packet_parser.start..packet_parser.end]);
+        let mut wrong_order_events = vec![];
 
-        let mut p = ProtoPacketParser {
-            bytes: bytes,
-            start: 0,
-            end: 0,
-            ptr: 0,
-        };
-        p.read_proto_packet().unwrap();
-        let mut bitreader = Bitreader::new(&bytes[p.start..p.end]);
-
-        // Inner loop
-        // Inner loop
         while bitreader.reader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
-
-            //let mut msg_bytes = vec![0; size as usize];
             bitreader.read_n_bytes_mut(size as usize, buf)?;
             let msg_bytes = &buf[..size as usize];
 
@@ -117,17 +91,29 @@ impl<'a> ParserThread<'a> {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
+                svc_ServerInfo => self.parse_server_info(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
                 CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
                 UM_SayText2 => self.parse_chat_messages(&msg_bytes),
                 net_SetConVar => self.create_custom_event_parse_convars(&msg_bytes),
                 CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
-                svc_ServerInfo => self.parse_server_info(&msg_bytes),
+                CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(&msg_bytes),
                 net_Tick => self.parse_net_tick(&msg_bytes),
                 svc_ClearAllStringTables => self.clear_stringtables(),
+                GE_Source1LegacyGameEvent => match self.parse_event(&msg_bytes) {
+                    Ok(Some(event)) => {
+                        wrong_order_events.push(event);
+                        Ok(())
+                    }
+                    Ok(None) => Ok(()),
+                    Err(e) => return Err(e),
+                },
                 _ => Ok(()),
             };
             ok?
+        }
+        if !wrong_order_events.is_empty() {
+            self.resolve_wrong_order_event(&mut wrong_order_events)?;
         }
         Ok(())
     }
@@ -164,7 +150,6 @@ impl<'a> ParserThread<'a> {
         let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
         let mut buf = vec![0; 500_000];
-        let mut packet_ents: CSVCMsg_PacketEntities = CSVCMsg_PacketEntities::new();
 
         // Inner loop
         while bitreader.reader.bits_remaining().unwrap() > 8 {

@@ -2,8 +2,7 @@ use super::read_bits::DemoParserError;
 use crate::entities_utils::*;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
-use crate::read_bytes::Reader;
-use crate::sendtables::DebugFieldAndPath;
+use crate::read_bytes::PacketEntitiesParser;
 use crate::variants::Variant;
 use ahash::AHashMap;
 use bitter::BitReader;
@@ -50,54 +49,14 @@ impl<'a> ParserThread<'a> {
         if !self.parse_entities {
             return Ok(());
         }
-        let mut reader = Reader {
-            bytes: &bytes,
-            ptr: 0,
-            active_spawngroup_handle: 0,
-            max_entries: 0,
-            update_baseline: false,
-            updated_entries: 0,
-            is_delta: false,
-            baseline: 0,
-            delta_from: 0,
-            entity_data: vec![],
-            pending_full_frame: false,
-            max_spawngroup_creationsequence: 0,
-            last_cmd_number: 0,
-            serialized_entities: vec![],
-            server_tick: 0,
-            data_end: 0,
-            data_start: 0,
-        };
-        loop {
-            let varint = reader.read_varint().unwrap();
-            let is_done = reader.read(varint);
-            if is_done {
-                break;
-            }
-        }
+        // Custom reader that does no allocations. Interesting data is byte algined so
+        // just index into the incomming bytes (dont allocate a vector for our bytes).
+        let mut reader = PacketEntitiesParser::new(bytes);
+        reader.parse_message()?;
 
-        /*
-        packet_ents.merge_from_bytes(&bytes).unwrap();
-
-        let packet_ents: CSVCMsg_PacketEntities = match Message::parse_from_bytes(&bytes) {
-            Ok(pe) => pe,
-            Err(_e) => return Err(DemoParserError::MalformedMessage),
-        };
-        println!("{:?}", bytes);
-        println!("{:?}", packet_ents);
-        panic!();
-
-        let n_updates = packet_ents.updated_entries();
-
-        let data = match &packet_ents.entity_data {
-            Some(data) => data,
-            None => return Err(DemoParserError::MalformedMessage),
-        };
-        */
         let mut bitreader = Bitreader::new(&bytes[reader.data_start..reader.data_end]);
         let mut entity_id: i32 = -1;
-        // println!("{:?}", reader.updated_entries);
+
         for _ in 0..reader.updated_entries {
             entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
             // Read 2 bits to know which operation should be done to the entity.
@@ -301,12 +260,15 @@ impl<'a> ParserThread<'a> {
             }
             do_op(symbol, bitreader, &mut fp)?;
 
+            /*
             if self.is_debug_mode {
                 self.debug_fields[idx] = DebugFieldAndPath {
                     field: class.serializer.debug_find_decoder(&fp, 0, class.name.to_string()),
                     path: fp.path.clone(),
                 };
             }
+            */
+            // println!("{:?}", class.serializer.find_decoder(&fp, 0, self.parse_inventory));
             // We reuse one big vector for holding paths. Purely for performance.
             // Alternatively we could create a new vector in this function and return it.
             self.field_infos[idx] = class.serializer.find_decoder(&fp, 0, self.parse_inventory);

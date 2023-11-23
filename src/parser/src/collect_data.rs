@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 use super::entities::PlayerMetaData;
 use super::variants::Variant;
 use crate::maps::AGENTSMAP;
@@ -8,16 +6,7 @@ use crate::maps::GRENADE_FRIENDLY_NAMES;
 use crate::maps::PAINTKITS;
 use crate::maps::WEAPINDICIES;
 use crate::parser_thread_settings::ParserThread;
-use crate::prop_controller::PropInfo;
-use crate::prop_controller::GRENADE_AMMO_ID;
-use crate::prop_controller::MY_WEAPONS_OFFSET;
-use crate::prop_controller::PLAYER_X_ID;
-use crate::prop_controller::PLAYER_Y_ID;
-use crate::prop_controller::PLAYER_Z_ID;
-use crate::prop_controller::STEAMID_ID;
-use crate::prop_controller::TICK_ID;
-use crate::prop_controller::WEAPON_SKIN_ID;
-
+use crate::prop_controller::*;
 use crate::variants::PropColumn;
 use crate::variants::VarVec;
 use std::fmt;
@@ -108,7 +97,6 @@ pub enum PropCollectionError {
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
 const MAX_COORD: f32 = (1 << 14) as f32;
-const MAX_INVENTORY_IDX: u32 = 16;
 
 impl std::error::Error for PropCollectionError {}
 impl fmt::Display for PropCollectionError {
@@ -143,6 +131,7 @@ impl<'a> ParserThread<'a> {
                 return;
             }
         }
+
         if self.parse_projectiles {
             self.collect_projectiles();
         }

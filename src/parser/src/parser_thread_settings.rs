@@ -35,11 +35,8 @@ pub struct ParserThread<'a> {
     pub stringtable_players: BTreeMap<u64, UserInfo>,
     pub net_tick: u32,
     pub parse_inventory: bool,
-
     pub ptr: usize,
-    // pub bytes: &'a BytesVariant,
     pub parse_all_packets: bool,
-    // Parsing state
     pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_bits: Option<u32>,
@@ -61,7 +58,6 @@ pub struct ParserThread<'a> {
     pub cnt: AHashMap<FieldModel, u32>,
     pub projectile_records: Vec<ProjectileRecord>,
     pub wanted_ticks: AHashSet<i32>,
-
     // Output from parsing
     pub output: AHashMap<u32, PropColumn, RandomState>,
     pub header: HashMap<String, String>,
@@ -70,8 +66,6 @@ pub struct ParserThread<'a> {
     pub convars: AHashMap<String, String>,
     pub chat_messages: Vec<ChatMessageRecord>,
     pub player_end_data: Vec<PlayerEndMetaData>,
-    // pub projectile_records: ProjectileRecordVec,
-
     // Settings
     pub wanted_events: Vec<String>,
     pub parse_entities: bool,

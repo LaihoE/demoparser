@@ -10,7 +10,6 @@ use crate::q_float::QuantalizedFloat;
 use crate::sendtables::Decoder::*;
 use crate::sendtables::FieldModel::*;
 use ahash::AHashMap;
-use ahash::HashMap;
 use csgoproto::{
     demo::CDemoSendTables,
     netmessages::{CSVCMsg_FlattenedSerializer, ProtoFlattenedSerializerField_t},
@@ -21,20 +20,20 @@ use protobuf::Message;
 use regex::Regex;
 
 #[derive(Debug, Clone)]
-pub struct Field<'a> {
-    //pub parent_name: String,
+pub struct FatField<'a> {
     pub var_name: &'a str,
     pub var_type: &'a str,
     pub send_node: &'a str,
-    pub serializer_name: Option<&'a str>,
+    pub serializer_name: Option<String>,
     pub encoder: &'a str,
     pub encode_flags: i32,
     pub bitcount: i32,
     pub low_value: f32,
     pub high_value: f32,
-    pub model: FieldModel,
     pub field_type: FieldType,
+
     pub decoder: Decoder,
+    pub model: FieldModel,
 
     pub serializer: Option<Serializer>,
     pub base_decoder: Option<Decoder>,
@@ -46,6 +45,36 @@ pub struct Field<'a> {
     pub controller_prop: Option<ControllerProp>,
     pub idx: u32,
 }
+#[derive(Debug, Clone)]
+pub struct Field {
+    pub decoder: Decoder,
+    pub model: FieldModel,
+    pub var_name: String,
+    pub serializer: Option<Serializer>,
+    pub base_decoder: Option<Decoder>,
+    pub child_decoder: Option<Decoder>,
+
+    pub should_parse: bool,
+    pub prop_id: u32,
+    //pub is_controller_prop: bool,
+    pub controller_prop: Option<ControllerProp>,
+    pub idx: u32,
+}
+pub fn field_from_fatfield(fat_field: &FatField) -> Field {
+    Field {
+        var_name: fat_field.var_name.to_string(),
+        decoder: fat_field.decoder,
+        model: fat_field.model.clone(),
+        serializer: fat_field.serializer.clone(),
+        base_decoder: fat_field.base_decoder,
+        child_decoder: fat_field.child_decoder,
+        should_parse: fat_field.should_parse,
+        prop_id: fat_field.prop_id as u32,
+        controller_prop: fat_field.controller_prop,
+        idx: fat_field.idx,
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct FieldInfo {
     pub decoder: Decoder,
@@ -70,7 +99,6 @@ pub enum FieldModel {
     FieldModelNOTSET,
 }
 use std::fmt;
-use std::time::Instant;
 
 impl fmt::Display for Decoder {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -173,6 +201,7 @@ const WEAPON_SKIN_PATH: [i32; 7] = [87, 0, 1, 0, 0, 0, 0];
 
 impl Field {
     pub fn decoder_from_path(&self, path: &FieldPath, pos: usize, parse_inventory: bool) -> FieldInfo {
+        // println!("{:?}", self.model);
         match self.model {
             FieldModelSimple => {
                 // EHHH IDK WILL HAVE TO DO FOR NOW
@@ -264,79 +293,82 @@ impl Field {
             _ => panic!("HUH"),
         }
     }
-    pub fn debug_decoder_from_path(&self, path: &FieldPath, pos: usize, prop_name: String) -> DebugField {
-        match self.model {
-            FieldModelSimple => {
-                return DebugField {
-                    full_name: prop_name + "." + &self.var_name.clone(),
-                    field: Some(self.clone()),
-                    decoder: self.decoder,
-                };
-            }
-            FieldModelFixedArray => DebugField {
+}
+/*
+pub fn debug_decoder_from_path(&self, path: &FieldPath, pos: usize, prop_name: String) -> DebugField {
+    match self.model {
+        FieldModelSimple => {
+            return DebugField {
                 full_name: prop_name + "." + &self.var_name.clone(),
                 field: Some(self.clone()),
                 decoder: self.decoder,
-            },
-            FieldModelFixedTable => {
-                if path.last == pos - 1 {
-                    if self.base_decoder.is_some() {
-                        return DebugField {
-                            full_name: prop_name + "." + &self.var_name.clone(),
-                            field: Some(self.clone()),
-                            decoder: self.base_decoder.unwrap(),
-                        };
-                    } else {
-                        return DebugField {
-                            full_name: prop_name + "." + &self.var_name.clone(),
-                            field: Some(self.clone()),
-                            decoder: self.decoder,
-                        };
-                    }
-                } else {
-                    match &self.serializer {
-                        Some(ser) => {
-                            return ser.debug_find_decoder(path, pos, prop_name + "." + &ser.name);
-                        }
-                        None => panic!("no serializer for path"),
-                    }
-                }
-            }
-            FieldModelVariableArray => {
-                if path.last == pos {
-                    return DebugField {
-                        full_name: prop_name + "." + &self.var_name.clone(),
-                        field: Some(self.clone()),
-                        decoder: self.child_decoder.unwrap(),
-                    };
-                } else {
-                    return DebugField {
-                        full_name: prop_name + "." + &self.var_name.clone(),
-                        field: Some(self.clone()),
-                        decoder: self.base_decoder.unwrap(),
-                    };
-                }
-            }
-            FieldModelVariableTable => {
-                if path.last >= pos + 1 {
-                    match &self.serializer {
-                        Some(ser) => {
-                            return ser.debug_find_decoder(path, pos + 1, prop_name + "." + &ser.name);
-                        }
-                        None => panic!("no serializer for path"),
-                    }
-                } else {
-                    return DebugField {
-                        full_name: prop_name + "." + &self.var_name.clone(),
-                        field: Some(self.clone()),
-                        decoder: self.base_decoder.unwrap(),
-                    };
-                }
-            }
-            _ => panic!("HUH"),
+            };
         }
+        FieldModelFixedArray => DebugField {
+            full_name: prop_name + "." + &self.var_name.clone(),
+            field: Some(self.clone()),
+            decoder: self.decoder,
+        },
+        FieldModelFixedTable => {
+            if path.last == pos - 1 {
+                if self.base_decoder.is_some() {
+                    return DebugField {
+                        full_name: prop_name + "." + &self.var_name.clone(),
+                        field: Some(self.clone()),
+                        decoder: self.base_decoder.unwrap(),
+                    };
+                } else {
+                    return DebugField {
+                        full_name: prop_name + "." + &self.var_name.clone(),
+                        field: Some(self.clone()),
+                        decoder: self.decoder,
+                    };
+                }
+            } else {
+                match &self.serializer {
+                    Some(ser) => {
+                        return ser.debug_find_decoder(path, pos, prop_name + "." + &ser.name);
+                    }
+                    None => panic!("no serializer for path"),
+                }
+            }
+        }
+        FieldModelVariableArray => {
+            if path.last == pos {
+                return DebugField {
+                    full_name: prop_name + "." + &self.var_name.clone(),
+                    field: Some(self.clone()),
+                    decoder: self.child_decoder.unwrap(),
+                };
+            } else {
+                return DebugField {
+                    full_name: prop_name + "." + &self.var_name.clone(),
+                    field: Some(self.clone()),
+                    decoder: self.base_decoder.unwrap(),
+                };
+            }
+        }
+        FieldModelVariableTable => {
+            if path.last >= pos + 1 {
+                match &self.serializer {
+                    Some(ser) => {
+                        return ser.debug_find_decoder(path, pos + 1, prop_name + "." + &ser.name);
+                    }
+                    None => panic!("no serializer for path"),
+                }
+            } else {
+                return DebugField {
+                    full_name: prop_name + "." + &self.var_name.clone(),
+                    field: Some(self.clone()),
+                    decoder: self.base_decoder.unwrap(),
+                };
+            }
+        }
+        _ => panic!("HUH"),
     }
-
+}
+*/
+impl<'a> FatField<'a> {
     pub fn find_decoder(&mut self, model: FieldModel, qf_map: &mut QfMapper) {
         self.model = model.clone();
         match model {
@@ -346,7 +378,7 @@ impl Field {
             FieldModelVariableTable => self.base_decoder = Some(Decoder::UnsignedDecoder),
             FieldModelVariableArray => {
                 self.base_decoder = Some(Decoder::UnsignedDecoder);
-                match self.var_name.as_str() {
+                match self.var_name {
                     // Dont know why these 4 break the parsing
                     "m_PredFloatVariables" => self.child_decoder = Some(NoscaleDecoder),
                     "m_OwnerOnlyPredNetFloatVariables" => self.child_decoder = Some(NoscaleDecoder),
@@ -387,7 +419,7 @@ impl Field {
         dec
     }
     pub fn find_qangle_type(&self) -> Decoder {
-        match self.var_name.as_str() {
+        match self.var_name {
             "m_angEyeAngles" => Decoder::QanglePitchYawDecoder,
             _ => {
                 if self.bitcount != 0 {
@@ -399,12 +431,12 @@ impl Field {
         }
     }
     pub fn find_float_type(&self, qf_map: &mut QfMapper) -> Decoder {
-        match self.var_name.as_str() {
+        match self.var_name {
             "m_flSimulationTime" => return Decoder::FloatSimulationTimeDecoder,
             "m_flAnimTime" => return Decoder::FloatSimulationTimeDecoder,
             _ => {}
         }
-        match self.encoder.as_str() {
+        match self.encoder {
             "coord" => Decoder::FloatCoordDecoder,
             "m_flSimulationTime" => Decoder::FloatSimulationTimeDecoder,
             _ => {
@@ -427,7 +459,7 @@ impl Field {
     }
 
     pub fn find_uint_type(&self) -> Decoder {
-        match self.encoder.as_str() {
+        match self.encoder {
             "fixed64" => Decoder::Fixed64Decoder,
             _ => Decoder::Unsigned64Decoder,
         }
@@ -525,11 +557,14 @@ impl Serializer {
         }
         fi
     }
+    /*
     pub fn debug_find_decoder(&self, path: &FieldPath, pos: usize, prop_name: String) -> DebugField {
         let idx = path.path[pos];
         let f = &self.fields[idx as usize];
         f.debug_decoder_from_path(path, pos + 1, prop_name)
     }
+    */
+    /*
     fn find_inventory_info(&self, path: &FieldPath) -> Option<FieldInfo> {
         if path.path == FLASH_AMMO_PATH && self.name == "CCSPlayerPawn" {
             return Some(FieldInfo {
@@ -549,6 +584,7 @@ impl Serializer {
         }
         None
     }
+    */
 }
 
 const POINTER_TYPES: &'static [&'static str] = &[
@@ -578,25 +614,24 @@ const POINTER_TYPES: &'static [&'static str] = &[
 impl<'a> Parser<'a> {
     fn create_field(
         &self,
-        serializer_msg: &CSVCMsg_FlattenedSerializer,
+        serializer_msg: &'a CSVCMsg_FlattenedSerializer,
         idx: usize,
         serializers: &mut AHashMap<String, Serializer>,
         qf_mapper: &mut QfMapper,
-    ) -> Field {
+    ) -> FatField<'_> {
         let field_msg = &serializer_msg.fields[idx];
 
         let mut field = field_from_msg(field_msg, &serializer_msg);
+
         match &field.serializer_name {
-            Some(name) => match serializers.get(name) {
+            Some(name) => match serializers.get(&name.to_string()) {
                 Some(ser) => {
-                    println!("{:?} => {:?}", name, serializers.get(name));
                     field.serializer = Some(ser.clone());
                 }
                 None => {}
             },
             None => {}
         }
-
         match &field.serializer {
             Some(_) => {
                 if field.field_type.pointer || POINTER_TYPES.contains(&field.field_type.base_type.as_str()) {
@@ -624,14 +659,21 @@ impl<'a> Parser<'a> {
         field
     }
     fn initialize_needed(&mut self) -> (AHashMap<String, Serializer>, QfMapper, Vec<Option<Field>>, PropController) {
-        let mut serializers: AHashMap<String, Serializer> = AHashMap::with_capacity(300);
-        let mut qf_mapper = QfMapper {
+        let serializers: AHashMap<String, Serializer> = AHashMap::with_capacity(300);
+        let qf_mapper = QfMapper {
             idx: 0,
             map: AHashMap::default(),
         };
+        if needs_velocity(&self.wanted_player_props) {
+            self.wanted_player_props
+                .extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
+            self.added_temp_props
+                .extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
+        }
+
         // let mut fields: HashMap<i32, Field> = HashMap::default();
-        let mut fields: Vec<Option<Field>> = vec![None; 2048];
-        let mut prop_controller = PropController::new(
+        let fields: Vec<Option<Field>> = vec![None; 10000];
+        let prop_controller = PropController::new(
             self.wanted_player_props.clone(),
             self.wanted_other_props.clone(),
             self.real_name_to_og_name.clone(),
@@ -654,8 +696,8 @@ impl<'a> Parser<'a> {
 
         for serializer in serializer_msg.serializers.iter() {
             let mut my_serializer = Serializer {
-                name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
                 // based on 1 demo, its not that important
+                name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].to_string(),
                 fields: Vec::with_capacity(130),
             };
             for idx in &serializer.fields_index {
@@ -663,19 +705,21 @@ impl<'a> Parser<'a> {
                 match fields_history.get(*idx as usize) {
                     Some(Some(field)) => my_serializer.fields.push(field.clone()),
                     _ => {
-                        let field = self.create_field(&serializer_msg, *idx as usize, &mut serializers, &mut qf_mapper);
+                        let fat_field = self.create_field(&serializer_msg, *idx as usize, &mut serializers, &mut qf_mapper);
+                        let field = field_from_fatfield(&fat_field);
                         fields_history[*idx as usize] = Some(field.clone());
                         my_serializer.fields.push(field);
                     }
                 }
             }
-            if WANTED_CLS_NAMES.contains(&my_serializer.name) {
-                // prop_controller.find_prop_name_paths(&mut my_serializer);
+            if WANTED_CLS_NAMES.contains(&serializer_msg.symbols[serializer.serializer_name_sym() as usize]) {
+                prop_controller.find_prop_name_paths(&mut my_serializer);
             }
             serializers.insert(my_serializer.name.to_string(), my_serializer);
         }
-        println!("SL {:?}", serializers.len());
         prop_controller.set_custom_propinfos();
+        prop_controller.name_to_id = AHashMap::default();
+        prop_controller.id_to_name = AHashMap::default();
         if !self.wanted_events.is_empty() && needs_velocity(&self.wanted_player_props) {
             prop_controller.event_with_velocity = true;
         }
@@ -695,24 +739,21 @@ pub struct DebugFieldAndPath {
     pub path: [i32; 7],
 }
 
-fn field_from_msg(field: &ProtoFlattenedSerializerField_t, serializer_msg: &CSVCMsg_FlattenedSerializer) -> Field {
+fn field_from_msg<'a>(field: &ProtoFlattenedSerializerField_t, serializer_msg: &'a CSVCMsg_FlattenedSerializer) -> FatField<'a> {
     let field_type = find_field_type(&serializer_msg.symbols[field.var_type_sym() as usize]);
 
     let ser_name = match field.has_field_serializer_name_sym() {
         true => Some(serializer_msg.symbols[field.field_serializer_name_sym() as usize].clone()),
         false => None,
     };
-    let enc_name = match field.has_var_encoder_sym() {
-        true => serializer_msg.symbols[field.var_encoder_sym() as usize].clone(),
-        false => "".to_string(),
-    };
-    let f = Field {
+
+    let f = FatField {
         bitcount: field.bit_count(),
-        var_name: serializer_msg.symbols[field.var_name_sym() as usize].clone(),
-        var_type: serializer_msg.symbols[field.var_type_sym() as usize].clone(),
-        send_node: serializer_msg.symbols[field.send_node_sym() as usize].clone(),
+        var_name: &serializer_msg.symbols[field.var_name_sym() as usize],
+        var_type: &serializer_msg.symbols[field.var_type_sym() as usize],
+        send_node: &serializer_msg.symbols[field.send_node_sym() as usize],
         serializer_name: ser_name,
-        encoder: enc_name,
+        encoder: &serializer_msg.symbols[field.var_encoder_sym() as usize],
         encode_flags: field.encode_flags(),
         low_value: field.low_value(),
         high_value: field.high_value(),

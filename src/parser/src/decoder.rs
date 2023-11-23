@@ -31,7 +31,6 @@ impl<'a> Bitreader<'a> {
             BooleanDecoder => Ok(Variant::Bool(self.read_boolean()?)),
             BaseDecoder => Ok(Variant::U32(self.read_varint()?)),
             CentityHandleDecoder => Ok(Variant::U32(self.read_varint()?)),
-            ChangleDecoder => Ok(Variant::U32(self.read_varint()?)),
             ComponentDecoder => Ok(Variant::Bool(self.read_boolean()?)),
             FloatCoordDecoder => Ok(Variant::F32(self.read_bit_coord()?)),
             StringDecoder => Ok(Variant::String(self.read_string()?)),

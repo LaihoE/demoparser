@@ -14,7 +14,6 @@ use csgoproto::netmessages::CSVCMsg_GameEventList;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
 use csgoproto::networkbasetypes::CNETMsg_SetConVar;
 use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
-use itertools::Itertools;
 use protobuf::Message;
 use serde::ser::SerializeMap;
 use serde::Serialize;

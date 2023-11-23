@@ -140,10 +140,18 @@ impl<'a> Bitreader<'a> {
         }
     }
     pub fn read_n_bytes_mut(&mut self, n: usize, buf: &mut [u8]) -> Result<(), DemoParserError> {
-        for i in 0..n {
-            buf[i] = self.reader.read_bits(8).unwrap() as u8;
+        match self.reader.read_bytes(&mut buf[..n]) {
+            true => Ok(()),
+            false => Err(DemoParserError::FailedByteRead(
+                format!(
+                    "Failed to read message/command. bytes left in stream: {}, requested bytes: {}",
+                    self.reader.bits_remaining().unwrap() / 8,
+                    n,
+                )
+                .to_string(),
+            )),
         }
-        Ok(())
+
         /*
         match self.reader.read_bytes(buf) {
             true => Ok(()),

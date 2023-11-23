@@ -10,7 +10,6 @@ use crate::prop_controller::PropController;
 use crate::prop_controller::PropInfo;
 use crate::read_bits::DemoParserError;
 use crate::stringtables::UserInfo;
-use crate::variants::BytesVariant;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
@@ -101,10 +100,8 @@ pub fn needs_velocity(props: &[String]) -> bool {
 
 impl<'a> Parser<'a> {
     pub fn new(inputs: &'a ParserInputs<'a>) -> Self {
-        let mut added_temp_props = vec![];
-
         Parser {
-            added_temp_props: added_temp_props,
+            added_temp_props: vec![],
             threads_spawned: 0,
             is_multithreadable: check_multithreadability(&inputs.wanted_player_props),
             largest_wanted_tick: *inputs.wanted_ticks.iter().max().unwrap_or(&999999999),

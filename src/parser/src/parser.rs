@@ -21,7 +21,7 @@ use ahash::AHashSet;
 use bitter::BitReader;
 use csgoproto::demo::CDemoFullPacket;
 use csgoproto::demo::EDemoCommands::*;
-use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoPacket, CDemoSendTables};
+use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoSendTables};
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
@@ -30,7 +30,6 @@ use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use std::time::Instant;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -50,10 +49,10 @@ pub struct DemoOutput {
 
 impl<'a> Parser<'a> {
     pub fn parse_demo(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
-        // Parser::handle_short_header(self.bytes.get_len(), &self.bytes[..16])?;
+        Parser::handle_short_header(outer_bytes.len(), &outer_bytes[..16])?;
         self.ptr = 16;
         let mut sendtable = None;
-        let mut buf = vec![0_u8; 200_000];
+        let mut buf = vec![0_u8; 1_000_000];
         let mut biggest = 0;
         loop {
             let frame_starts_at = self.ptr;
@@ -103,7 +102,6 @@ impl<'a> Parser<'a> {
                         None => return Err(DemoParserError::NoSendTableMessage),
                     };
                     self.parse_class_info(&bytes, table)?;
-                    break;
                     Ok(())
                 }
                 DEM_SignonPacket => self.parse_packet(&bytes),
@@ -117,14 +115,8 @@ impl<'a> Parser<'a> {
             };
             ok?;
         }
-        println!("BIG {}", biggest);
         self.check_needed()?;
-        let input = self.create_parser_thread_input(16, true);
-        let mut parser = ParserThread::new(input).unwrap();
-        // parser.start(outer_bytes)?;
-        let x = parser.create_output();
-        return Ok(x);
-        // return;
+
         if self.is_multithreadable {
             self.parse_demo_multithread(outer_bytes)
         } else {
@@ -172,6 +164,7 @@ impl<'a> Parser<'a> {
                 Ok(r) => ok.push(r),
             };
         }
+        println!("{:?}", self.added_temp_props);
         for prop in &self.added_temp_props {
             self.wanted_player_props.retain(|x| x != prop);
             self.prop_controller.prop_infos.retain(|x| &x.prop_name != prop);
@@ -362,9 +355,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_class_info(&mut self, bytes: &[u8], sendtables: CDemoSendTables) -> Result<(), DemoParserError> {
-        let before = Instant::now();
         let (mut serializers, qf_mapper, p) = self.parse_sendtable(sendtables)?;
-        println!("{:2?}", before.elapsed());
 
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
         let mut cls_by_id = AHashMap::default();
