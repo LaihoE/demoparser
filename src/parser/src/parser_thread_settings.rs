@@ -16,18 +16,14 @@ use crate::sendtables::DebugFieldAndPath;
 use crate::sendtables::FieldInfo;
 use crate::sendtables::FieldModel;
 use crate::stringtables::UserInfo;
-use crate::variants::BytesVariant;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
 use ahash::RandomState;
-use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::env;
-use std::sync::Arc;
 
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
@@ -51,7 +47,7 @@ pub struct ParserThread<'a> {
     pub tick: i32,
     pub players: BTreeMap<i32, PlayerMetaData>,
     pub teams: Teams,
-    pub huffman_lookup_table: &'a Vec<(u32, u8)>,
+    pub huffman_lookup_table: &'a Vec<(u8, u8)>,
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
     pub rules_entity_id: Option<i32>,
@@ -317,9 +313,9 @@ fn msb(mut val: u32) -> u32 {
     cnt
 }
 
-pub fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
-    let mut huffman_table = vec![(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
-    let mut huffman_rev_table = vec![(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
+pub fn create_huffman_lookup_table() -> Vec<(u8, u8)> {
+    let mut huffman_table = vec![(255, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
+    let mut huffman_rev_table = vec![(255, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
 
     huffman_table[0] = (0, 1);
     huffman_table[2] = (39, 2);
@@ -363,12 +359,12 @@ pub fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
     huffman_table[223] = (3, 8);
     huffman_table[14] = (1, 4);
     huffman_table[15] = (11, 4);
-    huffman_table[0] = (999999, 255);
+    huffman_table[0] = (255, 255);
 
     const RIGHTSHIFT_BITORDER: u32 = 64 - 17;
     let mut v: Vec<u32> = vec![];
     for (idx, x) in huffman_table.iter().enumerate() {
-        if x.0 != 999999 {
+        if x.0 != 255 {
             v.push(idx as u32);
         }
     }
@@ -380,14 +376,14 @@ pub fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
         let shifta = msb(x);
         for (idx, pair) in idx_msb_map.iter().enumerate() {
             if x == idx as u32 >> pair - shifta {
-                let peekbits = (idx as u64).swap_bits() >> RIGHTSHIFT_BITORDER;
+                let peekbits = (idx as u64).reverse_bits() >> RIGHTSHIFT_BITORDER;
                 huffman_table[idx as usize] = huffman_table[x as usize];
                 huffman_rev_table[peekbits as usize] = huffman_table[x as usize];
             }
         }
     }
     for v in 0..HUF_LOOKUPTABLE_MAXVALUE {
-        let p: u64 = (v as u64).swap_bits() >> RIGHTSHIFT_BITORDER;
+        let p: u64 = (v as u64).reverse_bits() >> RIGHTSHIFT_BITORDER;
         if p & 1 == 0 {
             huffman_rev_table[p as usize] = (0, 1);
         }

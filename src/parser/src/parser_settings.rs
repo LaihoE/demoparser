@@ -36,7 +36,7 @@ pub struct ParserInputs<'a> {
     pub only_header: bool,
     pub count_props: bool,
     pub only_convars: bool,
-    pub huffman_lookup_table: &'a Vec<(u32, u8)>,
+    pub huffman_lookup_table: &'a Vec<(u8, u8)>,
 }
 
 pub struct Parser<'a> {
@@ -46,7 +46,7 @@ pub struct Parser<'a> {
     pub ptr: usize,
     // pub bytes: &'a BytesVariant,
     pub tick: i32,
-    pub huf: &'a Vec<(u32, u8)>,
+    pub huf: &'a Vec<(u8, u8)>,
     pub settings: &'a ParserInputs<'a>,
     pub serializers: AHashMap<String, Serializer>,
     pub cls_by_id: Option<Arc<AHashMap<u32, Class>>>,

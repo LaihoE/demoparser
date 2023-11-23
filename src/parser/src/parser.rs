@@ -9,7 +9,6 @@ use crate::parser_thread_settings::*;
 use crate::parser_threads::demo_cmd_type_from_int;
 use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
-use crate::read_bytes::read_proto_packet;
 use crate::read_bytes::read_varint;
 use crate::read_bytes::ProtoPacketParser;
 use crate::stringtables::parse_userinfo;
@@ -31,6 +30,7 @@ use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::Decoder as SnapDecoder;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -53,13 +53,17 @@ impl<'a> Parser<'a> {
         // Parser::handle_short_header(self.bytes.get_len(), &self.bytes[..16])?;
         self.ptr = 16;
         let mut sendtable = None;
-        let mut buf = vec![0_u8; 10_000_000];
+        let mut buf = vec![0_u8; 200_000];
+        let mut biggest = 0;
         loop {
             let frame_starts_at = self.ptr;
 
             let cmd = read_varint(outer_bytes, &mut self.ptr)?;
             let tick = read_varint(outer_bytes, &mut self.ptr)?;
             let size = read_varint(outer_bytes, &mut self.ptr)?;
+
+            biggest = u32::max(size, biggest);
+
             self.tick = tick as i32;
             // Safety check
             if self.ptr + size as usize >= outer_bytes.len() {
@@ -99,6 +103,7 @@ impl<'a> Parser<'a> {
                         None => return Err(DemoParserError::NoSendTableMessage),
                     };
                     self.parse_class_info(&bytes, table)?;
+                    break;
                     Ok(())
                 }
                 DEM_SignonPacket => self.parse_packet(&bytes),
@@ -112,8 +117,14 @@ impl<'a> Parser<'a> {
             };
             ok?;
         }
+        println!("BIG {}", biggest);
         self.check_needed()?;
-
+        let input = self.create_parser_thread_input(16, true);
+        let mut parser = ParserThread::new(input).unwrap();
+        // parser.start(outer_bytes)?;
+        let x = parser.create_output();
+        return Ok(x);
+        // return;
         if self.is_multithreadable {
             self.parse_demo_multithread(outer_bytes)
         } else {
@@ -351,7 +362,10 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_class_info(&mut self, bytes: &[u8], sendtables: CDemoSendTables) -> Result<(), DemoParserError> {
+        let before = Instant::now();
         let (mut serializers, qf_mapper, p) = self.parse_sendtable(sendtables)?;
+        println!("{:2?}", before.elapsed());
+
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
         let mut cls_by_id = AHashMap::default();
         for class_t in msg.classes {

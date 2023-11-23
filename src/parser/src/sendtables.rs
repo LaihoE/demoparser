@@ -1,6 +1,7 @@
 use super::read_bits::{Bitreader, DemoParserError};
 use crate::decoder::QfMapper;
 use crate::entities_utils::FieldPath;
+use crate::maps::WANTED_CLS_NAMES;
 use crate::parser_settings::needs_velocity;
 use crate::parser_settings::Parser;
 use crate::prop_controller::PropController;
@@ -20,13 +21,13 @@ use protobuf::Message;
 use regex::Regex;
 
 #[derive(Debug, Clone)]
-pub struct Field {
+pub struct Field<'a> {
     //pub parent_name: String,
-    pub var_name: String,
-    pub var_type: String,
-    pub send_node: String,
-    pub serializer_name: Option<String>,
-    pub encoder: String,
+    pub var_name: &'a str,
+    pub var_type: &'a str,
+    pub send_node: &'a str,
+    pub serializer_name: Option<&'a str>,
+    pub encoder: &'a str,
     pub encode_flags: i32,
     pub bitcount: i32,
     pub low_value: f32,
@@ -69,6 +70,7 @@ pub enum FieldModel {
     FieldModelNOTSET,
 }
 use std::fmt;
+use std::time::Instant;
 
 impl fmt::Display for Decoder {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -574,6 +576,68 @@ const POINTER_TYPES: &'static [&'static str] = &[
 ];
 
 impl<'a> Parser<'a> {
+    fn create_field(
+        &self,
+        serializer_msg: &CSVCMsg_FlattenedSerializer,
+        idx: usize,
+        serializers: &mut AHashMap<String, Serializer>,
+        qf_mapper: &mut QfMapper,
+    ) -> Field {
+        let field_msg = &serializer_msg.fields[idx];
+
+        let mut field = field_from_msg(field_msg, &serializer_msg);
+        match &field.serializer_name {
+            Some(name) => match serializers.get(name) {
+                Some(ser) => {
+                    println!("{:?} => {:?}", name, serializers.get(name));
+                    field.serializer = Some(ser.clone());
+                }
+                None => {}
+            },
+            None => {}
+        }
+
+        match &field.serializer {
+            Some(_) => {
+                if field.field_type.pointer || POINTER_TYPES.contains(&field.field_type.base_type.as_str()) {
+                    field.find_decoder(FieldModelFixedTable, qf_mapper)
+                } else {
+                    field.find_decoder(FieldModelVariableTable, qf_mapper)
+                }
+            }
+            None => {
+                if field.field_type.count > 0 && field.field_type.base_type != "char" {
+                    field.find_decoder(FieldModelFixedArray, qf_mapper)
+                } else if field.field_type.base_type == "CUtlVector" || field.field_type.base_type == "CNetworkUtlVectorBase" {
+                    field.find_decoder(FieldModelVariableArray, qf_mapper)
+                } else {
+                    field.find_decoder(FieldModelSimple, qf_mapper)
+                }
+            }
+        }
+        if field.var_name == "m_pGameModeRules" {
+            field.decoder = GameModeRulesDecoder
+        }
+        if field.encoder == "qangle_precise" {
+            field.decoder = QanglePresDecoder;
+        }
+        field
+    }
+    fn initialize_needed(&mut self) -> (AHashMap<String, Serializer>, QfMapper, Vec<Option<Field>>, PropController) {
+        let mut serializers: AHashMap<String, Serializer> = AHashMap::with_capacity(300);
+        let mut qf_mapper = QfMapper {
+            idx: 0,
+            map: AHashMap::default(),
+        };
+        // let mut fields: HashMap<i32, Field> = HashMap::default();
+        let mut fields: Vec<Option<Field>> = vec![None; 2048];
+        let mut prop_controller = PropController::new(
+            self.wanted_player_props.clone(),
+            self.wanted_other_props.clone(),
+            self.real_name_to_og_name.clone(),
+        );
+        (serializers, qf_mapper, fields, prop_controller)
+    }
     // This part is so insanely complicated. There are multiple versions of each serializer and
     // each serializer is this huge nested struct.
     pub fn parse_sendtable(
@@ -581,96 +645,36 @@ impl<'a> Parser<'a> {
         tables: CDemoSendTables,
     ) -> Result<(AHashMap<String, Serializer>, QfMapper, PropController), DemoParserError> {
         let mut bitreader = Bitreader::new(tables.data());
+
         let n_bytes = bitreader.read_varint()?;
         let bytes = bitreader.read_n_bytes(n_bytes as usize)?;
         let serializer_msg: CSVCMsg_FlattenedSerializer = Message::parse_from_bytes(&bytes).unwrap();
-        let mut serializers: AHashMap<String, Serializer> = AHashMap::default();
-        let mut qf_mapper = QfMapper {
-            idx: 0,
-            map: AHashMap::default(),
-        };
-        let mut fields: HashMap<i32, Field> = HashMap::default();
-        let mut prop_controller = PropController::new(
-            self.wanted_player_props.clone(),
-            self.wanted_other_props.clone(),
-            self.real_name_to_og_name.clone(),
-        );
+
+        let (mut serializers, mut qf_mapper, mut fields_history, mut prop_controller) = self.initialize_needed();
+
         for serializer in serializer_msg.serializers.iter() {
             let mut my_serializer = Serializer {
                 name: serializer_msg.symbols[serializer.serializer_name_sym() as usize].clone(),
-                fields: vec![],
+                // based on 1 demo, its not that important
+                fields: Vec::with_capacity(130),
             };
-
             for idx in &serializer.fields_index {
-                match fields.get(idx) {
-                    Some(field) => my_serializer.fields.push(field.clone()),
-                    None => {
-                        let field_msg = &serializer_msg.fields[*idx as usize];
-                        let mut field = field_from_msg(field_msg, &serializer_msg);
-                        match &field.serializer_name {
-                            Some(name) => match serializers.get(name) {
-                                Some(ser) => {
-                                    field.serializer = Some(ser.clone());
-                                }
-                                None => {}
-                            },
-                            None => {}
-                        }
-
-                        match &field.serializer {
-                            Some(_) => {
-                                if field.field_type.pointer || POINTER_TYPES.contains(&field.field_type.base_type.as_str()) {
-                                    field.find_decoder(FieldModelFixedTable, &mut qf_mapper)
-                                } else {
-                                    field.find_decoder(FieldModelVariableTable, &mut qf_mapper)
-                                }
-                            }
-                            None => {
-                                if field.field_type.count > 0 && field.field_type.base_type != "char" {
-                                    field.find_decoder(FieldModelFixedArray, &mut qf_mapper)
-                                } else if field.field_type.base_type == "CUtlVector"
-                                    || field.field_type.base_type == "CNetworkUtlVectorBase"
-                                {
-                                    field.find_decoder(FieldModelVariableArray, &mut qf_mapper)
-                                } else {
-                                    field.find_decoder(FieldModelSimple, &mut qf_mapper)
-                                }
-                            }
-                        }
-                        if field.var_name == "m_pGameModeRules" {
-                            field.decoder = GameModeRulesDecoder
-                        }
-                        if field.encoder == "qangle_precise" {
-                            field.decoder = QanglePresDecoder;
-                        }
-                        fields.insert(*idx, field.clone());
+                // I think we check if we have already had this field index
+                match fields_history.get(*idx as usize) {
+                    Some(Some(field)) => my_serializer.fields.push(field.clone()),
+                    _ => {
+                        let field = self.create_field(&serializer_msg, *idx as usize, &mut serializers, &mut qf_mapper);
+                        fields_history[*idx as usize] = Some(field.clone());
                         my_serializer.fields.push(field);
                     }
                 }
             }
-
-            if my_serializer.name.contains("Player")
-                || my_serializer.name.contains("Controller")
-                || my_serializer.name.contains("Team")
-                || my_serializer.name.contains("Weapon")
-                || my_serializer.name.contains("AK")
-                || my_serializer.name.contains("cell")
-                || my_serializer.name.contains("vec")
-                || my_serializer.name.contains("Projectile")
-                || my_serializer.name.contains("Knife")
-                || my_serializer.name.contains("CDEagle")
-                || my_serializer.name.contains("Rules")
-                || my_serializer.name.contains("C4")
-                || my_serializer.name.contains("Grenade")
-                || my_serializer.name.contains("Flash")
-                || my_serializer.name.contains("Molo")
-                || my_serializer.name.contains("Inc")
-                || my_serializer.name.contains("Infer")
-            {
-                prop_controller.find_prop_name_paths(&mut my_serializer);
+            if WANTED_CLS_NAMES.contains(&my_serializer.name) {
+                // prop_controller.find_prop_name_paths(&mut my_serializer);
             }
-            serializers.insert(my_serializer.name.clone(), my_serializer);
+            serializers.insert(my_serializer.name.to_string(), my_serializer);
         }
+        println!("SL {:?}", serializers.len());
         prop_controller.set_custom_propinfos();
         if !self.wanted_events.is_empty() && needs_velocity(&self.wanted_player_props) {
             prop_controller.event_with_velocity = true;

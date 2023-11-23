@@ -386,6 +386,7 @@ impl PropController {
             self.insert_propinfo(&prop_name, f);
         }
         if self.should_parse(&prop_name) {
+            // println!("{:?}", prop_name);
             f.should_parse = true;
         }
         if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {

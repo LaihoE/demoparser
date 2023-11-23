@@ -11,7 +11,7 @@ use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
 
 const NSERIALBITS: u32 = 17;
-const STOP_READING_SYMBOL: u32 = 39;
+const STOP_READING_SYMBOL: u8 = 39;
 const HUFFMAN_CODE_MAXLEN: u32 = 17;
 
 #[derive(Debug, Clone)]

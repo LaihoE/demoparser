@@ -4,10 +4,17 @@ use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
 use parser::variants::BytesVariant;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
 use std::fs;
 use std::fs::File;
 use std::sync::Arc;
 use std::time::Instant;
+
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
     let wanted_props = vec!["inventory".to_string()];
@@ -37,6 +44,8 @@ fn main() {
         // let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         mmap.advise(memmap2::Advice::HugePage).unwrap();
+
+        // let s: u32 = mmap.par_iter().map(|x| *x as u32).sum();
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
