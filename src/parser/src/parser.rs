@@ -164,7 +164,6 @@ impl<'a> Parser<'a> {
                 Ok(r) => ok.push(r),
             };
         }
-        println!("{:?}", self.added_temp_props);
         for prop in &self.added_temp_props {
             self.wanted_player_props.retain(|x| x != prop);
             self.prop_controller.prop_infos.retain(|x| &x.prop_name != prop);

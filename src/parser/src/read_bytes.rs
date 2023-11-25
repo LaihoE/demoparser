@@ -180,7 +180,6 @@ pub fn read_varint2(bytes: &[u8], mut ptr: usize) -> Result<(u32, usize), DemoPa
             break;
         }
     }
-    println!("{} {}", result, ptr);
     Ok((result as u32, ptr + 1))
 }
 

@@ -268,7 +268,6 @@ impl<'a> ParserThread<'a> {
                 };
             }
             */
-            // println!("{:?}", class.serializer.find_decoder(&fp, 0, self.parse_inventory));
             // We reuse one big vector for holding paths. Purely for performance.
             // Alternatively we could create a new vector in this function and return it.
             self.field_infos[idx] = class.serializer.find_decoder(&fp, 0, self.parse_inventory);
