@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 use super::entities::PlayerMetaData;
 use super::variants::Variant;
 use crate::maps::AGENTSMAP;
@@ -15,7 +13,6 @@ use crate::prop_controller::PLAYER_X_ID;
 use crate::prop_controller::PLAYER_Y_ID;
 use crate::prop_controller::PLAYER_Z_ID;
 use crate::prop_controller::STEAMID_ID;
-use crate::prop_controller::TICK_ID;
 use crate::prop_controller::WEAPON_SKIN_ID;
 
 use crate::variants::PropColumn;

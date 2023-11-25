@@ -1,12 +1,40 @@
 use super::{
     read_bits::{Bitreader, DemoParserError},
-    sendtables::Decoder,
     variants::Variant,
 };
-
+use crate::decoder::Decoder::*;
 use crate::q_float::QuantalizedFloat;
-use crate::sendtables::Decoder::*;
 use ahash::AHashMap;
+use std::fmt;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Decoder {
+    QuantalizedFloatDecoder(u8),
+    VectorNormalDecoder,
+    VectorNoscaleDecoder,
+    VectorFloatCoordDecoder,
+    Unsigned64Decoder,
+    QangleDecoder,
+    ChangleDecoder,
+    CstrongHandleDecoder,
+    CentityHandleDecoder,
+    NoscaleDecoder,
+    BooleanDecoder,
+    StringDecoder,
+    SignedDecoder,
+    UnsignedDecoder,
+    ComponentDecoder,
+    FloatCoordDecoder,
+    FloatSimulationTimeDecoder,
+    Fixed64Decoder,
+    QanglePitchYawDecoder,
+    Qangle3Decoder,
+    QangleVarDecoder,
+    BaseDecoder,
+    AmmoDecoder,
+    QanglePresDecoder,
+    GameModeRulesDecoder,
+}
 
 #[derive(Debug, Clone)]
 pub struct QfMapper {
@@ -177,6 +205,11 @@ impl<'a> Bitreader<'a> {
     }
     pub fn read_angle(&mut self, n: usize) -> Result<f32, DemoParserError> {
         return Ok(self.decode_noscale()? / ((1 << n) as f32));
+    }
+}
+impl fmt::Display for Decoder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 

@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use super::netmessage_types;
 use super::read_bits::DemoParserError;
 use crate::netmessage_types::netmessage_type_from_int;
@@ -143,7 +145,7 @@ impl ParserThread {
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8], should_parse_entities: bool) -> Result<(), DemoParserError> {
         self.string_tables = vec![];
-
+        let before = Instant::now();
         let full_packet: CDemoFullPacket = match Message::parse_from_bytes(bytes) {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
             Ok(p) => p,
@@ -165,6 +167,7 @@ impl ParserThread {
                 }
             }
         }
+        // println!("")
         let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
         // Inner loop
@@ -194,6 +197,7 @@ impl ParserThread {
             };
             ok?
         }
+        // println!("IN FP: {:?} {:?} {:?}", before.elapsed(), self.tick, self.entities.len());
         Ok(())
     }
     fn clear_stringtables(&mut self) -> Result<(), DemoParserError> {

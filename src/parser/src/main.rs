@@ -8,11 +8,15 @@ use std::fs;
 use std::fs::File;
 use std::sync::Arc;
 use std::time::Instant;
-
+/*
+use mimalloc::MiMalloc;
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+*/
 fn main() {
-    let wanted_props = vec!["inventory".to_string()];
+    let wanted_props = vec!["X".to_string()];
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/test/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/broken/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
 
@@ -21,7 +25,7 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 1 {
+        if c > 3 {
             break;
         }
 
@@ -33,8 +37,8 @@ fn main() {
         "CFlashbang"
         "CFlashbangProjectile"
         */
-        let file = File::open("/home/laiho/Documents/q.dem").unwrap();
-        //let file = File::open(path.unwrap().path()).unwrap();
+        //let file = File::open("/home/laiho/Documents/q.dem").unwrap();
+        let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         mmap.advise(memmap2::Advice::HugePage).unwrap();
 
@@ -43,8 +47,8 @@ fn main() {
             bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            // wanted_events: vec!["player_blind".to_string()],
-            wanted_events: vec![],
+            wanted_events: vec!["player_blind".to_string()],
+            // wanted_events: vec![],
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
                 "CCSTeam.m_szTeamname".to_string(),
@@ -65,10 +69,9 @@ fn main() {
         };
 
         let mut ds = Parser::new(settings);
+        ds.is_multithreadable = false;
         let d = ds.parse_demo().unwrap();
-        for x in d.game_events_counter {
-            println!("{:?}", x);
-        }
+
         println!("TOTAL {:?}", before.elapsed());
     }
     println!("TOTAL {:?}", before.elapsed());

@@ -7,14 +7,13 @@ use crate::collect_data::ProjectileRecord;
 use crate::decoder::QfMapper;
 use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
+use crate::entities_utils::FieldPath;
 use crate::other_netmessages::Class;
 use crate::parser::DemoOutput;
 use crate::parser::ParserThreadInput;
 use crate::prop_controller::PropController;
-use crate::sendtables::DebugField;
-use crate::sendtables::DebugFieldAndPath;
-use crate::sendtables::FieldInfo;
-use crate::sendtables::FieldModel;
+
+use crate::decoder::Decoder;
 use crate::stringtables::UserInfo;
 use crate::variants::BytesVariant;
 use ahash::AHashMap;
@@ -39,6 +38,7 @@ pub struct ParserThread {
     pub stringtable_players: BTreeMap<u64, UserInfo>,
     pub net_tick: u32,
     pub parse_inventory: bool,
+    pub paths: Vec<FieldPath>,
 
     pub ptr: usize,
     pub bytes: Arc<BytesVariant>,
@@ -58,11 +58,9 @@ pub struct ParserThread {
     pub c4_entity_id: Option<i32>,
     pub game_events_counter: AHashSet<String>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
-    pub field_infos: Vec<FieldInfo>,
     pub projectiles: BTreeSet<i32>,
     pub fullpackets_parsed: u32,
     pub packets_parsed: u32,
-    pub cnt: AHashMap<FieldModel, u32>,
     pub projectile_records: Vec<ProjectileRecord>,
     pub wanted_ticks: AHashSet<i32>,
 
@@ -80,7 +78,6 @@ pub struct ParserThread {
     pub wanted_events: Vec<String>,
     pub parse_entities: bool,
     pub parse_projectiles: bool,
-    pub debug_fields: Vec<DebugFieldAndPath>,
     pub is_debug_mode: bool,
 }
 #[derive(Debug, Clone)]
@@ -167,19 +164,15 @@ impl ParserThread {
             false => 0,
         };
         Ok(ParserThread {
+            paths: vec![
+                FieldPath {
+                    last: 0,
+                    path: [-1, 0, 0, 0, 0, 0, 0],
+                };
+                8192
+            ],
             parse_inventory: input.prop_controller.wanted_player_props.contains(&"inventory".to_string()),
             net_tick: 0,
-            debug_fields: vec![
-                DebugFieldAndPath {
-                    field: DebugField {
-                        decoder: crate::sendtables::Decoder::NoscaleDecoder,
-                        full_name: "".to_string(),
-                        field: None,
-                    },
-                    path: [0, 0, 0, 0, 0, 0, 0],
-                };
-                debug_vec_len
-            ],
             c4_entity_id: None,
             stringtable_players: input.stringtable_players,
             is_debug_mode: debug,
@@ -190,7 +183,6 @@ impl ParserThread {
             qf_mapper: input.qfmap,
             fullpackets_parsed: 0,
             packets_parsed: 0,
-            cnt: AHashMap::default(),
             serializers: AHashMap::default(),
             ptr: input.offset,
             ge_list: input.ge_list.clone(),
@@ -208,15 +200,7 @@ impl ParserThread {
             // projectile_records: ProjectileRecordVec::new(),
             baselines: input.baselines.clone(),
             string_tables: input.string_tables.clone(),
-            field_infos: vec![
-                FieldInfo {
-                    decoder: crate::sendtables::Decoder::NoscaleDecoder,
-                    should_parse: false,
-                    prop_id: 0,
-                    controller_prop: None,
-                };
-                8192
-            ],
+
             teams: Teams::new(),
             game_events_counter: AHashSet::default(),
             parse_projectiles: input.settings.parse_projectiles,

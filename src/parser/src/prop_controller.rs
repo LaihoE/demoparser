@@ -2,8 +2,9 @@ use crate::collect_data::PropType;
 use crate::maps::BUTTONMAP;
 use crate::maps::TYPEHM;
 use crate::parser_thread_settings::SpecialIDs;
-use crate::sendtables::Field;
+use crate::sendtables::FieldEnum;
 use crate::sendtables::Serializer;
+use crate::sendtables::ValueField;
 use ahash::AHashMap;
 
 const WEAPON_NAME_ID: u32 = 1;
@@ -299,20 +300,13 @@ impl PropController {
     pub fn find_prop_name_paths(&mut self, ser: &mut Serializer) {
         self.traverse_fields(&mut ser.fields, ser.name.clone())
     }
-    pub fn vec_to_arr(path: &Vec<i32>) -> [i32; 7] {
-        let mut arr = [0, 0, 0, 0, 0, 0, 0];
-        for (idx, val) in path.iter().enumerate() {
-            arr[idx] = *val;
-        }
-        arr
-    }
-    fn set_id(&mut self, weap_prop: &str, f: &mut Field, is_grenade_or_weapon: bool) {
+    fn set_id(&mut self, weap_prop: &str, f: &mut ValueField, is_grenade_or_weapon: bool) {
         match self.name_to_id.get(weap_prop) {
             // If we already have an id for prop of same name then use that id.
             // Mainly for weapon props. For example CAK47.m_iClip1 and CWeaponSCAR20.m_iClip1
             // are the "same" prop. (they have same path and we want to refer to it with one id not ~20)
             Some(id) => {
-                f.prop_id = *id as usize;
+                f.prop_id = *id;
                 // self.id_to_name.insert(*id, weap_prop.to_string());
                 self.set_special_ids(&weap_prop, is_grenade_or_weapon, *id);
                 return;
@@ -320,13 +314,13 @@ impl PropController {
             None => {
                 self.name_to_id.insert(weap_prop.to_string(), self.id);
                 // self.id_to_name.insert(self.id, weap_prop.to_string());
-                f.prop_id = self.id as usize;
+                f.prop_id = self.id;
                 self.set_special_ids(&weap_prop, is_grenade_or_weapon, self.id);
             }
         }
     }
 
-    fn insert_propinfo(&mut self, prop_name: &str, f: &mut Field) {
+    fn insert_propinfo(&mut self, prop_name: &str, f: &mut ValueField) {
         let prop_type = TYPEHM.get(&prop_name);
 
         if self.wanted_player_props.contains(&prop_name.to_string()) {
@@ -356,7 +350,7 @@ impl PropController {
             })
         }
     }
-    pub fn handle_prop(&mut self, full_name: &str, f: &mut Field) {
+    pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField) {
         // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]
         let split_at_dot: Vec<&str> = full_name.split(".").collect();
         let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK"))
@@ -372,7 +366,7 @@ impl PropController {
             (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
                 && !split_at_dot[0].contains("Player");
         let is_grenade_or_weapon = is_weapon_prop || is_projectile_prop;
-
+        // println!("{:?}", full_name);
         // Strip first part of name from grenades and weapons.
         // if weapon prop: CAK47.m_iClip1 => m_iClip1
         // if grenade: CSmokeGrenadeProjectile.CBodyComponentBaseAnimGraph.m_cellX => CBodyComponentBaseAnimGraph.m_cellX
@@ -385,8 +379,14 @@ impl PropController {
         if !prop_already_exists {
             self.insert_propinfo(&prop_name, f);
         }
+
         if self.should_parse(&prop_name) {
+            // println!("Should parse: {}", prop_name);
             f.should_parse = true;
+        }
+        // CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iUtilityDamage
+        if full_name.contains("Spot") {
+            // println!("{:?} {:?}", full_name, f);
         }
         self.id += 1;
     }
@@ -421,7 +421,7 @@ impl PropController {
             return true;
         }
         match TYPEHM.get(name) {
-            Some(PropType::Weapon) => return true,
+            // Some(PropType::Weapon) => return true,
             _ => {}
         };
         if name.contains("CCSTeam.m_iTeamNum")
@@ -480,18 +480,40 @@ impl PropController {
             };
         }
     }
-    fn traverse_fields(&mut self, fields: &mut Vec<Field>, ser_name: String) {
+    fn traverse_fields(&mut self, fields: &mut Vec<FieldEnum>, ser_name: String) {
         for f in fields {
-            if let Some(ser) = &mut f.serializer {
-                self.traverse_fields(&mut ser.fields, ser_name.clone() + "." + &ser.name)
-            } else {
-                let full_name = ser_name.clone() + "." + &f.var_name;
-                self.handle_prop(&full_name, f);
+            match f {
+                FieldEnum::Serializer(ser) => {
+                    self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name)
+                }
+                FieldEnum::Pointer(ser) => {
+                    self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name)
+                }
+                FieldEnum::Array(ser) => {
+                    match &mut ser.field_enum.as_mut() {
+                        FieldEnum::Value(v) => {
+                            // println!("HANDLING PROP: {}", v.name);
+                            self.handle_prop(&(ser_name.clone() + "." + &v.name), v);
+                        }
+                        _ => {
+                            // println!("{:?}", ser.field_enum);
+                        }
+                    }
+                    // println!("{:?}", ser);
+                    // self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name)
+                }
+                FieldEnum::Value(x) => {
+                    let full_name = ser_name.clone() + "." + &x.name;
+                    self.handle_prop(&full_name, x);
+                }
+                _ => {
+                    // println!("{:?}", f);
+                }
             }
         }
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use super::PropController;
@@ -532,6 +554,7 @@ mod tests {
             is_controller_prop: false,
             controller_prop: None,
             idx: 0,
+            category: crate::sendtables::FieldCategory::Array,
         }
     }
     #[test]
@@ -1131,3 +1154,4 @@ mod tests {
     }
     */
 }
+*/

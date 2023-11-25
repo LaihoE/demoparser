@@ -1,8 +1,11 @@
 use super::read_bits::DemoParserError;
+use crate::decoder::Decoder;
+use crate::decoder::Decoder::UnsignedDecoder;
 use crate::entities_utils::*;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
-use crate::sendtables::DebugFieldAndPath;
+use crate::sendtables::FieldEnum;
+use crate::sendtables::Serializer;
 use crate::variants::Variant;
 use ahash::AHashMap;
 use bitter::BitReader;
@@ -64,6 +67,7 @@ impl ParserThread {
 
         for _ in 0..n_updates {
             entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
+
             // Read 2 bits to know which operation should be done to the entity.
             let cmd = match bitreader.read_nbits(2)? {
                 0b01 => EntityCmd::Delete,
@@ -89,41 +93,55 @@ impl ParserThread {
         Ok(())
     }
     pub fn update_entity(&mut self, bitreader: &mut Bitreader, entity_id: i32, is_baseline: bool) -> Result<(), DemoParserError> {
-        let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
+        let n_updates = self.parse_paths(bitreader)?;
+        let n_updated_values = self.decode_entity_update(bitreader, entity_id, n_updates)?;
         if n_updated_values > 0 {
             self.gather_extra_info(&entity_id, is_baseline)?;
         }
         Ok(())
     }
-    pub fn decode_entity_update(&mut self, bitreader: &mut Bitreader, entity_id: i32) -> Result<usize, DemoParserError> {
-        let n_updates = self.parse_paths(bitreader, &entity_id)?;
-
+    pub fn decode_entity_update(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: i32,
+        n_updates: usize,
+    ) -> Result<usize, DemoParserError> {
         let entity = match self.entities.get_mut(&(entity_id)) {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
-        if self.is_debug_mode {
-            for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
-                let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if debug.field.full_name.contains("Cross") {
-                    println!(
-                        "{:?} {:?} {:?} {:?} {:?} {:?}",
-                        debug.path, debug.field.full_name, result, self.tick, self.net_tick, field_info.prop_id
-                    );
+        let class = match self.cls_by_id.get(&entity.cls_id) {
+            Some(cls) => cls,
+            None => return Err(DemoParserError::ClassNotFound),
+        };
+
+        for path in &self.paths[..n_updates] {
+            let f = ParserThread::find_field(&path, &class.serializer);
+            let decoder = match f {
+                FieldEnum::Vector(_) => UnsignedDecoder,
+                FieldEnum::Pointer(inner) => inner.decoder,
+                FieldEnum::Value(inner) => inner.decoder,
+                _ => panic!("fail"),
+            };
+            let result = bitreader.decode(&decoder, &self.qf_mapper)?;
+
+            // This seems to do oddly well, must be some compiler magic
+            if let FieldEnum::Value(v) = f {
+                if v.prop_id == 2217 {
+                    // println!("{:?} {:?}", v, result);
                 }
-            }
-        } else {
-            for field_info in &self.field_infos[..n_updates] {
-                let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if field_info.should_parse {
-                    entity.props.insert(field_info.prop_id as u32, result);
+                if v.should_parse {
+                    entity.props.insert(v.prop_id, result);
+                } else {
+                    // println!("{:?}", result);
                 }
             }
         }
+
         Ok(n_updates)
     }
 
-    pub fn parse_paths(&mut self, bitreader: &mut Bitreader, entity_id: &i32) -> Result<usize, DemoParserError> {
+    pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, DemoParserError> {
         /*
         Create a field path by decoding using a Huffman tree.
         The huffman tree can be found at the bottom of entities_utils.rs
@@ -190,14 +208,14 @@ impl ParserThread {
         Personally I find this path idea horribly complicated. Why is this chosen over
         the way it was done in source 1 demos?
         */
+        /*
         let entity = match self.entities.get(&(entity_id)) {
             Some(ent) => ent,
             None => return Err(DemoParserError::EntityNotFound),
         };
-        let class = match self.cls_by_id.get(&entity.cls_id) {
-            Some(cls) => cls,
-            None => return Err(DemoParserError::ClassNotFound),
-        };
+        */
+        // println!("{:?}", entity.cls_id);
+
         // Create an "empty" path ([-1, 0, 0, 0, 0, 0, 0])
         // For perfomance reasons have them always the same len
         let mut fp = generate_fp();
@@ -217,20 +235,79 @@ impl ParserThread {
                 break;
             }
             do_op(symbol, bitreader, &mut fp)?;
-
-            if self.is_debug_mode {
-                self.debug_fields[idx] = DebugFieldAndPath {
-                    field: class.serializer.debug_find_decoder(&fp, 0, class.name.to_string()),
-                    path: fp.path.clone(),
-                };
-            }
-            // We reuse one big vector for holding paths. Purely for performance.
-            // Alternatively we could create a new vector in this function and return it.
-            self.field_infos[idx] = class.serializer.find_decoder(&fp, 0, self.parse_inventory);
+            self.write_fp(&mut fp, idx);
             idx += 1;
         }
+        // panic!("DONE");
         Ok(idx)
     }
+    #[inline(always)]
+    fn write_fp(&mut self, fp_src: &mut FieldPath, idx: usize) {
+        let fp_dst = self.paths.get_mut(idx).unwrap();
+        for i in 0..fp_src.last + 1 {
+            fp_dst.path[i] = fp_src.path[i];
+        }
+        fp_dst.last = fp_src.last;
+    }
+    #[inline(always)]
+    fn find_decoder<'a>(fp: &FieldPath, ser: &'a Serializer) -> Decoder {
+        let f = &ser.fields[fp.path[0] as usize];
+
+        let res = match fp.last {
+            0 => f,
+            1 => f.get_inner(fp.path[1] as usize),
+            2 => f.get_inner(fp.path[1] as usize).get_inner(fp.path[2] as usize),
+            3 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize),
+            4 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize)
+                .get_inner(fp.path[4] as usize),
+            5 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize)
+                .get_inner(fp.path[4] as usize)
+                .get_inner(fp.path[5] as usize),
+            _ => panic!("FP LAST OUT OF BOUND"),
+        };
+        match res {
+            FieldEnum::Vector(_) => UnsignedDecoder,
+            FieldEnum::Pointer(inner) => inner.decoder,
+            FieldEnum::Value(inner) => inner.decoder,
+            _ => panic!("fail"),
+        }
+    }
+    #[inline(always)]
+    fn find_field<'a>(fp: &FieldPath, ser: &'a Serializer) -> &'a FieldEnum {
+        let f = &ser.fields[fp.path[0] as usize];
+
+        match fp.last {
+            0 => f,
+            1 => f.get_inner(fp.path[1] as usize),
+            2 => f.get_inner(fp.path[1] as usize).get_inner(fp.path[2] as usize),
+            3 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize),
+            4 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize)
+                .get_inner(fp.path[4] as usize),
+            5 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize)
+                .get_inner(fp.path[4] as usize)
+                .get_inner(fp.path[5] as usize),
+            _ => panic!("FP LAST OUT OF BOUND"),
+        }
+    }
+
     pub fn gather_extra_info(&mut self, entity_id: &i32, is_baseline: bool) -> Result<(), DemoParserError> {
         // Boring stuff.. function does some bookkeeping
 
@@ -333,12 +410,8 @@ impl ParserThread {
             EntityType::C4 => self.c4_entity_id = Some(*entity_id),
             _ => {}
         };
-        let entity = Entity {
-            entity_id: *entity_id,
-            cls_id: cls_id,
-            props: AHashMap::default(),
-            entity_type: entity_type,
-        };
+        let entity = ParserThread::make_ent(entity_id, cls_id, entity_type);
+        // println!("{:?} {:?}", self.entities.capacity(), self.entities.keys().len());
         self.entities.insert(*entity_id, entity);
         // Insert baselines
 
@@ -349,6 +422,14 @@ impl ParserThread {
         }
 
         Ok(())
+    }
+    fn make_ent(entity_id: &i32, cls_id: u32, entity_type: EntityType) -> Entity {
+        Entity {
+            entity_id: *entity_id,
+            cls_id: cls_id,
+            props: AHashMap::with_capacity(0),
+            entity_type: entity_type,
+        }
     }
     pub fn check_entity_type(&self, cls_id: &u32) -> Result<EntityType, DemoParserError> {
         let class = match self.cls_by_id.get(&cls_id) {
