@@ -54,10 +54,12 @@ impl<'a> ParserThread<'a> {
                 DEM_Packet => self.parse_packet(&bytes, &mut buf),
                 DEM_FullPacket => {
                     match self.parse_all_packets {
-                        true => {}
+                        true => {
+                            self.parse_full_packet(&bytes, false)?;
+                        }
                         false => {
                             if self.fullpackets_parsed == 0 && started_at != 16 {
-                                self.parse_full_packet(&bytes)?;
+                                self.parse_full_packet(&bytes, true)?;
                                 self.fullpackets_parsed += 1;
                             } else {
                                 break;
@@ -125,7 +127,9 @@ impl<'a> ParserThread<'a> {
         self.net_tick = message.tick();
         Ok(())
     }
-    pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+    pub fn parse_full_packet(&mut self, bytes: &[u8], should_parse_entities: bool) -> Result<(), DemoParserError> {
+        self.string_tables = vec![];
+
         let full_packet: CDemoFullPacket = match Message::parse_from_bytes(bytes) {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
             Ok(p) => p,
@@ -161,7 +165,12 @@ impl<'a> ParserThread<'a> {
             let msg_bytes = &buf[..size as usize];
 
             let ok = match netmessage_type_from_int(msg_type as i32) {
-                svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
+                svc_PacketEntities => {
+                    if should_parse_entities {
+                        self.parse_packet_ents(&msg_bytes)?;
+                    }
+                    Ok(())
+                }
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
