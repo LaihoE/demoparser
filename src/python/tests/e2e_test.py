@@ -1789,7 +1789,148 @@ class ParserTest(TestCase):
         df_correct = pd.read_parquet("tests/data/per_prop/velocity_Z.parquet")
         assert_frame_equal(df, df_correct)
 
+"""
+Old tests that have been disabled
 
+    def test_has_controlled_bot_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["has_controlled_bot_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/has_controlled_bot_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+        
+            def test_cash_spent_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["cash_spent_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/cash_spent_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_kills_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["kills_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/kills_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+        
+            def test_deaths_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["deaths_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/deaths_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+        
+        
+            def test_assists_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["assists_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/assists_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_alive_time_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["alive_time_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/alive_time_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_headshot_kills_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["headshot_kills_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/headshot_kills_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_damage_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["damage_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/damage_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_objective_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["objective_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/objective_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_utility_damage_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["utility_damage_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/utility_damage_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_enemies_flashed_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["enemies_flashed_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/enemies_flashed_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_equipment_value_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["equipment_value_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/equipment_value_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_money_saved_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["money_saved_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/money_saved_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_kill_reward_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["kill_reward_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/kill_reward_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_cash_earned_this_round(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["cash_earned_this_round"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/cash_earned_this_round.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_refundable_currency(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["refundable_currency"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/refundable_currency.parquet")
+        assert_frame_equal(df, df_correct)
+        
+       def test_econ_item_attribute_def_idx(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["econ_item_attribute_def_idx"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/econ_item_attribute_def_idx.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_econ_raw_val_32(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["econ_raw_val_32"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/econ_raw_val_32.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_initial_value(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["initial_value"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/initial_value.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_set_bonus(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["set_bonus"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/set_bonus.parquet")
+        assert_frame_equal(df, df_correct)
+   def test_passive_items(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["passive_items"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/passive_items.parquet")
+        assert_frame_equal(df, df_correct)
+        
+        
+    def test_num_player_alive_ct(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["num_player_alive_ct"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/num_player_alive_ct.parquet")
+        assert_frame_equal(df, df_correct)
+
+    def test_num_player_alive_t(self):
+        parser = DemoParser("tests/data/test.dem")
+        df = parser.parse_ticks(["num_player_alive_t"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/num_player_alive_t.parquet")
+        assert_frame_equal(df, df_correct)
+"""
 
 if __name__ == '__main__':
     unittest.main()
