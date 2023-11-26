@@ -2,7 +2,7 @@ use super::read_bits::DemoParserError;
 use crate::entities_utils::*;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
-use crate::sendtables::DebugFieldAndPath;
+use crate::read_bytes::PacketEntitiesParser;
 use crate::variants::Variant;
 use ahash::AHashMap;
 use bitter::BitReader;
@@ -10,7 +10,7 @@ use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
 
 const NSERIALBITS: u32 = 17;
-const STOP_READING_SYMBOL: u32 = 39;
+const STOP_READING_SYMBOL: u8 = 39;
 const HUFFMAN_CODE_MAXLEN: u32 = 17;
 
 #[derive(Debug, Clone)]
@@ -44,21 +44,63 @@ enum EntityCmd {
     Update,
 }
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
         }
+        // Custom reader that does no allocations. Interesting data is byte algined so
+        // just index into the incomming bytes (dont allocate a vector for our bytes).
+        let mut reader = PacketEntitiesParser::new(bytes);
+        reader.parse_message()?;
+
+        let mut bitreader = Bitreader::new(&bytes[reader.data_start..reader.data_end]);
+        let mut entity_id: i32 = -1;
+
+        for _ in 0..reader.updated_entries {
+            entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
+            // Read 2 bits to know which operation should be done to the entity.
+            let cmd = match bitreader.read_nbits(2)? {
+                0b01 => EntityCmd::Delete,
+                0b11 => EntityCmd::Delete,
+                0b10 => EntityCmd::CreateAndUpdate,
+                0b00 => EntityCmd::Update,
+                _ => panic!("impossible cmd"),
+            };
+            match cmd {
+                EntityCmd::Delete => {
+                    self.projectiles.remove(&entity_id);
+                    self.entities.remove(&entity_id);
+                }
+                EntityCmd::CreateAndUpdate => {
+                    self.create_new_entity(&mut bitreader, &entity_id)?;
+                    self.update_entity(&mut bitreader, entity_id, false)?;
+                }
+                EntityCmd::Update => {
+                    self.update_entity(&mut bitreader, entity_id, false)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn parse_packet_entsq(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        if !self.parse_entities {
+            return Ok(());
+        }
+
         let packet_ents: CSVCMsg_PacketEntities = match Message::parse_from_bytes(&bytes) {
             Ok(pe) => pe,
             Err(_e) => return Err(DemoParserError::MalformedMessage),
         };
+
         let n_updates = packet_ents.updated_entries();
 
-        let data = match packet_ents.entity_data {
+        let data = match &packet_ents.entity_data {
             Some(data) => data,
             None => return Err(DemoParserError::MalformedMessage),
         };
+
         let mut bitreader = Bitreader::new(&data);
         let mut entity_id: i32 = -1;
 
@@ -105,7 +147,7 @@ impl ParserThread {
         if self.is_debug_mode {
             for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
                 let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if debug.field.full_name.contains("Cross") {
+                if debug.field.full_name.contains("Weapons") {
                     println!(
                         "{:?} {:?} {:?} {:?} {:?} {:?}",
                         debug.path, debug.field.full_name, result, self.tick, self.net_tick, field_info.prop_id
@@ -218,12 +260,14 @@ impl ParserThread {
             }
             do_op(symbol, bitreader, &mut fp)?;
 
+            /*
             if self.is_debug_mode {
                 self.debug_fields[idx] = DebugFieldAndPath {
                     field: class.serializer.debug_find_decoder(&fp, 0, class.name.to_string()),
                     path: fp.path.clone(),
                 };
             }
+            */
             // We reuse one big vector for holding paths. Purely for performance.
             // Alternatively we could create a new vector in this function and return it.
             self.field_infos[idx] = class.serializer.find_decoder(&fp, 0, self.parse_inventory);

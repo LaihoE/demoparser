@@ -2,7 +2,6 @@
 var {parseEvent, parseEvents,parseTicks, parsePlayerInfo, parseGrenades, listGameEvents, parseHeader} = require('../index');
 const fs = require('fs');
 const path = require('path');
-const archiver = require('archiver');
 
 
 const ALL_PROPS = ['active_weapon_skin', 'FORWARD', 'LEFT', 'RIGHT', 'BACK', 'FIRE', 'RIGHTCLICK', 'RELOAD', 'INSPECT', 'USE', 'ZOOM', 
@@ -50,7 +49,7 @@ const ALL_PROPS = ['active_weapon_skin', 'FORWARD', 'LEFT', 'RIGHT', 'BACK', 'FI
 
 
 
-const filePath = "../python/tests/data/test.dem"
+const filePath = "tests/test.dem"
 
 function genListGameEvents(){
   let events = listGameEvents(filePath)
@@ -155,5 +154,10 @@ for (let i = 0; i < wantedProps.length; i++){
   genTickProp(wantedProps[i])
 }
 */
+const wantedProps = ["inventory"]
+for (let i = 0; i < wantedProps.length; i++){
+  genTickProp(wantedProps[i])
+}
 
-zipAll();
+genEventWithProps();
+genEventsWithProps();

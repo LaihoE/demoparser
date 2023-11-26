@@ -2,7 +2,7 @@ use super::read_bits::DemoParserError;
 use crate::read_bits::Bitreader;
 
 #[inline(always)]
-pub fn do_op(opcode: u32, bitreader: &mut Bitreader, field_path: &mut FieldPath) -> Result<(), DemoParserError> {
+pub fn do_op(opcode: u8, bitreader: &mut Bitreader, field_path: &mut FieldPath) -> Result<(), DemoParserError> {
     // taken directly from here: https://github.com/dotabuff/manta/blob/master/field_path.go
     // Not going to act like I know why exactly these ops are selected, I supposed they provide
     // somewhat good compression.

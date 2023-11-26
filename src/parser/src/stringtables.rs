@@ -31,7 +31,7 @@ pub struct UserInfo {
     pub is_hltv: bool,
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
         match self.string_tables.get(table.table_id() as usize) {
@@ -193,7 +193,7 @@ pub fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
     })
 }
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
         match self.string_tables.get(table.table_id() as usize) {
