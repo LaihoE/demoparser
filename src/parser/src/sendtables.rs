@@ -21,7 +21,7 @@ use regex::Regex;
 #[derive(Debug, Clone)]
 pub struct Serializer {
     pub name: String,
-    pub fields: Vec<FieldEnum>,
+    pub fields: Vec<Field>,
     pub names: Vec<String>,
     pub long_name: String,
 }
@@ -47,7 +47,7 @@ pub struct ConstructorField {
     pub decoder: Decoder,
     pub category: FieldCategory,
 
-    pub field_enum_type: Option<FieldEnum>,
+    pub field_enum_type: Option<Field>,
 
     pub serializer: Option<Serializer>,
     pub base_decoder: Option<Decoder>,
@@ -136,7 +136,7 @@ impl Parser {
         serializers: &AHashMap<String, Serializer>,
     ) -> Serializer {
         let sid = big.symbols[serializer_msg.serializer_name_sym() as usize].clone();
-        let mut fields_this_ser: Vec<FieldEnum> = vec![FieldEnum::None; serializer_msg.fields_index.len()];
+        let mut fields_this_ser: Vec<Field> = vec![Field::None; serializer_msg.fields_index.len()];
         let mut field_names_this_ser: Vec<String> = vec!["".to_string(); serializer_msg.fields_index.len()];
 
         for i in 0..fields_this_ser.len() {
@@ -171,8 +171,8 @@ impl Parser {
         let ft = find_field_type2(&big.symbols[msg.var_type_sym() as usize], field_type_map);
         let mut field = field_from_msg(&msg, &big, ft.clone());
 
-        field.category = find_type(&mut field);
-        let f = field.match_decoder(qf_mapper);
+        field.category = find_category(&mut field);
+        let f = field.find_decoder(qf_mapper);
         field.decoder = f;
 
         match field.var_name.as_str() {
@@ -194,90 +194,8 @@ impl Parser {
 
 use crate::maps::BASETYPE_DECODERS;
 
-impl ConstructorField {
-    pub fn match_decoder(&self, qf_map: &mut QfMapper) -> Decoder {
-        if self.var_name == "m_iClip1" {
-            return Decoder::AmmoDecoder;
-        }
-        let dec = match BASETYPE_DECODERS.get(&self.field_type.base_type) {
-            Some(decoder) => decoder.clone(),
-            None => match self.field_type.base_type.as_str() {
-                "float32" => self.find_float_type(qf_map),
-                "Vector" => self.find_vector_type(3, qf_map),
-                "Vector2D" => self.find_vector_type(2, qf_map),
-                "Vector4D" => self.find_vector_type(4, qf_map),
-                "uint64" => self.find_uint_type(),
-                "QAngle" => self.find_qangle_type(),
-                "CHandle" => UnsignedDecoder,
-                "CNetworkedQuantizedFloat" => self.find_float_type(qf_map),
-                "CStrongHandle" => self.find_uint_type(),
-                "CEntityHandle" => self.find_uint_type(),
-                _ => Decoder::UnsignedDecoder,
-            },
-        };
-        dec
-    }
-    pub fn find_qangle_type(&self) -> Decoder {
-        match self.var_name.as_str() {
-            "m_angEyeAngles" => Decoder::QanglePitchYawDecoder,
-            _ => {
-                if self.bitcount != 0 {
-                    Decoder::Qangle3Decoder
-                } else {
-                    Decoder::QangleVarDecoder
-                }
-            }
-        }
-    }
-    pub fn find_float_type(&self, qf_map: &mut QfMapper) -> Decoder {
-        match self.var_name.as_str() {
-            "m_flSimulationTime" => return Decoder::FloatSimulationTimeDecoder,
-            "m_flAnimTime" => return Decoder::FloatSimulationTimeDecoder,
-            _ => {}
-        }
-        match self.encoder.as_str() {
-            "coord" => Decoder::FloatCoordDecoder,
-            "m_flSimulationTime" => Decoder::FloatSimulationTimeDecoder,
-            _ => {
-                if self.bitcount <= 0 || self.bitcount >= 32 {
-                    return Decoder::NoscaleDecoder;
-                } else {
-                    let qf = QuantalizedFloat::new(
-                        self.bitcount.try_into().unwrap(),
-                        Some(self.encode_flags),
-                        Some(self.low_value),
-                        Some(self.high_value),
-                    );
-                    let idx = qf_map.idx;
-                    qf_map.map.insert(idx, qf);
-                    qf_map.idx += 1;
-                    return Decoder::QuantalizedFloatDecoder(idx as u8);
-                }
-            }
-        }
-    }
-
-    pub fn find_uint_type(&self) -> Decoder {
-        match self.encoder.as_str() {
-            "fixed64" => Decoder::Fixed64Decoder,
-            _ => Decoder::Unsigned64Decoder,
-        }
-    }
-    pub fn find_vector_type(&self, n: u32, qf_map: &mut QfMapper) -> Decoder {
-        if n == 3 && self.encoder == "normal" {
-            return Decoder::VectorNormalDecoder;
-        }
-        let float_type = self.find_float_type(qf_map);
-        match float_type {
-            NoscaleDecoder => return VectorNoscaleDecoder,
-            FloatCoordDecoder => return VectorFloatCoordDecoder,
-            _ => panic!("e"),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
-pub enum FieldEnum {
+pub enum Field {
     Array(ArrayField),
     Vector(VectorField),
     Serializer(SerializerField),
@@ -286,41 +204,42 @@ pub enum FieldEnum {
     None,
 }
 
-impl FieldEnum {
+impl Field {
     #[inline(always)]
-    pub fn get_inner(&self, idx: usize) -> &FieldEnum {
+    pub fn get_inner(&self, idx: usize) -> &Field {
         match self {
-            FieldEnum::Array(inner) => &inner.field_enum,
-            FieldEnum::Vector(inner) => &inner.field_enum,
-            FieldEnum::Serializer(inner) => &inner.serializer.fields[idx],
-            FieldEnum::Pointer(inner) => &inner.serializer.fields[idx],
+            Field::Array(inner) => &inner.field_enum,
+            Field::Vector(inner) => &inner.field_enum,
+            Field::Serializer(inner) => &inner.serializer.fields[idx],
+            Field::Pointer(inner) => &inner.serializer.fields[idx],
             // Illegal
-            FieldEnum::Value(_) => panic!("Value as inner type"),
-            FieldEnum::None => panic!("NONE as inner type"),
+            Field::Value(_) => panic!("Value as inner type"),
+            Field::None => panic!("NONE as inner type"),
         }
     }
     #[inline(always)]
     pub fn get_decoder(&self) -> Option<Decoder> {
         match self {
-            FieldEnum::Vector(_) => Some(UnsignedDecoder),
-            FieldEnum::Pointer(inner) => Some(inner.decoder), //panic!("CANT GET INNER OF POINTER"),
-            FieldEnum::Value(inner) => Some(inner.decoder),   //panic!("CANT GET INNER OF VALUE"),
+            Field::Value(inner) => Some(inner.decoder),
+            Field::Vector(_) => Some(UnsignedDecoder),
+            Field::Pointer(inner) => Some(inner.decoder),
             // Illegal
-            FieldEnum::Array(_) => panic!("NONE as inner type"),
-            FieldEnum::Serializer(_) => panic!("NONE as inner type"),
-            FieldEnum::None => panic!("NONE as inner type"), // panic!("CANT GET INNER OF NONE"),
+            Field::Array(_) => panic!("NONE as inner type"),
+            Field::Serializer(_) => panic!("NONE as inner type"),
+            Field::None => panic!("NONE as inner type"),
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ArrayField {
-    pub field_enum: Box<FieldEnum>,
+    pub field_enum: Box<Field>,
     pub length: usize,
 }
 #[derive(Debug, Clone)]
 pub struct VectorField {
-    pub field_enum: Box<FieldEnum>,
+    pub field_enum: Box<Field>,
+    pub decoder: Decoder,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValueField {
@@ -341,7 +260,7 @@ pub struct PointerField {
 }
 
 impl ArrayField {
-    pub fn new(field_enum: FieldEnum, length: usize) -> ArrayField {
+    pub fn new(field_enum: Field, length: usize) -> ArrayField {
         ArrayField {
             field_enum: Box::new(field_enum),
             length: length,
@@ -380,9 +299,10 @@ impl ValueField {
     }
 }
 impl VectorField {
-    pub fn new(field_enum: FieldEnum) -> VectorField {
+    pub fn new(field_enum: Field) -> VectorField {
         VectorField {
             field_enum: Box::new(field_enum),
+            decoder: UnsignedDecoder,
         }
     }
 }
@@ -422,6 +342,42 @@ pub fn field_from_msg(
     f
 }
 
+fn create_field(sid: &String, fd: &mut ConstructorField, serializers: &AHashMap<String, Serializer>) -> Field {
+    let element_type = match fd.category {
+        FieldCategory::Array => fd.field_type.element_type.as_ref().unwrap().clone(),
+        FieldCategory::Vector => fd.field_type.generic_type.as_ref().unwrap().clone(),
+        _ => Box::new(fd.field_type.clone()),
+    };
+
+    let element_field = match fd.serializer_name.as_ref() {
+        Some(name) => {
+            if fd.category == FieldCategory::Pointer {
+                let f = PointerField::new(serializers.get(name.as_str()).as_ref().unwrap());
+                Field::Pointer(f)
+            } else {
+                let f = SerializerField::new(serializers.get(name.as_str()).as_ref().unwrap(), &sid);
+                Field::Serializer(f)
+            }
+        }
+        None => {
+            let decoder = fd.decoder;
+            let f = ValueField::new(decoder, &fd.var_name);
+            Field::Value(f)
+        }
+    };
+    let element_field = match fd.category {
+        FieldCategory::Array => {
+            let f = ArrayField::new(element_field, fd.field_type.count.unwrap() as usize);
+            Field::Array(f)
+        }
+        FieldCategory::Vector => {
+            let f = VectorField::new(element_field);
+            Field::Vector(f)
+        }
+        _ => return element_field,
+    };
+    element_field
+}
 fn find_field_type2(name: &str, field_type_map: &mut AHashMap<String, FieldType>) -> FieldType {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"([^<\[\*]+)(<\s(.*)\s>)?(\*)?(\[(.*)\])?").unwrap();
@@ -472,44 +428,89 @@ fn find_field_type2(name: &str, field_type_map: &mut AHashMap<String, FieldType>
     return ft;
 }
 
-fn create_field(sid: &String, fd: &mut ConstructorField, serializers: &AHashMap<String, Serializer>) -> FieldEnum {
-    let element_type = match fd.category {
-        FieldCategory::Array => fd.field_type.element_type.as_ref().unwrap().clone(),
-        FieldCategory::Vector => fd.field_type.generic_type.as_ref().unwrap().clone(),
-        _ => Box::new(fd.field_type.clone()),
-    };
-
-    let element_field = match fd.serializer_name.as_ref() {
-        Some(name) => {
-            if fd.category == FieldCategory::Pointer {
-                let f = PointerField::new(serializers.get(name.as_str()).as_ref().unwrap());
-                FieldEnum::Pointer(f)
-            } else {
-                let f = SerializerField::new(serializers.get(name.as_str()).as_ref().unwrap(), &sid);
-                FieldEnum::Serializer(f)
+impl ConstructorField {
+    pub fn find_decoder(&self, qf_map: &mut QfMapper) -> Decoder {
+        if self.var_name == "m_iClip1" {
+            return Decoder::AmmoDecoder;
+        }
+        let dec = match BASETYPE_DECODERS.get(&self.field_type.base_type) {
+            Some(decoder) => decoder.clone(),
+            None => match self.field_type.base_type.as_str() {
+                "float32" => self.find_float_decoder(qf_map),
+                "Vector" => self.find_vector_type(3, qf_map),
+                "Vector2D" => self.find_vector_type(2, qf_map),
+                "Vector4D" => self.find_vector_type(4, qf_map),
+                "uint64" => self.find_uint_decoder(),
+                "QAngle" => self.find_qangle_decoder(),
+                "CHandle" => UnsignedDecoder,
+                "CNetworkedQuantizedFloat" => self.find_float_decoder(qf_map),
+                "CStrongHandle" => self.find_uint_decoder(),
+                "CEntityHandle" => self.find_uint_decoder(),
+                _ => Decoder::UnsignedDecoder,
+            },
+        };
+        dec
+    }
+    pub fn find_qangle_decoder(&self) -> Decoder {
+        match self.var_name.as_str() {
+            "m_angEyeAngles" => Decoder::QanglePitchYawDecoder,
+            _ => {
+                if self.bitcount != 0 {
+                    Decoder::Qangle3Decoder
+                } else {
+                    Decoder::QangleVarDecoder
+                }
             }
         }
-        None => {
-            let decoder = fd.decoder;
-            let f = ValueField::new(decoder, &fd.var_name);
-            FieldEnum::Value(f)
+    }
+    pub fn find_float_decoder(&self, qf_map: &mut QfMapper) -> Decoder {
+        match self.var_name.as_str() {
+            "m_flSimulationTime" => return Decoder::FloatSimulationTimeDecoder,
+            "m_flAnimTime" => return Decoder::FloatSimulationTimeDecoder,
+            _ => {}
         }
-    };
-    let element_field = match fd.category {
-        FieldCategory::Array => {
-            let f = ArrayField::new(element_field, fd.field_type.count.unwrap() as usize);
-            FieldEnum::Array(f)
+        match self.encoder.as_str() {
+            "coord" => Decoder::FloatCoordDecoder,
+            "m_flSimulationTime" => Decoder::FloatSimulationTimeDecoder,
+            _ => {
+                if self.bitcount <= 0 || self.bitcount >= 32 {
+                    return Decoder::NoscaleDecoder;
+                } else {
+                    let qf = QuantalizedFloat::new(
+                        self.bitcount.try_into().unwrap(),
+                        Some(self.encode_flags),
+                        Some(self.low_value),
+                        Some(self.high_value),
+                    );
+                    let idx = qf_map.idx;
+                    qf_map.map.insert(idx, qf);
+                    qf_map.idx += 1;
+                    return Decoder::QuantalizedFloatDecoder(idx as u8);
+                }
+            }
         }
-        FieldCategory::Vector => {
-            let f = VectorField::new(element_field);
-            FieldEnum::Vector(f)
+    }
+
+    pub fn find_uint_decoder(&self) -> Decoder {
+        match self.encoder.as_str() {
+            "fixed64" => Decoder::Fixed64Decoder,
+            _ => Decoder::Unsigned64Decoder,
         }
-        _ => return element_field,
-    };
-    element_field
+    }
+    pub fn find_vector_type(&self, n: u32, qf_map: &mut QfMapper) -> Decoder {
+        if n == 3 && self.encoder == "normal" {
+            return Decoder::VectorNormalDecoder;
+        }
+        let float_type = self.find_float_decoder(qf_map);
+        match float_type {
+            NoscaleDecoder => return VectorNoscaleDecoder,
+            FloatCoordDecoder => return VectorFloatCoordDecoder,
+            _ => panic!("e"),
+        }
+    }
 }
 
-pub fn find_type(field: &mut ConstructorField) -> FieldCategory {
+pub fn find_category(field: &mut ConstructorField) -> FieldCategory {
     let is_pointer = is_pointer(&field);
     let is_array = is_array(&field);
     let is_vector = is_vector(&field);

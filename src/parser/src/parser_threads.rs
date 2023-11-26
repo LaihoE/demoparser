@@ -94,7 +94,7 @@ impl ParserThread {
         // Inner loop
         let mut msgs = vec![];
 
-        while bitreader.reader.has_bits_remaining(8) {
+        while bitreader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
             let msg_bytes = bitreader.read_n_bytes(size as usize)?;
@@ -171,7 +171,7 @@ impl ParserThread {
         let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
         // Inner loop
-        while bitreader.reader.bits_remaining().unwrap() > 8 {
+        while bitreader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
             let msg_bytes = bitreader.read_n_bytes(size as usize)?;

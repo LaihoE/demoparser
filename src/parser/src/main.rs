@@ -8,15 +8,15 @@ use std::fs;
 use std::fs::File;
 use std::sync::Arc;
 use std::time::Instant;
-/*
+
 use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
-*/
+
 fn main() {
     let wanted_props = vec!["X".to_string()];
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/broken/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/bench/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
 
@@ -25,8 +25,8 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 3 {
-            break;
+        if c > 10 {
+            // break;
         }
 
         /*
@@ -37,6 +37,7 @@ fn main() {
         "CFlashbang"
         "CFlashbangProjectile"
         */
+
         //let file = File::open("/home/laiho/Documents/q.dem").unwrap();
         let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
@@ -71,6 +72,8 @@ fn main() {
         let mut ds = Parser::new(settings);
         ds.is_multithreadable = false;
         let d = ds.parse_demo().unwrap();
+
+        // TOTAL 5.909785945s
 
         println!("TOTAL {:?}", before.elapsed());
     }

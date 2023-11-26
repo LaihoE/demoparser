@@ -39,24 +39,52 @@ impl fmt::Display for DemoParserError {
         write!(f, "{:?}", self)
     }
 }
-
+// Cursed, at this point ive just re-implemented 80% the underlying lib...
 pub struct Bitreader<'a> {
-    pub reader: LittleEndianReader<'a>,
+    reader: LittleEndianReader<'a>,
+    pub bits_left: u32,
+    pub bits: u64,
+    pub total_bits_left: u32,
 }
 
 impl<'a> Bitreader<'a> {
     pub fn new(bytes: &'a [u8]) -> Bitreader<'a> {
         let b = Bitreader {
             reader: LittleEndianReader::new(bytes),
+            bits: 0,
+            bits_left: 0,
+            total_bits_left: 0,
         };
         b
     }
     #[inline(always)]
+    pub fn consume(&mut self, n: u32) {
+        self.bits_left -= n;
+        self.bits >>= n;
+        self.reader.consume(n);
+    }
+    #[inline(always)]
+    pub fn peek(&mut self, n: u32) -> u64 {
+        self.bits & ((1 << n) - 1)
+    }
+    #[inline(always)]
+    pub fn refill(&mut self) {
+        let refilled = self.reader.refill_lookahead();
+        self.bits = self.reader.peek(refilled);
+        self.bits_left = refilled;
+    }
+    #[inline(always)]
+    pub fn bits_remaining(&mut self) -> Option<usize> {
+        Some(self.reader.bits_remaining()?)
+    }
+    #[inline(always)]
     pub fn read_nbits(&mut self, n: u32) -> Result<u32, DemoParserError> {
-        match self.reader.read_bits(n) {
-            Some(bits) => Ok(bits as u32 & MASKS[n as usize]),
-            None => Err(DemoParserError::OutOfBitsError),
+        if self.bits_left < n {
+            self.refill();
         }
+        let b = self.peek(n);
+        self.consume(n);
+        return Ok(b as u32);
     }
     #[inline(always)]
     pub fn read_u_bit_var(&mut self) -> Result<u32, DemoParserError> {
@@ -120,15 +148,15 @@ impl<'a> Bitreader<'a> {
     }
     #[inline(always)]
     pub fn read_boolean(&mut self) -> Result<bool, DemoParserError> {
-        match self.reader.read_bit() {
-            Some(b) => Ok(b),
-            None => Err(DemoParserError::OutOfBitsError),
-        }
+        Ok(self.read_nbits(1)? != 0)
     }
     pub fn read_n_bytes(&mut self, n: usize) -> Result<Vec<u8>, DemoParserError> {
-        let mut bytes = vec![0; n];
+        let mut bytes = vec![0_u8; n];
         match self.reader.read_bytes(&mut bytes) {
-            true => Ok(bytes),
+            true => {
+                self.refill();
+                Ok(bytes)
+            }
             false => Err(DemoParserError::FailedByteRead(
                 format!(
                     "Failed to read message/command. bytes left in stream: {}, requested bytes: {}",
@@ -180,39 +208,3 @@ impl<'a> Bitreader<'a> {
         }
     }
 }
-
-static MASKS: [u32; 32 + 1] = [
-    0,
-    u32::MAX >> 31,
-    u32::MAX >> 30,
-    u32::MAX >> 29,
-    u32::MAX >> 28,
-    u32::MAX >> 27,
-    u32::MAX >> 26,
-    u32::MAX >> 25,
-    u32::MAX >> 24,
-    u32::MAX >> 23,
-    u32::MAX >> 22,
-    u32::MAX >> 21,
-    u32::MAX >> 20,
-    u32::MAX >> 19,
-    u32::MAX >> 18,
-    u32::MAX >> 17,
-    u32::MAX >> 16,
-    u32::MAX >> 15,
-    u32::MAX >> 14,
-    u32::MAX >> 13,
-    u32::MAX >> 12,
-    u32::MAX >> 11,
-    u32::MAX >> 10,
-    u32::MAX >> 9,
-    u32::MAX >> 8,
-    u32::MAX >> 7,
-    u32::MAX >> 6,
-    u32::MAX >> 5,
-    u32::MAX >> 4,
-    u32::MAX >> 3,
-    u32::MAX >> 2,
-    u32::MAX >> 1,
-    u32::MAX,
-];

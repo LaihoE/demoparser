@@ -1,14 +1,12 @@
 use super::read_bits::DemoParserError;
-use crate::decoder::Decoder;
 use crate::decoder::Decoder::UnsignedDecoder;
 use crate::entities_utils::*;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
-use crate::sendtables::FieldEnum;
+use crate::sendtables::Field;
 use crate::sendtables::Serializer;
 use crate::variants::Variant;
 use ahash::AHashMap;
-use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
 
@@ -49,6 +47,7 @@ enum EntityCmd {
 
 impl ParserThread {
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        // panic!("ENTER");
         if !self.parse_entities {
             return Ok(());
         }
@@ -118,18 +117,15 @@ impl ParserThread {
         for path in &self.paths[..n_updates] {
             let f = ParserThread::find_field(&path, &class.serializer);
             let decoder = match f {
-                FieldEnum::Vector(_) => UnsignedDecoder,
-                FieldEnum::Pointer(inner) => inner.decoder,
-                FieldEnum::Value(inner) => inner.decoder,
+                Field::Vector(_) => UnsignedDecoder,
+                Field::Pointer(inner) => inner.decoder,
+                Field::Value(inner) => inner.decoder,
                 _ => panic!("fail"),
             };
             let result = bitreader.decode(&decoder, &self.qf_mapper)?;
 
             // This seems to do oddly well, must be some compiler magic
-            if let FieldEnum::Value(v) = f {
-                if v.prop_id == 2217 {
-                    // println!("{:?} {:?}", v, result);
-                }
+            if let Field::Value(v) = f {
                 if v.should_parse {
                     entity.props.insert(v.prop_id, result);
                 } else {
@@ -208,13 +204,6 @@ impl ParserThread {
         Personally I find this path idea horribly complicated. Why is this chosen over
         the way it was done in source 1 demos?
         */
-        /*
-        let entity = match self.entities.get(&(entity_id)) {
-            Some(ent) => ent,
-            None => return Err(DemoParserError::EntityNotFound),
-        };
-        */
-        // println!("{:?}", entity.cls_id);
 
         // Create an "empty" path ([-1, 0, 0, 0, 0, 0, 0])
         // For perfomance reasons have them always the same len
@@ -226,10 +215,13 @@ impl ParserThread {
         // symbol it maps to and how many bits should be consumed from the stream.
         // The symbol is then mapped into an op for filling the field path.
         loop {
-            bitreader.reader.refill_lookahead();
-            let peeked_bits = bitreader.reader.peek(HUFFMAN_CODE_MAXLEN);
+            if bitreader.bits_left < HUFFMAN_CODE_MAXLEN {
+                bitreader.refill();
+            }
+
+            let peeked_bits = bitreader.peek(HUFFMAN_CODE_MAXLEN);
             let (symbol, code_len) = self.huffman_lookup_table[peeked_bits as usize];
-            bitreader.reader.consume(code_len as u32);
+            bitreader.consume(code_len as u32);
 
             if symbol == STOP_READING_SYMBOL {
                 break;
@@ -250,39 +242,7 @@ impl ParserThread {
         fp_dst.last = fp_src.last;
     }
     #[inline(always)]
-    fn find_decoder<'a>(fp: &FieldPath, ser: &'a Serializer) -> Decoder {
-        let f = &ser.fields[fp.path[0] as usize];
-
-        let res = match fp.last {
-            0 => f,
-            1 => f.get_inner(fp.path[1] as usize),
-            2 => f.get_inner(fp.path[1] as usize).get_inner(fp.path[2] as usize),
-            3 => f
-                .get_inner(fp.path[1] as usize)
-                .get_inner(fp.path[2] as usize)
-                .get_inner(fp.path[3] as usize),
-            4 => f
-                .get_inner(fp.path[1] as usize)
-                .get_inner(fp.path[2] as usize)
-                .get_inner(fp.path[3] as usize)
-                .get_inner(fp.path[4] as usize),
-            5 => f
-                .get_inner(fp.path[1] as usize)
-                .get_inner(fp.path[2] as usize)
-                .get_inner(fp.path[3] as usize)
-                .get_inner(fp.path[4] as usize)
-                .get_inner(fp.path[5] as usize),
-            _ => panic!("FP LAST OUT OF BOUND"),
-        };
-        match res {
-            FieldEnum::Vector(_) => UnsignedDecoder,
-            FieldEnum::Pointer(inner) => inner.decoder,
-            FieldEnum::Value(inner) => inner.decoder,
-            _ => panic!("fail"),
-        }
-    }
-    #[inline(always)]
-    fn find_field<'a>(fp: &FieldPath, ser: &'a Serializer) -> &'a FieldEnum {
+    fn find_field<'a>(fp: &FieldPath, ser: &'a Serializer) -> &'a Field {
         let f = &ser.fields[fp.path[0] as usize];
 
         match fp.last {
@@ -451,7 +411,7 @@ impl ParserThread {
         return Ok(EntityType::Normal);
     }
 }
-
+#[inline(always)]
 fn generate_fp() -> FieldPath {
     FieldPath {
         path: [-1, 0, 0, 0, 0, 0, 0],

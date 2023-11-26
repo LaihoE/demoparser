@@ -2,7 +2,7 @@ use crate::collect_data::PropType;
 use crate::maps::BUTTONMAP;
 use crate::maps::TYPEHM;
 use crate::parser_thread_settings::SpecialIDs;
-use crate::sendtables::FieldEnum;
+use crate::sendtables::Field;
 use crate::sendtables::Serializer;
 use crate::sendtables::ValueField;
 use ahash::AHashMap;
@@ -480,18 +480,18 @@ impl PropController {
             };
         }
     }
-    fn traverse_fields(&mut self, fields: &mut Vec<FieldEnum>, ser_name: String) {
+    fn traverse_fields(&mut self, fields: &mut Vec<Field>, ser_name: String) {
         for f in fields {
             match f {
-                FieldEnum::Serializer(ser) => {
+                Field::Serializer(ser) => {
                     self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name)
                 }
-                FieldEnum::Pointer(ser) => {
+                Field::Pointer(ser) => {
                     self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name)
                 }
-                FieldEnum::Array(ser) => {
+                Field::Array(ser) => {
                     match &mut ser.field_enum.as_mut() {
-                        FieldEnum::Value(v) => {
+                        Field::Value(v) => {
                             // println!("HANDLING PROP: {}", v.name);
                             self.handle_prop(&(ser_name.clone() + "." + &v.name), v);
                         }
@@ -502,7 +502,7 @@ impl PropController {
                     // println!("{:?}", ser);
                     // self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name)
                 }
-                FieldEnum::Value(x) => {
+                Field::Value(x) => {
                     let full_name = ser_name.clone() + "." + &x.name;
                     self.handle_prop(&full_name, x);
                 }
