@@ -14,7 +14,6 @@ use csgoproto::netmessages::CSVCMsg_GameEventList;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
 use csgoproto::networkbasetypes::CNETMsg_SetConVar;
 use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
-use itertools::Itertools;
 use protobuf::Message;
 use serde::ser::SerializeMap;
 use serde::Serialize;
@@ -35,7 +34,7 @@ const ENTITYIDNONE: i32 = 2047;
 // https://developer.valvesoftware.com/wiki/SteamID
 const STEAMID64INDIVIDUALIDENTIFIER: u64 = 0x0110000100000000;
 
-impl Parser {
+impl<'a> Parser<'a> {
     // Message that should come before first game event
     pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<AHashMap<i32, Descriptor_t>, DemoParserError> {
         let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
@@ -55,7 +54,7 @@ impl Parser {
     }
 }
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     pub fn parse_event(&mut self, bytes: &[u8]) -> Result<Option<GameEvent>, DemoParserError> {
         if self.wanted_events.len() == 0 && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(None);

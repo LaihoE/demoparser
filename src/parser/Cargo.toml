@@ -20,6 +20,9 @@ serde = { version = "1.0.164", features = ["derive"] }
 libc = "0.2.147"
 rayon = "1.7.0"
 protobuf-support = "3.3.0"
+proc-macro2 = "1.0.69"
+mimalloc = "0.1.39"
+stats_alloc = "0.1.10"
 
 
 [dependencies.csgoproto]
@@ -30,9 +33,9 @@ path = "../csgoproto"
 overflow-checks = false
 
 [profile.release]
-debug = true
+#debug = true
 
-# opt-level = 3
-# lto = "fat"
-# codegen-units = 1
-# panic = "abort"
+#opt-level = 3
+#lto = "fat"
+#codegen-units = 1
+#panic = "abort"

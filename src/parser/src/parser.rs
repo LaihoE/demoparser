@@ -9,6 +9,8 @@ use crate::parser_thread_settings::*;
 use crate::parser_threads::demo_cmd_type_from_int;
 use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
+use crate::read_bytes::read_varint;
+use crate::read_bytes::ProtoPacketParser;
 use crate::stringtables::parse_userinfo;
 use crate::stringtables::StringTable;
 use crate::stringtables::UserInfo;
@@ -19,12 +21,13 @@ use ahash::AHashSet;
 use bitter::BitReader;
 use csgoproto::demo::CDemoFullPacket;
 use csgoproto::demo::EDemoCommands::*;
-use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoPacket, CDemoSendTables};
+use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoSendTables};
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelRefIterator;
+use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -46,21 +49,39 @@ pub struct DemoOutput {
     pub ptr: usize,
 }
 
-impl Parser {
-    pub fn parse_demo(&mut self) -> Result<DemoOutput, DemoParserError> {
-        Parser::handle_short_header(self.bytes.get_len(), &self.bytes[..16])?;
+impl<'a> Parser<'a> {
+    pub fn resize_if_needed(buf: &mut Vec<u8>, needed_len: Result<usize, snap::Error>) -> Result<(), DemoParserError> {
+        match needed_len {
+            Ok(len) => {
+                if buf.len() < len {
+                    buf.resize(len, 0)
+                }
+            }
+            Err(e) => return Err(DemoParserError::DecompressionFailure(e.to_string())),
+        };
+
+        Ok(())
+    }
+
+    pub fn parse_demo(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
+        Parser::handle_short_header(outer_bytes.len(), &outer_bytes[..16])?;
         self.ptr = 16;
         let mut sendtable = None;
+        let mut buf = vec![0_u8; 100_000];
+        let mut biggest = 0;
+
         loop {
             let frame_starts_at = self.ptr;
-            // println!("{:?}", self.tick);
-            let cmd = self.read_varint()?;
-            let tick = self.read_varint()?;
-            let size = self.read_varint()?;
-            self.tick = tick as i32;
 
+            let cmd = read_varint(outer_bytes, &mut self.ptr)?;
+            let tick = read_varint(outer_bytes, &mut self.ptr)?;
+            let size = read_varint(outer_bytes, &mut self.ptr)?;
+
+            biggest = u32::max(size, biggest);
+
+            self.tick = tick as i32;
             // Safety check
-            if self.ptr + size as usize >= self.bytes.get_len() {
+            if self.ptr + size as usize >= outer_bytes.len() {
                 break;
             }
             let msg_type = cmd & !64;
@@ -72,13 +93,16 @@ impl Parser {
                 self.ptr += size as usize;
                 continue;
             }
+            let input = &outer_bytes[self.ptr..self.ptr + size as usize];
+            Parser::resize_if_needed(&mut buf, decompress_len(input))?;
 
+            self.ptr += size as usize;
             let bytes = match is_compressed {
-                true => match SnapDecoder::new().decompress_vec(self.read_n_bytes(size)?) {
-                    Ok(b) => b,
+                true => match SnapDecoder::new().decompress(input, &mut buf) {
+                    Ok(idx) => &buf[..idx],
                     Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
                 },
-                false => self.read_n_bytes(size)?.to_vec(),
+                false => input,
             };
             let ok: Result<(), DemoParserError> = match demo_cmd {
                 DEM_SendTables => {
@@ -117,12 +141,12 @@ impl Parser {
         */
         self.check_needed()?;
         // return self.parse_demo_single_thread();
-        return self.parse_demo_multithread_no_rayon();
+        // return self.parse_demo_multithread_no_rayon();
 
         if self.is_multithreadable {
-            self.parse_demo_multithread()
+            self.parse_demo_multithread(outer_bytes)
         } else {
-            self.parse_demo_single_thread()
+            self.parse_demo_single_thread(outer_bytes)
         }
     }
     fn check_needed(&mut self) -> Result<(), DemoParserError> {
@@ -135,10 +159,10 @@ impl Parser {
         Ok(())
     }
 
-    fn parse_demo_single_thread(&mut self) -> Result<DemoOutput, DemoParserError> {
+    fn parse_demo_single_thread(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
         let input = self.create_parser_thread_input(16, true);
         let mut parser = ParserThread::new(input).unwrap();
-        parser.start()?;
+        parser.start(outer_bytes)?;
         let x = parser.create_output();
         for prop in &self.added_temp_props {
             self.wanted_player_props.retain(|x| x != prop);
@@ -146,14 +170,14 @@ impl Parser {
         }
         return Ok(self.combine_thread_outputs(&mut vec![x]));
     }
-    fn parse_demo_multithread(&mut self) -> Result<DemoOutput, DemoParserError> {
+    fn parse_demo_multithread(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
         let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
                 let input = self.create_parser_thread_input(*offset, false);
                 let mut parser = ParserThread::new(input).unwrap();
-                parser.start()?;
+                parser.start(outer_bytes)?;
                 Ok(parser.create_output())
             })
             .collect();
@@ -172,6 +196,7 @@ impl Parser {
         }
         Ok(self.combine_thread_outputs(&mut ok))
     }
+    /*
     fn parse_demo_multithread_no_rayon(&mut self) -> Result<DemoOutput, DemoParserError> {
         use std::thread;
         use std::thread::ScopedJoinHandle;
@@ -208,21 +233,18 @@ impl Parser {
         });
         res
     }
+    */
 
     // fn parse_stringtables_cmd(bytes: &[u8]) -> Result<(), DemoParserError> {}
     pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
-        let cls_by_id = match &self.cls_by_id {
-            Some(cls_by_id) => cls_by_id.clone(),
-            None => Arc::new(AHashMap::default()),
-        };
         ParserThreadInput {
             offset: offset,
-            settings: Arc::new(self.settings.clone()),
+            settings: &self.settings,
             baselines: self.baselines.clone(),
-            prop_controller: self.prop_controller.clone(),
-            cls_by_id: cls_by_id,
-            qfmap: Arc::new(self.qf_mapper.clone()),
-            ge_list: Arc::new(self.ge_list.clone()),
+            prop_controller: &self.prop_controller,
+            cls_by_id: &self.cls_by_id.as_ref().unwrap(),
+            qfmap: &self.qf_mapper,
+            ge_list: &self.ge_list,
             parse_all_packets: parse_all,
             // arc?
             wanted_ticks: self.wanted_ticks.clone(),
@@ -292,11 +314,16 @@ impl Parser {
     }
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let packet: CDemoPacket = Message::parse_from_bytes(bytes).unwrap();
-        let packet_data = packet.data.unwrap();
-        let mut bitreader = Bitreader::new(&packet_data);
+        let mut p = ProtoPacketParser {
+            bytes: bytes,
+            start: 0,
+            end: 0,
+            ptr: 0,
+        };
+        p.read_proto_packet().unwrap();
+        let mut bitreader = Bitreader::new(&bytes[p.start..p.end]);
         // Inner loop
         while bitreader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
@@ -391,16 +418,7 @@ impl Parser {
     }
 
     pub fn parse_class_info(&mut self, bytes: &[u8], sendtables: CDemoSendTables) -> Result<(), DemoParserError> {
-        use std::time::Instant;
-        let before = Instant::now();
-
         let (mut serializers, qf_mapper, p) = self.parse_sendtable(sendtables);
-        // println!("SENDTABLES TOOK {:?}", before.elapsed());
-        /*
-        let (mut serializers, qf_mapper, p) = self.parse_sendtable(sendtables)?;
-        let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
-        let mut cls_by_id = AHashMap::default();
-        */
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
         let mut cls_by_id = AHashMap::default();
 
@@ -417,22 +435,20 @@ impl Parser {
                 },
             );
         }
-        // panic!("UU");
-
         self.cls_by_id = Some(Arc::new(cls_by_id));
         self.qf_mapper = qf_mapper;
         self.prop_controller = p;
         return Ok(());
     }
 }
-pub struct ParserThreadInput {
+pub struct ParserThreadInput<'a> {
     pub offset: usize,
-    pub settings: Arc<ParserInputs>,
+    pub settings: &'a ParserInputs<'a>,
     pub baselines: AHashMap<u32, Vec<u8>>,
-    pub prop_controller: PropController,
-    pub cls_by_id: Arc<AHashMap<u32, Class>>,
-    pub qfmap: Arc<QfMapper>,
-    pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,
+    pub prop_controller: &'a PropController,
+    pub cls_by_id: &'a AHashMap<u32, Class>,
+    pub qfmap: &'a QfMapper,
+    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub parse_all_packets: bool,
     pub wanted_ticks: AHashSet<i32>,
     pub string_tables: Vec<StringTable>,

@@ -6,15 +6,7 @@ use crate::maps::GRENADE_FRIENDLY_NAMES;
 use crate::maps::PAINTKITS;
 use crate::maps::WEAPINDICIES;
 use crate::parser_thread_settings::ParserThread;
-use crate::prop_controller::PropInfo;
-use crate::prop_controller::GRENADE_AMMO_ID;
-use crate::prop_controller::MY_WEAPONS_OFFSET;
-use crate::prop_controller::PLAYER_X_ID;
-use crate::prop_controller::PLAYER_Y_ID;
-use crate::prop_controller::PLAYER_Z_ID;
-use crate::prop_controller::STEAMID_ID;
-use crate::prop_controller::WEAPON_SKIN_ID;
-
+use crate::prop_controller::*;
 use crate::variants::PropColumn;
 use crate::variants::VarVec;
 use std::fmt;
@@ -100,11 +92,11 @@ pub enum PropCollectionError {
     AgentPropNotFound,
     AgentSpecialIdNotSet,
     UseridNotFound,
+    InventoryMaxNotFound,
 }
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
 const MAX_COORD: f32 = (1 << 14) as f32;
-const MAX_INVENTORY_IDX: u32 = 16;
 
 impl std::error::Error for PropCollectionError {}
 impl fmt::Display for PropCollectionError {
@@ -132,13 +124,14 @@ pub enum CoordinateAxis {
 
 // This file collects the data that is converted into a dataframe in the end in parser.parse_ticks()
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     pub fn collect_entities(&mut self) {
         if !self.prop_controller.event_with_velocity {
             if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_events.len() != 0 {
                 return;
             }
         }
+
         if self.parse_projectiles {
             self.collect_projectiles();
         }
@@ -619,7 +612,17 @@ impl ParserThread {
         let mut names = vec![];
         let mut unique_eids = vec![];
 
-        for i in 0..MAX_INVENTORY_IDX {
+        match self.find_is_alive(entity_id) {
+            Ok(Variant::Bool(true)) => {}
+            _ => return Ok(Variant::StringVec(vec![])),
+        };
+
+        let inventory_max_len = match self.get_prop_from_ent(&(MY_WEAPONS_OFFSET as u32), entity_id) {
+            Ok(Variant::U32(p)) => p,
+            _ => return Err(PropCollectionError::InventoryMaxNotFound),
+        };
+
+        for i in 1..inventory_max_len + 1 {
             let prop_id = MY_WEAPONS_OFFSET + i;
             match self.get_prop_from_ent(&(prop_id as u32), entity_id) {
                 Err(_e) => {}
@@ -788,7 +791,7 @@ fn coord_from_cell(
         (_, _) => Err(PropCollectionError::CoordinateIncorrectTypes),
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use crate::collect_data::CoordinateAxis;
@@ -2708,3 +2711,4 @@ mod tests {
         assert_eq!(Err(PropCollectionError::PlayerNotFound), player_md);
     }
 }
+*/

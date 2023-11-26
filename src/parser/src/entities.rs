@@ -3,6 +3,7 @@ use crate::decoder::Decoder::UnsignedDecoder;
 use crate::entities_utils::*;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
+use crate::read_bytes::PacketEntitiesParser;
 use crate::sendtables::Field;
 use crate::sendtables::Serializer;
 use crate::variants::Variant;
@@ -11,7 +12,7 @@ use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
 
 const NSERIALBITS: u32 = 17;
-const STOP_READING_SYMBOL: u32 = 39;
+const STOP_READING_SYMBOL: u8 = 39;
 const HUFFMAN_CODE_MAXLEN: u32 = 17;
 
 #[derive(Debug, Clone)]
@@ -45,22 +46,64 @@ enum EntityCmd {
     Update,
 }
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         // panic!("ENTER");
         if !self.parse_entities {
             return Ok(());
         }
+        // Custom reader that does no allocations. Interesting data is byte algined so
+        // just index into the incomming bytes (dont allocate a vector for our bytes).
+        let mut reader = PacketEntitiesParser::new(bytes);
+        reader.parse_message()?;
+
+        let mut bitreader = Bitreader::new(&bytes[reader.data_start..reader.data_end]);
+        let mut entity_id: i32 = -1;
+
+        for _ in 0..reader.updated_entries {
+            entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
+            // Read 2 bits to know which operation should be done to the entity.
+            let cmd = match bitreader.read_nbits(2)? {
+                0b01 => EntityCmd::Delete,
+                0b11 => EntityCmd::Delete,
+                0b10 => EntityCmd::CreateAndUpdate,
+                0b00 => EntityCmd::Update,
+                _ => panic!("impossible cmd"),
+            };
+            match cmd {
+                EntityCmd::Delete => {
+                    self.projectiles.remove(&entity_id);
+                    self.entities.remove(&entity_id);
+                }
+                EntityCmd::CreateAndUpdate => {
+                    self.create_new_entity(&mut bitreader, &entity_id)?;
+                    self.update_entity(&mut bitreader, entity_id, false)?;
+                }
+                EntityCmd::Update => {
+                    self.update_entity(&mut bitreader, entity_id, false)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn parse_packet_entsq(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        if !self.parse_entities {
+            return Ok(());
+        }
+
         let packet_ents: CSVCMsg_PacketEntities = match Message::parse_from_bytes(&bytes) {
             Ok(pe) => pe,
             Err(_e) => return Err(DemoParserError::MalformedMessage),
         };
+
         let n_updates = packet_ents.updated_entries();
 
-        let data = match packet_ents.entity_data {
+        let data = match &packet_ents.entity_data {
             Some(data) => data,
             None => return Err(DemoParserError::MalformedMessage),
         };
+
         let mut bitreader = Bitreader::new(&data);
         let mut entity_id: i32 = -1;
 
@@ -129,8 +172,10 @@ impl ParserThread {
                 if v.should_parse {
                     entity.props.insert(v.prop_id, result);
                 } else {
-                    // println!("{:?}", result);
+                    println!("{:?} {:?} {:?}", v.name, result, bitreader.bits_left);
                 }
+            } else {
+                println!("{:?} {:?} {:?}", f, result, bitreader.total_bits_left);
             }
         }
 
@@ -242,7 +287,7 @@ impl ParserThread {
         fp_dst.last = fp_src.last;
     }
     #[inline(always)]
-    fn find_field<'a>(fp: &FieldPath, ser: &'a Serializer) -> &'a Field {
+    fn find_field<'b>(fp: &FieldPath, ser: &'b Serializer) -> &'b Field {
         let f = &ser.fields[fp.path[0] as usize];
 
         match fp.last {
@@ -371,7 +416,6 @@ impl ParserThread {
             _ => {}
         };
         let entity = ParserThread::make_ent(entity_id, cls_id, entity_type);
-        // println!("{:?} {:?}", self.entities.capacity(), self.entities.keys().len());
         self.entities.insert(*entity_id, entity);
         // Insert baselines
 

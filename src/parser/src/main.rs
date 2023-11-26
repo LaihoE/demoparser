@@ -3,22 +3,33 @@ use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
-use parser::variants::BytesVariant;
 use std::fs;
 use std::fs::File;
-use std::sync::Arc;
 use std::time::Instant;
 
+/*
 use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
+*/
+/*
+extern crate stats_alloc;
 
+use stats_alloc::{Region, StatsAlloc, INSTRUMENTED_SYSTEM};
+use std::alloc::System;
+
+#[global_allocator]
+static GLOBAL: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
+*/
 fn main() {
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(24).build().unwrap();
+
     let wanted_props = vec!["X".to_string()];
     let before = Instant::now();
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/bench/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
+    let mut total = 0;
 
     for path in dir {
         c += 1;
@@ -38,17 +49,11 @@ fn main() {
         "CFlashbangProjectile"
         */
 
-        //let file = File::open("/home/laiho/Documents/q.dem").unwrap();
-        let file = File::open(path.unwrap().path()).unwrap();
-        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-        mmap.advise(memmap2::Advice::HugePage).unwrap();
-
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            wanted_events: vec!["player_blind".to_string()],
+            wanted_events: vec!["player_death".to_string()],
             // wanted_events: vec![],
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
@@ -66,16 +71,26 @@ fn main() {
             only_header: false,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: Arc::new(huf.clone()),
+            huffman_lookup_table: &huf,
         };
 
-        let mut ds = Parser::new(settings);
+        let mut ds = Parser::new(&settings);
         ds.is_multithreadable = false;
-        let d = ds.parse_demo().unwrap();
+        let file = File::open("/home/laiho/Documents/programming/python/map/1.dem").unwrap();
+        // let file = File::open(path.unwrap().path()).unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+        total += mmap.len();
 
-        // TOTAL 5.909785945s
-
+        // mmap.advise(memmap2::Advice::HugePage).unwrap();
+        let d = ds.parse_demo(&mmap).unwrap();
+        // println!("{:?}", d.df);
         println!("TOTAL {:?}", before.elapsed());
     }
+    println!("TOTAL {:?}", before.elapsed().as_millis());
+    let x = total as f32 / before.elapsed().as_millis() as f32;
+
+    println!("{:?} GB/S", x * 1000.0 / 1_000_000_000.0);
     println!("TOTAL {:?}", before.elapsed());
+
+    // println!("GB/S {:?}", x / 1_000_000_000.0);
 }

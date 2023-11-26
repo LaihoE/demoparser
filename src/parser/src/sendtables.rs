@@ -44,6 +44,7 @@ pub struct ConstructorField {
     pub low_value: f32,
     pub high_value: f32,
     pub field_type: FieldType,
+
     pub decoder: Decoder,
     pub category: FieldCategory,
 
@@ -53,7 +54,7 @@ pub struct ConstructorField {
     pub base_decoder: Option<Decoder>,
     pub child_decoder: Option<Decoder>,
 }
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_sendtable(&mut self, tables: CDemoSendTables) -> (AHashMap<String, Serializer>, QfMapper, PropController) {
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint().unwrap();

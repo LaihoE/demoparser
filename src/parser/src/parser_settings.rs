@@ -10,7 +10,6 @@ use crate::prop_controller::PropController;
 use crate::prop_controller::PropInfo;
 use crate::read_bits::DemoParserError;
 use crate::stringtables::UserInfo;
-use crate::variants::BytesVariant;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
@@ -20,8 +19,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
-pub struct ParserInputs {
-    pub bytes: Arc<BytesVariant>,
+pub struct ParserInputs<'a> {
+    // pub bytes: &'a BytesVariant,
     pub real_name_to_og_name: AHashMap<String, String>,
 
     pub wanted_player_props: Vec<String>,
@@ -36,18 +35,18 @@ pub struct ParserInputs {
     pub only_header: bool,
     pub count_props: bool,
     pub only_convars: bool,
-    pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
+    pub huffman_lookup_table: &'a Vec<(u8, u8)>,
 }
 
-pub struct Parser {
+pub struct Parser<'a> {
     pub added_temp_props: Vec<String>,
     pub real_name_to_og_name: AHashMap<String, String>,
     pub fullpacket_offsets: Vec<usize>,
     pub ptr: usize,
-    pub bytes: Arc<BytesVariant>,
+    // pub bytes: &'a BytesVariant,
     pub tick: i32,
-    pub huf: Arc<Vec<(u32, u8)>>,
-    pub settings: ParserInputs,
+    pub huf: &'a Vec<(u8, u8)>,
+    pub settings: &'a ParserInputs<'a>,
     pub serializers: AHashMap<String, Serializer>,
     pub cls_by_id: Option<Arc<AHashMap<u32, Class>>>,
     pub string_tables: Vec<StringTable>,
@@ -99,21 +98,10 @@ pub fn needs_velocity(props: &[String]) -> bool {
     false
 }
 
-impl Parser {
-    pub fn new(mut inputs: ParserInputs) -> Self {
-        let arc_bytes = inputs.bytes.clone();
-        let arc_huf = inputs.huffman_lookup_table.clone();
-
-        let mut added_temp_props = vec![];
-        if needs_velocity(&inputs.wanted_player_props) {
-            inputs
-                .wanted_player_props
-                .extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
-            added_temp_props.extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
-        }
-
+impl<'a> Parser<'a> {
+    pub fn new(inputs: &'a ParserInputs<'a>) -> Self {
         Parser {
-            added_temp_props: added_temp_props,
+            added_temp_props: vec![],
             threads_spawned: 0,
             is_multithreadable: check_multithreadability(&inputs.wanted_player_props),
             largest_wanted_tick: *inputs.wanted_ticks.iter().max().unwrap_or(&999999999),
@@ -134,13 +122,13 @@ impl Parser {
             maps_ready: false,
             name_to_id: AHashMap::default(),
             convars: AHashMap::default(),
-            bytes: arc_bytes.clone(),
+            // bytes: inputs.bytes,
             string_tables: vec![],
             fullpacket_offsets: vec![],
             ptr: 0,
             baselines: AHashMap::default(),
             tick: 0,
-            huf: arc_huf,
+            huf: &inputs.huffman_lookup_table,
             qf_mapper: QfMapper {
                 idx: 0,
                 map: AHashMap::default(),
@@ -154,7 +142,7 @@ impl Parser {
             wanted_ticks: AHashSet::from_iter(inputs.wanted_ticks.iter().cloned()),
             wanted_other_props: inputs.wanted_other_props.clone(),
             wanted_other_props_og_names: inputs.wanted_other_props_og_names.clone(),
-            settings: inputs,
+            settings: &inputs,
             wanted_player_props_og_names: vec![],
             controller_ids: SpecialIDs::new(),
             id: 0,

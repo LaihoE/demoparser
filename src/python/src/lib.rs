@@ -59,9 +59,9 @@ impl DemoParser {
                 )))
             }
         };
+        let huf = create_huffman_lookup_table();
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -73,10 +73,10 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: Arc::new(create_huffman_lookup_table()),
+            huffman_lookup_table: &huf,
         };
-        let mut parser = Parser::new(settings);
-        let _output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let _output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
@@ -95,11 +95,10 @@ impl DemoParser {
                 )))
             }
         };
-        let arc_huf = Arc::new(create_huffman_lookup_table());
+        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -111,10 +110,10 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
         };
@@ -132,11 +131,10 @@ impl DemoParser {
                 )))
             }
         };
-        let arc_huf = Arc::new(create_huffman_lookup_table());
+        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -148,10 +146,10 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
@@ -179,11 +177,10 @@ impl DemoParser {
                 )))
             }
         };
-        let arc_huf = Arc::new(create_huffman_lookup_table());
+        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -195,10 +192,10 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
@@ -269,11 +266,10 @@ impl DemoParser {
                 )))
             }
         };
-        let arc_huf = Arc::new(create_huffman_lookup_table());
+        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -285,10 +281,10 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
@@ -343,11 +339,10 @@ impl DemoParser {
                 )))
             }
         };
-        let arc_huf = Arc::new(create_huffman_lookup_table());
+        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -359,10 +354,10 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
@@ -400,11 +395,10 @@ impl DemoParser {
                 )))
             }
         };
-        let arc_huf = Arc::new(create_huffman_lookup_table());
+        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -416,10 +410,10 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
@@ -494,11 +488,10 @@ impl DemoParser {
                 )))
             }
         };
-        let arc_huf = Arc::new(create_huffman_lookup_table());
+        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -510,10 +503,10 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
@@ -603,11 +596,10 @@ impl DemoParser {
                 )))
             }
         };
-        let arc_huf = Arc::new(create_huffman_lookup_table());
+        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name: real_name_to_og_name,
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: real_player_props.clone(),
             wanted_player_props_og_names: wanted_player_props.clone(),
             wanted_other_props: real_other_props,
@@ -619,10 +611,10 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
@@ -668,11 +660,10 @@ impl DemoParser {
                 )))
             }
         };
-        let arc_huf = Arc::new(create_huffman_lookup_table());
+        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name: real_name_to_og_name,
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: real_player_props.clone(),
             wanted_player_props_og_names: wanted_player_props.clone(),
             wanted_other_props: wanted_other_props,
@@ -684,10 +675,10 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
@@ -732,7 +723,6 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: real_name_to_og_name,
-            bytes: Arc::new(BytesVariant::Mmap(mmap)),
             wanted_player_props: real_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
             wanted_other_props: vec![],
@@ -744,11 +734,11 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: arc_huf.clone(),
+            huffman_lookup_table: &arc_huf,
             //huf: huf,
         };
-        let mut parser = Parser::new(settings);
-        let output = match parser.parse_demo() {
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };

@@ -15,43 +15,37 @@ use crate::prop_controller::PropController;
 
 use crate::decoder::Decoder;
 use crate::stringtables::UserInfo;
-use crate::variants::BytesVariant;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
 use ahash::RandomState;
-use bit_reverse::LookupReverse;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::env;
-use std::sync::Arc;
 
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 
-pub struct ParserThread {
-    pub qf_mapper: Arc<QfMapper>,
-    pub prop_controller: Arc<PropController>,
-    pub cls_by_id: Arc<AHashMap<u32, Class>>,
+pub struct ParserThread<'a> {
+    pub qf_mapper: &'a QfMapper,
+    pub prop_controller: &'a PropController,
+    pub cls_by_id: &'a AHashMap<u32, Class>,
     pub stringtable_players: BTreeMap<u64, UserInfo>,
     pub net_tick: u32,
     pub parse_inventory: bool,
     pub paths: Vec<FieldPath>,
 
     pub ptr: usize,
-    pub bytes: Arc<BytesVariant>,
     pub parse_all_packets: bool,
-    // Parsing state
-    pub ge_list: Arc<AHashMap<i32, Descriptor_t>>,
+    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_bits: Option<u32>,
     pub entities: AHashMap<i32, Entity, RandomState>,
     pub tick: i32,
     pub players: BTreeMap<i32, PlayerMetaData>,
     pub teams: Teams,
-    pub huffman_lookup_table: Arc<Vec<(u32, u8)>>,
+    pub huffman_lookup_table: &'a Vec<(u8, u8)>,
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
     pub rules_entity_id: Option<i32>,
@@ -63,7 +57,6 @@ pub struct ParserThread {
     pub packets_parsed: u32,
     pub projectile_records: Vec<ProjectileRecord>,
     pub wanted_ticks: AHashSet<i32>,
-
     // Output from parsing
     pub output: AHashMap<u32, PropColumn, RandomState>,
     pub header: HashMap<String, String>,
@@ -72,8 +65,6 @@ pub struct ParserThread {
     pub convars: AHashMap<String, String>,
     pub chat_messages: Vec<ChatMessageRecord>,
     pub player_end_data: Vec<PlayerEndMetaData>,
-    // pub projectile_records: ProjectileRecordVec,
-
     // Settings
     pub wanted_events: Vec<String>,
     pub parse_entities: bool,
@@ -96,7 +87,7 @@ impl Teams {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct ChatMessageRecord {
     pub entity_idx: Option<i32>,
     pub param1: Option<String>,
@@ -132,7 +123,7 @@ pub struct PlayerEndMetaData {
     pub team_number: Option<i32>,
 }
 
-impl ParserThread {
+impl<'a> ParserThread<'a> {
     pub fn create_output(self) -> DemoOutput {
         DemoOutput {
             chat_messages: self.chat_messages,
@@ -149,7 +140,7 @@ impl ParserThread {
             ptr: self.ptr,
         }
     }
-    pub fn new(input: ParserThreadInput) -> Result<Self, DemoParserError> {
+    pub fn new(input: ParserThreadInput<'a>) -> Result<Self, DemoParserError> {
         input
             .settings
             .wanted_player_props
@@ -179,15 +170,15 @@ impl ParserThread {
             projectile_records: vec![],
             parse_all_packets: input.parse_all_packets,
             wanted_ticks: input.wanted_ticks.clone(),
-            prop_controller: Arc::new(input.prop_controller),
-            qf_mapper: input.qfmap,
+            prop_controller: &input.prop_controller,
+            qf_mapper: &input.qfmap,
             fullpackets_parsed: 0,
             packets_parsed: 0,
             serializers: AHashMap::default(),
             ptr: input.offset,
-            ge_list: input.ge_list.clone(),
-            bytes: input.settings.bytes.clone(),
-            cls_by_id: input.cls_by_id,
+            ge_list: input.ge_list,
+            // bytes: &input.settings.bytes,
+            cls_by_id: &input.cls_by_id,
             entities: AHashMap::with_capacity(512),
             cls_bits: None,
             tick: -99999,
@@ -210,7 +201,7 @@ impl ParserThread {
             item_drops: vec![],
             skins: vec![],
             player_end_data: vec![],
-            huffman_lookup_table: input.settings.huffman_lookup_table.clone(),
+            huffman_lookup_table: &input.settings.huffman_lookup_table,
             header: HashMap::default(),
         })
     }
@@ -301,9 +292,9 @@ fn msb(mut val: u32) -> u32 {
     cnt
 }
 
-pub fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
-    let mut huffman_table = vec![(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
-    let mut huffman_rev_table = vec![(999999, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
+pub fn create_huffman_lookup_table() -> Vec<(u8, u8)> {
+    let mut huffman_table = vec![(255, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
+    let mut huffman_rev_table = vec![(255, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
 
     huffman_table[0] = (0, 1);
     huffman_table[2] = (39, 2);
@@ -347,12 +338,12 @@ pub fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
     huffman_table[223] = (3, 8);
     huffman_table[14] = (1, 4);
     huffman_table[15] = (11, 4);
-    huffman_table[0] = (999999, 255);
+    huffman_table[0] = (255, 255);
 
     const RIGHTSHIFT_BITORDER: u32 = 64 - 17;
     let mut v: Vec<u32> = vec![];
     for (idx, x) in huffman_table.iter().enumerate() {
-        if x.0 != 999999 {
+        if x.0 != 255 {
             v.push(idx as u32);
         }
     }
@@ -364,14 +355,14 @@ pub fn create_huffman_lookup_table() -> Vec<(u32, u8)> {
         let shifta = msb(x);
         for (idx, pair) in idx_msb_map.iter().enumerate() {
             if x == idx as u32 >> pair - shifta {
-                let peekbits = (idx as u64).swap_bits() >> RIGHTSHIFT_BITORDER;
+                let peekbits = (idx as u64).reverse_bits() >> RIGHTSHIFT_BITORDER;
                 huffman_table[idx as usize] = huffman_table[x as usize];
                 huffman_rev_table[peekbits as usize] = huffman_table[x as usize];
             }
         }
     }
     for v in 0..HUF_LOOKUPTABLE_MAXVALUE {
-        let p: u64 = (v as u64).swap_bits() >> RIGHTSHIFT_BITORDER;
+        let p: u64 = (v as u64).reverse_bits() >> RIGHTSHIFT_BITORDER;
         if p & 1 == 0 {
             huffman_rev_table[p as usize] = (0, 1);
         }

@@ -306,7 +306,7 @@ impl PropController {
             // Mainly for weapon props. For example CAK47.m_iClip1 and CWeaponSCAR20.m_iClip1
             // are the "same" prop. (they have same path and we want to refer to it with one id not ~20)
             Some(id) => {
-                f.prop_id = *id;
+                f.prop_id = *id as u32;
                 // self.id_to_name.insert(*id, weap_prop.to_string());
                 self.set_special_ids(&weap_prop, is_grenade_or_weapon, *id);
                 return;
@@ -314,7 +314,7 @@ impl PropController {
             None => {
                 self.name_to_id.insert(weap_prop.to_string(), self.id);
                 // self.id_to_name.insert(self.id, weap_prop.to_string());
-                f.prop_id = self.id;
+                f.prop_id = self.id as u32;
                 self.set_special_ids(&weap_prop, is_grenade_or_weapon, self.id);
             }
         }
@@ -384,9 +384,8 @@ impl PropController {
             // println!("Should parse: {}", prop_name);
             f.should_parse = true;
         }
-        // CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iUtilityDamage
-        if full_name.contains("Spot") {
-            // println!("{:?} {:?}", full_name, f);
+        if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {
+            f.prop_id = MY_WEAPONS_OFFSET as u32;
         }
         self.id += 1;
     }
