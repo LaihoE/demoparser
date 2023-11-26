@@ -6,6 +6,7 @@ use ahash::AHashMap;
 use memmap2::MmapOptions;
 use napi::bindgen_prelude::*;
 use napi::Either;
+use parser::parser::DemoOutput;
 use parser::parser_settings::rm_user_friendly_names;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
@@ -20,14 +21,26 @@ use std::fs::File;
 use std::result::Result;
 use std::sync::Arc;
 
+fn parse_demo(bytes: BytesVariant, parser: &mut Parser) -> Result<DemoOutput, Error> {
+  match bytes {
+    BytesVariant::Mmap(m) => match parser.parse_demo(&m) {
+      Ok(output) => Ok(output),
+      Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+    },
+    BytesVariant::Vec(v) => match parser.parse_demo(&v) {
+      Ok(output) => Ok(output),
+      Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+    },
+  }
+}
+/*
 #[napi]
 pub fn parse_chat_messages(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
   let bytes = resolve_byte_type(path_or_buf)?;
-  let arc_huf = Arc::new(create_huffman_lookup_table());
+  let huf = create_huffman_lookup_table();
 
   let settings = ParserInputs {
     real_name_to_og_name: AHashMap::default(),
-    bytes: Arc::new(bytes),
     wanted_player_props: vec![],
     wanted_player_props_og_names: vec![],
     wanted_other_props: vec![],
@@ -39,13 +52,10 @@ pub fn parse_chat_messages(path_or_buf: Either<String, Buffer>) -> napi::Result<
     only_header: true,
     count_props: false,
     only_convars: false,
-    huffman_lookup_table: arc_huf.clone(),
+    huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(settings);
-  let output = match parser.parse_demo() {
-    Ok(output) => output,
-    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
-  };
+  let mut parser = Parser::new(&settings);
+  let output = parse_demo(bytes, &mut parser)?;
 
   let s = match serde_json::to_value(&output.chat_messages) {
     Ok(s) => s,
@@ -53,15 +63,14 @@ pub fn parse_chat_messages(path_or_buf: Either<String, Buffer>) -> napi::Result<
   };
   Ok(s)
 }
-
+*/
 #[napi]
 pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
   let bytes = resolve_byte_type(path_or_buf)?;
 
-  let arc_huf = Arc::new(create_huffman_lookup_table());
+  let huf = create_huffman_lookup_table();
   let settings = ParserInputs {
     real_name_to_og_name: AHashMap::default(),
-    bytes: Arc::new(bytes),
     wanted_player_props: vec![],
     wanted_player_props_og_names: vec![],
     wanted_other_props: vec![],
@@ -73,13 +82,11 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     only_header: false,
     count_props: false,
     only_convars: false,
-    huffman_lookup_table: arc_huf.clone(),
+    huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(settings);
-  let output = match parser.parse_demo() {
-    Ok(output) => output,
-    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
-  };
+  let mut parser = Parser::new(&settings);
+  let output = parse_demo(bytes, &mut parser)?;
+
   let v = Vec::from_iter(output.game_events_counter.iter());
   let s = match serde_json::to_value(v) {
     Ok(s) => s,
@@ -91,11 +98,10 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
 #[napi]
 pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
   let bytes = resolve_byte_type(path_or_buf)?;
-  let arc_huf = Arc::new(create_huffman_lookup_table());
+  let huf = create_huffman_lookup_table();
 
   let settings = ParserInputs {
     real_name_to_og_name: AHashMap::default(),
-    bytes: Arc::new(bytes),
     wanted_player_props: vec![],
     wanted_player_props_og_names: vec![],
     wanted_other_props: vec![],
@@ -107,13 +113,10 @@ pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value
     only_header: true,
     count_props: false,
     only_convars: false,
-    huffman_lookup_table: arc_huf.clone(),
+    huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(settings);
-  let output = match parser.parse_demo() {
-    Ok(output) => output,
-    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
-  };
+  let mut parser = Parser::new(&settings);
+  let output = parse_demo(bytes, &mut parser)?;
 
   let s = match serde_json::to_value(&output.projectiles) {
     Ok(s) => s,
@@ -124,11 +127,11 @@ pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value
 #[napi]
 pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
   let bytes = resolve_byte_type(path_or_buf)?;
-  let arc_huf = Arc::new(create_huffman_lookup_table());
+  let huf = create_huffman_lookup_table();
 
   let settings = ParserInputs {
     real_name_to_og_name: AHashMap::default(),
-    bytes: Arc::new(bytes),
+
     wanted_player_props: vec![],
     wanted_player_props_og_names: vec![],
     wanted_other_props: vec![],
@@ -140,13 +143,11 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     only_header: true,
     count_props: false,
     only_convars: false,
-    huffman_lookup_table: arc_huf.clone(),
+    huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(settings);
-  let _output = match parser.parse_demo() {
-    Ok(output) => output,
-    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
-  };
+  let mut parser = Parser::new(&settings);
+  let _output = parse_demo(bytes, &mut parser)?;
+
   let mut hm: HashMap<String, String> = HashMap::default();
   hm.extend(parser.header);
 
@@ -190,11 +191,11 @@ pub fn parse_event(
   }
 
   let bytes = resolve_byte_type(path_or_buf)?;
-  let arc_huf = Arc::new(create_huffman_lookup_table());
+  let huf = create_huffman_lookup_table();
 
   let settings = ParserInputs {
     real_name_to_og_name: real_name_to_og_name,
-    bytes: Arc::new(bytes),
+
     wanted_player_props: real_names_player.clone(),
     wanted_player_props_og_names: vec![],
     wanted_other_props: real_other_props,
@@ -206,13 +207,10 @@ pub fn parse_event(
     only_header: true,
     count_props: false,
     only_convars: false,
-    huffman_lookup_table: arc_huf.clone(),
+    huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(settings);
-  let output = match parser.parse_demo() {
-    Ok(output) => output,
-    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
-  };
+  let mut parser = Parser::new(&settings);
+  let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.game_events) {
     Ok(s) => s,
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
@@ -256,11 +254,11 @@ pub fn parse_events(
   }
 
   let bytes = resolve_byte_type(path_or_buf)?;
-  let arc_huf = Arc::new(create_huffman_lookup_table());
+  let huf = create_huffman_lookup_table();
 
   let settings = ParserInputs {
     real_name_to_og_name: real_name_to_og_name,
-    bytes: Arc::new(bytes),
+
     wanted_player_props: real_names_player.clone(),
     wanted_player_props_og_names: vec![],
     wanted_other_props: real_other_props.clone(),
@@ -272,13 +270,10 @@ pub fn parse_events(
     only_header: true,
     count_props: false,
     only_convars: false,
-    huffman_lookup_table: arc_huf.clone(),
+    huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(settings);
-  let output = match parser.parse_demo() {
-    Ok(output) => output,
-    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
-  };
+  let mut parser = Parser::new(&settings);
+  let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.game_events) {
     Ok(s) => s,
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
@@ -299,7 +294,7 @@ pub fn parse_ticks(
   };
 
   let bytes = resolve_byte_type(path_or_buf)?;
-  let arc_huf = Arc::new(create_huffman_lookup_table());
+  let huf = create_huffman_lookup_table();
   let mut real_name_to_og_name = AHashMap::default();
 
   for (real_name, user_friendly_name) in real_names.iter().zip(&wanted_props) {
@@ -312,7 +307,7 @@ pub fn parse_ticks(
 
   let settings = ParserInputs {
     real_name_to_og_name: real_name_to_og_name,
-    bytes: Arc::new(bytes),
+
     wanted_player_props: real_names.clone(),
     wanted_player_props_og_names: wanted_props.clone(),
     wanted_other_props: vec![],
@@ -324,13 +319,10 @@ pub fn parse_ticks(
     only_header: false,
     count_props: false,
     only_convars: false,
-    huffman_lookup_table: arc_huf.clone(),
+    huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(settings);
-  let output = match parser.parse_demo() {
-    Ok(output) => output,
-    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
-  };
+  let mut parser = Parser::new(&settings);
+  let output = parse_demo(bytes, &mut parser)?;
   real_names.push("tick".to_owned());
   real_names.push("steamid".to_owned());
   real_names.push("name".to_owned());
@@ -368,11 +360,10 @@ pub fn parse_ticks(
 #[napi]
 pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
   let bytes = resolve_byte_type(path_or_buf)?;
-  let arc_huf = Arc::new(create_huffman_lookup_table());
+  let huf = create_huffman_lookup_table();
 
   let settings = ParserInputs {
     real_name_to_og_name: AHashMap::default(),
-    bytes: Arc::new(bytes),
     wanted_player_props: vec![],
     wanted_player_props_og_names: vec![],
     wanted_other_props: vec![],
@@ -384,13 +375,10 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     only_header: true,
     count_props: false,
     only_convars: false,
-    huffman_lookup_table: arc_huf.clone(),
+    huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(settings);
-  let output = match parser.parse_demo() {
-    Ok(output) => output,
-    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
-  };
+  let mut parser = Parser::new(&settings);
+  let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.player_md) {
     Ok(s) => s,
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
