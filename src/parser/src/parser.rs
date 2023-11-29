@@ -27,6 +27,7 @@ use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelRefIterator;
+use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -77,16 +78,18 @@ impl<'a> Parser<'a> {
                 self.ptr += size as usize;
                 continue;
             }
-            let s = &outer_bytes[self.ptr..self.ptr + size as usize];
-            self.ptr += size as usize;
+            let input = &outer_bytes[self.ptr..self.ptr + size as usize];
+            Parser::resize_if_needed(&mut buf, decompress_len(input))?;
 
+            self.ptr += size as usize;
             let bytes = match is_compressed {
-                true => match SnapDecoder::new().decompress(s, &mut buf) {
+                true => match SnapDecoder::new().decompress(input, &mut buf) {
                     Ok(idx) => &buf[..idx],
                     Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
                 },
-                false => s,
+                false => input,
             };
+
             let ok: Result<(), DemoParserError> = match demo_cmd {
                 DEM_SendTables => {
                     sendtable = match Message::parse_from_bytes(&bytes) {
@@ -122,6 +125,17 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_demo_single_thread(outer_bytes)
         }
+    }
+    pub fn resize_if_needed(buf: &mut Vec<u8>, needed_len: Result<usize, snap::Error>) -> Result<(), DemoParserError> {
+        match needed_len {
+            Ok(len) => {
+                if buf.len() < len {
+                    buf.resize(len, 0)
+                }
+            }
+            Err(e) => return Err(DemoParserError::DecompressionFailure(e.to_string())),
+        };
+        Ok(())
     }
     fn check_needed(&mut self) -> Result<(), DemoParserError> {
         if !self.fullpacket_offsets.contains(&16) {
