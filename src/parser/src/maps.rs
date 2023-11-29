@@ -1719,6 +1719,8 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerController.m_iPing"=> PropType::Controller,
 
     "entity_id" => PropType::Custom,
+    "CCSPlayerPawn.CCSPlayer_ItemServices.m_bHasDefuser" => PropType::Player,
+    "CCSPlayerPawn.CCSPlayer_ItemServices.m_bHasHelmet" => PropType::Player,
     "CCSPlayerPawn.m_MoveCollide" => PropType::Player,
     "CCSPlayerPawn.m_MoveType" => PropType::Player,
     "CCSPlayerPawn.m_iTeamNum" => PropType::Player,
@@ -2091,8 +2093,9 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
 
     "user_id" => "user_id",
     "armor"=>"CCSPlayerController.m_iPawnArmor",
-    "has_defuser"=>"CCSPlayerController.m_bPawnHasDefuser",
-    "has_helmet"=>"CCSPlayerController.m_bPawnHasHelmet",
+    "has_defuser"=>"CCSPlayerPawn.CCSPlayer_ItemServices.m_bHasDefuser",
+    "has_helmet"=>"CCSPlayerPawn.CCSPlayer_ItemServices.m_bHasHelmet",
+
     "spawn_time"=>"CCSPlayerController.m_iPawnLifetimeStart",
     "death_time"=>"CCSPlayerController.m_iPawnLifetimeEnd",
     "score"=>"CCSPlayerController.m_iScore",
