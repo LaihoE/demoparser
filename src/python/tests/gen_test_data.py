@@ -16,6 +16,22 @@ def gen_prop_test(prop):
     print('    assert_frame_equal(df, df_correct)')
     print()
 
+def gen_prop_interaction_test(props):
+    name = "_".join(props)
+    parser = DemoParser("tests/data/test.dem")
+    df = parser.parse_ticks(props, ticks=[x for x in range(100000) if x % 100 == 0])
+    df.to_parquet(f"tests/data/per_prop/{name}.parquet")
+
+
+    print(f'def test_{name}(self):')
+    print('    parser = DemoParser("tests/data/test.dem")')
+    print(f'    df = parser.parse_ticks(["{props}"], ticks=[x for x in range(100000) if x % 100 == 0])')
+    print(f'    df_correct = pd.read_parquet("tests/data/per_prop/{name}.parquet")')
+    print('    assert_frame_equal(df, df_correct)')
+    print()
+
+
+
 def gen_event_test(event_name):
     parser = DemoParser("tests/data/test.dem")
     df = parser.parse_event(event_name)
@@ -53,8 +69,17 @@ for event in wanted_events:
 wanted_prop = "is_alive"
 gen_prop_test(wanted_prop)"""
 
-wanted_props = ["inventory"]
+"""wanted_props = ["inventory"]
 for prop in wanted_props:
     gen_prop_test(prop)
 
+gen_event_with_prop_tests()"""
+
+"""props = ["X", "velocity_X"]
+gen_prop_interaction_test(props)
+"""
+
+wanted_props = ["inventory"]
+for prop in wanted_props:
+    gen_prop_test(prop)
 gen_event_with_prop_tests()

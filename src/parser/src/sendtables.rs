@@ -665,10 +665,14 @@ impl<'a> Parser<'a> {
             map: AHashMap::default(),
         };
         if needs_velocity(&self.wanted_player_props) {
-            self.wanted_player_props
-                .extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
-            self.added_temp_props
-                .extend(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
+            let new_props = vec!["X".to_string(), "Y".to_string(), "Z".to_string()];
+
+            for prop in new_props {
+                if !self.wanted_player_props.contains(&prop) {
+                    self.added_temp_props.push(prop.to_string());
+                    self.wanted_player_props.push(prop.to_string());
+                }
+            }
         }
 
         // let mut fields: HashMap<i32, Field> = HashMap::default();
