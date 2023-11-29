@@ -1,6 +1,7 @@
 use super::netmessage_types;
 use super::read_bits::DemoParserError;
 use crate::netmessage_types::netmessage_type_from_int;
+use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
 use crate::read_bytes::read_varint;
@@ -12,6 +13,7 @@ use csgoproto::netmessages::*;
 use csgoproto::networkbasetypes::CNETMsg_Tick;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
+use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
@@ -38,15 +40,16 @@ impl<'a> ParserThread<'a> {
                 self.ptr += size as usize;
                 continue;
             }
-            let s = &outer_bytes[self.ptr..self.ptr + size as usize];
-            self.ptr += size as usize;
+            let input = &outer_bytes[self.ptr..self.ptr + size as usize];
+            Parser::resize_if_needed(&mut buf2, decompress_len(input))?;
 
+            self.ptr += size as usize;
             let bytes = match is_compressed {
-                true => match SnapDecoder::new().decompress(s, &mut buf2) {
+                true => match SnapDecoder::new().decompress(input, &mut buf2) {
                     Ok(idx) => &buf2[..idx],
                     Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
                 },
-                false => s,
+                false => input,
             };
 
             let ok = match demo_cmd {
