@@ -9,9 +9,6 @@
     "demoparser2.js",
     "demoparser2.d.ts"
   ],
-  "module": "demoparser2.js",
-  "types": "demoparser2.d.ts",
-  "sideEffects": [
-    "./snippets/*"
-  ]
+  "browser": "demoparser2.js",
+  "types": "demoparser2.d.ts"
 }
