@@ -2,6 +2,115 @@ use crate::collect_data::PropType;
 use phf_macros::phf_map;
 use phf_macros::phf_set;
 
+pub static FACTORIES_MAP: phf::Set<&'static str> = phf_set! {
+    "uint64",
+    "float32",
+    "CNetworkedQuantizedFloat",
+    "QAngle",
+    "Vector2D",
+    "Vector",
+    "Vector4D",
+    "Quaternion",
+};
+
+use crate::decoder::Decoder;
+use crate::decoder::Decoder::*;
+
+pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
+    "bool" =>   BooleanDecoder,
+    "char" =>    StringDecoder,
+    "int16" =>   SignedDecoder,
+    "int32" =>   SignedDecoder,
+    "int64" =>   SignedDecoder,
+    "int8" =>    SignedDecoder,
+    "uint16" =>  UnsignedDecoder,
+    "uint32" =>  UnsignedDecoder,
+    "uint8" =>   UnsignedDecoder,
+    "color32" => UnsignedDecoder,
+
+    // "float32" => NoscaleDecoder,
+    // "Vector" => VectorDecoder,
+
+    "GameTime_t" => NoscaleDecoder,
+    "CBodyComponent" =>       ComponentDecoder,
+    "CGameSceneNodeHandle" => UnsignedDecoder,
+    "Color" =>                UnsignedDecoder,
+    "CPhysicsComponent" =>    ComponentDecoder,
+    "CRenderComponent" =>     ComponentDecoder,
+    "CUtlString" =>           StringDecoder,
+    "CUtlStringToken" =>      UnsignedDecoder,
+    "CUtlSymbolLarge" =>      StringDecoder,
+
+    "Quaternion" => NoscaleDecoder,
+    "CTransform" => NoscaleDecoder,
+    "HSequence" => Unsigned64Decoder,
+    "AttachmentHandle_t"=> Unsigned64Decoder,
+    "CEntityIndex"=> Unsigned64Decoder,
+
+    "MoveCollide_t"=> Unsigned64Decoder,
+    "MoveType_t"=> Unsigned64Decoder,
+    "RenderMode_t"=> Unsigned64Decoder,
+    "RenderFx_t"=> Unsigned64Decoder,
+    "SolidType_t"=> Unsigned64Decoder,
+    "SurroundingBoundsType_t"=> Unsigned64Decoder,
+    "ModelConfigHandle_t"=> Unsigned64Decoder,
+    "NPC_STATE"=> Unsigned64Decoder,
+    "StanceType_t"=> Unsigned64Decoder,
+    "AbilityPathType_t"=> Unsigned64Decoder,
+    "WeaponState_t"=> Unsigned64Decoder,
+    "DoorState_t"=> Unsigned64Decoder,
+    "RagdollBlendDirection"=> Unsigned64Decoder,
+    "BeamType_t"=> Unsigned64Decoder,
+    "BeamClipStyle_t"=> Unsigned64Decoder,
+    "EntityDisolveType_t"=> Unsigned64Decoder,
+    "tablet_skin_state_t" => Unsigned64Decoder,
+    "CStrongHandle" => Unsigned64Decoder,
+    "CSWeaponMode" => Unsigned64Decoder,
+    "ESurvivalSpawnTileState"=> Unsigned64Decoder,
+    "SpawnStage_t"=> Unsigned64Decoder,
+    "ESurvivalGameRuleDecision_t"=> Unsigned64Decoder,
+    "RelativeDamagedDirection_t"=> Unsigned64Decoder,
+    "CSPlayerState"=> Unsigned64Decoder,
+    "MedalRank_t"=> Unsigned64Decoder,
+    "CSPlayerBlockingUseAction_t"=> Unsigned64Decoder,
+    "MoveMountingAmount_t"=> Unsigned64Decoder,
+    "QuestProgress::Reason"=> Unsigned64Decoder,
+};
+
+pub static BASETYPE_DECODERS2: phf::Map<&'static str, Decoder> = phf_map! {
+    "bool" =>   BooleanDecoder,
+
+    "int16" =>   SignedDecoder,
+    "int32" =>   SignedDecoder,
+    "int64" =>   SignedDecoder,
+    "int8" =>    SignedDecoder,
+    "uint16" =>  UnsignedDecoder,
+    "uint32" =>  UnsignedDecoder,
+    "uint8" =>   UnsignedDecoder,
+
+
+    "CUtlSymbolLarge" => StringDecoder,
+    "char" => StringDecoder,
+    "CUtlString" => StringDecoder,
+    "CUtlStringToken" => StringDecoder,
+
+    "CHandle" => UnsignedDecoder,
+    "CEntityHandle" => UnsignedDecoder,
+    "CGameSceneNodeHandle" => UnsignedDecoder,
+    "CBaseVRHandAttachmentHandle" => UnsignedDecoder,
+    "CStrongHandle" => Unsigned64Decoder,
+
+
+    "Color" => UnsignedDecoder,
+    "color32" => UnsignedDecoder,
+
+
+    "HSequence" => Unsigned64Decoder,
+    "GameTime_t" => NoscaleDecoder,
+    "gamerulesmode_fix" => GameModeRulesDecoder,
+
+};
+
 pub static BUTTONMAP: phf::Map<&'static str, u64> = phf_map! {
     "LEFT" => 1 << 9,
     "FORWARD" => 1 << 3,

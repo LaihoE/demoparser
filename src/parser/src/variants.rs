@@ -22,6 +22,7 @@ pub enum Variant {
     // Todo change to Vec<T>
     StringVec(Vec<String>),
     U64Vec(Vec<u64>),
+    None,
 }
 
 #[derive(Debug, Clone)]

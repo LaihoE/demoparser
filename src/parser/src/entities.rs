@@ -1,11 +1,17 @@
 use super::read_bits::DemoParserError;
+use crate::decoder::Decoder;
+use crate::decoder::Decoder::UnsignedDecoder;
+use crate::decoder::QfMapper;
 use crate::entities_utils::*;
 use crate::parser_thread_settings::ParserThread;
+use crate::prop_controller::MY_WEAPONS_OFFSET;
+use crate::prop_controller::WEAPON_SKIN_ID;
 use crate::read_bits::Bitreader;
 use crate::read_bytes::PacketEntitiesParser;
+use crate::sendtables::Field;
+use crate::sendtables::Serializer;
 use crate::variants::Variant;
 use ahash::AHashMap;
-use bitter::BitReader;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
 
@@ -19,6 +25,12 @@ pub struct Entity {
     pub entity_id: i32,
     pub props: AHashMap<u32, Variant>,
     pub entity_type: EntityType,
+}
+#[derive(Debug, Clone, Copy)]
+pub struct FieldInfo {
+    pub decoder: Decoder,
+    pub should_parse: bool,
+    pub prop_id: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -70,7 +82,7 @@ impl<'a> ParserThread<'a> {
             match cmd {
                 EntityCmd::Delete => {
                     self.projectiles.remove(&entity_id);
-                    self.entities.remove(&entity_id);
+                    self.entities[entity_id as usize] = None;
                 }
                 EntityCmd::CreateAndUpdate => {
                     self.create_new_entity(&mut bitreader, &entity_id)?;
@@ -84,88 +96,93 @@ impl<'a> ParserThread<'a> {
         Ok(())
     }
 
-    pub fn parse_packet_entsq(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        if !self.parse_entities {
-            return Ok(());
-        }
-
-        let packet_ents: CSVCMsg_PacketEntities = match Message::parse_from_bytes(&bytes) {
-            Ok(pe) => pe,
-            Err(_e) => return Err(DemoParserError::MalformedMessage),
-        };
-
-        let n_updates = packet_ents.updated_entries();
-
-        let data = match &packet_ents.entity_data {
-            Some(data) => data,
-            None => return Err(DemoParserError::MalformedMessage),
-        };
-
-        let mut bitreader = Bitreader::new(&data);
-        let mut entity_id: i32 = -1;
-
-        for _ in 0..n_updates {
-            entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
-            // Read 2 bits to know which operation should be done to the entity.
-            let cmd = match bitreader.read_nbits(2)? {
-                0b01 => EntityCmd::Delete,
-                0b11 => EntityCmd::Delete,
-                0b10 => EntityCmd::CreateAndUpdate,
-                0b00 => EntityCmd::Update,
-                _ => panic!("impossible cmd"),
-            };
-            match cmd {
-                EntityCmd::Delete => {
-                    self.projectiles.remove(&entity_id);
-                    self.entities.remove(&entity_id);
-                }
-                EntityCmd::CreateAndUpdate => {
-                    self.create_new_entity(&mut bitreader, &entity_id)?;
-                    self.update_entity(&mut bitreader, entity_id, false)?;
-                }
-                EntityCmd::Update => {
-                    self.update_entity(&mut bitreader, entity_id, false)?;
-                }
-            }
-        }
-        Ok(())
-    }
     pub fn update_entity(&mut self, bitreader: &mut Bitreader, entity_id: i32, is_baseline: bool) -> Result<(), DemoParserError> {
-        let n_updated_values = self.decode_entity_update(bitreader, entity_id)?;
+        let n_updates = self.parse_paths(bitreader)?;
+        let n_updated_values = self.decode_entity_update(bitreader, entity_id, n_updates)?;
         if n_updated_values > 0 {
             self.gather_extra_info(&entity_id, is_baseline)?;
         }
         Ok(())
     }
-    pub fn decode_entity_update(&mut self, bitreader: &mut Bitreader, entity_id: i32) -> Result<usize, DemoParserError> {
-        let n_updates = self.parse_paths(bitreader, &entity_id)?;
-
-        let entity = match self.entities.get_mut(&(entity_id)) {
-            Some(ent) => ent,
-            None => return Err(DemoParserError::EntityNotFound),
+    pub fn decode_entity_update(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: i32,
+        n_updates: usize,
+    ) -> Result<usize, DemoParserError> {
+        let entity = match self.entities.get_mut(entity_id as usize) {
+            Some(Some(entity)) => entity,
+            _ => return Err(DemoParserError::EntityNotFound),
         };
-        if self.is_debug_mode {
-            for (field_info, debug) in self.field_infos[..n_updates].iter().zip(&self.debug_fields) {
-                let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if debug.field.full_name.contains("Weapons") {
-                    println!(
-                        "{:?} {:?} {:?} {:?} {:?} {:?}",
-                        debug.path, debug.field.full_name, result, self.tick, self.net_tick, field_info.prop_id
-                    );
-                }
+        let class = match self.cls_by_id.get(entity.cls_id as usize) {
+            Some(cls) => cls,
+            None => return Err(DemoParserError::ClassNotFound),
+        };
+        for path in self.paths[..n_updates].iter() {
+            let f = ParserThread::find_field(&path, &class.serializer);
+            let field_info = ParserThread::get_propinfo(&f, path);
+            let decoder = match f {
+                Field::Value(inner) => inner.decoder,
+                Field::Vector(_) => UnsignedDecoder,
+                Field::Pointer(inner) => inner.decoder,
+                _ => panic!("fail"),
+            };
+            let result = ParserThread::decode(bitreader, decoder, &self.qf_mapper)?;
+            if self.is_debug_mode {
+                ParserThread::debug_inspect(&result, f);
             }
-        } else {
-            for field_info in &self.field_infos[..n_updates] {
-                let result = bitreader.decode(&field_info.decoder, &self.qf_mapper)?;
-                if field_info.should_parse {
-                    entity.props.insert(field_info.prop_id as u32, result);
-                }
-            }
+            ParserThread::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
     }
+    pub fn decode(bitreader: &mut Bitreader, decoder: Decoder, qf_map: &QfMapper) -> Result<Variant, DemoParserError> {
+        Ok(bitreader.decode(&decoder, &qf_map)?)
+    }
+    pub fn debug_inspect(result: &Variant, field: &Field) {
+        // println!("{:?} {:?}", field, result);
+    }
+    pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
+        if let Some(fi) = field_info {
+            if fi.should_parse {
+                entity.props.insert(fi.prop_id, result);
+            }
+        }
+    }
+    pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
+        let info = match field {
+            Field::Value(v) => Some(FieldInfo {
+                decoder: v.decoder,
+                should_parse: v.should_parse,
+                prop_id: v.prop_id,
+            }),
+            Field::Vector(v) => match field.get_inner(0) {
+                Field::Value(inner) => Some(FieldInfo {
+                    decoder: v.decoder,
+                    should_parse: inner.should_parse,
+                    prop_id: inner.prop_id,
+                }),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some(mut fi) = info {
+            if fi.prop_id == MY_WEAPONS_OFFSET {
+                if path.last == 1 {
+                } else {
+                    fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
+                }
+            }
+            if fi.prop_id == WEAPON_SKIN_ID {
+                if path.path[path.last - 1] != 0 {
+                    fi.prop_id = 888888888;
+                }
+            }
+            return Some(fi);
+        }
+        return None;
+    }
 
-    pub fn parse_paths(&mut self, bitreader: &mut Bitreader, entity_id: &i32) -> Result<usize, DemoParserError> {
+    pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, DemoParserError> {
         /*
         Create a field path by decoding using a Huffman tree.
         The huffman tree can be found at the bottom of entities_utils.rs
@@ -232,14 +249,7 @@ impl<'a> ParserThread<'a> {
         Personally I find this path idea horribly complicated. Why is this chosen over
         the way it was done in source 1 demos?
         */
-        let entity = match self.entities.get(&(entity_id)) {
-            Some(ent) => ent,
-            None => return Err(DemoParserError::EntityNotFound),
-        };
-        let class = match self.cls_by_id.get(&entity.cls_id) {
-            Some(cls) => cls,
-            None => return Err(DemoParserError::ClassNotFound),
-        };
+
         // Create an "empty" path ([-1, 0, 0, 0, 0, 0, 0])
         // For perfomance reasons have them always the same len
         let mut fp = generate_fp();
@@ -249,38 +259,98 @@ impl<'a> ParserThread<'a> {
         // Here we peek ("HUFFMAN_CODE_MAXLEN" == 17) amount of bits and see from a table which
         // symbol it maps to and how many bits should be consumed from the stream.
         // The symbol is then mapped into an op for filling the field path.
+
         loop {
-            bitreader.reader.refill_lookahead();
-            let peeked_bits = bitreader.reader.peek(HUFFMAN_CODE_MAXLEN);
+            if bitreader.bits_left < HUFFMAN_CODE_MAXLEN {
+                bitreader.refill();
+            }
+
+            let peeked_bits = bitreader.peek(HUFFMAN_CODE_MAXLEN);
             let (symbol, code_len) = self.huffman_lookup_table[peeked_bits as usize];
-            bitreader.reader.consume(code_len as u32);
+            bitreader.consume(code_len as u32);
 
             if symbol == STOP_READING_SYMBOL {
                 break;
             }
             do_op(symbol, bitreader, &mut fp)?;
-
-            /*
-            if self.is_debug_mode {
-                self.debug_fields[idx] = DebugFieldAndPath {
-                    field: class.serializer.debug_find_decoder(&fp, 0, class.name.to_string()),
-                    path: fp.path.clone(),
-                };
-            }
-            */
-            // We reuse one big vector for holding paths. Purely for performance.
-            // Alternatively we could create a new vector in this function and return it.
-            self.field_infos[idx] = class.serializer.find_decoder(&fp, 0, self.parse_inventory);
+            self.write_fp(&mut fp, idx);
             idx += 1;
         }
         Ok(idx)
     }
+    #[inline(always)]
+    fn write_fp(&mut self, fp_src: &mut FieldPath, idx: usize) {
+        let fp_dst = self.paths.get_mut(idx).unwrap();
+        for i in 0..fp_src.last + 1 {
+            fp_dst.path[i] = fp_src.path[i];
+        }
+        fp_dst.last = fp_src.last;
+    }
+    #[inline(always)]
+    fn find_field<'b>(fp: &FieldPath, ser: &'b Serializer) -> &'b Field {
+        let f = &ser.fields[fp.path[0] as usize];
+
+        match fp.last {
+            0 => f,
+            1 => f.get_inner(fp.path[1] as usize),
+            2 => f.get_inner(fp.path[1] as usize).get_inner(fp.path[2] as usize),
+            3 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize),
+            4 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize)
+                .get_inner(fp.path[4] as usize),
+            5 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize)
+                .get_inner(fp.path[4] as usize)
+                .get_inner(fp.path[5] as usize),
+            _ => panic!("FP LAST OUT OF BOUND"),
+        }
+    }
+    #[inline(always)]
+    fn find_decoder<'b>(fp: &FieldPath, ser: &'b Serializer) -> Decoder {
+        let f = &ser.fields[fp.path[0] as usize];
+
+        let ff = match fp.last {
+            0 => f,
+            1 => f.get_inner(fp.path[1] as usize),
+            2 => f.get_inner(fp.path[1] as usize).get_inner(fp.path[2] as usize),
+            3 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize),
+            4 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize)
+                .get_inner(fp.path[4] as usize),
+            5 => f
+                .get_inner(fp.path[1] as usize)
+                .get_inner(fp.path[2] as usize)
+                .get_inner(fp.path[3] as usize)
+                .get_inner(fp.path[4] as usize)
+                .get_inner(fp.path[5] as usize),
+            _ => panic!("FP LAST OUT OF BOUND"),
+        };
+        match ff {
+            Field::Value(inner) => inner.decoder,
+            Field::Vector(_) => UnsignedDecoder,
+            Field::Pointer(inner) => inner.decoder,
+            _ => panic!("fail"),
+        }
+    }
+
     pub fn gather_extra_info(&mut self, entity_id: &i32, is_baseline: bool) -> Result<(), DemoParserError> {
         // Boring stuff.. function does some bookkeeping
 
-        let entity = match self.entities.get(&(entity_id)) {
-            Some(ent) => ent,
-            None => return Err(DemoParserError::EntityNotFound),
+        let entity = match self.entities.get(*entity_id as usize) {
+            Some(Some(entity)) => entity,
+            _ => return Err(DemoParserError::EntityNotFound),
         };
 
         if !(entity.entity_type == EntityType::PlayerController || entity.entity_type == EntityType::Team) {
@@ -377,13 +447,8 @@ impl<'a> ParserThread<'a> {
             EntityType::C4 => self.c4_entity_id = Some(*entity_id),
             _ => {}
         };
-        let entity = Entity {
-            entity_id: *entity_id,
-            cls_id: cls_id,
-            props: AHashMap::default(),
-            entity_type: entity_type,
-        };
-        self.entities.insert(*entity_id, entity);
+        let entity = ParserThread::make_ent(entity_id, cls_id, entity_type);
+        self.entities[*entity_id as usize] = Some(entity);
         // Insert baselines
 
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
@@ -391,11 +456,18 @@ impl<'a> ParserThread<'a> {
             let mut br = Bitreader::new(&b);
             self.update_entity(&mut br, *entity_id, true)?;
         }
-
         Ok(())
     }
+    fn make_ent(entity_id: &i32, cls_id: u32, entity_type: EntityType) -> Entity {
+        Entity {
+            entity_id: *entity_id,
+            cls_id: cls_id,
+            props: AHashMap::with_capacity(0),
+            entity_type: entity_type,
+        }
+    }
     pub fn check_entity_type(&self, cls_id: &u32) -> Result<EntityType, DemoParserError> {
-        let class = match self.cls_by_id.get(&cls_id) {
+        let class = match self.cls_by_id.get(*cls_id as usize) {
             Some(cls) => cls,
             None => {
                 return Err(DemoParserError::ClassNotFound);
@@ -414,7 +486,7 @@ impl<'a> ParserThread<'a> {
         return Ok(EntityType::Normal);
     }
 }
-
+#[inline(always)]
 fn generate_fp() -> FieldPath {
     FieldPath {
         path: [-1, 0, 0, 0, 0, 0, 0],

@@ -7,7 +7,6 @@ use crate::read_bits::Bitreader;
 use crate::read_bytes::read_varint;
 use crate::read_bytes::ProtoPacketParser;
 use crate::stringtables::parse_userinfo;
-use bitter::BitReader;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
 use csgoproto::networkbasetypes::CNETMsg_Tick;
@@ -21,7 +20,7 @@ impl<'a> ParserThread<'a> {
     pub fn start(&mut self, outer_bytes: &[u8]) -> Result<(), DemoParserError> {
         let started_at = self.ptr;
         let mut buf = vec![0_u8; 8192 * 15];
-        let mut buf2 = vec![0_u8; 1_000_000];
+        let mut buf2 = vec![0_u8; 400_000];
         loop {
             let cmd = read_varint(outer_bytes, &mut self.ptr)?;
             let tick = read_varint(outer_bytes, &mut self.ptr)?;
@@ -31,7 +30,6 @@ impl<'a> ParserThread<'a> {
             if self.ptr + size as usize >= outer_bytes.len() {
                 break;
             }
-
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
@@ -42,7 +40,6 @@ impl<'a> ParserThread<'a> {
             }
             let input = &outer_bytes[self.ptr..self.ptr + size as usize];
             Parser::resize_if_needed(&mut buf2, decompress_len(input))?;
-
             self.ptr += size as usize;
             let bytes = match is_compressed {
                 true => match SnapDecoder::new().decompress(input, &mut buf2) {
@@ -86,7 +83,7 @@ impl<'a> ParserThread<'a> {
         let mut bitreader = Bitreader::new(&bytes[packet_parser.start..packet_parser.end]);
         let mut wrong_order_events = vec![];
 
-        while bitreader.reader.bits_remaining().unwrap() > 8 {
+        while bitreader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
             if buf.len() < size as usize {
@@ -140,6 +137,14 @@ impl<'a> ParserThread<'a> {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
             Ok(p) => p,
         };
+
+        /* FAST
+        let mut packet_parser = FullPacketParser::new(bytes);
+        packet_parser.parse_message()?;
+        let mut bitreader = Bitreader::new(&bytes[packet_parser.packet_data_start..packet_parser.packet_data_end]);
+        println!("{:2?}", before.elapsed());
+        */
+
         for item in &full_packet.string_table.tables {
             if item.table_name == Some("instancebaseline".to_string()) {
                 for i in &item.items {
@@ -157,12 +162,14 @@ impl<'a> ParserThread<'a> {
                 }
             }
         }
+
+        // println!("")
         let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
-        let mut buf = vec![0; 500_000];
+        let mut buf = vec![0; 5_00_000];
 
         // Inner loop
-        while bitreader.reader.bits_remaining().unwrap() > 8 {
+        while bitreader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
             if buf.len() < size as usize {
@@ -193,6 +200,7 @@ impl<'a> ParserThread<'a> {
             };
             ok?
         }
+        // println!("IN FP: {:?} {:?} {:?}", before.elapsed(), self.tick, self.entities.len());
         Ok(())
     }
     fn clear_stringtables(&mut self) -> Result<(), DemoParserError> {

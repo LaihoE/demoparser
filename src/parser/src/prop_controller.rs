@@ -4,6 +4,7 @@ use crate::maps::TYPEHM;
 use crate::parser_thread_settings::SpecialIDs;
 use crate::sendtables::Field;
 use crate::sendtables::Serializer;
+use crate::sendtables::ValueField;
 use ahash::AHashMap;
 
 const WEAPON_NAME_ID: u32 = 1;
@@ -47,6 +48,7 @@ pub struct PropController {
     pub name_to_special_id: AHashMap<String, u32>,
     pub wanted_other_props: Vec<String>,
     pub event_with_velocity: bool,
+    pub path_to_name: AHashMap<[i32; 7], String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -82,6 +84,7 @@ impl PropController {
             wanted_other_props: wanted_other_props,
             real_name_to_og_name: real_name_to_og_name,
             event_with_velocity: false,
+            path_to_name: AHashMap::default(),
         }
     }
     pub fn set_custom_propinfos(&mut self) {
@@ -297,16 +300,9 @@ impl PropController {
         });
     }
     pub fn find_prop_name_paths(&mut self, ser: &mut Serializer) {
-        self.traverse_fields(&mut ser.fields, ser.name.clone())
+        self.traverse_fields(&mut ser.fields, ser.name.clone(), vec![])
     }
-    pub fn vec_to_arr(path: &Vec<i32>) -> [i32; 7] {
-        let mut arr = [0, 0, 0, 0, 0, 0, 0];
-        for (idx, val) in path.iter().enumerate() {
-            arr[idx] = *val;
-        }
-        arr
-    }
-    fn set_id(&mut self, weap_prop: &str, f: &mut Field, is_grenade_or_weapon: bool) {
+    fn set_id(&mut self, weap_prop: &str, f: &mut ValueField, is_grenade_or_weapon: bool) {
         match self.name_to_id.get(weap_prop) {
             // If we already have an id for prop of same name then use that id.
             // Mainly for weapon props. For example CAK47.m_iClip1 and CWeaponSCAR20.m_iClip1
@@ -326,7 +322,7 @@ impl PropController {
         }
     }
 
-    fn insert_propinfo(&mut self, prop_name: &str, f: &mut Field) {
+    fn insert_propinfo(&mut self, prop_name: &str, f: &mut ValueField) {
         let prop_type = TYPEHM.get(&prop_name);
 
         if self.wanted_player_props.contains(&prop_name.to_string()) {
@@ -356,7 +352,10 @@ impl PropController {
             })
         }
     }
-    pub fn handle_prop(&mut self, full_name: &str, f: &mut Field) {
+    pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField, path: Vec<i32>) {
+        if full_name.contains("Raw") {
+            // println!("X {:?} {:?}", full_name, path);
+        }
         // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]
         let split_at_dot: Vec<&str> = full_name.split(".").collect();
         let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK"))
@@ -380,6 +379,12 @@ impl PropController {
             true => split_at_dot[1..].join("."),
             false => full_name.to_string(),
         };
+        let mut a = [0, 0, 0, 0, 0, 0, 0];
+        for (idx, v) in path.iter().enumerate() {
+            a[idx] = *v;
+        }
+        self.path_to_name.insert(a, prop_name.to_string());
+
         let prop_already_exists = self.name_to_id.contains_key(&(prop_name).to_string());
         self.set_id(&prop_name, f, is_grenade_or_weapon);
         if !prop_already_exists {
@@ -388,8 +393,13 @@ impl PropController {
         if self.should_parse(&prop_name) {
             f.should_parse = true;
         }
+        // f.should_parse = true;
+
         if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {
             f.prop_id = MY_WEAPONS_OFFSET as u32;
+        }
+        if prop_name.contains("CEconItemAttribute.m_iRawValue32") {
+            f.prop_id = WEAPON_SKIN_ID as u32;
         }
         self.id += 1;
     }
@@ -424,7 +434,6 @@ impl PropController {
             return true;
         }
         match TYPEHM.get(name) {
-            Some(PropType::Weapon) => return true,
             _ => {}
         };
         if name.contains("CCSTeam.m_iTeamNum")
@@ -435,6 +444,7 @@ impl PropController {
             || name.contains("OriginalOwnerXuid")
             || name.contains("Flash")
             || name.contains("m_lifeState")
+            || name.contains("m_hMyWeapons")
         {
             return true;
         }
@@ -483,13 +493,59 @@ impl PropController {
             };
         }
     }
-    fn traverse_fields(&mut self, fields: &mut Vec<Field>, ser_name: String) {
-        for f in fields {
-            if let Some(ser) = &mut f.serializer {
-                self.traverse_fields(&mut ser.fields, ser_name.clone() + "." + &ser.name)
-            } else {
-                let full_name = ser_name.clone() + "." + &f.var_name;
-                self.handle_prop(&full_name, f);
+    fn traverse_fields(&mut self, fields: &mut Vec<Field>, ser_name: String, mut path_og: Vec<i32>) {
+        for (idx, f) in fields.iter_mut().enumerate() {
+            let mut path = path_og.clone();
+            path.push(idx as i32);
+            match f {
+                Field::Value(x) => {
+                    let full_name = ser_name.clone() + "." + &x.name;
+                    self.handle_prop(&full_name, x, path);
+                }
+                Field::Serializer(ser) => self.traverse_fields(
+                    &mut ser.serializer.fields,
+                    ser_name.clone() + "." + &ser.serializer.name,
+                    path.clone(),
+                ),
+                Field::Pointer(ser) => self.traverse_fields(
+                    &mut ser.serializer.fields,
+                    ser_name.clone() + "." + &ser.serializer.name,
+                    path.clone(),
+                ),
+                Field::Array(ser) => match &mut ser.field_enum.as_mut() {
+                    Field::Value(v) => {
+                        self.handle_prop(&(ser_name.clone() + "." + &v.name), v, path);
+                    }
+                    _ => {}
+                },
+                Field::Vector(x) => {
+                    let mut vec_path = path.clone();
+                    let inner = f.get_inner_mut(0);
+                    match inner {
+                        Field::Serializer(s) => {
+                            for (inner_idx, f) in &mut s.serializer.fields.iter_mut().enumerate() {
+                                match f {
+                                    Field::Value(v) => {
+                                        let mut myp = vec_path.clone();
+                                        myp.push(inner_idx as i32);
+                                        self.handle_prop(&(ser_name.clone() + "." + &v.name), v, myp);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            self.traverse_fields(
+                                &mut s.serializer.fields,
+                                ser_name.clone() + "." + &s.serializer.name,
+                                path_og.clone(),
+                            )
+                        }
+                        Field::Value(x) => {
+                            self.handle_prop(&(ser_name.clone() + "." + &x.name), x, path.clone());
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
             }
         }
     }
@@ -535,6 +591,7 @@ mod tests {
             is_controller_prop: false,
             controller_prop: None,
             idx: 0,
+            category: crate::sendtables::FieldCategory::Array,
         }
     }
     #[test]
@@ -1134,4 +1191,4 @@ mod tests {
     }
     */
 }
- */
+*/

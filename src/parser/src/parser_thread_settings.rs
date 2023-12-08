@@ -7,14 +7,11 @@ use crate::collect_data::ProjectileRecord;
 use crate::decoder::QfMapper;
 use crate::entities::Entity;
 use crate::entities::PlayerMetaData;
+use crate::entities_utils::FieldPath;
 use crate::other_netmessages::Class;
 use crate::parser::DemoOutput;
 use crate::parser::ParserThreadInput;
 use crate::prop_controller::PropController;
-use crate::sendtables::DebugField;
-use crate::sendtables::DebugFieldAndPath;
-use crate::sendtables::FieldInfo;
-use crate::sendtables::FieldModel;
 use crate::stringtables::UserInfo;
 use ahash::AHashMap;
 use ahash::AHashSet;
@@ -27,35 +24,34 @@ use std::env;
 
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
-
+const MAX_ENTITY_ID: usize = 1024;
 pub struct ParserThread<'a> {
     pub qf_mapper: &'a QfMapper,
     pub prop_controller: &'a PropController,
-    pub cls_by_id: &'a AHashMap<u32, Class>,
+    pub cls_by_id: &'a Vec<Class>,
     pub stringtable_players: BTreeMap<u64, UserInfo>,
     pub net_tick: u32,
     pub parse_inventory: bool,
+    pub paths: Vec<FieldPath>,
     pub ptr: usize,
     pub parse_all_packets: bool,
     pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_bits: Option<u32>,
-    pub entities: AHashMap<i32, Entity, RandomState>,
+    pub entities: Vec<Option<Entity>>,
     pub tick: i32,
     pub players: BTreeMap<i32, PlayerMetaData>,
     pub teams: Teams,
-    pub huffman_lookup_table: &'a Vec<(u8, u8)>,
+    pub huffman_lookup_table: &'a [(u8, u8)],
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
     pub rules_entity_id: Option<i32>,
     pub c4_entity_id: Option<i32>,
     pub game_events_counter: AHashSet<String>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
-    pub field_infos: Vec<FieldInfo>,
     pub projectiles: BTreeSet<i32>,
     pub fullpackets_parsed: u32,
     pub packets_parsed: u32,
-    pub cnt: AHashMap<FieldModel, u32>,
     pub projectile_records: Vec<ProjectileRecord>,
     pub wanted_ticks: AHashSet<i32>,
     // Output from parsing
@@ -70,7 +66,6 @@ pub struct ParserThread<'a> {
     pub wanted_events: Vec<String>,
     pub parse_entities: bool,
     pub parse_projectiles: bool,
-    pub debug_fields: Vec<DebugFieldAndPath>,
     pub is_debug_mode: bool,
 }
 #[derive(Debug, Clone)]
@@ -157,19 +152,15 @@ impl<'a> ParserThread<'a> {
             false => 0,
         };
         Ok(ParserThread {
-            parse_inventory: input.prop_controller.wanted_player_props.contains(&"inventory".to_string()),
-            net_tick: 0,
-            debug_fields: vec![
-                DebugFieldAndPath {
-                    field: DebugField {
-                        decoder: crate::sendtables::Decoder::NoscaleDecoder,
-                        full_name: "".to_string(),
-                        field: None,
-                    },
+            paths: vec![
+                FieldPath {
+                    last: 0,
                     path: [0, 0, 0, 0, 0, 0, 0],
                 };
-                debug_vec_len
+                8192
             ],
+            parse_inventory: input.prop_controller.wanted_player_props.contains(&"inventory".to_string()),
+            net_tick: 0,
             c4_entity_id: None,
             stringtable_players: input.stringtable_players,
             is_debug_mode: debug,
@@ -180,13 +171,12 @@ impl<'a> ParserThread<'a> {
             qf_mapper: &input.qfmap,
             fullpackets_parsed: 0,
             packets_parsed: 0,
-            cnt: AHashMap::default(),
             serializers: AHashMap::default(),
             ptr: input.offset,
             ge_list: input.ge_list,
             // bytes: &input.settings.bytes,
             cls_by_id: &input.cls_by_id,
-            entities: AHashMap::with_capacity(512),
+            entities: vec![None; MAX_ENTITY_ID],
             cls_bits: None,
             tick: -99999,
             players: BTreeMap::default(),
@@ -198,15 +188,7 @@ impl<'a> ParserThread<'a> {
             // projectile_records: ProjectileRecordVec::new(),
             baselines: input.baselines.clone(),
             string_tables: input.string_tables.clone(),
-            field_infos: vec![
-                FieldInfo {
-                    decoder: crate::sendtables::Decoder::NoscaleDecoder,
-                    should_parse: false,
-                    prop_id: 0,
-                    controller_prop: None,
-                };
-                8192
-            ],
+
             teams: Teams::new(),
             game_events_counter: AHashSet::default(),
             parse_projectiles: input.settings.parse_projectiles,

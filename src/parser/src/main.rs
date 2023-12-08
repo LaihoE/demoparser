@@ -3,6 +3,7 @@ use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
+use rayon::iter::IntoParallelRefIterator;
 use std::fs;
 use std::fs::File;
 use std::time::Instant;
@@ -22,9 +23,9 @@ use std::alloc::System;
 static GLOBAL: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
 */
 fn main() {
-    let wanted_props = vec!["X".to_string(), "user_id".to_string()];
+    let wanted_props = vec!["X".to_string()];
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/mm/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/pov/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
     let mut total = 0;
@@ -34,7 +35,7 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 10 {
+        if c > 100 {
             break;
         }
 
@@ -51,8 +52,8 @@ fn main() {
             real_name_to_og_name: AHashMap::default(),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            //wanted_events: vec!["player_death".to_string()],
-            wanted_events: vec![],
+            wanted_events: vec!["player_death".to_string()],
+            // wanted_events: vec![],
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
                 "CCSTeam.m_szTeamname".to_string(),
@@ -82,7 +83,7 @@ fn main() {
 
         mmap.advise(memmap2::Advice::HugePage).unwrap();
         let d = ds.parse_demo(&mmap).unwrap();
-        println!("{:?}", d.df);
+        // println!("{:?}", d.df);
         println!("TOTAL {:?}", before.elapsed());
     }
     println!("TOTAL {:?}", before.elapsed().as_millis());
