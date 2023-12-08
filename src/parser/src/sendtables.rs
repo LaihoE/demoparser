@@ -2,12 +2,12 @@ use super::read_bits::Bitreader;
 use crate::decoder::Decoder;
 use crate::decoder::Decoder::*;
 use crate::decoder::QfMapper;
+use crate::maps::BASETYPE_DECODERS;
 use crate::parser_settings::needs_velocity;
 use crate::parser_settings::Parser;
 use crate::prop_controller::PropController;
 use crate::q_float::QuantalizedFloat;
 use crate::variants::Variant;
-
 use ahash::AHashMap;
 use csgoproto::netmessages::ProtoFlattenedSerializer_t;
 use csgoproto::{
@@ -17,6 +17,9 @@ use csgoproto::{
 use lazy_static::lazy_static;
 use protobuf::Message;
 use regex::Regex;
+
+// Majority of this file is implemented based on how clarity does it: https://github.com/skadistats/clarity
+// Majority of this file is implemented based on how clarity does it: https://github.com/skadistats/clarity
 
 #[derive(Debug, Clone)]
 pub struct Serializer {
@@ -184,6 +187,10 @@ impl<'a> Parser<'a> {
         match field.var_name.as_str() {
             "m_PredFloatVariables" => field.decoder = NoscaleDecoder,
             "m_OwnerOnlyPredNetFloatVariables" => field.decoder = NoscaleDecoder,
+            "m_PredFloatVariables" => field.decoder = NoscaleDecoder,
+            "m_OwnerOnlyPredNetFloatVariables" => field.decoder = NoscaleDecoder,
+            "m_OwnerOnlyPredNetVectorVariables" => field.decoder = VectorNoscaleDecoder,
+            "m_PredVectorVariables" => field.decoder = VectorNoscaleDecoder,
             _ => {}
         };
         if field.var_name == "m_pGameModeRules" {
@@ -198,8 +205,7 @@ impl<'a> Parser<'a> {
     }
 }
 
-use crate::maps::BASETYPE_DECODERS;
-
+// Design from https://github.com/skadistats/clarity
 #[derive(Debug, Clone)]
 pub enum Field {
     Array(ArrayField),
