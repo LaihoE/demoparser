@@ -353,9 +353,6 @@ impl PropController {
         }
     }
     pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField, path: Vec<i32>) {
-        if full_name.contains("Raw") {
-            // println!("X {:?} {:?}", full_name, path);
-        }
         // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]
         let split_at_dot: Vec<&str> = full_name.split(".").collect();
         let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK"))
@@ -393,7 +390,6 @@ impl PropController {
         if self.should_parse(&prop_name) {
             f.should_parse = true;
         }
-        // f.should_parse = true;
 
         if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {
             f.prop_id = MY_WEAPONS_OFFSET as u32;
@@ -493,7 +489,7 @@ impl PropController {
             };
         }
     }
-    fn traverse_fields(&mut self, fields: &mut Vec<Field>, ser_name: String, mut path_og: Vec<i32>) {
+    fn traverse_fields(&mut self, fields: &mut Vec<Field>, ser_name: String, path_og: Vec<i32>) {
         for (idx, f) in fields.iter_mut().enumerate() {
             let mut path = path_og.clone();
             path.push(idx as i32);
@@ -518,8 +514,8 @@ impl PropController {
                     }
                     _ => {}
                 },
-                Field::Vector(x) => {
-                    let mut vec_path = path.clone();
+                Field::Vector(_x) => {
+                    let vec_path = path.clone();
                     let inner = f.get_inner_mut(0);
                     match inner {
                         Field::Serializer(s) => {

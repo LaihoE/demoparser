@@ -3,7 +3,6 @@ use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
-use rayon::iter::IntoParallelRefIterator;
 use std::fs;
 use std::fs::File;
 use std::time::Instant;
@@ -82,7 +81,7 @@ fn main() {
         total += mmap.len();
 
         mmap.advise(memmap2::Advice::HugePage).unwrap();
-        let d = ds.parse_demo(&mmap).unwrap();
+        let _d = ds.parse_demo(&mmap).unwrap();
         // println!("{:?}", d.df);
         println!("TOTAL {:?}", before.elapsed());
     }

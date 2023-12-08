@@ -12,8 +12,6 @@ use crate::sendtables::Field;
 use crate::sendtables::Serializer;
 use crate::variants::Variant;
 use ahash::AHashMap;
-use csgoproto::netmessages::CSVCMsg_PacketEntities;
-use protobuf::Message;
 
 const NSERIALBITS: u32 = 17;
 const STOP_READING_SYMBOL: u8 = 39;
@@ -139,7 +137,7 @@ impl<'a> ParserThread<'a> {
         Ok(bitreader.decode(&decoder, &qf_map)?)
     }
     pub fn debug_inspect(result: &Variant, field: &Field) {
-        // println!("{:?} {:?}", field, result);
+        println!("{:?} {:?}", field, result);
     }
     pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
         if let Some(fi) = field_info {
@@ -310,38 +308,6 @@ impl<'a> ParserThread<'a> {
                 .get_inner(fp.path[4] as usize)
                 .get_inner(fp.path[5] as usize),
             _ => panic!("FP LAST OUT OF BOUND"),
-        }
-    }
-    #[inline(always)]
-    fn find_decoder<'b>(fp: &FieldPath, ser: &'b Serializer) -> Decoder {
-        let f = &ser.fields[fp.path[0] as usize];
-
-        let ff = match fp.last {
-            0 => f,
-            1 => f.get_inner(fp.path[1] as usize),
-            2 => f.get_inner(fp.path[1] as usize).get_inner(fp.path[2] as usize),
-            3 => f
-                .get_inner(fp.path[1] as usize)
-                .get_inner(fp.path[2] as usize)
-                .get_inner(fp.path[3] as usize),
-            4 => f
-                .get_inner(fp.path[1] as usize)
-                .get_inner(fp.path[2] as usize)
-                .get_inner(fp.path[3] as usize)
-                .get_inner(fp.path[4] as usize),
-            5 => f
-                .get_inner(fp.path[1] as usize)
-                .get_inner(fp.path[2] as usize)
-                .get_inner(fp.path[3] as usize)
-                .get_inner(fp.path[4] as usize)
-                .get_inner(fp.path[5] as usize),
-            _ => panic!("FP LAST OUT OF BOUND"),
-        };
-        match ff {
-            Field::Value(inner) => inner.decoder,
-            Field::Vector(_) => UnsignedDecoder,
-            Field::Pointer(inner) => inner.decoder,
-            _ => panic!("fail"),
         }
     }
 
