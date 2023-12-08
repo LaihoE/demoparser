@@ -93,6 +93,7 @@ impl<'a> Parser<'a> {
                 },
                 false => input,
             };
+
             let ok: Result<(), DemoParserError> = match demo_cmd {
                 DEM_SendTables => {
                     sendtable = match Message::parse_from_bytes(&bytes) {

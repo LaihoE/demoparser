@@ -43,7 +43,6 @@ pub fn parseEvent(
     }
     let arc_huf = Arc::new(create_huffman_lookup_table());
     let settings = ParserInputs {
-        bytes: Arc::new(BytesVariant::Vec(file)),
         wanted_player_props: real_names_player,
         wanted_player_props_og_names: vec![],
         wanted_other_props: real_other_props,
@@ -56,12 +55,12 @@ pub fn parseEvent(
         only_header: false,
         count_props: false,
         only_convars: false,
-        huffman_lookup_table: arc_huf,
+        huffman_lookup_table: &arc_huf,
     };
-    let mut parser = Parser::new(settings);
+    let mut parser = Parser::new(&settings);
     parser.is_multithreadable = false;
 
-    let output = match parser.parse_demo() {
+    let output = match parser.parse_demo(&file) {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
@@ -107,7 +106,6 @@ pub fn parseEvents(
     }
     let arc_huf = Arc::new(create_huffman_lookup_table());
     let settings = ParserInputs {
-        bytes: Arc::new(BytesVariant::Vec(file)),
         wanted_player_props: real_names_player,
         wanted_player_props_og_names: vec![],
         wanted_other_props: real_other_props,
@@ -120,12 +118,12 @@ pub fn parseEvents(
         only_header: false,
         count_props: false,
         only_convars: false,
-        huffman_lookup_table: arc_huf,
+        huffman_lookup_table: &arc_huf,
     };
-    let mut parser = Parser::new(settings);
+    let mut parser = Parser::new(&settings);
     parser.is_multithreadable = false;
 
-    let output = match parser.parse_demo() {
+    let output = match parser.parse_demo(&file) {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
@@ -140,7 +138,6 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
     let arc_huf = Arc::new(create_huffman_lookup_table());
     let settings = ParserInputs {
         real_name_to_og_name: HashMap::default().into(),
-        bytes: Arc::new(parser::variants::BytesVariant::Vec(fileBytes)),
         wanted_player_props: vec![],
         wanted_player_props_og_names: vec![],
         wanted_other_props: vec![],
@@ -152,12 +149,12 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         only_header: false,
         count_props: false,
         only_convars: false,
-        huffman_lookup_table: arc_huf.clone(),
+        huffman_lookup_table: &arc_huf.clone(),
     };
-    let mut parser = Parser::new(settings);
+    let mut parser = Parser::new(&settings);
     parser.is_multithreadable = false;
 
-    let output = match parser.parse_demo() {
+    let output = match parser.parse_demo(&fileBytes) {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
@@ -197,7 +194,6 @@ pub fn parseTicks(
 
     let settings = ParserInputs {
         real_name_to_og_name: real_name_to_og_name.into(),
-        bytes: Arc::new(BytesVariant::Vec(file)),
         wanted_player_props: real_names.clone(),
         wanted_player_props_og_names: wanted_props.clone(),
         wanted_other_props: vec![],
@@ -209,12 +205,12 @@ pub fn parseTicks(
         only_header: false,
         count_props: false,
         only_convars: false,
-        huffman_lookup_table: arc_huf.clone(),
+        huffman_lookup_table: &arc_huf.clone(),
     };
-    let mut parser = Parser::new(settings);
+    let mut parser = Parser::new(&settings);
     parser.is_multithreadable = false;
 
-    let output = match parser.parse_demo() {
+    let output = match parser.parse_demo(&file) {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
@@ -258,7 +254,6 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
 
     let settings = ParserInputs {
         real_name_to_og_name: HashMap::default().into(),
-        bytes: Arc::new(parser::variants::BytesVariant::Vec(file)),
         wanted_player_props: vec![],
         wanted_player_props_og_names: vec![],
         wanted_other_props: vec![],
@@ -270,12 +265,12 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
         only_header: true,
         count_props: false,
         only_convars: false,
-        huffman_lookup_table: arc_huf.clone(),
+        huffman_lookup_table: &arc_huf.clone(),
     };
-    let mut parser = Parser::new(settings);
+    let mut parser = Parser::new(&settings);
     parser.is_multithreadable = false;
 
-    let output = match parser.parse_demo() {
+    let output = match parser.parse_demo(&file) {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
@@ -292,7 +287,6 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
 
     let settings = ParserInputs {
         real_name_to_og_name: HashMap::default().into(),
-        bytes: Arc::new(parser::variants::BytesVariant::Vec(file)),
         wanted_player_props: vec![],
         wanted_player_props_og_names: vec![],
         wanted_other_props: vec![],
@@ -304,11 +298,11 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         only_header: true,
         count_props: false,
         only_convars: false,
-        huffman_lookup_table: arc_huf.clone(),
+        huffman_lookup_table: &arc_huf.clone(),
     };
-    let mut parser = Parser::new(settings);
+    let mut parser = Parser::new(&settings);
     parser.is_multithreadable = false;
-    let output = match parser.parse_demo() {
+    let output = match parser.parse_demo(&file) {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };

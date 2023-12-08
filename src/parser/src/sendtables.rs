@@ -474,7 +474,25 @@ impl ConstructorField {
                 _ => Decoder::UnsignedDecoder,
             },
         };
-        dec
+        if needs_velocity(&self.wanted_player_props) {
+            let new_props = vec!["X".to_string(), "Y".to_string(), "Z".to_string()];
+
+            for prop in new_props {
+                if !self.wanted_player_props.contains(&prop) {
+                    self.added_temp_props.push(prop.to_string());
+                    self.wanted_player_props.push(prop.to_string());
+                }
+            }
+        }
+
+        // let mut fields: HashMap<i32, Field> = HashMap::default();
+        let fields: Vec<Option<Field>> = vec![None; 10000];
+        let prop_controller = PropController::new(
+            self.wanted_player_props.clone(),
+            self.wanted_other_props.clone(),
+            self.real_name_to_og_name.clone(),
+        );
+        (serializers, qf_mapper, fields, prop_controller)
     }
     pub fn find_qangle_decoder(&self) -> Decoder {
         match self.var_name.as_str() {

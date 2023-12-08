@@ -48,6 +48,7 @@ impl<'a> ParserThread<'a> {
             Parser::resize_if_needed(&mut buf2, decompress_len(input))?;
             self.ptr += size as usize;
 
+            self.ptr += size as usize;
             let bytes = match is_compressed {
                 true => match SnapDecoder::new().decompress(input, &mut buf2) {
                     Ok(idx) => &buf2[..idx],
@@ -85,7 +86,7 @@ impl<'a> ParserThread<'a> {
         Ok(())
     }
 
-    pub fn parse_packet(&mut self, bytes: &[u8], buf: &mut [u8]) -> Result<(), DemoParserError> {
+    pub fn parse_packet(&mut self, bytes: &[u8], buf: &mut Vec<u8>) -> Result<(), DemoParserError> {
         let mut packet_parser = ProtoPacketParser::new(bytes);
         packet_parser.read_proto_packet()?;
         let mut bitreader = Bitreader::new(&bytes[packet_parser.start..packet_parser.end]);
@@ -94,6 +95,9 @@ impl<'a> ParserThread<'a> {
         while bitreader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
+            if buf.len() < size as usize {
+                buf.resize(size as usize, 0)
+            }
             bitreader.read_n_bytes_mut(size as usize, buf)?;
             let msg_bytes = &buf[..size as usize];
 
@@ -177,7 +181,9 @@ impl<'a> ParserThread<'a> {
         while bitreader.bits_remaining().unwrap() > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
-            //let mut msg_bytes = vec![0; size as usize];
+            if buf.len() < size as usize {
+                buf.resize(size as usize, 0)
+            }
             bitreader.read_n_bytes_mut(size as usize, &mut buf)?;
 
             let msg_bytes = &buf[..size as usize];

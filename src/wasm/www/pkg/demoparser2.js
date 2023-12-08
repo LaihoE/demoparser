@@ -1,8 +1,17 @@
-let wasm;
+let wasm_bindgen;
+(function() {
+    const __exports = {};
+    let script_src;
+    if (typeof document === 'undefined') {
+        script_src = location.href;
+    } else {
+        script_src = new URL(document.currentScript.src, location.href).toString();
+    }
+    let wasm;
 
-const heap = new Array(128).fill(undefined);
+    const heap = new Array(128).fill(undefined);
 
-heap.push(undefined, null, true, false);
+    heap.push(undefined, null, true, false);
 
 function getObject(idx) { return heap[idx]; }
 
@@ -211,7 +220,7 @@ function passArrayJsValueToWasm0(array, malloc) {
 * @param {any[] | undefined} wanted_other_props
 * @returns {any}
 */
-export function parseEvent(file, event_name, wanted_player_props, wanted_other_props) {
+__exports.parseEvent = function(file, event_name, wanted_player_props, wanted_other_props) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passArray8ToWasm0(file, wasm.__wbindgen_malloc);
@@ -233,7 +242,7 @@ export function parseEvent(file, event_name, wanted_player_props, wanted_other_p
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
-}
+};
 
 /**
 * @param {Uint8Array} file
@@ -242,7 +251,7 @@ export function parseEvent(file, event_name, wanted_player_props, wanted_other_p
 * @param {any[] | undefined} wanted_other_props
 * @returns {any}
 */
-export function parseEvents(file, event_names, wanted_player_props, wanted_other_props) {
+__exports.parseEvents = function(file, event_names, wanted_player_props, wanted_other_props) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passArray8ToWasm0(file, wasm.__wbindgen_malloc);
@@ -264,13 +273,13 @@ export function parseEvents(file, event_names, wanted_player_props, wanted_other
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
-}
+};
 
 /**
 * @param {Uint8Array} fileBytes
 * @returns {any}
 */
-export function listGameEvents(fileBytes) {
+__exports.listGameEvents = function(fileBytes) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passArray8ToWasm0(fileBytes, wasm.__wbindgen_malloc);
@@ -286,7 +295,7 @@ export function listGameEvents(fileBytes) {
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
-}
+};
 
 function passArray32ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 4);
@@ -301,7 +310,7 @@ function passArray32ToWasm0(arg, malloc) {
 * @param {boolean | undefined} struct_of_arrays
 * @returns {any}
 */
-export function parseTicks(file, wanted_props, wanted_ticks, struct_of_arrays) {
+__exports.parseTicks = function(file, wanted_props, wanted_ticks, struct_of_arrays) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passArray8ToWasm0(file, wasm.__wbindgen_malloc);
@@ -321,13 +330,13 @@ export function parseTicks(file, wanted_props, wanted_ticks, struct_of_arrays) {
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
-}
+};
 
 /**
 * @param {Uint8Array} file
 * @returns {any}
 */
-export function parseGrenades(file) {
+__exports.parseGrenades = function(file) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passArray8ToWasm0(file, wasm.__wbindgen_malloc);
@@ -343,13 +352,13 @@ export function parseGrenades(file) {
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
-}
+};
 
 /**
 * @param {Uint8Array} file
 * @returns {any}
 */
-export function parseHeader(file) {
+__exports.parseHeader = function(file) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passArray8ToWasm0(file, wasm.__wbindgen_malloc);
@@ -365,7 +374,7 @@ export function parseHeader(file) {
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
-}
+};
 
 function handleError(f, args) {
     try {
@@ -612,7 +621,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('demoparser2_bg.wasm', import.meta.url);
+        input = script_src.replace(/\.js$/, '_bg.wasm');
     }
     const imports = getImports();
 
@@ -627,5 +636,6 @@ async function init(input) {
     return finalizeInit(instance, module);
 }
 
-export { initSync }
-export default init;
+wasm_bindgen = Object.assign(init, { initSync }, __exports);
+
+})();

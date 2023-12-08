@@ -12,6 +12,9 @@ Python: ```pip install demoparser2```
 
 NodeJS: ```npm i @laihoe/demoparser2```
 
+WASM: ```npm i demoparser2```
+
+
 ### Getting started
 #### Python
 ```python
@@ -328,8 +331,8 @@ True/Flase if player is pressing button.
 ## Other parsers
 Go: https://github.com/markus-wa/demoinfocs-golang  
 C#: https://github.com/saul/demofile-net  
-Python: https://github.com/pnxenopoulos/awpy
-
+Python: https://github.com/pnxenopoulos/awpy  
+Java: https://github.com/skadistats/clarity  
 
 ## Acknowledgements
 Without Dotabuff's dota 2 parser "manta" this would not have been possible. Check it out: https://github.com/dotabuff/manta
