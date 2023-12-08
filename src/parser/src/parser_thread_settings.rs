@@ -12,8 +12,6 @@ use crate::other_netmessages::Class;
 use crate::parser::DemoOutput;
 use crate::parser::ParserThreadInput;
 use crate::prop_controller::PropController;
-
-use crate::decoder::Decoder;
 use crate::stringtables::UserInfo;
 use ahash::AHashMap;
 use ahash::AHashSet;
@@ -26,26 +24,25 @@ use std::env;
 
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
-
+const MAX_ENTITY_ID: usize = 1024;
 pub struct ParserThread<'a> {
     pub qf_mapper: &'a QfMapper,
     pub prop_controller: &'a PropController,
-    pub cls_by_id: &'a AHashMap<u32, Class>,
+    pub cls_by_id: &'a Vec<Class>,
     pub stringtable_players: BTreeMap<u64, UserInfo>,
     pub net_tick: u32,
     pub parse_inventory: bool,
     pub paths: Vec<FieldPath>,
-
     pub ptr: usize,
     pub parse_all_packets: bool,
     pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_bits: Option<u32>,
-    pub entities: AHashMap<i32, Entity, RandomState>,
+    pub entities: Vec<Option<Entity>>,
     pub tick: i32,
     pub players: BTreeMap<i32, PlayerMetaData>,
     pub teams: Teams,
-    pub huffman_lookup_table: &'a Vec<(u8, u8)>,
+    pub huffman_lookup_table: &'a [(u8, u8)],
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
     pub rules_entity_id: Option<i32>,
@@ -158,7 +155,7 @@ impl<'a> ParserThread<'a> {
             paths: vec![
                 FieldPath {
                     last: 0,
-                    path: [-1, 0, 0, 0, 0, 0, 0],
+                    path: [0, 0, 0, 0, 0, 0, 0],
                 };
                 8192
             ],
@@ -179,7 +176,7 @@ impl<'a> ParserThread<'a> {
             ge_list: input.ge_list,
             // bytes: &input.settings.bytes,
             cls_by_id: &input.cls_by_id,
-            entities: AHashMap::with_capacity(512),
+            entities: vec![None; MAX_ENTITY_ID],
             cls_bits: None,
             tick: -99999,
             players: BTreeMap::default(),

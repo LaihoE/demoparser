@@ -48,7 +48,7 @@ pub struct Parser<'a> {
     pub huf: &'a Vec<(u8, u8)>,
     pub settings: &'a ParserInputs<'a>,
     pub serializers: AHashMap<String, Serializer>,
-    pub cls_by_id: Option<Arc<AHashMap<u32, Class>>>,
+    pub cls_by_id: Option<Arc<Vec<Class>>>,
     pub string_tables: Vec<StringTable>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub convars: AHashMap<String, String>,

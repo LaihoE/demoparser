@@ -26,12 +26,6 @@ pub enum PropType {
     GameTime,
 }
 #[derive(Debug, PartialEq)]
-// While this is an error, its very common and doesn't exactly signal
-// that anything went "wrong", just that prop was not found.
-// We can do this cause rusts errors like these are very cheap :) (not ok with exceptions).
-// Serves mostly as help for debugging.
-// The point is to be able to track why a prop was not found, without
-// having to go and add a bunch of prints everywhere
 pub enum PropCollectionError {
     PlayerSpecialIDCellXMissing,
     PlayerSpecialIDCellYMissing,
@@ -126,6 +120,8 @@ pub enum CoordinateAxis {
 
 impl<'a> ParserThread<'a> {
     pub fn collect_entities(&mut self) {
+        // return;
+
         if !self.prop_controller.event_with_velocity {
             if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_events.len() != 0 {
                 return;
@@ -148,6 +144,7 @@ impl<'a> ParserThread<'a> {
                             .push(Some(prop));
                     }
                     Err(_e) => {
+                        // println!("{:?}", _e);
                         // Ultimate debugger is to print this error
                         self.output
                             .entry(prop_info.id)
@@ -179,12 +176,12 @@ impl<'a> ParserThread<'a> {
         }
     }
     pub fn get_prop_from_ent(&self, prop_id: &u32, entity_id: &i32) -> Result<Variant, PropCollectionError> {
-        match self.entities.get(entity_id) {
-            None => return Err(PropCollectionError::GetPropFromEntEntityNotFound),
-            Some(e) => match e.props.get(&prop_id) {
+        match self.entities.get(*entity_id as usize) {
+            Some(Some(e)) => match e.props.get(&prop_id) {
                 None => return Err(PropCollectionError::GetPropFromEntPropNotFound),
                 Some(prop) => return Ok(prop.clone()),
             },
+            _ => return Err(PropCollectionError::GetPropFromEntEntityNotFound),
         }
     }
     fn create_tick(&self) -> Result<Variant, PropCollectionError> {
@@ -265,8 +262,8 @@ impl<'a> ParserThread<'a> {
     }
 
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
-        if let Some(ent) = self.entities.get(&entity_id) {
-            if let Some(cls) = self.cls_by_id.get(&ent.cls_id) {
+        if let Some(Some(ent)) = self.entities.get(*entity_id as usize) {
+            if let Some(cls) = self.cls_by_id.get(ent.cls_id as usize) {
                 match GRENADE_FRIENDLY_NAMES.get(&cls.name) {
                     Some(name) => return Some(name.to_string()),
                     None => {
@@ -616,12 +613,10 @@ impl<'a> ParserThread<'a> {
             Ok(Variant::Bool(true)) => {}
             _ => return Ok(Variant::StringVec(vec![])),
         };
-
         let inventory_max_len = match self.get_prop_from_ent(&(MY_WEAPONS_OFFSET as u32), entity_id) {
             Ok(Variant::U32(p)) => p,
             _ => return Err(PropCollectionError::InventoryMaxNotFound),
         };
-
         for i in 1..inventory_max_len + 1 {
             let prop_id = MY_WEAPONS_OFFSET + i;
             match self.get_prop_from_ent(&(prop_id as u32), entity_id) {
@@ -661,8 +656,11 @@ impl<'a> ParserThread<'a> {
                         &"c4" => {
                             if let Some(c4_owner_id) = self.find_c4_owner() {
                                 if *player_entid == c4_owner_id {
+                                    println!("C4");
                                     names.push(weap_name.to_string());
                                 }
+                            } else {
+                                println!("{:?}", self.find_c4_owner());
                             }
                         }
                         _ => {

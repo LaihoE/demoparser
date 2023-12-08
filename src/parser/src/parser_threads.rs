@@ -7,6 +7,7 @@ use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
 use crate::read_bytes::read_varint;
+use crate::read_bytes::FullPacketParser;
 use crate::read_bytes::ProtoPacketParser;
 use crate::stringtables::parse_userinfo;
 use csgoproto::demo::*;
@@ -20,6 +21,7 @@ use EDemoCommands::*;
 
 impl<'a> ParserThread<'a> {
     pub fn start(&mut self, outer_bytes: &[u8]) -> Result<(), DemoParserError> {
+        let before = Instant::now();
         let started_at = self.ptr;
         let mut buf = vec![0_u8; 8192 * 15];
         let mut buf2 = vec![0_u8; 400_000];
@@ -41,9 +43,9 @@ impl<'a> ParserThread<'a> {
                 self.ptr += size as usize;
                 continue;
             }
+
             let input = &outer_bytes[self.ptr..self.ptr + size as usize];
             Parser::resize_if_needed(&mut buf2, decompress_len(input))?;
-
             self.ptr += size as usize;
 
             let bytes = match is_compressed {
@@ -79,6 +81,7 @@ impl<'a> ParserThread<'a> {
             ok?;
             self.collect_entities();
         }
+        // println!("{:2?}", before.elapsed());
         Ok(())
     }
 
@@ -134,11 +137,19 @@ impl<'a> ParserThread<'a> {
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8], should_parse_entities: bool) -> Result<(), DemoParserError> {
         self.string_tables = vec![];
-        // let before = Instant::now();
+
         let full_packet: CDemoFullPacket = match Message::parse_from_bytes(bytes) {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
             Ok(p) => p,
         };
+
+        /* FAST
+        let mut packet_parser = FullPacketParser::new(bytes);
+        packet_parser.parse_message()?;
+        let mut bitreader = Bitreader::new(&bytes[packet_parser.packet_data_start..packet_parser.packet_data_end]);
+        println!("{:2?}", before.elapsed());
+        */
+
         for item in &full_packet.string_table.tables {
             if item.table_name == Some("instancebaseline".to_string()) {
                 for i in &item.items {
@@ -156,10 +167,11 @@ impl<'a> ParserThread<'a> {
                 }
             }
         }
+
         // println!("")
         let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
-        let mut buf = vec![0; 500_000];
+        let mut buf = vec![0; 5_00_000];
 
         // Inner loop
         while bitreader.bits_remaining().unwrap() > 8 {

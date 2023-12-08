@@ -11,6 +11,7 @@ use crate::prop_controller::PropController;
 use crate::read_bits::Bitreader;
 use crate::read_bytes::read_varint;
 use crate::read_bytes::ProtoPacketParser;
+use crate::sendtables::Serializer;
 use crate::stringtables::parse_userinfo;
 use crate::stringtables::StringTable;
 use crate::stringtables::UserInfo;
@@ -32,6 +33,7 @@ use snap::raw::Decoder as SnapDecoder;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::thread::JoinHandle;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct DemoOutput {
@@ -50,19 +52,6 @@ pub struct DemoOutput {
 }
 
 impl<'a> Parser<'a> {
-    pub fn resize_if_needed(buf: &mut Vec<u8>, needed_len: Result<usize, snap::Error>) -> Result<(), DemoParserError> {
-        match needed_len {
-            Ok(len) => {
-                if buf.len() < len {
-                    buf.resize(len, 0)
-                }
-            }
-            Err(e) => return Err(DemoParserError::DecompressionFailure(e.to_string())),
-        };
-
-        Ok(())
-    }
-
     pub fn parse_demo(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
         Parser::handle_short_header(outer_bytes.len(), &outer_bytes[..16])?;
         self.ptr = 16;
@@ -118,7 +107,9 @@ impl<'a> Parser<'a> {
                         Some(table) => table,
                         None => return Err(DemoParserError::NoSendTableMessage),
                     };
+                    let before = Instant::now();
                     self.parse_class_info(&bytes, table)?;
+                    println!("X {:?}", before.elapsed());
                     // break;
                     Ok(())
                 }
@@ -148,6 +139,17 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_demo_single_thread(outer_bytes)
         }
+    }
+    pub fn resize_if_needed(buf: &mut Vec<u8>, needed_len: Result<usize, snap::Error>) -> Result<(), DemoParserError> {
+        match needed_len {
+            Ok(len) => {
+                if buf.len() < len {
+                    buf.resize(len, 0)
+                }
+            }
+            Err(e) => return Err(DemoParserError::DecompressionFailure(e.to_string())),
+        };
+        Ok(())
     }
     fn check_needed(&mut self) -> Result<(), DemoParserError> {
         if !self.fullpacket_offsets.contains(&16) {
@@ -197,7 +199,7 @@ impl<'a> Parser<'a> {
         Ok(self.combine_thread_outputs(&mut ok))
     }
     /*
-    fn parse_demo_multithread_no_rayon(&mut self) -> Result<DemoOutput, DemoParserError> {
+    fn parse_demo_multithread_no_rayon(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
         use std::thread;
         use std::thread::ScopedJoinHandle;
         let my_offsets = self.fullpacket_offsets.clone();
@@ -213,7 +215,7 @@ impl<'a> Parser<'a> {
             for (input, offset) in inputs {
                 let handler: ScopedJoinHandle<'_, Result<DemoOutput, _>> = s.spawn(|| {
                     let mut parser = ParserThread::new(input).unwrap();
-                    parser.start().unwrap();
+                    parser.start(&outer_bytes).unwrap();
                     Ok(parser.create_output())
                 });
                 handles.push(handler);
@@ -234,7 +236,6 @@ impl<'a> Parser<'a> {
         res
     }
     */
-
     // fn parse_stringtables_cmd(bytes: &[u8]) -> Result<(), DemoParserError> {}
     pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
         ParserThreadInput {
@@ -420,20 +421,26 @@ impl<'a> Parser<'a> {
     pub fn parse_class_info(&mut self, bytes: &[u8], sendtables: CDemoSendTables) -> Result<(), DemoParserError> {
         let (mut serializers, qf_mapper, p) = self.parse_sendtable(sendtables);
         let msg: CDemoClassInfo = Message::parse_from_bytes(&bytes).unwrap();
-        let mut cls_by_id = AHashMap::default();
-
+        let mut cls_by_id = vec![
+            Class {
+                class_id: 0,
+                name: "None".to_string(),
+                serializer: Serializer {
+                    fields: vec![],
+                    name: "None".to_string(),
+                },
+            };
+            msg.classes.len() + 1
+        ];
         for class_t in msg.classes {
             let cls_id = class_t.class_id();
             let network_name = class_t.network_name();
 
-            cls_by_id.insert(
-                cls_id as u32,
-                Class {
-                    class_id: cls_id,
-                    name: network_name.to_string(),
-                    serializer: serializers.remove(network_name).unwrap(), // [network_name].clone(),
-                },
-            );
+            cls_by_id[cls_id as usize] = Class {
+                class_id: cls_id,
+                name: network_name.to_string(),
+                serializer: serializers.remove(network_name).unwrap(), // [network_name].clone(),
+            }
         }
         self.cls_by_id = Some(Arc::new(cls_by_id));
         self.qf_mapper = qf_mapper;
@@ -446,7 +453,7 @@ pub struct ParserThreadInput<'a> {
     pub settings: &'a ParserInputs<'a>,
     pub baselines: AHashMap<u32, Vec<u8>>,
     pub prop_controller: &'a PropController,
-    pub cls_by_id: &'a AHashMap<u32, Class>,
+    pub cls_by_id: &'a Vec<Class>,
     pub qfmap: &'a QfMapper,
     pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub parse_all_packets: bool,

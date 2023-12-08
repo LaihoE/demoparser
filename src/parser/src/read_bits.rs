@@ -86,7 +86,7 @@ impl<'a> Bitreader<'a> {
         self.consume(n);
         return Ok(b as u32);
     }
-    #[inline(always)]
+    // #[inline(always)]
     pub fn read_u_bit_var(&mut self) -> Result<u32, DemoParserError> {
         let bits = self.read_nbits(6)?;
         match bits & 48 {
@@ -197,7 +197,7 @@ impl<'a> Bitreader<'a> {
         }
         */
     }
-    #[inline(always)]
+    // #[inline(always)]
     pub fn read_ubit_var_fp(&mut self) -> Result<u32, DemoParserError> {
         if self.read_boolean()? {
             return Ok(self.read_nbits(2)?);

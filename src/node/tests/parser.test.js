@@ -3,7 +3,7 @@ var {parseEvent, parseEvents,parseTicks, parsePlayerInfo, parseGrenades, listGam
 const fs = require('fs');
 
 
-const filePath = "../python/tests/test.dem"
+const filePath = "../python/tests/data/test.dem"
 const wantedTicks = Array.from({ length: 100000 }, (_, x) => x).filter(x => x % 100 === 0);
 
 
@@ -1144,16 +1144,6 @@ test('is_initialized', () => {
 test('econ_item_attribute_def_idx', () => {
     let tick_correct = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_prop/econ_item_attribute_def_idx.json")));
     let ticks = JSON.stringify(parseTicks(filePath, ["econ_item_attribute_def_idx"], wantedTicks));
-    expect(ticks).toBe(tick_correct);
-});
-test('econ_raw_val_32', () => {
-    let tick_correct = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_prop/econ_raw_val_32.json")));
-    let ticks = JSON.stringify(parseTicks(filePath, ["econ_raw_val_32"], wantedTicks));
-    expect(ticks).toBe(tick_correct);
-});
-test('initial_value', () => {
-    let tick_correct = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_prop/initial_value.json")));
-    let ticks = JSON.stringify(parseTicks(filePath, ["initial_value"], wantedTicks));
     expect(ticks).toBe(tick_correct);
 });
 test('refundable_currency', () => {

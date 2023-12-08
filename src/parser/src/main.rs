@@ -3,6 +3,7 @@ use memmap2::MmapOptions;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
+use rayon::iter::IntoParallelRefIterator;
 use std::fs;
 use std::fs::File;
 use std::time::Instant;
@@ -22,11 +23,9 @@ use std::alloc::System;
 static GLOBAL: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
 */
 fn main() {
-    let pool = rayon::ThreadPoolBuilder::new().num_threads(24).build().unwrap();
-
     let wanted_props = vec!["X".to_string()];
     let before = Instant::now();
-    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/bench/").unwrap();
+    let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/pov/").unwrap();
     let mut c = 0;
     let huf = create_huffman_lookup_table();
     let mut total = 0;
@@ -36,8 +35,8 @@ fn main() {
 
         let before = Instant::now();
 
-        if c > 10 {
-            // break;
+        if c > 100 {
+            break;
         }
 
         /*
@@ -75,13 +74,14 @@ fn main() {
         };
 
         let mut ds = Parser::new(&settings);
-        ds.is_multithreadable = false;
-        let file = File::open("/home/laiho/Documents/programming/python/map/1.dem").unwrap();
-        // let file = File::open(path.unwrap().path()).unwrap();
+        ds.is_multithreadable = true;
+        // let file = File::open("/home/laiho/Documents/programming/python/map/1.dem").unwrap();
+        let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+
         total += mmap.len();
 
-        // mmap.advise(memmap2::Advice::HugePage).unwrap();
+        mmap.advise(memmap2::Advice::HugePage).unwrap();
         let d = ds.parse_demo(&mmap).unwrap();
         // println!("{:?}", d.df);
         println!("TOTAL {:?}", before.elapsed());
@@ -90,7 +90,6 @@ fn main() {
     let x = total as f32 / before.elapsed().as_millis() as f32;
 
     println!("{:?} GB/S", x * 1000.0 / 1_000_000_000.0);
-    println!("TOTAL {:?}", before.elapsed());
 
     // println!("GB/S {:?}", x / 1_000_000_000.0);
 }

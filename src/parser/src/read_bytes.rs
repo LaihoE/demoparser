@@ -137,6 +137,93 @@ impl<'a> PacketEntitiesParser<'a> {
         false
     }
 }
+#[derive(Debug)]
+pub struct FullPacketParser<'a> {
+    pub bytes: &'a [u8],
+    pub ptr: usize,
+
+    pub st_data_end: usize,
+    pub st_data_start: usize,
+    pub packet_data_end: usize,
+    pub packet_data_start: usize,
+}
+
+impl<'a> FullPacketParser<'a> {
+    pub fn new(bytes: &[u8]) -> FullPacketParser {
+        FullPacketParser {
+            bytes: &bytes,
+            ptr: 0,
+
+            st_data_end: 0,
+            st_data_start: 0,
+            packet_data_end: 0,
+            packet_data_start: 0,
+        }
+    }
+    pub fn parse_message(&mut self) -> Result<(), DemoParserError> {
+        for _ in 0..1000 {
+            let varint = self.read_varint().unwrap();
+            let is_done = self.read(varint);
+            if is_done {
+                return Ok(());
+            }
+        }
+        Err(DemoParserError::MalformedMessage)
+    }
+    #[inline]
+    pub fn read_varint(&mut self) -> Result<u32, DemoParserError> {
+        let mut result: u32 = 0;
+        let mut count: u8 = 0;
+        let mut b: u32;
+
+        loop {
+            if count >= 5 {
+                return Ok(result as u32);
+            }
+
+            if self.ptr >= self.bytes.len() {
+                return Err(DemoParserError::OutOfBytesError);
+            }
+            b = self.bytes[self.ptr].try_into().unwrap();
+            self.ptr += 1;
+            result |= (b & 127) << (7 * count);
+            count += 1;
+            if b & 0x80 == 0 {
+                break;
+            }
+        }
+        Ok(result as u32)
+    }
+    #[inline]
+    pub fn read_n_bytes(&mut self, n: u32) -> Result<&[u8], DemoParserError> {
+        if self.ptr + n as usize >= self.bytes.len() {
+            return Err(DemoParserError::OutOfBytesError);
+        }
+        let s = &self.bytes[self.ptr..self.ptr + n as usize];
+        self.ptr += n as usize;
+        Ok(s)
+    }
+    pub fn read(&mut self, varint: u32) -> bool {
+        match varint {
+            10 => {
+                let buf_len = self.read_varint().unwrap() as usize;
+                self.st_data_start = self.ptr;
+                self.st_data_end = self.ptr + buf_len;
+                self.ptr += buf_len;
+            }
+            18 => {
+                let buf_len = self.read_varint().unwrap() as usize;
+                self.packet_data_start = self.ptr + 4;
+                self.packet_data_end = self.ptr + buf_len;
+                self.ptr += buf_len;
+                return true;
+            }
+            _ => panic!("unkown protobuf type in message {}", varint),
+        }
+        false
+    }
+}
+
 pub fn read_varint(bytes: &[u8], ptr: &mut usize) -> Result<u32, DemoParserError> {
     let mut result: u32 = 0;
     let mut count: u8 = 0;

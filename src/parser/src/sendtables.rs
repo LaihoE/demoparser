@@ -22,8 +22,7 @@ use regex::Regex;
 pub struct Serializer {
     pub name: String,
     pub fields: Vec<Field>,
-    pub names: Vec<String>,
-    pub long_name: String,
+    // pub names: Vec<String>,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum FieldCategory {
@@ -60,6 +59,16 @@ impl<'a> Parser<'a> {
         let n_bytes = bitreader.read_varint().unwrap();
         let bytes = bitreader.read_n_bytes(n_bytes as usize).unwrap();
         let serializer_msg: CSVCMsg_FlattenedSerializer = Message::parse_from_bytes(&bytes).unwrap();
+        // TODO MOVE
+        if needs_velocity(&self.wanted_player_props) {
+            let new_props = vec!["X".to_string(), "Y".to_string(), "Z".to_string()];
+            for prop in new_props {
+                if !self.wanted_player_props.contains(&prop) {
+                    self.added_temp_props.push(prop.to_string());
+                    self.wanted_player_props.push(prop.to_string());
+                }
+            }
+        }
         let mut prop_controller = PropController::new(
             self.wanted_player_props.clone(),
             self.wanted_other_props.clone(),
@@ -73,7 +82,6 @@ impl<'a> Parser<'a> {
         let serializers = self.create_fields(&serializer_msg, &mut qf_mapper, &mut prop_controller);
         (serializers, qf_mapper, prop_controller)
     }
-
     fn create_fields(
         &mut self,
         serializer_msg: &CSVCMsg_FlattenedSerializer,
@@ -124,9 +132,7 @@ impl<'a> Parser<'a> {
         }
         // Related to prop collection
         prop_controller.set_custom_propinfos();
-        if !self.wanted_events.is_empty() && needs_velocity(&self.wanted_player_props) {
-            prop_controller.event_with_velocity = true;
-        }
+        prop_controller.path_to_name = AHashMap::default();
         serializers
     }
     fn generate_serializer(
@@ -157,8 +163,7 @@ impl<'a> Parser<'a> {
         Serializer {
             name: sid.clone(),
             fields: fields_this_ser,
-            names: field_names_this_ser,
-            long_name: sid,
+            // names: field_names_this_ser,
         }
     }
 
@@ -219,6 +224,18 @@ impl Field {
         }
     }
     #[inline(always)]
+    pub fn get_inner_mut(&mut self, idx: usize) -> &mut Field {
+        match self {
+            Field::Array(inner) => &mut inner.field_enum,
+            Field::Vector(inner) => &mut inner.field_enum,
+            Field::Serializer(inner) => &mut inner.serializer.fields[idx],
+            Field::Pointer(inner) => &mut inner.serializer.fields[idx],
+            // Illegal
+            Field::Value(_) => panic!("Value as inner type"),
+            Field::None => panic!("NONE as inner type"),
+        }
+    }
+    #[inline(always)]
     pub fn get_decoder(&self) -> Option<Decoder> {
         match self {
             Field::Value(inner) => Some(inner.decoder),
@@ -249,6 +266,7 @@ pub struct ValueField {
     pub name: String,
     pub should_parse: bool,
     pub prop_id: u32,
+    // pub path: Vec<i32>,
 }
 #[derive(Debug, Clone)]
 pub struct SerializerField {
@@ -283,9 +301,9 @@ impl PointerField {
 }
 impl SerializerField {
     pub fn new(serializer: &Serializer, sid: &str) -> SerializerField {
-        let mut my_ser = serializer.clone();
-        my_ser.long_name = sid.to_string() + "." + &my_ser.name;
-        SerializerField { serializer: my_ser }
+        SerializerField {
+            serializer: serializer.clone(),
+        }
     }
 }
 impl ValueField {
@@ -576,13 +594,12 @@ fn to_string(ft: &FieldType, omit_count: bool) -> String {
 
     if let Some(gt) = &ft.generic_type {
         s += "< ";
-        s += &to_string(&gt, false);
+        s += &to_string(&gt, true);
         s += "< ";
     }
     if ft.pointer {
         s += "*";
     }
-
     if !omit_count && ft.count.is_some() {
         if let Some(c) = ft.count {
             s += "[";
@@ -590,7 +607,6 @@ fn to_string(ft: &FieldType, omit_count: bool) -> String {
             s += "]";
         }
     }
-
     s
 }
 use crate::sendtables::Decoder::BaseDecoder;
