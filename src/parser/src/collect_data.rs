@@ -144,7 +144,6 @@ impl<'a> ParserThread<'a> {
                             .push(Some(prop));
                     }
                     Err(_e) => {
-                        // println!("{:?}", _e);
                         // Ultimate debugger is to print this error
                         self.output
                             .entry(prop_info.id)
@@ -656,11 +655,8 @@ impl<'a> ParserThread<'a> {
                         &"c4" => {
                             if let Some(c4_owner_id) = self.find_c4_owner() {
                                 if *player_entid == c4_owner_id {
-                                    println!("C4");
                                     names.push(weap_name.to_string());
                                 }
-                            } else {
-                                println!("{:?}", self.find_c4_owner());
                             }
                         }
                         _ => {

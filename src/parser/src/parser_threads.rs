@@ -138,13 +138,6 @@ impl<'a> ParserThread<'a> {
             Ok(p) => p,
         };
 
-        /* FAST
-        let mut packet_parser = FullPacketParser::new(bytes);
-        packet_parser.parse_message()?;
-        let mut bitreader = Bitreader::new(&bytes[packet_parser.packet_data_start..packet_parser.packet_data_end]);
-        println!("{:2?}", before.elapsed());
-        */
-
         for item in &full_packet.string_table.tables {
             if item.table_name == Some("instancebaseline".to_string()) {
                 for i in &item.items {
@@ -163,7 +156,6 @@ impl<'a> ParserThread<'a> {
             }
         }
 
-        // println!("")
         let p = full_packet.packet.0.unwrap();
         let mut bitreader = Bitreader::new(p.data());
         let mut buf = vec![0; 5_00_000];
@@ -200,7 +192,6 @@ impl<'a> ParserThread<'a> {
             };
             ok?
         }
-        // println!("IN FP: {:?} {:?} {:?}", before.elapsed(), self.tick, self.entities.len());
         Ok(())
     }
     fn clear_stringtables(&mut self) -> Result<(), DemoParserError> {

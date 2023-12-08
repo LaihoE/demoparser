@@ -187,8 +187,6 @@ impl<'a> Parser<'a> {
         match field.var_name.as_str() {
             "m_PredFloatVariables" => field.decoder = NoscaleDecoder,
             "m_OwnerOnlyPredNetFloatVariables" => field.decoder = NoscaleDecoder,
-            "m_PredFloatVariables" => field.decoder = NoscaleDecoder,
-            "m_OwnerOnlyPredNetFloatVariables" => field.decoder = NoscaleDecoder,
             "m_OwnerOnlyPredNetVectorVariables" => field.decoder = VectorNoscaleDecoder,
             "m_PredVectorVariables" => field.decoder = VectorNoscaleDecoder,
             _ => {}
@@ -306,7 +304,7 @@ impl PointerField {
     }
 }
 impl SerializerField {
-    pub fn new(serializer: &Serializer, sid: &str) -> SerializerField {
+    pub fn new(serializer: &Serializer) -> SerializerField {
         SerializerField {
             serializer: serializer.clone(),
         }
@@ -367,20 +365,22 @@ pub fn field_from_msg(
     f
 }
 
-fn create_field(sid: &String, fd: &mut ConstructorField, serializers: &AHashMap<String, Serializer>) -> Field {
+fn create_field(_sid: &String, fd: &mut ConstructorField, serializers: &AHashMap<String, Serializer>) -> Field {
+    /*
+    TODO
     let element_type = match fd.category {
         FieldCategory::Array => fd.field_type.element_type.as_ref().unwrap().clone(),
         FieldCategory::Vector => fd.field_type.generic_type.as_ref().unwrap().clone(),
         _ => Box::new(fd.field_type.clone()),
     };
-
+    */
     let element_field = match fd.serializer_name.as_ref() {
         Some(name) => {
             if fd.category == FieldCategory::Pointer {
                 let f = PointerField::new(serializers.get(name.as_str()).as_ref().unwrap());
                 Field::Pointer(f)
             } else {
-                let f = SerializerField::new(serializers.get(name.as_str()).as_ref().unwrap(), &sid);
+                let f = SerializerField::new(serializers.get(name.as_str()).as_ref().unwrap());
                 Field::Serializer(f)
             }
         }
@@ -474,25 +474,7 @@ impl ConstructorField {
                 _ => Decoder::UnsignedDecoder,
             },
         };
-        if needs_velocity(&self.wanted_player_props) {
-            let new_props = vec!["X".to_string(), "Y".to_string(), "Z".to_string()];
-
-            for prop in new_props {
-                if !self.wanted_player_props.contains(&prop) {
-                    self.added_temp_props.push(prop.to_string());
-                    self.wanted_player_props.push(prop.to_string());
-                }
-            }
-        }
-
-        // let mut fields: HashMap<i32, Field> = HashMap::default();
-        let fields: Vec<Option<Field>> = vec![None; 10000];
-        let prop_controller = PropController::new(
-            self.wanted_player_props.clone(),
-            self.wanted_other_props.clone(),
-            self.real_name_to_og_name.clone(),
-        );
-        (serializers, qf_mapper, fields, prop_controller)
+        dec
     }
     pub fn find_qangle_decoder(&self) -> Decoder {
         match self.var_name.as_str() {

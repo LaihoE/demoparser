@@ -19,7 +19,6 @@ use crate::variants::PropColumn;
 use crate::{other_netmessages::Class, read_bits::DemoParserError};
 use ahash::AHashMap;
 use ahash::AHashSet;
-use bitter::BitReader;
 use csgoproto::demo::CDemoFullPacket;
 use csgoproto::demo::EDemoCommands::*;
 use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoSendTables};
@@ -32,8 +31,6 @@ use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use std::thread::JoinHandle;
-use std::time::Instant;
 
 #[derive(Debug)]
 pub struct DemoOutput {

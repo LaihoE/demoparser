@@ -145,12 +145,6 @@ impl<'a> ParserThread<'a> {
             .extend(vec!["tick".to_owned(), "steamid".to_owned(), "name".to_owned()]);
         let args: Vec<String> = env::args().collect();
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
-
-        // Dont allocate vec in release mode
-        let debug_vec_len = match debug {
-            true => 8192,
-            false => 0,
-        };
         Ok(ParserThread {
             paths: vec![
                 FieldPath {
