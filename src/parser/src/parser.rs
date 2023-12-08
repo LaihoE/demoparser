@@ -107,10 +107,7 @@ impl<'a> Parser<'a> {
                         Some(table) => table,
                         None => return Err(DemoParserError::NoSendTableMessage),
                     };
-                    let before = Instant::now();
                     self.parse_class_info(&bytes, table)?;
-                    println!("X {:?}", before.elapsed());
-                    // break;
                     Ok(())
                 }
                 DEM_SignonPacket => self.parse_packet(&bytes),

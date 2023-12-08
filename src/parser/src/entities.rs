@@ -128,31 +128,24 @@ impl<'a> ParserThread<'a> {
                 _ => panic!("fail"),
             };
             let result = ParserThread::decode(bitreader, decoder, &self.qf_mapper)?;
-            ParserThread::insert_field(entity, result, field_info, f);
+            if self.is_debug_mode {
+                ParserThread::debug_inspect(&result, f);
+            }
+            ParserThread::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
     }
     pub fn decode(bitreader: &mut Bitreader, decoder: Decoder, qf_map: &QfMapper) -> Result<Variant, DemoParserError> {
         Ok(bitreader.decode(&decoder, &qf_map)?)
     }
-    pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>, field: &Field) {
-        match field {
-            Field::Value(_v) => {
-                if let Some(fi) = field_info {
-                    if fi.should_parse {
-                        // println!("{:?}", _v.name);
-                        entity.props.insert(fi.prop_id, result);
-                    }
-                }
+    pub fn debug_inspect(result: &Variant, field: &Field) {
+        // println!("{:?} {:?}", field, result);
+    }
+    pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
+        if let Some(fi) = field_info {
+            if fi.should_parse {
+                entity.props.insert(fi.prop_id, result);
             }
-            Field::Vector(_v) => {
-                if let Some(fi) = field_info {
-                    if fi.should_parse {
-                        entity.props.insert(fi.prop_id, result);
-                    }
-                }
-            }
-            _ => {}
         }
     }
     pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
@@ -283,7 +276,6 @@ impl<'a> ParserThread<'a> {
             self.write_fp(&mut fp, idx);
             idx += 1;
         }
-        // panic!("DONE");
         Ok(idx)
     }
     #[inline(always)]
