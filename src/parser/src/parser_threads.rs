@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use super::netmessage_types;
 use super::read_bits::DemoParserError;
 use crate::netmessage_types::netmessage_type_from_int;
@@ -7,7 +5,6 @@ use crate::parser_settings::Parser;
 use crate::parser_thread_settings::ParserThread;
 use crate::read_bits::Bitreader;
 use crate::read_bytes::read_varint;
-use crate::read_bytes::FullPacketParser;
 use crate::read_bytes::ProtoPacketParser;
 use crate::stringtables::parse_userinfo;
 use csgoproto::demo::*;
@@ -21,7 +18,6 @@ use EDemoCommands::*;
 
 impl<'a> ParserThread<'a> {
     pub fn start(&mut self, outer_bytes: &[u8]) -> Result<(), DemoParserError> {
-        let before = Instant::now();
         let started_at = self.ptr;
         let mut buf = vec![0_u8; 8192 * 15];
         let mut buf2 = vec![0_u8; 400_000];
@@ -34,7 +30,6 @@ impl<'a> ParserThread<'a> {
             if self.ptr + size as usize >= outer_bytes.len() {
                 break;
             }
-
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
@@ -43,11 +38,8 @@ impl<'a> ParserThread<'a> {
                 self.ptr += size as usize;
                 continue;
             }
-
             let input = &outer_bytes[self.ptr..self.ptr + size as usize];
             Parser::resize_if_needed(&mut buf2, decompress_len(input))?;
-            self.ptr += size as usize;
-
             self.ptr += size as usize;
             let bytes = match is_compressed {
                 true => match SnapDecoder::new().decompress(input, &mut buf2) {
@@ -82,7 +74,6 @@ impl<'a> ParserThread<'a> {
             ok?;
             self.collect_entities();
         }
-        // println!("{:2?}", before.elapsed());
         Ok(())
     }
 
