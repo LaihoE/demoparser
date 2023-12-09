@@ -339,4 +339,4 @@ Without Dotabuff's dota 2 parser "manta" this would not have been possible. Chec
 
 The dota 2 demo format is very similar to CS2 demo format with only a few minor changes.
 
-Thank you to Clarity for an elegant implementation of sendtables
+Thank you to [Clarity](https://github.com/skadistats/clarity/) for an elegant implementation of sendtables
