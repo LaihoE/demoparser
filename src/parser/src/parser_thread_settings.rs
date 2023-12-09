@@ -24,7 +24,7 @@ use std::env;
 
 // Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
-const MAX_ENTITY_ID: usize = 1024;
+const DEFAULT_MAX_ENTITY_ID: usize = 1024;
 pub struct ParserThread<'a> {
     pub qf_mapper: &'a QfMapper,
     pub prop_controller: &'a PropController,
@@ -170,7 +170,7 @@ impl<'a> ParserThread<'a> {
             ge_list: input.ge_list,
             // bytes: &input.settings.bytes,
             cls_by_id: &input.cls_by_id,
-            entities: vec![None; MAX_ENTITY_ID],
+            entities: vec![None; DEFAULT_MAX_ENTITY_ID],
             cls_bits: None,
             tick: -99999,
             players: BTreeMap::default(),

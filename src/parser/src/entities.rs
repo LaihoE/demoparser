@@ -137,7 +137,14 @@ impl<'a> ParserThread<'a> {
         Ok(bitreader.decode(&decoder, &qf_map)?)
     }
     pub fn debug_inspect(result: &Variant, field: &Field) {
-        println!("{:?} {:?}", field, result);
+        if let Field::Value(v) = field {
+            if v.full_name.contains("CFlashbangProjectile")
+                && !v.full_name.contains("Component")
+                && !v.full_name.contains("m_vec")
+            {
+                println!("{:?} {:?}", v.full_name, result);
+            }
+        }
     }
     pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
         if let Some(fi) = field_info {
@@ -413,9 +420,12 @@ impl<'a> ParserThread<'a> {
             _ => {}
         };
         let entity = ParserThread::make_ent(entity_id, cls_id, entity_type);
+        if self.entities.len() as i32 <= *entity_id {
+            self.entities.resize(*entity_id as usize + 1, None);
+        }
         self.entities[*entity_id as usize] = Some(entity);
-        // Insert baselines
 
+        // Insert baselines
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
             let b = &baseline_bytes.clone();
             let mut br = Bitreader::new(&b);
