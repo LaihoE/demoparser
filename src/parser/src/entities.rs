@@ -257,7 +257,6 @@ impl<'a> ParserThread<'a> {
         // Here we peek ("HUFFMAN_CODE_MAXLEN" == 17) amount of bits and see from a table which
         // symbol it maps to and how many bits should be consumed from the stream.
         // The symbol is then mapped into an op for filling the field path.
-
         loop {
             if bitreader.bits_left < HUFFMAN_CODE_MAXLEN {
                 bitreader.refill();
