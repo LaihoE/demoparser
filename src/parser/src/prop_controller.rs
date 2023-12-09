@@ -387,10 +387,7 @@ impl PropController {
         if !prop_already_exists {
             self.insert_propinfo(&prop_name, f);
         }
-        if self.should_parse(&prop_name) {
-            f.should_parse = true;
-        }
-
+        f.should_parse = true;
         if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {
             f.prop_id = MY_WEAPONS_OFFSET as u32;
         }

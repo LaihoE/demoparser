@@ -120,14 +120,11 @@ pub enum CoordinateAxis {
 
 impl<'a> ParserThread<'a> {
     pub fn collect_entities(&mut self) {
-        // return;
-
         if !self.prop_controller.event_with_velocity {
             if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_events.len() != 0 {
                 return;
             }
         }
-
         if self.parse_projectiles {
             self.collect_projectiles();
         }
