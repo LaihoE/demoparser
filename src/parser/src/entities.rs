@@ -138,12 +138,7 @@ impl<'a> ParserThread<'a> {
     }
     pub fn debug_inspect(result: &Variant, field: &Field) {
         if let Field::Value(v) = field {
-            if v.full_name.contains("CFlashbangProjectile")
-                && !v.full_name.contains("Component")
-                && !v.full_name.contains("m_vec")
-            {
-                println!("{:?} {:?}", v.full_name, result);
-            }
+            println!("{:?} {:?}", v.full_name, result);
         }
     }
     pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
