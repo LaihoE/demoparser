@@ -137,9 +137,7 @@ impl<'a> ParserThread<'a> {
         Ok(bitreader.decode(&decoder, &qf_map)?)
     }
     pub fn debug_inspect(result: &Variant, field: &Field) {
-        if let Field::Value(v) = field {
-            println!("{:?} {:?}", v.full_name, result);
-        }
+        if let Field::Value(v) = field {}
     }
     pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
         if let Some(fi) = field_info {
