@@ -106,9 +106,9 @@ impl<'a> ParserThread<'a> {
                 net_Tick => self.parse_net_tick(&msg_bytes),
                 svc_ClearAllStringTables => self.clear_stringtables(),
                 svc_VoiceData => {
-                    let mut m: CSVCMsg_VoiceData = Message::parse_from_bytes(&msg_bytes).unwrap();
-                    m.tick = Some(self.tick as u32);
-                    self.voice_data.push(m);
+                    if let Ok(m) = Message::parse_from_bytes(&msg_bytes) {
+                        self.voice_data.push(m);
+                    }
                     Ok(())
                 }
                 GE_Source1LegacyGameEvent => match self.parse_event(&msg_bytes) {
