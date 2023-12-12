@@ -18,6 +18,7 @@ use ahash::AHashSet;
 use ahash::HashMap;
 use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
+use csgoproto::netmessages::CSVCMsg_VoiceData;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::env;
@@ -54,6 +55,7 @@ pub struct ParserThread<'a> {
     pub packets_parsed: u32,
     pub projectile_records: Vec<ProjectileRecord>,
     pub wanted_ticks: AHashSet<i32>,
+    pub voice_data: Vec<CSVCMsg_VoiceData>,
     // Output from parsing
     pub output: AHashMap<u32, PropColumn, RandomState>,
     pub header: HashMap<String, String>,
@@ -123,6 +125,7 @@ pub struct PlayerEndMetaData {
 impl<'a> ParserThread<'a> {
     pub fn create_output(self) -> DemoOutput {
         DemoOutput {
+            voice_data: self.voice_data,
             chat_messages: self.chat_messages,
             convars: self.convars,
             df: self.output,
@@ -146,6 +149,7 @@ impl<'a> ParserThread<'a> {
         let args: Vec<String> = env::args().collect();
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
         Ok(ParserThread {
+            voice_data: vec![],
             paths: vec![
                 FieldPath {
                     last: 0,
