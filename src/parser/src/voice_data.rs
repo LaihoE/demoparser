@@ -68,7 +68,7 @@ pub fn convert_voice_data_to_wav(voice_data: Vec<CSVCMsg_VoiceData>) -> Result<V
     for data in &voice_data {
         hm.entry(data.xuid()).or_insert(vec![]).push(data);
     }
-    // Write each steamid to to file
+    // Collect voice data per steamid
     let voice_data_wav: Vec<(String, Vec<u8>)> = hm
         .par_iter()
         .map(|(xuid, data)| {
