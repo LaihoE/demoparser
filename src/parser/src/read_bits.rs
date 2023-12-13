@@ -30,6 +30,7 @@ pub enum DemoParserError {
     NoSendTableMessage,
     UserIdNotFound,
     EventListFallbackNotFound(String),
+    VoiceDataWriteError(String),
 }
 
 impl std::error::Error for DemoParserError {}

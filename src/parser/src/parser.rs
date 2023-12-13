@@ -23,6 +23,8 @@ use csgoproto::demo::CDemoFullPacket;
 use csgoproto::demo::EDemoCommands::*;
 use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoSendTables};
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
+use csgoproto::netmessages::CSVCMsg_VoiceData;
+use itertools::Itertools;
 use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use rayon::iter::ParallelIterator;
@@ -46,6 +48,7 @@ pub struct DemoOutput {
     pub prop_info: PropController,
     pub projectiles: Vec<ProjectileRecord>,
     pub ptr: usize,
+    pub voice_data: Vec<CSVCMsg_VoiceData>,
 }
 
 impl<'a> Parser<'a> {
@@ -290,6 +293,7 @@ impl<'a> Parser<'a> {
             prop_info: self.prop_controller.clone(),
             projectiles: outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
             ptr: self.ptr,
+            voice_data: outputs.iter().flat_map(|x| x.voice_data.clone()).collect_vec(),
         }
     }
     fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {

@@ -10,9 +10,9 @@ use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
 use parser::read_bits::DemoParserError;
-use parser::variants::BytesVariant;
 use parser::variants::VarVec;
 use parser::variants::Variant;
+use parser::voice_data::convert_voice_data_to_wav;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -22,6 +22,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
+use pyo3::types::PyBytes;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
 use pyo3::Python;
@@ -119,6 +120,48 @@ impl DemoParser {
         };
         Ok(output.convars.to_object(py))
     }
+    pub fn parse_voice(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let mmap = match create_mmap(self.path.clone()) {
+            Ok(mmap) => mmap,
+            Err(e) => {
+                return Err(Exception::new_err(format!(
+                    "{}. File name: {}",
+                    e,
+                    self.path.clone()
+                )))
+            }
+        };
+        let arc_huf = create_huffman_lookup_table();
+
+        let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
+            wanted_player_props: vec![],
+            wanted_player_props_og_names: vec![],
+            wanted_other_props: vec![],
+            wanted_other_props_og_names: vec![],
+            wanted_events: vec![],
+            parse_ents: false,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: true,
+            count_props: false,
+            only_convars: false,
+            huffman_lookup_table: &arc_huf,
+        };
+        let mut parser = Parser::new(&settings);
+        let output = match parser.parse_demo(&mmap) {
+            Ok(output) => output,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
+        let out = convert_voice_data_to_wav(output.voice_data).unwrap();
+        let mut out_hm = AHashMap::default();
+        for (steamid, bytes) in out {
+            let py_bytes = PyBytes::new(py, &bytes);
+            out_hm.insert(steamid, py_bytes);
+        }
+        Ok(out_hm.to_object(py))
+    }
+
     /// Returns the names of game events present in the demo
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let mmap = match create_mmap(self.path.clone()) {

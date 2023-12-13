@@ -105,6 +105,12 @@ impl<'a> ParserThread<'a> {
                 CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(&msg_bytes),
                 net_Tick => self.parse_net_tick(&msg_bytes),
                 svc_ClearAllStringTables => self.clear_stringtables(),
+                svc_VoiceData => {
+                    if let Ok(m) = Message::parse_from_bytes(&msg_bytes) {
+                        self.voice_data.push(m);
+                    }
+                    Ok(())
+                }
                 GE_Source1LegacyGameEvent => match self.parse_event(&msg_bytes) {
                     Ok(Some(event)) => {
                         wrong_order_events.push(event);

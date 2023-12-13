@@ -11,15 +11,14 @@ use parser::parser_settings::rm_user_friendly_names;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
-use parser::read_bits::DemoParserError;
 use parser::variants::soa_to_aos;
 use parser::variants::BytesVariant;
 use parser::variants::OutputSerdeHelperStruct;
+use parser::voice_data::convert_voice_data_to_wav;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
 use std::result::Result;
-use std::sync::Arc;
 
 fn parse_demo(bytes: BytesVariant, parser: &mut Parser) -> Result<DemoOutput, Error> {
   match bytes {
@@ -64,6 +63,38 @@ pub fn parse_chat_messages(path_or_buf: Either<String, Buffer>) -> napi::Result<
   Ok(s)
 }
 */
+#[napi]
+pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<HashMap<String, Vec<u8>>> {
+  let bytes = resolve_byte_type(path_or_buf).unwrap();
+  let huf = create_huffman_lookup_table();
+
+  let settings = ParserInputs {
+    real_name_to_og_name: AHashMap::default(),
+    wanted_player_props: vec![],
+    wanted_player_props_og_names: vec![],
+    wanted_other_props: vec![],
+    wanted_other_props_og_names: vec![],
+    wanted_events: vec![],
+    parse_ents: false,
+    wanted_ticks: vec![],
+    parse_projectiles: false,
+    only_header: false,
+    count_props: false,
+    only_convars: false,
+    huffman_lookup_table: &huf,
+  };
+  let mut parser = Parser::new(&settings);
+  let output = parse_demo(bytes, &mut parser)?;
+  let out = match convert_voice_data_to_wav(output.voice_data) {
+    Ok(out) => out,
+    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+  };
+  let mut out_hm = HashMap::default();
+  for (steamid, bytes) in out {
+    out_hm.insert(steamid, bytes);
+  }
+  Ok(out_hm)
+}
 #[napi]
 pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
   let bytes = resolve_byte_type(path_or_buf)?;

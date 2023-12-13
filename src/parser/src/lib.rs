@@ -1,3 +1,4 @@
+#![feature(slice_group_by)]
 pub mod collect_data;
 pub mod decoder;
 pub mod entities;
@@ -18,3 +19,4 @@ pub mod read_bytes;
 pub mod sendtables;
 pub mod stringtables;
 pub mod variants;
+pub mod voice_data;
