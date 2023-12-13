@@ -1,4 +1,3 @@
-#![feature(slice_group_by)]
 pub mod collect_data;
 pub mod decoder;
 pub mod entities;
