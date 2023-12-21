@@ -4,8 +4,8 @@ use opus::Decoder;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use std::{i16, time::Instant};
-
 use crate::read_bits::DemoParserError;
+
 
 #[derive(Debug)]
 struct VoicePacket {
@@ -16,6 +16,7 @@ const FRAME_SIZE: usize = 480;
 const AVG_BYTES_PER_PACKET: usize = 1600;
 
 pub fn parse_voice_chunk(bytes: &[u8], decoder: &mut Decoder) -> Vec<i16> {
+    // based on https://github.com/DandrewsDev/CS2VoiceData
     let mut decoded_bytes = vec![];
     let packet = VoicePacket {
         // sample_rate: u16::from_le_bytes(bytes[9..11].try_into().unwrap()),
