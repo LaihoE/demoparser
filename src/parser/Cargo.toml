@@ -21,7 +21,6 @@ libc = "0.2.147"
 rayon = "1.7.0"
 protobuf-support = "3.3.0"
 proc-macro2 = "1.0.69"
-opus = "0.3.0"
 
 [dependencies.csgoproto]
 path = "../csgoproto"
