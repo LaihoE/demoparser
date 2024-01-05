@@ -18,4 +18,3 @@ pub mod read_bytes;
 pub mod sendtables;
 pub mod stringtables;
 pub mod variants;
-pub mod voice_data;
