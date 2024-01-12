@@ -12,7 +12,6 @@ use parser::parser_thread_settings::create_huffman_lookup_table;
 use parser::read_bits::DemoParserError;
 use parser::variants::VarVec;
 use parser::variants::Variant;
-use parser::voice_data::convert_voice_data_to_wav;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -120,6 +119,7 @@ impl DemoParser {
         };
         Ok(output.convars.to_object(py))
     }
+    /*
     pub fn parse_voice(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let mmap = match create_mmap(self.path.clone()) {
             Ok(mmap) => mmap,
@@ -161,7 +161,7 @@ impl DemoParser {
         }
         Ok(out_hm.to_object(py))
     }
-
+    */
     /// Returns the names of game events present in the demo
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let mmap = match create_mmap(self.path.clone()) {
