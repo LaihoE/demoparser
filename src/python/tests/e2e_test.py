@@ -434,10 +434,10 @@ class ParserTest(TestCase):
         df_correct = pd.read_parquet("tests/data/per_prop/is_bomb_dropped.parquet")
         assert_frame_equal(df, df_correct)
 
-    def test_is_bomb_planed(self):
+    def test_is_bomb_planted(self):
         parser = DemoParser("tests/data/test.dem")
-        df = parser.parse_ticks(["is_bomb_planed"], ticks=[x for x in range(100000) if x % 100 == 0])
-        df_correct = pd.read_parquet("tests/data/per_prop/is_bomb_planed.parquet")
+        df = parser.parse_ticks(["is_bomb_planted"], ticks=[x for x in range(100000) if x % 100 == 0])
+        df_correct = pd.read_parquet("tests/data/per_prop/is_bomb_planted.parquet")
         assert_frame_equal(df, df_correct)
 
     def test_round_win_status(self):

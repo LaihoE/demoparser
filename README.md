@@ -240,7 +240,7 @@ True/Flase if player is pressing button.
 | is_match_started | m_bHasMatchStarted  |
 | n_best_of_maps | m_numBestOfMaps  |
 | is_bomb_dropped | m_bBombDropped  |
-| is_bomb_planed | m_bBombPlanted  |
+| is_bomb_planted | m_bBombPlanted  |
 | round_win_status | m_iRoundWinStatus  |
 | round_win_reason | m_eRoundWinReason  |
 | terrorist_cant_buy | m_bTCantBuy  |
