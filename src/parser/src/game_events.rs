@@ -67,7 +67,7 @@ impl<'a> ParserThread<'a> {
                 return Ok(None);
             }
         };
-        // self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
+        self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
 
         // Return early if this is not a wanted event.
         if !self.wanted_events.contains(&event_desc.name().to_string()) && self.wanted_events.first() != Some(&"all".to_string())

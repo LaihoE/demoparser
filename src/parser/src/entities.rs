@@ -427,7 +427,7 @@ impl<'a> ParserThread<'a> {
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
             let b = &baseline_bytes.clone();
             let mut br = Bitreader::new(&b);
-            // self.update_entity(&mut br, *entity_id, true)?;
+            self.update_entity(&mut br, *entity_id, true)?;
         }
         Ok(())
     }
