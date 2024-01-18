@@ -139,8 +139,8 @@ impl<'a> ParserThread<'a> {
     pub fn decode(bitreader: &mut Bitreader, decoder: Decoder, qf_map: &QfMapper) -> Result<Variant, DemoParserError> {
         Ok(bitreader.decode(&decoder, &qf_map)?)
     }
-    pub fn debug_inspect(result: &Variant, field: &Field) {
-        if let Field::Value(v) = field {
+    pub fn debug_inspect(_result: &Variant, field: &Field) {
+        if let Field::Value(_v) = field {
             // println!("{:?} {:?}", v.full_name, result);
         }
     }

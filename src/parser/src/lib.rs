@@ -1,5 +1,6 @@
 pub mod collect_data;
 pub mod decoder;
+#[cfg(test)]
 pub mod e2e_test;
 pub mod entities;
 pub mod entities_utils;

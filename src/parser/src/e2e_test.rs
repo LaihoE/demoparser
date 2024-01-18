@@ -10,7 +10,7 @@ use itertools::Itertools;
 use memmap2::MmapOptions;
 use std::fs::File;
 
-pub fn create_tests() {
+pub fn _create_tests() {
     let wanted_events = vec![];
     let wanted_props = vec![
         "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_flLastTeleportTime".to_string(),

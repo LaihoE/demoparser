@@ -22,4 +22,4 @@ jobs:
           toolchain: stable
 
       - name: Build in src/parser directory
-        run: cargo build --release --all-features
+        run: cargo test --release
