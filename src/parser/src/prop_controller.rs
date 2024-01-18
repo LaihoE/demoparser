@@ -7,18 +7,8 @@ use crate::sendtables::Serializer;
 use crate::sendtables::ValueField;
 use ahash::AHashMap;
 
-const WEAPON_NAME_ID: u32 = 1;
-const YAW_ID: u32 = 2;
-const PITCH_ID: u32 = 3;
-pub const TICK_ID: u32 = 4;
-pub const STEAMID_ID: u32 = 5;
-const NAME_ID: u32 = 6;
-pub const PLAYER_X_ID: u32 = 7;
-pub const PLAYER_Y_ID: u32 = 8;
-pub const PLAYER_Z_ID: u32 = 9;
-const BUTTONS_BASEID: u32 = 100000;
-const NORMAL_PROP_BASEID: u32 = 1000;
-
+pub const BUTTONS_BASEID: u32 = 100000;
+pub const NORMAL_PROP_BASEID: u32 = 1000;
 pub const WEAPON_SKIN_ID: u32 = 420420420;
 pub const WEAPON_ORIGINGAL_OWNER_ID: u32 = 6942000;
 pub const MY_WEAPONS_OFFSET: u32 = 500000;
@@ -32,8 +22,16 @@ pub const VELOCITY_Y_ID: u32 = 100000005;
 pub const VELOCITY_Z_ID: u32 = 100000006;
 pub const VELOCITY_ID: u32 = 100000007;
 pub const USERID_ID: u32 = 100000008;
-
 pub const AGENT_SKIN_ID: u32 = 100000009;
+pub const WEAPON_NAME_ID: u32 = 100000010;
+pub const YAW_ID: u32 = 100000111;
+pub const PITCH_ID: u32 = 100000012;
+pub const TICK_ID: u32 = 100000013;
+pub const STEAMID_ID: u32 = 100000014;
+pub const NAME_ID: u32 = 100000015;
+pub const PLAYER_X_ID: u32 = 100000016;
+pub const PLAYER_Y_ID: u32 = 100000017;
+pub const PLAYER_Z_ID: u32 = 100000018;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -48,6 +46,7 @@ pub struct PropController {
     pub name_to_special_id: AHashMap<String, u32>,
     pub wanted_other_props: Vec<String>,
     pub event_with_velocity: bool,
+    pub needs_velocity: bool,
     pub path_to_name: AHashMap<[i32; 7], String>,
 }
 
@@ -71,6 +70,7 @@ impl PropController {
         wanted_player_props: Vec<String>,
         wanted_other_props: Vec<String>,
         real_name_to_og_name: AHashMap<String, String>,
+        needs_velocty: bool,
     ) -> Self {
         PropController {
             id: NORMAL_PROP_BASEID,
@@ -85,6 +85,7 @@ impl PropController {
             real_name_to_og_name: real_name_to_og_name,
             event_with_velocity: false,
             path_to_name: AHashMap::default(),
+            needs_velocity: needs_velocty,
         }
     }
     pub fn set_custom_propinfos(&mut self) {
@@ -309,13 +310,13 @@ impl PropController {
             // are the "same" prop. (they have same path and we want to refer to it with one id not ~20)
             Some(id) => {
                 f.prop_id = *id as u32;
-                // self.id_to_name.insert(*id, weap_prop.to_string());
+                self.id_to_name.insert(*id, weap_prop.to_string());
                 self.set_special_ids(&weap_prop, is_grenade_or_weapon, *id);
                 return;
             }
             None => {
                 self.name_to_id.insert(weap_prop.to_string(), self.id);
-                // self.id_to_name.insert(self.id, weap_prop.to_string());
+                self.id_to_name.insert(self.id, weap_prop.to_string());
                 f.prop_id = self.id as u32;
                 self.set_special_ids(&weap_prop, is_grenade_or_weapon, self.id);
             }
@@ -353,6 +354,7 @@ impl PropController {
         }
     }
     pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField, path: Vec<i32>) {
+        f.full_name = full_name.to_string();
         // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]
         let split_at_dot: Vec<&str> = full_name.split(".").collect();
         let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK"))
@@ -397,55 +399,6 @@ impl PropController {
         self.id += 1;
     }
 
-    fn should_parse(&self, name: &str) -> bool {
-        if self.wanted_player_props.contains(&"X".to_string())
-            || self.wanted_player_props.contains(&"Y".to_string())
-            || self.wanted_player_props.contains(&"Z".to_string())
-        {
-            if name.contains("cell") || name.contains("m_vec") {
-                return true;
-            }
-        }
-        if self.wanted_other_props.contains(&name.to_string()) {
-            return true;
-        }
-
-        let always_parse = vec![
-            "m_nOwnerId",
-            "m_iItemDefinitionIndex",
-            "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev",
-            "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon",
-            "CCSPlayerPawn.m_iTeamNum",
-            "CBasePlayerWeapon.m_nOwnerId",
-        ];
-        if self.wanted_player_props.contains(&("yaw").to_string())
-            || self.wanted_player_props.contains(&("pitch").to_string()) && name == "CCSPlayerPawn.m_angEyeAngles"
-        {
-            return true;
-        }
-        if always_parse.contains(&name) {
-            return true;
-        }
-        match TYPEHM.get(name) {
-            _ => {}
-        };
-        if name.contains("CCSTeam.m_iTeamNum")
-            || name.contains("CCSPlayerPawn.m_iTeamNum")
-            || name.contains("CCSPlayerController")
-            || name.contains("m_hActiveWeapon")
-            || name.contains("Weapons")
-            || name.contains("OriginalOwnerXuid")
-            || name.contains("Flash")
-            || name.contains("m_lifeState")
-            || name.contains("m_hMyWeapons")
-        {
-            return true;
-        }
-        if self.wanted_player_props.contains(&name.to_owned()) {
-            return true;
-        }
-        false
-    }
     fn set_special_ids(&mut self, name: &str, is_grenade_or_weapon: bool, id: u32) {
         if is_grenade_or_weapon {
             match name {

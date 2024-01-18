@@ -1,5 +1,6 @@
 pub mod collect_data;
 pub mod decoder;
+pub mod e2e_test;
 pub mod entities;
 pub mod entities_utils;
 pub mod fallbackbytes;

@@ -24,8 +24,10 @@ impl<'a> ParserThread<'a> {
         loop {
             let cmd = read_varint(outer_bytes, &mut self.ptr)?;
             let tick = read_varint(outer_bytes, &mut self.ptr)?;
+
             let size = read_varint(outer_bytes, &mut self.ptr)?;
             self.tick = tick as i32;
+
             // Safety check
             if self.ptr + size as usize >= outer_bytes.len() {
                 break;

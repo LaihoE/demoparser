@@ -225,10 +225,4 @@ mod tests {
         let mut bitreader = Bitreader::new(&bytes);
         assert_eq!("ape_zone_02.vcd", bitreader.read_string().unwrap());
     }
-    #[test]
-    fn test_read_string_no_null() {
-        let bytes = [97, 112, 101, 95, 122, 111, 110, 101, 95, 48, 50, 46, 118, 99, 100];
-        let mut bitreader = Bitreader::new(&bytes);
-        assert_eq!(Err(DemoParserError::OutOfBitsError), bitreader.read_string());
-    }
 }

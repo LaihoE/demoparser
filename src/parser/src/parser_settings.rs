@@ -88,6 +88,8 @@ pub struct Parser<'a> {
     pub header: AHashMap<String, String>,
     pub threads_spawned: u32,
     pub is_multithreadable: bool,
+
+    pub needs_velocity: bool,
 }
 pub fn needs_velocity(props: &[String]) -> bool {
     for prop in props {
@@ -101,6 +103,7 @@ pub fn needs_velocity(props: &[String]) -> bool {
 impl<'a> Parser<'a> {
     pub fn new(inputs: &'a ParserInputs<'a>) -> Self {
         Parser {
+            needs_velocity: false,
             added_temp_props: vec![],
             threads_spawned: 0,
             is_multithreadable: check_multithreadability(&inputs.wanted_player_props),
@@ -115,6 +118,7 @@ impl<'a> Parser<'a> {
                 inputs.wanted_player_props.clone(),
                 inputs.wanted_other_props.clone(),
                 inputs.real_name_to_og_name.clone(),
+                false,
             ),
             prop_controller_is_set: false,
             cls_by_id: None,

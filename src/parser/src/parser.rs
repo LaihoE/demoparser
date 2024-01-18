@@ -8,6 +8,7 @@ use crate::parser_settings::ParserInputs;
 use crate::parser_thread_settings::*;
 use crate::parser_threads::demo_cmd_type_from_int;
 use crate::prop_controller::PropController;
+use crate::prop_controller::TICK_ID;
 use crate::read_bits::Bitreader;
 use crate::read_bytes::read_varint;
 use crate::read_bytes::ProtoPacketParser;
@@ -57,7 +58,6 @@ impl<'a> Parser<'a> {
         self.ptr = 16;
         let mut sendtable = None;
         let mut buf = vec![0_u8; 100_000];
-        let mut biggest = 0;
 
         loop {
             let frame_starts_at = self.ptr;
@@ -65,8 +65,6 @@ impl<'a> Parser<'a> {
             let cmd = read_varint(outer_bytes, &mut self.ptr)?;
             let tick = read_varint(outer_bytes, &mut self.ptr)?;
             let size = read_varint(outer_bytes, &mut self.ptr)?;
-
-            biggest = u32::max(size, biggest);
 
             self.tick = tick as i32;
             // Safety check
@@ -168,7 +166,11 @@ impl<'a> Parser<'a> {
             self.wanted_player_props.retain(|x| x != prop);
             self.prop_controller.prop_infos.retain(|x| &x.prop_name != prop);
         }
-        return Ok(self.combine_thread_outputs(&mut vec![x]));
+        let mut outputs = self.combine_thread_outputs(&mut vec![x]);
+        if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
+            outputs.df = new_df;
+        }
+        Ok(outputs)
     }
     fn parse_demo_multithread(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
         let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
@@ -194,8 +196,40 @@ impl<'a> Parser<'a> {
             self.wanted_player_props.retain(|x| x != prop);
             self.prop_controller.prop_infos.retain(|x| &x.prop_name != prop);
         }
-        Ok(self.combine_thread_outputs(&mut ok))
+        let mut outputs = self.combine_thread_outputs(&mut ok);
+        if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
+            outputs.df = new_df;
+        }
+        Ok(outputs)
     }
+    fn rm_unwanted_ticks(&self, hm: &mut AHashMap<u32, PropColumn>) -> Option<AHashMap<u32, PropColumn>> {
+        // Used for removing ticks when velocity is needed
+        if self.wanted_ticks.is_empty() {
+            return None;
+        }
+
+        let mut wanted_indicies = vec![];
+
+        if let Some(ticks) = hm.get(&TICK_ID) {
+            if let Some(crate::variants::VarVec::I32(t)) = &ticks.data {
+                for (idx, val) in t.iter().enumerate() {
+                    if let Some(tick) = val {
+                        if self.wanted_ticks.contains(tick) {
+                            wanted_indicies.push(idx);
+                        }
+                    }
+                }
+            }
+        }
+        let mut new_df = AHashMap::default();
+        for (k, v) in hm {
+            if let Some(new) = v.slice_to_new(&wanted_indicies) {
+                new_df.insert(*k, new);
+            }
+        }
+        Some(new_df)
+    }
+
     /*
     fn parse_demo_multithread_no_rayon(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
         use std::thread;
