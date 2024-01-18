@@ -1,12 +1,12 @@
 use ahash::AHashMap;
 use memmap2::MmapOptions;
+use parser::e2e_test;
 use parser::parser_settings::Parser;
 use parser::parser_settings::ParserInputs;
 use parser::parser_thread_settings::create_huffman_lookup_table;
 use std::fs;
 use std::fs::File;
 use std::time::Instant;
-
 /*
 use mimalloc::MiMalloc;
 #[global_allocator]
@@ -21,8 +21,14 @@ use std::alloc::System;
 #[global_allocator]
 static GLOBAL: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
 */
+
 fn main() {
-    let wanted_props = vec!["X".to_string()];
+    e2e_test::create_tests();
+}
+
+/*
+fn main() {
+    let wanted_props = vec!["yaw".to_string()];
     let before = Instant::now();
     let dir = fs::read_dir("/home/laiho/Documents/demos/cs2/pov/").unwrap();
     let mut c = 0;
@@ -51,8 +57,8 @@ fn main() {
             real_name_to_og_name: AHashMap::default(),
             wanted_player_props: wanted_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
-            wanted_events: vec!["player_death".to_string()],
-            // wanted_events: vec![],
+            //wanted_events: vec!["player_death".to_string()],
+            wanted_events: vec![],
             wanted_other_props: vec![
                 "CCSTeam.m_iScore".to_string(),
                 "CCSTeam.m_szTeamname".to_string(),
@@ -73,16 +79,23 @@ fn main() {
         };
 
         let mut ds = Parser::new(&settings);
-        ds.is_multithreadable = true;
-        // let file = File::open("/home/laiho/Documents/programming/python/map/1.dem").unwrap();
-        let file = File::open(path.unwrap().path()).unwrap();
+        ds.is_multithreadable = false;
+
+        let file = File::open("/home/laiho/Documents/programming/rust/csnew2/demoparser/test_demo.dem").unwrap();
+        // let file = File::open(path.unwrap().path()).unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
 
         total += mmap.len();
 
         mmap.advise(memmap2::Advice::HugePage).unwrap();
-        let _d = ds.parse_demo(&mmap).unwrap();
-        // println!("{:?}", d.df);
+        let d = ds.parse_demo(&mmap).unwrap();
+        let mut s: Vec<&String> = d.game_events_counter.iter().collect();
+        s.sort();
+
+        for x in s {
+            println!("{:?}", x);
+        }
+        println!("{:?}", d.df[&2]);
         println!("TOTAL {:?}", before.elapsed());
     }
     println!("TOTAL {:?}", before.elapsed().as_millis());
@@ -92,3 +105,4 @@ fn main() {
 
     // println!("GB/S {:?}", x / 1_000_000_000.0);
 }
+*/

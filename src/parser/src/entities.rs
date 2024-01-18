@@ -127,6 +127,9 @@ impl<'a> ParserThread<'a> {
             };
             let result = ParserThread::decode(bitreader, decoder, &self.qf_mapper)?;
             if self.is_debug_mode {
+                if let Field::Value(v) = f {
+                    self.game_events_counter.insert(v.full_name.to_string());
+                }
                 ParserThread::debug_inspect(&result, f);
             }
             ParserThread::insert_field(entity, result, field_info);
@@ -137,7 +140,9 @@ impl<'a> ParserThread<'a> {
         Ok(bitreader.decode(&decoder, &qf_map)?)
     }
     pub fn debug_inspect(result: &Variant, field: &Field) {
-        if let Field::Value(v) = field {}
+        if let Field::Value(v) = field {
+            // println!("{:?} {:?}", v.full_name, result);
+        }
     }
     pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
         if let Some(fi) = field_info {
@@ -422,7 +427,7 @@ impl<'a> ParserThread<'a> {
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
             let b = &baseline_bytes.clone();
             let mut br = Bitreader::new(&b);
-            self.update_entity(&mut br, *entity_id, true)?;
+            // self.update_entity(&mut br, *entity_id, true)?;
         }
         Ok(())
     }

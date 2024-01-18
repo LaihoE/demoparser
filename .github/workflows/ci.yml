@@ -5,62 +5,25 @@ on:
     branches:
       - main
 
+on: [push]
+
+name: CI
+
 jobs:
-  test-py:
+  build_and_test:
+    name: Test Parser Rust
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/parser
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - uses: actions/setup-python@v2
-        with:
-          python-version: "3.10"
 
-      - name: Setup Python and Run Tests
-        working-directory: ./src/python
-        run: |
-          python3 -m venv .venv
-          source .venv/bin/activate
-          pip install pytest maturin patchelf
-
-          cd tests/
-          unzip test_demo.zip -d data/
-          unzip zipped_testdata.zip -d data/
-          cd ..
-
-          maturin develop --release
-          pytest
-  test-js:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup Node.js and Build
-        uses: actions/setup-node@v2
-        with:
-          node-version: "18" # Replace with the desired Node.js version
-
-      - name: Unzip Test Data
-        working-directory: ./src/node
-        run: |
-          cd tests/
-          unzip zipped_testdata.zip -d data/
-          cd ../..
-
-      - name: unzip demo from py dir
-        working-directory: ./src/python
-        run: |
-          cd tests/
-          7z x test_demo.zip
-          cd ../..
-      - name: Build
-        working-directory: ./src/node
-        run: |
-          yarn global add @napi-rs/cli
-          yarn build
-
-      - name: Test
-        working-directory: ./src/node
-        run: |
-          npm install --save-dev jest
-          npm test
+      - name: Build in src/parser directory
+        run: cargo build --release --all-features

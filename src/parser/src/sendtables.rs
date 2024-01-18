@@ -76,6 +76,7 @@ impl<'a> Parser<'a> {
             self.wanted_player_props.clone(),
             self.wanted_other_props.clone(),
             self.real_name_to_og_name.clone(),
+            needs_velocity(&self.wanted_player_props),
         );
         // Quantalized floats have their own helper struct
         let mut qf_mapper = QfMapper {
@@ -270,6 +271,7 @@ pub struct ValueField {
     pub name: String,
     pub should_parse: bool,
     pub prop_id: u32,
+    pub full_name: String,
     // pub path: Vec<i32>,
 }
 #[derive(Debug, Clone)]
@@ -318,6 +320,7 @@ impl ValueField {
             name: name.to_string(),
             prop_id: 0,
             should_parse: false,
+            full_name: "None ".to_string() + name,
         }
     }
 }
