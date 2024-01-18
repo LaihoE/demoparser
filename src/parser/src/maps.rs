@@ -1579,7 +1579,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "ZOOM" => PropType::Button,
     "SCOREBOARD" =>PropType::Button,
     "WALK" => PropType::Button,
-
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => PropType::Player,
     // TEAM
     "CCSTeam.m_iTeamNum" => PropType::Team,
@@ -1759,8 +1758,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_unTotalRoundDamageDealt" => PropType::Controller,
     "CCSPlayerController.m_bPawnIsAlive" => PropType::Controller,
     "CCSPlayerController.m_nPawnCharacterDefIndex" => PropType::Controller,
-
-
     "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iAccount" => PropType::Controller,
     "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iStartAccount" => PropType::Controller,
     "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iTotalCashSpent" => PropType::Controller,
@@ -1832,7 +1829,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_bIsOtherEnemy" => PropType::Controller,
     "CCSPlayerController.CCSPlayerController_DamageServices.CDamageRecord.m_killType" => PropType::Controller,
     "CCSPlayerController.m_iPing"=> PropType::Controller,
-
     "entity_id" => PropType::Custom,
     "CCSPlayerPawn.CCSPlayer_ItemServices.m_bHasDefuser" => PropType::Player,
     "CCSPlayerPawn.CCSPlayer_ItemServices.m_bHasHelmet" => PropType::Player,
@@ -1922,10 +1918,8 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_nHierarchyId" => PropType::Player,
     "CCSPlayerPawn.m_nCollisionFunctionMask" => PropType::Player,
     "CCSPlayerPawn.m_vecMaxs" => PropType::Player,
-
     "CCSPlayerPawn.m_nEnablePhysics" => PropType::Player,
     "CCSPlayerPawn.m_nAddDecal" => PropType::Player,
-
     "CCSPlayerPawn.m_vDecalPosition" => PropType::Player,
     "CCSPlayerPawn.m_vDecalForwardAxis" => PropType::Player,
     "CCSPlayerPawn.m_vecForce" => PropType::Player,
@@ -1934,7 +1928,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_arrForceSubtickMoveWhen" => PropType::Player,
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_vecLadderNormal" => PropType::Player,
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_nLadderSurfacePropIndex" => PropType::Player,
-
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDesiresDuck" => PropType::Player,
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_fStashGrenadeParameterWhen" => PropType::Player,
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_flOffsetTickCompleteTime" => PropType::Player,
@@ -1950,7 +1943,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_unFreezetimeEndEquipmentValue" => PropType::Player,
     "CCSPlayerPawn.m_bKilledByHeadshot" => PropType::Player,
     "CCSPlayerPawn.CCSPlayer_BulletServices.m_totalHitsOnServer" => PropType::Player,
-
     "CCSPlayerPawn.m_aimPunchAngle" => PropType::Player,
     "CCSPlayerPawn.m_aimPunchAngleVel"=> PropType::Player,
     "CCSPlayerPawn.m_aimPunchTickBase"=> PropType::Player,
@@ -1963,12 +1955,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_bRagdollDamageHeadshot"=> PropType::Player,
     "CCSPlayerPawn.m_vRagdollServerOrigin"=> PropType::Player,
     "CCSPlayerPawn.m_qDeathEyeAngles"=> PropType::Player,
-    // "CCSPlayerPawn.ViewAngleServerChange_t.nType" => PropType::Player,
-    // "CCSPlayerPawn.m_vecMaxs" => PropType::Player,
-    // "CCSPlayerPawn.m_vecMaxs" => PropType::Player,
-
-
-
     // Custom
     "X"=> PropType::Custom,
     "user_id"=> PropType::Custom,
@@ -1983,8 +1969,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_bSpottedByMask" => PropType::Custom,
     "agent_skin" => PropType::Custom,
     "is_alive" => PropType::Custom,
-
-
     // Weapon
     "m_flAnimTime" => PropType::Weapon,
     "m_flSimulationTime"=> PropType::Weapon,
@@ -2167,24 +2151,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "m_iClip2"=> PropType::Weapon,
     "m_pReserveAmmo"=> PropType::Weapon,
     "m_nViewModelIndex"=> PropType::Weapon,
-    // new
     "m_nDropTick"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-    //"m_nViewModelIndex"=> PropType::Weapon,
-
-
-
 };
 
 pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_map! {
