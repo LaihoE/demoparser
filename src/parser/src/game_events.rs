@@ -501,12 +501,12 @@ fn parse_key(key: &Key_t) -> Option<Variant> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EventField {
     pub name: String,
     pub data: Option<Variant>,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GameEvent {
     pub name: String,
     pub fields: Vec<EventField>,
