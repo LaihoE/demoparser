@@ -316,7 +316,7 @@ impl ValueField {
     pub fn new(decoder: Decoder, name: &str) -> ValueField {
         ValueField {
             decoder: decoder,
-            value: Variant::None,
+            value: Variant::String("NOTSET".to_string()),
             name: name.to_string(),
             prop_id: 0,
             should_parse: false,

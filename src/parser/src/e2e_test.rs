@@ -1,3 +1,4 @@
+use crate::game_events::GameEvent;
 use crate::parser::DemoOutput;
 use crate::parser_settings::Parser;
 use crate::parser_settings::ParserInputs;
@@ -8,7 +9,381 @@ use crate::variants::PropColumn;
 use ahash::AHashMap;
 use itertools::Itertools;
 use memmap2::MmapOptions;
+use std::collections::BTreeMap;
+use std::collections::HashSet;
 use std::fs::File;
+
+pub fn _create_ge_tests() {
+    let wanted_props = vec![
+        "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_flLastTeleportTime".to_string(),
+        "CCSPlayerPawn.CCSPlayer_BulletServices.m_totalHitsOnServer".to_string(),
+        "CCSPlayerPawn.CCSPlayer_ItemServices.m_bHasDefuser".to_string(),
+        "CCSPlayerPawn.CCSPlayer_ItemServices.m_bHasHelmet".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_arrForceSubtickMoveWhen".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDesiresDuck".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_bDuckOverride".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_bOldJumpPressed".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_fStashGrenadeParameterWhen".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_flDuckAmount".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_flDuckSpeed".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_flJumpUntil".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_flJumpVel".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_flOffsetTickCompleteTime".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_flOffsetTickStashedSpeed".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_flStamina".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_nLadderSurfacePropIndex".to_string(),
+        "CCSPlayerPawn.CCSPlayer_MovementServices.m_vecLadderNormal".to_string(),
+        "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo".to_string(),
+        "CCSPlayerPawn.m_ArmorValue".to_string(),
+        "CCSPlayerPawn.m_MoveType".to_string(),
+        "CCSPlayerPawn.m_aimPunchAngle".to_string(),
+        "CCSPlayerPawn.m_aimPunchAngleVel".to_string(),
+        "CCSPlayerPawn.m_aimPunchTickBase".to_string(),
+        "CCSPlayerPawn.m_aimPunchTickFraction".to_string(),
+        "CCSPlayerPawn.m_angEyeAngles".to_string(),
+        "CCSPlayerPawn.m_bClientRagdoll".to_string(),
+        "CCSPlayerPawn.m_bClientSideRagdoll".to_string(),
+        "CCSPlayerPawn.m_bHasMovedSinceSpawn".to_string(),
+        "CCSPlayerPawn.m_bInBombZone".to_string(),
+        "CCSPlayerPawn.m_bInBuyZone".to_string(),
+        "CCSPlayerPawn.m_bIsBuyMenuOpen".to_string(),
+        "CCSPlayerPawn.m_bIsDefusing".to_string(),
+        "CCSPlayerPawn.m_bIsScoped".to_string(),
+        "CCSPlayerPawn.m_bIsWalking".to_string(),
+        "CCSPlayerPawn.m_bKilledByHeadshot".to_string(),
+        "CCSPlayerPawn.m_bRagdollDamageHeadshot".to_string(),
+        "CCSPlayerPawn.m_bResumeZoom".to_string(),
+        "CCSPlayerPawn.m_bSpotted".to_string(),
+        "CCSPlayerPawn.m_bSpottedByMask".to_string(),
+        "CCSPlayerPawn.m_bWaitForNoAttack".to_string(),
+        "CCSPlayerPawn.m_fFlags".to_string(),
+        "CCSPlayerPawn.m_fMolotovDamageTime".to_string(),
+        "CCSPlayerPawn.m_flCreateTime".to_string(),
+        "CCSPlayerPawn.m_flDeathTime".to_string(),
+        "CCSPlayerPawn.m_flEmitSoundTime".to_string(),
+        "CCSPlayerPawn.m_flFlashDuration".to_string(),
+        "CCSPlayerPawn.m_flFlashMaxAlpha".to_string(),
+        "CCSPlayerPawn.m_flHitHeading".to_string(),
+        "CCSPlayerPawn.m_flProgressBarStartTime".to_string(),
+        "CCSPlayerPawn.m_flSlopeDropHeight".to_string(),
+        "CCSPlayerPawn.m_flSlopeDropOffset".to_string(),
+        "CCSPlayerPawn.m_flTimeOfLastInjury".to_string(),
+        "CCSPlayerPawn.m_flVelocityModifier".to_string(),
+        "CCSPlayerPawn.m_iHealth".to_string(),
+        "CCSPlayerPawn.m_iMoveState".to_string(),
+        "CCSPlayerPawn.m_iPlayerState".to_string(),
+        "CCSPlayerPawn.m_iProgressBarDuration".to_string(),
+        "CCSPlayerPawn.m_iShotsFired".to_string(),
+        "CCSPlayerPawn.m_iTeamNum".to_string(),
+        "CCSPlayerPawn.m_lifeState".to_string(),
+        "CCSPlayerPawn.m_nCollisionFunctionMask".to_string(),
+        "CCSPlayerPawn.m_nEnablePhysics".to_string(),
+        "CCSPlayerPawn.m_nEntityId".to_string(),
+        "CCSPlayerPawn.m_nForceBone".to_string(),
+        "CCSPlayerPawn.m_nHierarchyId".to_string(),
+        "CCSPlayerPawn.m_nHitBodyPart".to_string(),
+        "CCSPlayerPawn.m_nInteractsAs".to_string(),
+        "CCSPlayerPawn.m_nInteractsExclude".to_string(),
+        "CCSPlayerPawn.m_nInteractsWith".to_string(),
+        "CCSPlayerPawn.m_nLastConcurrentKilled".to_string(),
+        "CCSPlayerPawn.m_nLastKillerIndex".to_string(),
+        "CCSPlayerPawn.m_nRagdollDamageBone".to_string(),
+        "CCSPlayerPawn.m_nWhichBombZone".to_string(),
+        "CCSPlayerPawn.m_qDeathEyeAngles".to_string(),
+        "CCSPlayerPawn.m_szLastPlaceName".to_string(),
+        "CCSPlayerPawn.m_szRagdollDamageWeaponName".to_string(),
+        "CCSPlayerPawn.m_thirdPersonHeading".to_string(),
+        "CCSPlayerPawn.m_ubInterpolationFrame".to_string(),
+        "CCSPlayerPawn.m_unCurrentEquipmentValue".to_string(),
+        "CCSPlayerPawn.m_unFreezetimeEndEquipmentValue".to_string(),
+        "CCSPlayerPawn.m_unRoundStartEquipmentValue".to_string(),
+        "CCSPlayerPawn.m_vDecalForwardAxis".to_string(),
+        "CCSPlayerPawn.m_vDecalPosition".to_string(),
+        "CCSPlayerPawn.m_vHeadConstraintOffset".to_string(),
+        "CCSPlayerPawn.m_vRagdollDamageForce".to_string(),
+        "CCSPlayerPawn.m_vRagdollDamagePosition".to_string(),
+        "CCSPlayerPawn.m_vRagdollServerOrigin".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_bBombDropped".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_bBombPlanted".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_bFreezePeriod".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_bGameRestart".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_bHasMatchStarted".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_bTeamIntroPeriod".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_bWarmupPeriod".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_eRoundWinReason".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_fMatchStartTime".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_fRoundStartTime".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_fWarmupPeriodEnd".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_fWarmupPeriodStart".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_flGameStartTime".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_flRestartRoundTime".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_gamePhase".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_iMatchStats_PlayersAlive_CT".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_iMatchStats_PlayersAlive_T".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_iMatchStats_RoundResults".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_iNumConsecutiveCTLoses".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_iNumConsecutiveTerroristLoses".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_iRoundTime".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_iRoundWinStatus".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_nRoundsPlayedThisPhase".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_timeUntilNextPhaseStarts".to_string(),
+        "CCSGameRulesProxy.CCSGameRules.m_totalRoundsPlayed".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iAssists".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iCashEarned".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iDamage".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iDeaths".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iEnemiesFlashed".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iEquipmentValue".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iHeadShotKills".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iKillReward".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iKills".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iLiveTime".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iMoneySaved".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iObjective".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iUtilityDamage".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iAssists".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iCashEarned".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iDamage".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iDeaths".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemiesFlashed".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEnemy3Ks".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEquipmentValue".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iHeadShotKills".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iKillReward".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iKills".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iLiveTime".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iMoneySaved".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iNumRoundKills".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iNumRoundKillsHeadshots".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iObjective".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iUtilityDamage".to_string(),
+        "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_unTotalRoundDamageDealt".to_string(),
+        "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iAccount".to_string(),
+        "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iCashSpentThisRound".to_string(),
+        "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iStartAccount".to_string(),
+        "CCSPlayerController.CCSPlayerController_InGameMoneyServices.m_iTotalCashSpent".to_string(),
+        "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsFriendly".to_string(),
+        "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsLeader".to_string(),
+        "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicCommendsTeacher".to_string(),
+        "CCSPlayerController.CCSPlayerController_InventoryServices.m_nPersonaDataPublicLevel".to_string(),
+        "CCSPlayerController.CCSPlayerController_InventoryServices.m_rank".to_string(),
+        "CCSPlayerController.CCSPlayerController_InventoryServices.m_unMusicID".to_string(),
+        "CCSPlayerController.m_bCanControlObservedBot".to_string(),
+        "CCSPlayerController.m_bEverPlayedOnTeam".to_string(),
+        "CCSPlayerController.m_bPawnHasDefuser".to_string(),
+        "CCSPlayerController.m_bPawnHasHelmet".to_string(),
+        "CCSPlayerController.m_bPawnIsAlive".to_string(),
+        "CCSPlayerController.m_fFlags".to_string(),
+        "CCSPlayerController.m_flCreateTime".to_string(),
+        "CCSPlayerController.m_hOriginalControllerOfCurrentPawn".to_string(),
+        "CCSPlayerController.m_hPawn".to_string(),
+        "CCSPlayerController.m_hPlayerPawn".to_string(),
+        "CCSPlayerController.m_iCompTeammateColor".to_string(),
+        "CCSPlayerController.m_iCompetitiveRankType".to_string(),
+        "CCSPlayerController.m_iCompetitiveRanking".to_string(),
+        "CCSPlayerController.m_iCompetitiveRankingPredicted_Loss".to_string(),
+        "CCSPlayerController.m_iCompetitiveRankingPredicted_Tie".to_string(),
+        "CCSPlayerController.m_iCompetitiveRankingPredicted_Win".to_string(),
+        "CCSPlayerController.m_iCompetitiveWins".to_string(),
+        "CCSPlayerController.m_iConnected".to_string(),
+        "CCSPlayerController.m_iMVPs".to_string(),
+        "CCSPlayerController.m_iPawnArmor".to_string(),
+        "CCSPlayerController.m_iPawnHealth".to_string(),
+        "CCSPlayerController.m_iPawnLifetimeEnd".to_string(),
+        "CCSPlayerController.m_iPawnLifetimeStart".to_string(),
+        "CCSPlayerController.m_iPendingTeamNum".to_string(),
+        "CCSPlayerController.m_iPing".to_string(),
+        "CCSPlayerController.m_iScore".to_string(),
+        "CCSPlayerController.m_iTeamNum".to_string(),
+        "CCSPlayerController.m_iszPlayerName".to_string(),
+        "CCSPlayerController.m_nDisconnectionTick".to_string(),
+        "CCSPlayerController.m_nPawnCharacterDefIndex".to_string(),
+        "CCSPlayerController.m_nQuestProgressReason".to_string(),
+        "CCSPlayerController.m_nTickBase".to_string(),
+        "CCSPlayerController.m_steamID".to_string(),
+        "CCSPlayerController.m_szCrosshairCodes".to_string(),
+        "CCSPlayerController.m_unActiveQuestId".to_string(),
+        "CCSPlayerController.m_unPlayerTvControlFlags".to_string(),
+        "CBodyComponentBaseAnimGraph.m_MeshGroupMask".to_string(),
+        "CBodyComponentBaseAnimGraph.m_angRotation".to_string(),
+        "CBodyComponentBaseAnimGraph.m_cellX".to_string(),
+        "CBodyComponentBaseAnimGraph.m_cellY".to_string(),
+        "CBodyComponentBaseAnimGraph.m_cellZ".to_string(),
+        "CBodyComponentBaseAnimGraph.m_hParent".to_string(),
+        "CBodyComponentBaseAnimGraph.m_hSequence".to_string(),
+        "CBodyComponentBaseAnimGraph.m_nAnimLoopMode".to_string(),
+        "CBodyComponentBaseAnimGraph.m_nIdealMotionType".to_string(),
+        "CBodyComponentBaseAnimGraph.m_nNewSequenceParity".to_string(),
+        "CBodyComponentBaseAnimGraph.m_nRandomSeedOffset".to_string(),
+        "CBodyComponentBaseAnimGraph.m_nResetEventsParity".to_string(),
+        "CBodyComponentBaseAnimGraph.m_vecX".to_string(),
+        "CBodyComponentBaseAnimGraph.m_vecY".to_string(),
+        "CBodyComponentBaseAnimGraph.m_vecZ".to_string(),
+        "CEconItemAttribute.m_bSetBonus".to_string(),
+        "CEconItemAttribute.m_flInitialValue".to_string(),
+        "CEconItemAttribute.m_iAttributeDefinitionIndex".to_string(),
+        "CEconItemAttribute.m_iRawValue32".to_string(),
+        "CEconItemAttribute.m_nRefundableCurrency".to_string(),
+        "m_MoveType".to_string(),
+        "m_OriginalOwnerXuidHigh".to_string(),
+        "m_OriginalOwnerXuidLow".to_string(),
+        "m_bBurstMode".to_string(),
+        "m_bInReload".to_string(),
+        "m_bReloadVisuallyComplete".to_string(),
+        "m_fAccuracyPenalty".to_string(),
+        "m_fEffects".to_string(),
+        "m_fLastShotTime".to_string(),
+        "m_flCreateTime".to_string(),
+        "m_flDroppedAtTime".to_string(),
+        "m_flFireSequenceStartTime".to_string(),
+        "m_flNextPrimaryAttackTickRatio".to_string(),
+        "m_flNextSecondaryAttackTickRatio".to_string(),
+        "m_flRecoilIndex".to_string(),
+        "m_flSimulationTime".to_string(),
+        "m_flTimeSilencerSwitchComplete".to_string(),
+        "m_hOuter".to_string(),
+        "m_hOwnerEntity".to_string(),
+        "m_hPrevOwner".to_string(),
+        "m_iAccountID".to_string(),
+        "m_iClip1".to_string(),
+        "m_iClip2".to_string(),
+        "m_iEntityQuality".to_string(),
+        "m_iInventoryPosition".to_string(),
+        "m_iIronSightMode".to_string(),
+        "m_iItemIDHigh".to_string(),
+        "m_iItemIDLow".to_string(),
+        "m_iState".to_string(),
+        "m_nAddDecal".to_string(),
+        "m_nCollisionFunctionMask".to_string(),
+        "m_nDropTick".to_string(),
+        "m_nEnablePhysics".to_string(),
+        "m_nEntityId".to_string(),
+        "m_nFireSequenceStartTimeChange".to_string(),
+        "m_nHierarchyId".to_string(),
+        "m_nInteractsAs".to_string(),
+        "m_nNextPrimaryAttackTick".to_string(),
+        "m_nNextSecondaryAttackTick".to_string(),
+        "m_nNextThinkTick".to_string(),
+        "m_nOwnerId".to_string(),
+        "m_nSubclassID".to_string(),
+        "m_nViewModelIndex".to_string(),
+        "m_pReserveAmmo".to_string(),
+        "m_ubInterpolationFrame".to_string(),
+        "m_usSolidFlags".to_string(),
+        "m_vDecalForwardAxis".to_string(),
+        "m_vDecalPosition".to_string(),
+        "m_weaponMode".to_string(),
+        "X".to_string(),
+        "Y".to_string(),
+        "Z".to_string(),
+        "velocity".to_string(),
+        "velocity_X".to_string(),
+        "velocity_Y".to_string(),
+        "velocity_Z".to_string(),
+        "pitch".to_string(),
+        "yaw".to_string(),
+        "weapon_name".to_string(),
+        "weapon_skin".to_string(),
+        "active_weapon_original_owner".to_string(),
+        "inventory".to_string(),
+        "entity_id".to_string(),
+        "is_alive".to_string(),
+        "user_id".to_string(),
+        "agent_skin".to_string(),
+    ];
+
+    let wanted_events = vec!["all".to_string()];
+    let huf = create_huffman_lookup_table();
+
+    let settings = ParserInputs {
+        wanted_player_props: wanted_props.clone(),
+        wanted_events: wanted_events,
+        real_name_to_og_name: AHashMap::default(),
+        wanted_player_props_og_names: vec![],
+        wanted_other_props: vec![],
+        wanted_other_props_og_names: vec![],
+        parse_ents: true,
+        wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
+        parse_projectiles: true,
+        only_header: false,
+        count_props: false,
+        only_convars: false,
+        huffman_lookup_table: &huf,
+    };
+
+    let mut ds = Parser::new(&settings);
+    ds.is_multithreadable = false;
+    let file = File::open("test_demo.dem".to_string()).unwrap();
+    let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+    let d = ds.parse_demo(&mmap).unwrap();
+
+    let v = d.game_events.iter().filter(|x| x.name != "wplayer_hurt").collect_vec();
+    let mut events: HashSet<String> = HashSet::default();
+    let events = vec![
+        "hltv_versioninfo",
+        "round_freeze_end",
+        "weapon_reload",
+        "cs_pre_restart",
+        "weapon_fire",
+        "player_death",
+        "smokegrenade_expired",
+        "item_equip",
+        "bomb_planted",
+        "bomb_exploded",
+        "round_prestart",
+        "cs_round_final_beep",
+        "smokegrenade_detonate",
+        "player_footstep",
+        "buytime_ended",
+        "player_jump",
+        "weapon_zoom",
+        "round_poststart",
+        "bomb_pickup",
+        "player_blind",
+        "bomb_begindefuse",
+        "inferno_startburn",
+        "player_disconnect",
+        "player_hurt",
+        "bomb_beginplant",
+        "round_officially_ended",
+        "item_pickup",
+        "player_spawn",
+        "other_death",
+        "bomb_defused",
+        "begin_new_match",
+        "cs_win_panel_round",
+        "cs_win_panel_match",
+        "cs_round_start_beep",
+        "bomb_dropped",
+        "inferno_expire",
+        "round_end",
+        "round_start",
+        "round_time_warning",
+        "flashbang_detonate",
+        "round_mvp",
+        "round_announce_match_start",
+        "hegrenade_detonate",
+    ];
+
+    for name in events {
+        let mut v = d.game_events.iter().filter(|x| x.name == name).collect_vec();
+        v.truncate(2);
+        let test_name = "game_event_".to_string() + &name.replace(".", "_");
+        let s = "".to_string();
+        let s = s + &format!("fn {}() {{", test_name);
+        let s = s + "use crate::variants::Variant::*;";
+        let s = s + &format!("let prop = ({:?}, {:#?});", name, v);
+        let s = s.replace("[", "vec![");
+        let s = s.replace("\")", "\".to_string())");
+        let s = s.replace("\",", "\".to_string(),");
+
+        println!("#[test]");
+        println!("{}", s);
+        println!("assert_eq!(out.2[{:?}], prop.1);", name);
+        println!("}}");
+    }
+}
 
 pub fn _create_tests() {
     let wanted_events = vec![];
@@ -360,16 +735,15 @@ pub fn _create_tests() {
                 let s = s.replace("\")", "\".to_string())");
 
                 println!("#[test]");
-                println!("{}", s);
-                println!("let prop_id = out.1.name_to_id[prop.0];");
-                println!("assert_eq!(out.0.df[&prop_id], prop.1);");
+                println!("{:#?}", s);
+                println!("assert_eq!(out.2[prop.0], prop.1);");
                 println!("}}");
             }
         }
     }
 }
 
-fn create_data() -> (DemoOutput, PropController) {
+fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>>) {
     let wanted_props = vec![
         "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_flLastTeleportTime".to_string(),
         "CCSPlayerPawn.CCSPlayer_BulletServices.m_totalHitsOnServer".to_string(),
@@ -673,14 +1047,98 @@ fn create_data() -> (DemoOutput, PropController) {
 
     let file = File::open("test_demo.dem".to_string()).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-    let out = ds.parse_demo(&mmap).unwrap();
+    let out1 = ds.parse_demo(&mmap).unwrap();
 
-    (out, ds.prop_controller)
+    let wanted_events = vec!["all".to_string()];
+    let huf = create_huffman_lookup_table();
+
+    let settings = ParserInputs {
+        wanted_player_props: vec![],
+        wanted_events: wanted_events,
+        real_name_to_og_name: AHashMap::default(),
+        wanted_player_props_og_names: wanted_props.clone(),
+        wanted_other_props: vec![],
+        wanted_other_props_og_names: vec![],
+        parse_ents: true,
+        wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
+        parse_projectiles: true,
+        only_header: false,
+        count_props: false,
+        only_convars: false,
+        huffman_lookup_table: &huf,
+    };
+
+    let mut ds = Parser::new(&settings);
+    ds.is_multithreadable = false;
+    let file = File::open("test_demo.dem".to_string()).unwrap();
+    let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+    let out2 = ds.parse_demo(&mmap).unwrap();
+
+    let events = vec![
+        "hltv_versioninfo",
+        "round_freeze_end",
+        "weapon_reload",
+        "cs_pre_restart",
+        "weapon_fire",
+        "player_death",
+        "smokegrenade_expired",
+        "item_equip",
+        "bomb_planted",
+        "bomb_exploded",
+        "round_prestart",
+        "cs_round_final_beep",
+        "smokegrenade_detonate",
+        "player_footstep",
+        "buytime_ended",
+        "player_jump",
+        "weapon_zoom",
+        "round_poststart",
+        "bomb_pickup",
+        "player_blind",
+        "bomb_begindefuse",
+        "inferno_startburn",
+        "player_disconnect",
+        "player_hurt",
+        "bomb_beginplant",
+        "round_officially_ended",
+        "item_pickup",
+        "player_spawn",
+        "other_death",
+        "bomb_defused",
+        "begin_new_match",
+        "cs_win_panel_round",
+        "cs_win_panel_match",
+        "cs_round_start_beep",
+        "bomb_dropped",
+        "inferno_expire",
+        "round_end",
+        "round_start",
+        "round_time_warning",
+        "flashbang_detonate",
+        "round_mvp",
+        "round_announce_match_start",
+        "hegrenade_detonate",
+    ];
+    let mut hm = BTreeMap::default();
+
+    for name in events {
+        let mut v = out2
+            .game_events
+            .iter()
+            .map(|x| x.clone())
+            .filter(|x| x.name == name)
+            .collect_vec();
+        v.truncate(2);
+        hm.insert(name.to_string(), v);
+    }
+    (out1, ds.prop_controller, hm)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::e2e_test::create_data;
+    use crate::game_events::EventField;
+    use crate::game_events::GameEvent;
     use crate::parser::DemoOutput;
     use crate::prop_controller::PropController;
     use crate::prop_controller::PITCH_ID;
@@ -689,17 +1147,16 @@ mod tests {
     use crate::prop_controller::WEAPON_ORIGINGAL_OWNER_ID;
     use crate::prop_controller::YAW_ID;
     use crate::prop_controller::*;
-    use crate::read_bits::Bitreader;
-    use crate::read_bits::DemoParserError;
     use crate::variants::PropColumn;
     use crate::variants::VarVec::String;
     use crate::variants::VarVec::*;
-    use ahash::AHashMap;
     use lazy_static::lazy_static;
+    use std::collections::BTreeMap;
 
     lazy_static! {
-        static ref out: (DemoOutput, PropController) = create_data();
+        static ref out: (DemoOutput, PropController, BTreeMap<std::string::String, Vec<GameEvent>>) = create_data();
     }
+
     #[test]
     fn CEconItemAttribute_m_nRefundableCurrency() {
         let prop = (
@@ -14885,5 +15342,2491 @@ mod tests {
         );
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
+    }
+    #[test]
+    fn game_event_hltv_versioninfo() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "hltv_versioninfo".to_string(),
+            vec![GameEvent {
+                name: "hltv_versioninfo".to_string(),
+                fields: vec![
+                    EventField {
+                        name: "version".to_string(),
+                        data: Some(I32(1)),
+                    },
+                    EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(1)),
+                    },
+                ],
+                tick: 1,
+            }],
+        );
+        assert_eq!(out.2["hltv_versioninfo"], prop.1);
+    }
+    #[test]
+    fn game_event_round_freeze_end() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "round_freeze_end".to_string(),
+            vec![
+                GameEvent {
+                    name: "round_freeze_end".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(1761)),
+                    }],
+                    tick: 1761,
+                },
+                GameEvent {
+                    name: "round_freeze_end".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(10699)),
+                    }],
+                    tick: 10699,
+                },
+            ],
+        );
+        assert_eq!(out.2["round_freeze_end"], prop.1);
+    }
+    #[test]
+    fn game_event_weapon_reload() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "weapon_reload".to_string(),
+            vec![
+                GameEvent {
+                    name: "weapon_reload".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(1991)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Trahun <3 V".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198324843075".to_string())),
+                        },
+                    ],
+                    tick: 1991,
+                },
+                GameEvent {
+                    name: "weapon_reload".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(2016)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("-ExΩtiC-".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198258044111".to_string())),
+                        },
+                    ],
+                    tick: 2016,
+                },
+            ],
+        );
+        assert_eq!(out.2["weapon_reload"], prop.1);
+    }
+    #[test]
+    fn game_event_cs_pre_restart() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "cs_pre_restart".to_string(),
+            vec![
+                GameEvent {
+                    name: "cs_pre_restart".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(46)),
+                    }],
+                    tick: 46,
+                },
+                GameEvent {
+                    name: "cs_pre_restart".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(9400)),
+                    }],
+                    tick: 9400,
+                },
+            ],
+        );
+        assert_eq!(out.2["cs_pre_restart"], prop.1);
+    }
+    #[test]
+    fn game_event_weapon_fire() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "weapon_fire".to_string(),
+            vec![
+                GameEvent {
+                    name: "weapon_fire".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "weapon".to_string(),
+                            data: Some(String("weapon_usp_silencer".to_string())),
+                        },
+                        EventField {
+                            name: "silenced".to_string(),
+                            data: Some(Bool(true)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(1977)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Trahun <3 V".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198324843075".to_string())),
+                        },
+                    ],
+                    tick: 1977,
+                },
+                GameEvent {
+                    name: "weapon_fire".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "weapon".to_string(),
+                            data: Some(String("weapon_hkp2000".to_string())),
+                        },
+                        EventField {
+                            name: "silenced".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(1996)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("-ExΩtiC-".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198258044111".to_string())),
+                        },
+                    ],
+                    tick: 1996,
+                },
+            ],
+        );
+        assert_eq!(out.2["weapon_fire"], prop.1);
+    }
+    #[test]
+    fn game_event_player_death() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "player_death".to_string(),
+            vec![
+                GameEvent {
+                    name: "player_death".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "assistedflash".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "weapon".to_string(),
+                            data: Some(String("p250".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_itemid".to_string(),
+                            data: Some(String("0".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_fauxitemid".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_originalowner_xuid".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "headshot".to_string(),
+                            data: Some(Bool(true)),
+                        },
+                        EventField {
+                            name: "dominated".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "revenge".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "wipe".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "penetrated".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "noreplay".to_string(),
+                            data: Some(Bool(true)),
+                        },
+                        EventField {
+                            name: "noscope".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "thrusmoke".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "attackerblind".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "distance".to_string(),
+                            data: Some(F32(50.464794)),
+                        },
+                        EventField {
+                            name: "dmg_health".to_string(),
+                            data: Some(I32(100)),
+                        },
+                        EventField {
+                            name: "dmg_armor".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "hitgroup".to_string(),
+                            data: Some(I32(1)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(3086)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("miu miu".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198073049527".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                        EventField {
+                            name: "assister_steamid".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "assister_name".to_string(),
+                            data: None,
+                        },
+                    ],
+                    tick: 3086,
+                },
+                GameEvent {
+                    name: "player_death".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "assistedflash".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "weapon".to_string(),
+                            data: Some(String("fiveseven".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_itemid".to_string(),
+                            data: Some(String("0".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_fauxitemid".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_originalowner_xuid".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "headshot".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "dominated".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "revenge".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "wipe".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "penetrated".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "noreplay".to_string(),
+                            data: Some(Bool(true)),
+                        },
+                        EventField {
+                            name: "noscope".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "thrusmoke".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "attackerblind".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "distance".to_string(),
+                            data: Some(F32(6.9499903)),
+                        },
+                        EventField {
+                            name: "dmg_health".to_string(),
+                            data: Some(I32(28)),
+                        },
+                        EventField {
+                            name: "dmg_armor".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "hitgroup".to_string(),
+                            data: Some(I32(5)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(4285)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_name".to_string(),
+                            data: Some(String("Dog".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_steamid".to_string(),
+                            data: Some(String("76561198194694750".to_string())),
+                        },
+                        EventField {
+                            name: "assister_steamid".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "assister_name".to_string(),
+                            data: None,
+                        },
+                    ],
+                    tick: 4285,
+                },
+            ],
+        );
+        assert_eq!(out.2["player_death"], prop.1);
+    }
+    #[test]
+    fn game_event_smokegrenade_expired() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "smokegrenade_expired".to_string(),
+            vec![
+                GameEvent {
+                    name: "smokegrenade_expired".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(100)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(-1545.4756)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(259.92813)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-166.69106)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(4437)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 4437,
+                },
+                GameEvent {
+                    name: "smokegrenade_expired".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(204)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(253.67014)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(-1489.7667)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-173.96875)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(12694)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("povergo".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198280975787".to_string())),
+                        },
+                    ],
+                    tick: 12694,
+                },
+            ],
+        );
+        assert_eq!(out.2["smokegrenade_expired"], prop.1);
+    }
+    #[test]
+    fn game_event_item_equip() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "item_equip".to_string(),
+            vec![
+                GameEvent {
+                    name: "item_equip".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "item".to_string(),
+                            data: Some(String("hkp2000".to_string())),
+                        },
+                        EventField {
+                            name: "defindex".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "canzoom".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "hassilencer".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "issilenced".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "hastracers".to_string(),
+                            data: Some(Bool(true)),
+                        },
+                        EventField {
+                            name: "weptype".to_string(),
+                            data: Some(I32(1)),
+                        },
+                        EventField {
+                            name: "ispainted".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(23)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("-ExΩtiC-".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198258044111".to_string())),
+                        },
+                    ],
+                    tick: 23,
+                },
+                GameEvent {
+                    name: "item_equip".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "item".to_string(),
+                            data: Some(String("hkp2000".to_string())),
+                        },
+                        EventField {
+                            name: "defindex".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "canzoom".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "hassilencer".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "issilenced".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "hastracers".to_string(),
+                            data: Some(Bool(true)),
+                        },
+                        EventField {
+                            name: "weptype".to_string(),
+                            data: Some(I32(1)),
+                        },
+                        EventField {
+                            name: "ispainted".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(23)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("-ExΩtiC-".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198258044111".to_string())),
+                        },
+                    ],
+                    tick: 23,
+                },
+            ],
+        );
+        assert_eq!(out.2["item_equip"], prop.1);
+    }
+    #[test]
+    fn game_event_bomb_planted() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "bomb_planted".to_string(),
+            vec![
+                GameEvent {
+                    name: "bomb_planted".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "site".to_string(),
+                            data: Some(I32(185)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(8259)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 8259,
+                },
+                GameEvent {
+                    name: "bomb_planted".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "site".to_string(),
+                            data: Some(I32(184)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(13361)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                    ],
+                    tick: 13361,
+                },
+            ],
+        );
+        assert_eq!(out.2["bomb_planted"], prop.1);
+    }
+    #[test]
+    fn game_event_bomb_exploded() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "bomb_exploded".to_string(),
+            vec![
+                GameEvent {
+                    name: "bomb_exploded".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "site".to_string(),
+                            data: Some(I32(184)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(38820)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 38820,
+                },
+                GameEvent {
+                    name: "bomb_exploded".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "site".to_string(),
+                            data: Some(I32(185)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(51718)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 51718,
+                },
+            ],
+        );
+        assert_eq!(out.2["bomb_exploded"], prop.1);
+    }
+    #[test]
+    fn game_event_round_prestart() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "round_prestart".to_string(),
+            vec![
+                GameEvent {
+                    name: "round_prestart".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(65)),
+                    }],
+                    tick: 65,
+                },
+                GameEvent {
+                    name: "round_prestart".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(9419)),
+                    }],
+                    tick: 9419,
+                },
+            ],
+        );
+        assert_eq!(out.2["round_prestart"], prop.1);
+    }
+    #[test]
+    fn game_event_cs_round_final_beep() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "cs_round_final_beep".to_string(),
+            vec![
+                GameEvent {
+                    name: "cs_round_final_beep".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(1761)),
+                    }],
+                    tick: 1761,
+                },
+                GameEvent {
+                    name: "cs_round_final_beep".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(10699)),
+                    }],
+                    tick: 10699,
+                },
+            ],
+        );
+        assert_eq!(out.2["cs_round_final_beep"], prop.1);
+    }
+    #[test]
+    fn game_event_smokegrenade_detonate() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "smokegrenade_detonate".to_string(),
+            vec![
+                GameEvent {
+                    name: "smokegrenade_detonate".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(100)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(-1545.4756)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(259.92813)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-166.69106)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(3025)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 3025,
+                },
+                GameEvent {
+                    name: "smokegrenade_detonate".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(204)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(253.67014)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(-1489.7667)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-173.96875)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(11282)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("povergo".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198280975787".to_string())),
+                        },
+                    ],
+                    tick: 11282,
+                },
+            ],
+        );
+        assert_eq!(out.2["smokegrenade_detonate"], prop.1);
+    }
+    #[test]
+    fn game_event_player_footstep() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "player_footstep".to_string(),
+            vec![
+                GameEvent {
+                    name: "player_footstep".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(1823)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Trahun <3 V".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198324843075".to_string())),
+                        },
+                    ],
+                    tick: 1823,
+                },
+                GameEvent {
+                    name: "player_footstep".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(1843)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("NIGHTSOUL".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198244754626".to_string())),
+                        },
+                    ],
+                    tick: 1843,
+                },
+            ],
+        );
+        assert_eq!(out.2["player_footstep"], prop.1);
+    }
+    #[test]
+    fn game_event_buytime_ended() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "buytime_ended".to_string(),
+            vec![
+                GameEvent {
+                    name: "buytime_ended".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(65)),
+                    }],
+                    tick: 65,
+                },
+                GameEvent {
+                    name: "buytime_ended".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(3042)),
+                    }],
+                    tick: 3042,
+                },
+            ],
+        );
+        assert_eq!(out.2["buytime_ended"], prop.1);
+    }
+    #[test]
+    fn game_event_player_jump() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "player_jump".to_string(),
+            vec![
+                GameEvent {
+                    name: "player_jump".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(1823)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Trahun <3 V".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198324843075".to_string())),
+                        },
+                    ],
+                    tick: 1823,
+                },
+                GameEvent {
+                    name: "player_jump".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(2058)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                    ],
+                    tick: 2058,
+                },
+            ],
+        );
+        assert_eq!(out.2["player_jump"], prop.1);
+    }
+    #[test]
+    fn game_event_weapon_zoom() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "weapon_zoom".to_string(),
+            vec![
+                GameEvent {
+                    name: "weapon_zoom".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(11111)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("-ExΩtiC-".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198258044111".to_string())),
+                        },
+                    ],
+                    tick: 11111,
+                },
+                GameEvent {
+                    name: "weapon_zoom".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(11130)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("-ExΩtiC-".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198258044111".to_string())),
+                        },
+                    ],
+                    tick: 11130,
+                },
+            ],
+        );
+        assert_eq!(out.2["weapon_zoom"], prop.1);
+    }
+    #[test]
+    fn game_event_round_poststart() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "round_poststart".to_string(),
+            vec![
+                GameEvent {
+                    name: "round_poststart".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(65)),
+                    }],
+                    tick: 65,
+                },
+                GameEvent {
+                    name: "round_poststart".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(9419)),
+                    }],
+                    tick: 9419,
+                },
+            ],
+        );
+        assert_eq!(out.2["round_poststart"], prop.1);
+    }
+    #[test]
+    fn game_event_bomb_pickup() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "bomb_pickup".to_string(),
+            vec![
+                GameEvent {
+                    name: "bomb_pickup".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(65)),
+                    }],
+                    tick: 65,
+                },
+                GameEvent {
+                    name: "bomb_pickup".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(5839)),
+                    }],
+                    tick: 5839,
+                },
+            ],
+        );
+        assert_eq!(out.2["bomb_pickup"], prop.1);
+    }
+    #[test]
+    fn game_event_player_blind() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "player_blind".to_string(),
+            vec![
+                GameEvent {
+                    name: "player_blind".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(138)),
+                        },
+                        EventField {
+                            name: "blind_duration".to_string(),
+                            data: Some(F32(0.26377675)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(4213)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 4213,
+                },
+                GameEvent {
+                    name: "player_blind".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(138)),
+                        },
+                        EventField {
+                            name: "blind_duration".to_string(),
+                            data: Some(F32(3.6708884)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(4213)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Голова, глаза".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198118803912".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 4213,
+                },
+            ],
+        );
+        assert_eq!(out.2["player_blind"], prop.1);
+    }
+    #[test]
+    fn game_event_bomb_begindefuse() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "bomb_begindefuse".to_string(),
+            vec![GameEvent {
+                name: "bomb_begindefuse".to_string(),
+                fields: vec![
+                    EventField {
+                        name: "haskit".to_string(),
+                        data: Some(Bool(false)),
+                    },
+                    EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(14592)),
+                    },
+                    EventField {
+                        name: "user_name".to_string(),
+                        data: Some(String("-ExΩtiC-".to_string())),
+                    },
+                    EventField {
+                        name: "user_steamid".to_string(),
+                        data: Some(String("76561198258044111".to_string())),
+                    },
+                ],
+                tick: 14592,
+            }],
+        );
+        assert_eq!(out.2["bomb_begindefuse"], prop.1);
+    }
+    #[test]
+    fn game_event_inferno_startburn() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "inferno_startburn".to_string(),
+            vec![
+                GameEvent {
+                    name: "inferno_startburn".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(421)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(109.69482)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(-1630.7711)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-169.96875)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(17282)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("povergo".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198280975787".to_string())),
+                        },
+                    ],
+                    tick: 17282,
+                },
+                GameEvent {
+                    name: "inferno_startburn".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(429)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(-1029.7075)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(-468.01788)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-309.96875)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(17690)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("-ExΩtiC-".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198258044111".to_string())),
+                        },
+                    ],
+                    tick: 17690,
+                },
+            ],
+        );
+        assert_eq!(out.2["inferno_startburn"], prop.1);
+    }
+    #[test]
+    fn game_event_player_disconnect() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "player_disconnect".to_string(),
+            vec![
+                GameEvent {
+                    name: "player_disconnect".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "reason".to_string(),
+                            data: Some(I32(2)),
+                        },
+                        EventField {
+                            name: "name".to_string(),
+                            data: Some(String("povergo".to_string())),
+                        },
+                        EventField {
+                            name: "networkid".to_string(),
+                            data: Some(String("[U:1:320710059]".to_string())),
+                        },
+                        EventField {
+                            name: "xuid".to_string(),
+                            data: Some(U64(76561198280975787)),
+                        },
+                        EventField {
+                            name: "PlayerID".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(55752)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("povergo".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198280975787".to_string())),
+                        },
+                    ],
+                    tick: 55752,
+                },
+                GameEvent {
+                    name: "player_disconnect".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "reason".to_string(),
+                            data: Some(I32(2)),
+                        },
+                        EventField {
+                            name: "name".to_string(),
+                            data: Some(String("123".to_string())),
+                        },
+                        EventField {
+                            name: "networkid".to_string(),
+                            data: Some(String("[U:1:305101042]".to_string())),
+                        },
+                        EventField {
+                            name: "xuid".to_string(),
+                            data: Some(U64(76561198265366770)),
+                        },
+                        EventField {
+                            name: "PlayerID".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(57208)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("123".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198265366770".to_string())),
+                        },
+                    ],
+                    tick: 57208,
+                },
+            ],
+        );
+        assert_eq!(out.2["player_disconnect"], prop.1);
+    }
+    #[test]
+    fn game_event_player_hurt() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "player_hurt".to_string(),
+            vec![
+                GameEvent {
+                    name: "player_hurt".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "health".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "armor".to_string(),
+                            data: Some(I32(100)),
+                        },
+                        EventField {
+                            name: "weapon".to_string(),
+                            data: Some(String("p250".to_string())),
+                        },
+                        EventField {
+                            name: "dmg_health".to_string(),
+                            data: Some(I32(100)),
+                        },
+                        EventField {
+                            name: "dmg_armor".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "hitgroup".to_string(),
+                            data: Some(I32(1)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(3086)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("miu miu".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198073049527".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                    ],
+                    tick: 3086,
+                },
+                GameEvent {
+                    name: "player_hurt".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "health".to_string(),
+                            data: Some(I32(72)),
+                        },
+                        EventField {
+                            name: "armor".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "weapon".to_string(),
+                            data: Some(String("hkp2000".to_string())),
+                        },
+                        EventField {
+                            name: "dmg_health".to_string(),
+                            data: Some(I32(28)),
+                        },
+                        EventField {
+                            name: "dmg_armor".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "hitgroup".to_string(),
+                            data: Some(I32(2)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(3917)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("NIGHTSOUL".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198244754626".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_name".to_string(),
+                            data: Some(String("Trahun <3 V".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_steamid".to_string(),
+                            data: Some(String("76561198324843075".to_string())),
+                        },
+                    ],
+                    tick: 3917,
+                },
+            ],
+        );
+        assert_eq!(out.2["player_hurt"], prop.1);
+    }
+    #[test]
+    fn game_event_bomb_beginplant() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "bomb_beginplant".to_string(),
+            vec![
+                GameEvent {
+                    name: "bomb_beginplant".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "site".to_string(),
+                            data: Some(I32(185)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(8049)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 8049,
+                },
+                GameEvent {
+                    name: "bomb_beginplant".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "site".to_string(),
+                            data: Some(I32(184)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(13164)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                    ],
+                    tick: 13164,
+                },
+            ],
+        );
+        assert_eq!(out.2["bomb_beginplant"], prop.1);
+    }
+    #[test]
+    fn game_event_round_officially_ended() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "round_officially_ended".to_string(),
+            vec![
+                GameEvent {
+                    name: "round_officially_ended".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(9419)),
+                    }],
+                    tick: 9419,
+                },
+                GameEvent {
+                    name: "round_officially_ended".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(15680)),
+                    }],
+                    tick: 15680,
+                },
+            ],
+        );
+        assert_eq!(out.2["round_officially_ended"], prop.1);
+    }
+    #[test]
+    fn game_event_item_pickup() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "item_pickup".to_string(),
+            vec![
+                GameEvent {
+                    name: "item_pickup".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "item".to_string(),
+                            data: Some(String("knife".to_string())),
+                        },
+                        EventField {
+                            name: "silent".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "defindex".to_string(),
+                            data: Some(I32(59)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(65)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                    ],
+                    tick: 65,
+                },
+                GameEvent {
+                    name: "item_pickup".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "item".to_string(),
+                            data: Some(String("glock".to_string())),
+                        },
+                        EventField {
+                            name: "silent".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "defindex".to_string(),
+                            data: Some(I32(4)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(65)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                    ],
+                    tick: 65,
+                },
+            ],
+        );
+        assert_eq!(out.2["item_pickup"], prop.1);
+    }
+    #[test]
+    fn game_event_player_spawn() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "player_spawn".to_string(),
+            vec![
+                GameEvent {
+                    name: "player_spawn".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(65)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                    ],
+                    tick: 65,
+                },
+                GameEvent {
+                    name: "player_spawn".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(65)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("miu miu".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198073049527".to_string())),
+                        },
+                    ],
+                    tick: 65,
+                },
+            ],
+        );
+        assert_eq!(out.2["player_spawn"], prop.1);
+    }
+    #[test]
+    fn game_event_other_death() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "other_death".to_string(),
+            vec![
+                GameEvent {
+                    name: "other_death".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "otherid".to_string(),
+                            data: Some(I32(271)),
+                        },
+                        EventField {
+                            name: "othertype".to_string(),
+                            data: Some(String("prop_physics_multiplayer".to_string())),
+                        },
+                        EventField {
+                            name: "weapon".to_string(),
+                            data: Some(String("usp_silencer".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_itemid".to_string(),
+                            data: Some(String("35283237811".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_fauxitemid".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_originalowner_xuid".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "headshot".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "penetrated".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "noscope".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "thrusmoke".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "attackerblind".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(1977)),
+                        },
+                        EventField {
+                            name: "attacker_name".to_string(),
+                            data: Some(String("Trahun <3 V".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_steamid".to_string(),
+                            data: Some(String("76561198324843075".to_string())),
+                        },
+                    ],
+                    tick: 1977,
+                },
+                GameEvent {
+                    name: "other_death".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "otherid".to_string(),
+                            data: Some(I32(97)),
+                        },
+                        EventField {
+                            name: "othertype".to_string(),
+                            data: Some(String("prop_dynamic".to_string())),
+                        },
+                        EventField {
+                            name: "weapon".to_string(),
+                            data: Some(String("hkp2000".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_itemid".to_string(),
+                            data: Some(String("0".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_fauxitemid".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "weapon_originalowner_xuid".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "headshot".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "penetrated".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "noscope".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "thrusmoke".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "attackerblind".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(1996)),
+                        },
+                        EventField {
+                            name: "attacker_name".to_string(),
+                            data: Some(String("-ExΩtiC-".to_string())),
+                        },
+                        EventField {
+                            name: "attacker_steamid".to_string(),
+                            data: Some(String("76561198258044111".to_string())),
+                        },
+                    ],
+                    tick: 1996,
+                },
+            ],
+        );
+        assert_eq!(out.2["other_death"], prop.1);
+    }
+    #[test]
+    fn game_event_bomb_defused() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "bomb_defused".to_string(),
+            vec![GameEvent {
+                name: "bomb_defused".to_string(),
+                fields: vec![
+                    EventField {
+                        name: "site".to_string(),
+                        data: Some(I32(184)),
+                    },
+                    EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(15232)),
+                    },
+                    EventField {
+                        name: "user_name".to_string(),
+                        data: Some(String("-ExΩtiC-".to_string())),
+                    },
+                    EventField {
+                        name: "user_steamid".to_string(),
+                        data: Some(String("76561198258044111".to_string())),
+                    },
+                ],
+                tick: 15232,
+            }],
+        );
+        assert_eq!(out.2["bomb_defused"], prop.1);
+    }
+    #[test]
+    fn game_event_begin_new_match() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "begin_new_match".to_string(),
+            vec![GameEvent {
+                name: "begin_new_match".to_string(),
+                fields: vec![EventField {
+                    name: "tick".to_string(),
+                    data: Some(I32(67)),
+                }],
+                tick: 67,
+            }],
+        );
+        assert_eq!(out.2["begin_new_match"], prop.1);
+    }
+    #[test]
+    fn game_event_cs_win_panel_round() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "cs_win_panel_round".to_string(),
+            vec![
+                GameEvent {
+                    name: "cs_win_panel_round".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "show_timer_defend".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "show_timer_attack".to_string(),
+                            data: Some(Bool(true)),
+                        },
+                        EventField {
+                            name: "timer_time".to_string(),
+                            data: Some(I32(112)),
+                        },
+                        EventField {
+                            name: "final_event".to_string(),
+                            data: Some(I32(9)),
+                        },
+                        EventField {
+                            name: "funfact_token".to_string(),
+                            data: Some(String("#funfact_kills_headshots".to_string())),
+                        },
+                        EventField {
+                            name: "funfact_player".to_string(),
+                            data: Some(I32(4)),
+                        },
+                        EventField {
+                            name: "funfact_data1".to_string(),
+                            data: Some(I32(2)),
+                        },
+                        EventField {
+                            name: "funfact_data2".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "funfact_data3".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(8971)),
+                        },
+                    ],
+                    tick: 8971,
+                },
+                GameEvent {
+                    name: "cs_win_panel_round".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "show_timer_defend".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                        EventField {
+                            name: "show_timer_attack".to_string(),
+                            data: Some(Bool(true)),
+                        },
+                        EventField {
+                            name: "timer_time".to_string(),
+                            data: Some(I32(70)),
+                        },
+                        EventField {
+                            name: "final_event".to_string(),
+                            data: Some(I32(7)),
+                        },
+                        EventField {
+                            name: "funfact_token".to_string(),
+                            data: Some(String("#funfact_grenades_thrown".to_string())),
+                        },
+                        EventField {
+                            name: "funfact_player".to_string(),
+                            data: Some(I32(3)),
+                        },
+                        EventField {
+                            name: "funfact_data1".to_string(),
+                            data: Some(I32(3)),
+                        },
+                        EventField {
+                            name: "funfact_data2".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "funfact_data3".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(15232)),
+                        },
+                    ],
+                    tick: 15232,
+                },
+            ],
+        );
+        assert_eq!(out.2["cs_win_panel_round"], prop.1);
+    }
+    #[test]
+    fn game_event_cs_win_panel_match() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "cs_win_panel_match".to_string(),
+            vec![GameEvent {
+                name: "cs_win_panel_match".to_string(),
+                fields: vec![EventField {
+                    name: "tick".to_string(),
+                    data: Some(I32(56898)),
+                }],
+                tick: 56898,
+            }],
+        );
+        assert_eq!(out.2["cs_win_panel_match"], prop.1);
+    }
+    #[test]
+    fn game_event_cs_round_start_beep() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "cs_round_start_beep".to_string(),
+            vec![
+                GameEvent {
+                    name: "cs_round_start_beep".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(1570)),
+                    }],
+                    tick: 1570,
+                },
+                GameEvent {
+                    name: "cs_round_start_beep".to_string(),
+                    fields: vec![EventField {
+                        name: "tick".to_string(),
+                        data: Some(I32(1634)),
+                    }],
+                    tick: 1634,
+                },
+            ],
+        );
+        assert_eq!(out.2["cs_round_start_beep"], prop.1);
+    }
+    #[test]
+    fn game_event_bomb_dropped() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "bomb_dropped".to_string(),
+            vec![
+                GameEvent {
+                    name: "bomb_dropped".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entindex".to_string(),
+                            data: Some(I32(230)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(4285)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                    ],
+                    tick: 4285,
+                },
+                GameEvent {
+                    name: "bomb_dropped".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entindex".to_string(),
+                            data: Some(I32(148)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(15949)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("123".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198265366770".to_string())),
+                        },
+                    ],
+                    tick: 15949,
+                },
+            ],
+        );
+        assert_eq!(out.2["bomb_dropped"], prop.1);
+    }
+    #[test]
+    fn game_event_inferno_expire() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "inferno_expire".to_string(),
+            vec![
+                GameEvent {
+                    name: "inferno_expire".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(421)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(109.69482)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(-1630.7711)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-169.96875)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(17732)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("povergo".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198280975787".to_string())),
+                        },
+                    ],
+                    tick: 17732,
+                },
+                GameEvent {
+                    name: "inferno_expire".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(429)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(-1029.7075)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(-468.01788)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-309.96875)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(18140)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("-ExΩtiC-".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198258044111".to_string())),
+                        },
+                    ],
+                    tick: 18140,
+                },
+            ],
+        );
+        assert_eq!(out.2["inferno_expire"], prop.1);
+    }
+    #[test]
+    fn game_event_round_end() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "round_end".to_string(),
+            vec![
+                GameEvent {
+                    name: "round_end".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "winner".to_string(),
+                            data: Some(I32(2)),
+                        },
+                        EventField {
+                            name: "reason".to_string(),
+                            data: Some(I32(9)),
+                        },
+                        EventField {
+                            name: "message".to_string(),
+                            data: Some(String("#SFUI_Notice_Terrorists_Win".to_string())),
+                        },
+                        EventField {
+                            name: "legacy".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "player_count".to_string(),
+                            data: Some(I32(20)),
+                        },
+                        EventField {
+                            name: "nomusic".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(8971)),
+                        },
+                    ],
+                    tick: 8971,
+                },
+                GameEvent {
+                    name: "round_end".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "winner".to_string(),
+                            data: Some(I32(3)),
+                        },
+                        EventField {
+                            name: "reason".to_string(),
+                            data: Some(I32(7)),
+                        },
+                        EventField {
+                            name: "message".to_string(),
+                            data: Some(String("#SFUI_Notice_Bomb_Defused".to_string())),
+                        },
+                        EventField {
+                            name: "legacy".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "player_count".to_string(),
+                            data: Some(I32(20)),
+                        },
+                        EventField {
+                            name: "nomusic".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(15232)),
+                        },
+                    ],
+                    tick: 15232,
+                },
+            ],
+        );
+        assert_eq!(out.2["round_end"], prop.1);
+    }
+    #[test]
+    fn game_event_round_start() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "round_start".to_string(),
+            vec![
+                GameEvent {
+                    name: "round_start".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "timelimit".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "fraglimit".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "objective".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(65)),
+                        },
+                    ],
+                    tick: 65,
+                },
+                GameEvent {
+                    name: "round_start".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "timelimit".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "fraglimit".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "objective".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(9419)),
+                        },
+                    ],
+                    tick: 9419,
+                },
+            ],
+        );
+        assert_eq!(out.2["round_start"], prop.1);
+    }
+    #[test]
+    fn game_event_round_time_warning() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "round_time_warning".to_string(),
+            vec![GameEvent {
+                name: "round_time_warning".to_string(),
+                fields: vec![EventField {
+                    name: "tick".to_string(),
+                    data: Some(I32(8482)),
+                }],
+                tick: 8482,
+            }],
+        );
+        assert_eq!(out.2["round_time_warning"], prop.1);
+    }
+    #[test]
+    fn game_event_flashbang_detonate() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "flashbang_detonate".to_string(),
+            vec![
+                GameEvent {
+                    name: "flashbang_detonate".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(138)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(-813.8123)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(23.765327)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-65.055046)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(4213)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 4213,
+                },
+                GameEvent {
+                    name: "flashbang_detonate".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(214)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(-662.246)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(-492.32172)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(256.63577)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(11213)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("123".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198265366770".to_string())),
+                        },
+                    ],
+                    tick: 11213,
+                },
+            ],
+        );
+        assert_eq!(out.2["flashbang_detonate"], prop.1);
+    }
+    #[test]
+    fn game_event_round_mvp() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "round_mvp".to_string(),
+            vec![
+                GameEvent {
+                    name: "round_mvp".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "reason".to_string(),
+                            data: Some(I32(1)),
+                        },
+                        EventField {
+                            name: "value".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "musickitmvps".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "nomusic".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "musickitid".to_string(),
+                            data: Some(I32(68)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(8971)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 8971,
+                },
+                GameEvent {
+                    name: "round_mvp".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "reason".to_string(),
+                            data: Some(I32(3)),
+                        },
+                        EventField {
+                            name: "value".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "musickitmvps".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "nomusic".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "musickitid".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(15232)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("-ExΩtiC-".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198258044111".to_string())),
+                        },
+                    ],
+                    tick: 15232,
+                },
+            ],
+        );
+        assert_eq!(out.2["round_mvp"], prop.1);
+    }
+    #[test]
+    fn game_event_round_announce_match_start() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "round_announce_match_start".to_string(),
+            vec![GameEvent {
+                name: "round_announce_match_start".to_string(),
+                fields: vec![EventField {
+                    name: "tick".to_string(),
+                    data: Some(I32(1761)),
+                }],
+                tick: 1761,
+            }],
+        );
+        assert_eq!(out.2["round_announce_match_start"], prop.1);
+    }
+    #[test]
+    fn game_event_hegrenade_detonate() {
+        use crate::variants::Variant::*;
+        let prop = (
+            "hegrenade_detonate".to_string(),
+            vec![
+                GameEvent {
+                    name: "hegrenade_detonate".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(151)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(-1405.5868)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(788.1175)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-34.35749)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(3279)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Dog".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198194694750".to_string())),
+                        },
+                    ],
+                    tick: 3279,
+                },
+                GameEvent {
+                    name: "hegrenade_detonate".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "entityid".to_string(),
+                            data: Some(I32(146)),
+                        },
+                        EventField {
+                            name: "x".to_string(),
+                            data: Some(F32(-1302.9464)),
+                        },
+                        EventField {
+                            name: "y".to_string(),
+                            data: Some(F32(-1189.3713)),
+                        },
+                        EventField {
+                            name: "z".to_string(),
+                            data: Some(F32(-42.400486)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(3583)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
+                    tick: 3583,
+                },
+            ],
+        );
+        assert_eq!(out.2["hegrenade_detonate"], prop.1);
     }
 }
