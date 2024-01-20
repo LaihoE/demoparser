@@ -453,7 +453,7 @@ impl<'a> ParserThread<'a> {
             "CC4" => return Ok(EntityType::C4),
             _ => {}
         }
-        if class.name.contains("Projectile") {
+        if class.name.contains("Projectile") || class.name == "CIncendiaryGrenade" {
             return Ok(EntityType::Projectile);
         }
         return Ok(EntityType::Normal);
