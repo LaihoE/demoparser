@@ -381,9 +381,9 @@ test('is_bomb_dropped', () => {
     let ticks = JSON.stringify(parseTicks(filePath, ["is_bomb_dropped"], wantedTicks));
     expect(ticks).toBe(tick_correct);
 });
-test('is_bomb_planed', () => {
-    let tick_correct = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_prop/is_bomb_planed.json")));
-    let ticks = JSON.stringify(parseTicks(filePath, ["is_bomb_planed"], wantedTicks));
+test('is_bomb_planted', () => {
+    let tick_correct = JSON.stringify(JSON.parse(fs.readFileSync("tests/data/per_prop/is_bomb_planted.json")));
+    let ticks = JSON.stringify(parseTicks(filePath, ["is_bomb_planted"], wantedTicks));
     expect(ticks).toBe(tick_correct);
 });
 test('round_win_status', () => {
