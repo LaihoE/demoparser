@@ -38,6 +38,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
 
   let huf = create_huffman_lookup_table();
   let settings = ParserInputs {
+    wanted_players: vec![],
     real_name_to_og_name: AHashMap::default(),
     wanted_player_props: vec![],
     wanted_player_props_og_names: vec![],
@@ -69,6 +70,7 @@ pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value
   let huf = create_huffman_lookup_table();
 
   let settings = ParserInputs {
+    wanted_players: vec![],
     real_name_to_og_name: AHashMap::default(),
     wanted_player_props: vec![],
     wanted_player_props_og_names: vec![],
@@ -99,7 +101,7 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
 
   let settings = ParserInputs {
     real_name_to_og_name: AHashMap::default(),
-
+    wanted_players: vec![],
     wanted_player_props: vec![],
     wanted_player_props_og_names: vec![],
     wanted_other_props: vec![],
@@ -163,7 +165,7 @@ pub fn parse_event(
 
   let settings = ParserInputs {
     real_name_to_og_name: real_name_to_og_name,
-
+    wanted_players: vec![],
     wanted_player_props: real_names_player.clone(),
     wanted_player_props_og_names: vec![],
     wanted_other_props: real_other_props,
@@ -226,7 +228,7 @@ pub fn parse_events(
 
   let settings = ParserInputs {
     real_name_to_og_name: real_name_to_og_name,
-
+    wanted_players: vec![],
     wanted_player_props: real_names_player.clone(),
     wanted_player_props_og_names: vec![],
     wanted_other_props: real_other_props.clone(),
@@ -254,11 +256,16 @@ pub fn parse_ticks(
   path_or_buf: Either<String, Buffer>,
   wanted_props: Vec<String>,
   wanted_ticks: Option<Vec<i32>>,
+  wanted_players: Option<Vec<String>>,
   struct_of_arrays: Option<bool>,
 ) -> napi::Result<Value> {
   let mut real_names = match rm_user_friendly_names(&wanted_props) {
     Ok(names) => names,
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+  };
+  let wanted_players_u64 = match wanted_players {
+    Some(v) => v.iter().map(|x| x.parse::<u64>().unwrap_or(0)).collect(),
+    None => vec![],
   };
 
   let bytes = resolve_byte_type(path_or_buf)?;
@@ -268,6 +275,7 @@ pub fn parse_ticks(
   for (real_name, user_friendly_name) in real_names.iter().zip(&wanted_props) {
     real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
   }
+
   let wanted_ticks = match wanted_ticks {
     Some(t) => t,
     None => vec![],
@@ -275,7 +283,7 @@ pub fn parse_ticks(
 
   let settings = ParserInputs {
     real_name_to_og_name: real_name_to_og_name,
-
+    wanted_players: wanted_players_u64,
     wanted_player_props: real_names.clone(),
     wanted_player_props_og_names: wanted_props.clone(),
     wanted_other_props: vec![],
@@ -331,6 +339,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
   let huf = create_huffman_lookup_table();
 
   let settings = ParserInputs {
+    wanted_players: vec![],
     real_name_to_og_name: AHashMap::default(),
     wanted_player_props: vec![],
     wanted_player_props_og_names: vec![],
