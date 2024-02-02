@@ -54,6 +54,7 @@ pub struct ParserThread<'a> {
     pub fullpackets_parsed: u32,
     pub packets_parsed: u32,
     pub projectile_records: Vec<ProjectileRecord>,
+    pub wanted_players: AHashSet<u64>,
     pub wanted_ticks: AHashSet<i32>,
     pub voice_data: Vec<CSVCMsg_VoiceData>,
     // Output from parsing
@@ -164,6 +165,7 @@ impl<'a> ParserThread<'a> {
             is_debug_mode: debug,
             projectile_records: vec![],
             parse_all_packets: input.parse_all_packets,
+            wanted_players: input.wanted_players.clone(),
             wanted_ticks: input.wanted_ticks.clone(),
             prop_controller: &input.prop_controller,
             qf_mapper: &input.qfmap,

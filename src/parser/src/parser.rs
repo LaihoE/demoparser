@@ -280,6 +280,7 @@ impl<'a> Parser<'a> {
             ge_list: &self.ge_list,
             parse_all_packets: parse_all,
             // arc?
+            wanted_players: self.wanted_players.clone(),
             wanted_ticks: self.wanted_ticks.clone(),
             string_tables: self.string_tables.clone(),
             stringtable_players: self.stringtable_players.clone(),
@@ -490,6 +491,7 @@ pub struct ParserThreadInput<'a> {
     pub qfmap: &'a QfMapper,
     pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub parse_all_packets: bool,
+    pub wanted_players: AHashSet<u64>,
     pub wanted_ticks: AHashSet<i32>,
     pub string_tables: Vec<StringTable>,
     pub stringtable_players: BTreeMap<u64, UserInfo>,
