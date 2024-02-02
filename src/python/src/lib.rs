@@ -62,6 +62,7 @@ impl DemoParser {
         let huf = create_huffman_lookup_table();
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
+            wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -99,6 +100,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
+            wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -178,6 +180,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
+            wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -224,6 +227,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
+            wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -313,6 +317,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
+            wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -386,6 +391,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
+            wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -442,6 +448,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
+            wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -535,6 +542,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
+            wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
@@ -643,6 +651,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: real_name_to_og_name,
+            wanted_players: vec![],
             wanted_player_props: real_player_props.clone(),
             wanted_player_props_og_names: wanted_player_props.clone(),
             wanted_other_props: real_other_props,
@@ -707,6 +716,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: real_name_to_og_name,
+            wanted_players: vec![],
             wanted_player_props: real_player_props.clone(),
             wanted_player_props_og_names: wanted_player_props.clone(),
             wanted_other_props: wanted_other_props,
@@ -739,7 +749,7 @@ impl DemoParser {
         wanted_props: Vec<String>,
         py_kwargs: Option<&PyDict>,
     ) -> PyResult<PyObject> {
-        let (_, wanted_ticks) = parse_kwargs_ticks(py_kwargs);
+        let (wanted_players, wanted_ticks) = parse_kwargs_ticks(py_kwargs);
         let real_props = rm_user_friendly_names(&wanted_props);
 
         let mut real_props = match real_props {
@@ -766,6 +776,7 @@ impl DemoParser {
 
         let settings = ParserInputs {
             real_name_to_og_name: real_name_to_og_name,
+            wanted_players: wanted_players,
             wanted_player_props: real_props.clone(),
             wanted_player_props_og_names: wanted_props.clone(),
             wanted_other_props: vec![],
