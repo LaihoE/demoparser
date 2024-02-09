@@ -1,4 +1,5 @@
 fn main() {
+    /*
     protobuf_codegen::Codegen::new()
         // Use `protoc` parser, optional.
         .protoc()
@@ -49,4 +50,5 @@ fn main() {
         .input("Protobufs/csgo/steammessages_player.steamworkssdk.proto")
         .out_dir("src/")
         .run_from_script();
+    */
 }
