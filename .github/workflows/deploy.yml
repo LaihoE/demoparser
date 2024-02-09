@@ -29,6 +29,8 @@ jobs:
 
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
+        env:
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         with:
           command: publish
           target: ${{ matrix.target }}
@@ -53,6 +55,8 @@ jobs:
 
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
+        env:
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         with:
           command: publish
           target: ${{ matrix.target }}
@@ -77,6 +81,8 @@ jobs:
 
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
+        env:
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         with:
           command: publish
           target: ${{ matrix.target }}
