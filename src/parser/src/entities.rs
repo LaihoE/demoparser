@@ -7,11 +7,12 @@ use crate::parser_thread_settings::ParserThread;
 use crate::prop_controller::MY_WEAPONS_OFFSET;
 use crate::prop_controller::WEAPON_SKIN_ID;
 use crate::read_bits::Bitreader;
-use crate::read_bytes::PacketEntitiesParser;
 use crate::sendtables::Field;
 use crate::sendtables::Serializer;
 use crate::variants::Variant;
 use ahash::AHashMap;
+use csgoproto::netmessages::CSVCMsg_PacketEntities;
+use protobuf::Message;
 
 const NSERIALBITS: u32 = 17;
 const STOP_READING_SYMBOL: u8 = 39;
@@ -59,15 +60,15 @@ impl<'a> ParserThread<'a> {
         if !self.parse_entities {
             return Ok(());
         }
-        // Custom reader that does no allocations. Interesting data is byte algined so
-        // just index into the incomming bytes (dont allocate a vector for our bytes).
-        let mut reader = PacketEntitiesParser::new(bytes);
-        reader.parse_message()?;
+        let msg: CSVCMsg_PacketEntities = match Message::parse_from_bytes(bytes) {
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+            Ok(msg) => msg,
+        };
 
-        let mut bitreader = Bitreader::new(&bytes[reader.data_start..reader.data_end]);
+        let mut bitreader = Bitreader::new(msg.entity_data());
         let mut entity_id: i32 = -1;
 
-        for _ in 0..reader.updated_entries {
+        for _ in 0..msg.updated_entries() {
             entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
             // Read 2 bits to know which operation should be done to the entity.
             let cmd = match bitreader.read_nbits(2)? {
@@ -87,6 +88,12 @@ impl<'a> ParserThread<'a> {
                     self.update_entity(&mut bitreader, entity_id, false)?;
                 }
                 EntityCmd::Update => {
+                    if msg.has_has_pvs_vis_bits() {
+                        // Most entities pass trough here. Seems like entities that are not updated.
+                        if bitreader.read_nbits(2)? & 0x01 == 1 {
+                            continue;
+                        }
+                    }
                     self.update_entity(&mut bitreader, entity_id, false)?;
                 }
             }
@@ -141,7 +148,7 @@ impl<'a> ParserThread<'a> {
     }
     pub fn debug_inspect(_result: &Variant, field: &Field) {
         if let Field::Value(_v) = field {
-            // println!("{:?} {:?}", v.full_name, result);
+            println!("{:?} {:?}", _v.full_name, _result);
         }
     }
     pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
