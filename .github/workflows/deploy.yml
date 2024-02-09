@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   windows:
@@ -28,7 +29,7 @@ jobs:
           override: true
 
       - name: Build Wheels
-        uses: PyO3/maturin-action@v1.40.7
+        uses: PyO3/maturin-action@v1
         with:
           command: publish
           target: ${{ matrix.target }}
@@ -52,7 +53,7 @@ jobs:
           override: true
 
       - name: Build Wheels
-        uses: PyO3/maturin-action@v1.40.7
+        uses: PyO3/maturin-action@v1
         with:
           command: publish
           target: ${{ matrix.target }}
@@ -76,8 +77,8 @@ jobs:
           override: true
 
       - name: Build Wheels
-        uses: PyO3/maturin-action@v1.40.7
+        uses: PyO3/maturin-action@v1
         with:
           command: publish
           target: ${{ matrix.target }}
-          args: -i ${{ matrix.python-version }} --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --no-sdist --skip-existing -m src/python/Cargo.toml
+          args: -i ${{ matrix.python-version }} --no-sdist --skip-existing -m src/python/Cargo.toml
