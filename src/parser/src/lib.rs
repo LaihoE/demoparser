@@ -1,22 +1,7 @@
-pub mod collect_data;
-pub mod decoder;
 #[cfg(test)]
 pub mod e2e_test;
-pub mod entities;
-pub mod entities_utils;
-pub mod fallbackbytes;
-pub mod game_events;
+pub mod first_pass;
 pub mod maps;
-pub mod netmessage_types;
-pub mod other_netmessages;
-pub mod parser;
-pub mod parser_settings;
-pub mod parser_thread_settings;
-pub mod parser_threads;
-pub mod prop_controller;
-pub mod q_float;
-pub mod read_bits;
+pub mod parse_demo;
 pub mod read_bytes;
-pub mod sendtables;
-pub mod stringtables;
-pub mod variants;
+pub mod second_pass;

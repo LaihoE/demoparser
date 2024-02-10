@@ -1,16 +1,11 @@
-use crate::collect_data::PropType;
-use crate::entities::PlayerMetaData;
-use crate::parser_settings::Parser;
-use crate::parser_thread_settings::ParserThread;
-use crate::prop_controller::PropInfo;
-use crate::read_bits::DemoParserError;
-use crate::stringtables::UserInfo;
-use crate::variants::*;
-use ahash::AHashMap;
-use ahash::RandomState;
+use crate::first_pass::prop_controller::PropInfo;
+use crate::first_pass::read_bits::DemoParserError;
+use crate::first_pass::stringtables::UserInfo;
+use crate::second_pass::collect_data::PropType;
+use crate::second_pass::entities::PlayerMetaData;
+use crate::second_pass::second_pass_settings::SecondPassParser;
+use crate::second_pass::variants::*;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_ServerRankUpdate;
-use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use csgoproto::netmessages::CSVCMsg_GameEventList;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
 use csgoproto::networkbasetypes::CNETMsg_SetConVar;
 use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
@@ -34,27 +29,7 @@ const ENTITYIDNONE: i32 = 2047;
 // https://developer.valvesoftware.com/wiki/SteamID
 const STEAMID64INDIVIDUALIDENTIFIER: u64 = 0x0110000100000000;
 
-impl<'a> Parser<'a> {
-    // Message that should come before first game event
-    pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<AHashMap<i32, Descriptor_t>, DemoParserError> {
-        let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
-        let mut hm: AHashMap<i32, Descriptor_t, RandomState> = AHashMap::default();
-        for event_desc in event_list.descriptors {
-            hm.insert(event_desc.eventid(), event_desc);
-        }
-        Ok(hm)
-    }
-    pub fn parse_fallback_event_list(&mut self) -> Result<(), DemoParserError> {
-        use crate::fallbackbytes::GAME_EVENT_LIST_FALLBACK_BYTES;
-        let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(&GAME_EVENT_LIST_FALLBACK_BYTES).unwrap();
-        for event_desc in event_list.descriptors {
-            self.ge_list.insert(event_desc.eventid(), event_desc);
-        }
-        Ok(())
-    }
-}
-
-impl<'a> ParserThread<'a> {
+impl<'a> SecondPassParser<'a> {
     pub fn parse_event(&mut self, bytes: &[u8]) -> Result<Option<GameEvent>, DemoParserError> {
         if self.wanted_events.len() == 0 && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(None);
@@ -68,7 +43,6 @@ impl<'a> ParserThread<'a> {
             }
         };
         self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
-
         // Return early if this is not a wanted event.
         if !self.wanted_events.contains(&event_desc.name().to_string()) && self.wanted_events.first() != Some(&"all".to_string())
         {

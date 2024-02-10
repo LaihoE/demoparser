@@ -1,15 +1,14 @@
-use super::read_bits::DemoParserError;
-use crate::decoder::Decoder;
-use crate::decoder::Decoder::UnsignedDecoder;
-use crate::decoder::QfMapper;
-use crate::entities_utils::*;
-use crate::parser_thread_settings::ParserThread;
-use crate::prop_controller::MY_WEAPONS_OFFSET;
-use crate::prop_controller::WEAPON_SKIN_ID;
-use crate::read_bits::Bitreader;
-use crate::sendtables::Field;
-use crate::sendtables::Serializer;
-use crate::variants::Variant;
+use crate::first_pass::prop_controller::MY_WEAPONS_OFFSET;
+use crate::first_pass::prop_controller::WEAPON_SKIN_ID;
+use crate::first_pass::read_bits::Bitreader;
+use crate::first_pass::read_bits::DemoParserError;
+use crate::first_pass::sendtables::Field;
+use crate::first_pass::sendtables::Serializer;
+use crate::second_pass::decoder::Decoder;
+use crate::second_pass::decoder::Decoder::UnsignedDecoder;
+use crate::second_pass::path_ops::*;
+use crate::second_pass::second_pass_settings::SecondPassParser;
+use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
 use protobuf::Message;
@@ -55,7 +54,7 @@ enum EntityCmd {
     Update,
 }
 
-impl<'a> ParserThread<'a> {
+impl<'a> SecondPassParser<'a> {
     pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
@@ -123,33 +122,32 @@ impl<'a> ParserThread<'a> {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),
         };
-        for path in self.paths[..n_updates].iter() {
-            let f = ParserThread::find_field(&path, &class.serializer);
-            let field_info = ParserThread::get_propinfo(&f, path);
-            let decoder = match f {
-                Field::Value(inner) => inner.decoder,
-                Field::Vector(_) => UnsignedDecoder,
-                Field::Pointer(inner) => inner.decoder,
-                _ => panic!("fail"),
-            };
-            let result = ParserThread::decode(bitreader, decoder, &self.qf_mapper)?;
+        for path in &self.paths[..n_updates] {
+            let field = SecondPassParser::find_field(&path, &class.serializer);
+            let field_info = SecondPassParser::get_propinfo(&field, path);
+            let decoder = SecondPassParser::get_decoder_from_field(field)?;
+            let result = bitreader.decode(&decoder, self.qf_mapper)?;
+            // Only relevant for debugging
             if self.is_debug_mode {
-                if let Field::Value(v) = f {
-                    self.game_events_counter.insert(v.full_name.to_string());
-                }
-                ParserThread::debug_inspect(&result, f);
+                SecondPassParser::debug_inspect(&result, field);
             }
-            ParserThread::insert_field(entity, result, field_info);
+            SecondPassParser::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
-    }
-    pub fn decode(bitreader: &mut Bitreader, decoder: Decoder, qf_map: &QfMapper) -> Result<Variant, DemoParserError> {
-        Ok(bitreader.decode(&decoder, &qf_map)?)
     }
     pub fn debug_inspect(_result: &Variant, field: &Field) {
         if let Field::Value(_v) = field {
             println!("{:?} {:?}", _v.full_name, _result);
         }
+    }
+    fn get_decoder_from_field(field: &Field) -> Result<Decoder, DemoParserError> {
+        let decoder = match field {
+            Field::Value(inner) => inner.decoder,
+            Field::Vector(_) => UnsignedDecoder,
+            Field::Pointer(inner) => inner.decoder,
+            _ => return Err(DemoParserError::FieldNoDecoder),
+        };
+        Ok(decoder)
     }
     pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
         if let Some(fi) = field_info {
@@ -184,7 +182,8 @@ impl<'a> ParserThread<'a> {
             }
             if fi.prop_id == WEAPON_SKIN_ID {
                 if path.path[path.last - 1] != 0 {
-                    fi.prop_id = 888888888;
+                    // Fill with impossible id
+                    fi.prop_id = u32::MAX;
                 }
             }
             return Some(fi);
@@ -273,11 +272,9 @@ impl<'a> ParserThread<'a> {
             if bitreader.bits_left < HUFFMAN_CODE_MAXLEN {
                 bitreader.refill();
             }
-
             let peeked_bits = bitreader.peek(HUFFMAN_CODE_MAXLEN);
             let (symbol, code_len) = self.huffman_lookup_table[peeked_bits as usize];
             bitreader.consume(code_len as u32);
-
             if symbol == STOP_READING_SYMBOL {
                 break;
             }
@@ -287,18 +284,15 @@ impl<'a> ParserThread<'a> {
         }
         Ok(idx)
     }
-    #[inline(always)]
     fn write_fp(&mut self, fp_src: &mut FieldPath, idx: usize) {
-        let fp_dst = self.paths.get_mut(idx).unwrap();
-        for i in 0..fp_src.last + 1 {
-            fp_dst.path[i] = fp_src.path[i];
+        if self.paths.len() <= idx {
+            self.paths.resize(idx + 1, generate_fp())
         }
-        fp_dst.last = fp_src.last;
+        self.paths[idx] = *fp_src;
     }
     #[inline(always)]
     fn find_field<'b>(fp: &FieldPath, ser: &'b Serializer) -> &'b Field {
         let f = &ser.fields[fp.path[0] as usize];
-
         match fp.last {
             0 => f,
             1 => f.get_inner(fp.path[1] as usize),
@@ -318,22 +312,19 @@ impl<'a> ParserThread<'a> {
                 .get_inner(fp.path[3] as usize)
                 .get_inner(fp.path[4] as usize)
                 .get_inner(fp.path[5] as usize),
-            _ => panic!("FP LAST OUT OF BOUND"),
+            _ => panic!("Impossible field path length!"),
         }
     }
 
     pub fn gather_extra_info(&mut self, entity_id: &i32, is_baseline: bool) -> Result<(), DemoParserError> {
         // Boring stuff.. function does some bookkeeping
-
         let entity = match self.entities.get(*entity_id as usize) {
             Some(Some(entity)) => entity,
             _ => return Err(DemoParserError::EntityNotFound),
         };
-
         if !(entity.entity_type == EntityType::PlayerController || entity.entity_type == EntityType::Team) {
             return Ok(());
         }
-
         if entity.entity_type == EntityType::Team && !is_baseline {
             if let Ok(Variant::U32(t)) =
                 self.get_prop_from_ent(self.prop_controller.special_ids.team_team_num.as_ref().unwrap(), entity_id)
@@ -347,7 +338,6 @@ impl<'a> ParserThread<'a> {
             }
             return Ok(());
         }
-
         let team_num = match self.get_prop_from_ent(self.prop_controller.special_ids.teamnum.as_ref().unwrap(), entity_id) {
             Ok(team_num) => match team_num {
                 Variant::U32(team_num) => Some(team_num),
@@ -424,7 +414,7 @@ impl<'a> ParserThread<'a> {
             EntityType::C4 => self.c4_entity_id = Some(*entity_id),
             _ => {}
         };
-        let entity = ParserThread::make_ent(entity_id, cls_id, entity_type);
+        let entity = SecondPassParser::make_ent(entity_id, cls_id, entity_type);
         if self.entities.len() as i32 <= *entity_id {
             self.entities.resize(*entity_id as usize + 1, None);
         }

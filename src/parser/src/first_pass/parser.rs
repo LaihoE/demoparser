@@ -1,76 +1,90 @@
-use crate::collect_data::ProjectileRecord;
-use crate::decoder::QfMapper;
-use crate::game_events::GameEvent;
-use crate::netmessage_types;
-use crate::netmessage_types::netmessage_type_from_int;
-use crate::parser_settings::Parser;
-use crate::parser_settings::ParserInputs;
-use crate::parser_thread_settings::*;
-use crate::parser_threads::demo_cmd_type_from_int;
-use crate::prop_controller::PropController;
-use crate::prop_controller::TICK_ID;
-use crate::read_bits::Bitreader;
+use crate::first_pass::parser_settings::FirstPassParser;
+use crate::first_pass::parser_settings::ParserInputs;
+use crate::first_pass::prop_controller::PropController;
+use crate::first_pass::read_bits::Bitreader;
+use crate::first_pass::read_bits::DemoParserError;
+use crate::first_pass::sendtables::Serializer;
+use crate::first_pass::stringtables::parse_userinfo;
+use crate::first_pass::stringtables::StringTable;
+use crate::first_pass::stringtables::UserInfo;
+use crate::maps::demo_cmd_type_from_int;
+use crate::maps::netmessage_type_from_int;
+use crate::maps::NetmessageType::*;
 use crate::read_bytes::read_varint;
 use crate::read_bytes::ProtoPacketParser;
-use crate::sendtables::Serializer;
-use crate::stringtables::parse_userinfo;
-use crate::stringtables::StringTable;
-use crate::stringtables::UserInfo;
-use crate::variants::PropColumn;
-use crate::{other_netmessages::Class, read_bits::DemoParserError};
+use crate::second_pass::decoder::QfMapper;
+use crate::second_pass::other_netmessages::Class;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use csgoproto::demo::CDemoFullPacket;
 use csgoproto::demo::EDemoCommands::*;
 use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoSendTables};
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use csgoproto::netmessages::CSVCMsg_VoiceData;
-use itertools::Itertools;
-use netmessage_types::NetmessageType::*;
+use csgoproto::netmessages::CSVCMsg_GameEventList;
 use protobuf::Message;
-use rayon::iter::ParallelIterator;
-use rayon::prelude::IntoParallelRefIterator;
 use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-#[derive(Debug)]
-pub struct DemoOutput {
-    pub df: AHashMap<u32, PropColumn>,
-    pub game_events: Vec<GameEvent>,
-    pub skins: Vec<EconItem>,
-    pub item_drops: Vec<EconItem>,
-    pub chat_messages: Vec<ChatMessageRecord>,
-    pub convars: AHashMap<String, String>,
-    pub header: Option<AHashMap<String, String>>,
-    pub player_md: Vec<PlayerEndMetaData>,
-    pub game_events_counter: AHashSet<String>,
-    pub prop_info: PropController,
-    pub projectiles: Vec<ProjectileRecord>,
-    pub ptr: usize,
-    pub voice_data: Vec<CSVCMsg_VoiceData>,
+pub const HEADER_ENDS_AT_BYTE: usize = 16;
+
+pub struct ParserThreadInput<'a> {
+    pub offset: usize,
+    pub settings: &'a ParserInputs<'a>,
+    pub baselines: AHashMap<u32, Vec<u8>>,
+    pub prop_controller: &'a PropController,
+    pub cls_by_id: &'a Vec<Class>,
+    pub qfmap: &'a QfMapper,
+    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
+    pub parse_all_packets: bool,
+    pub wanted_ticks: AHashSet<i32>,
+    pub string_tables: Vec<StringTable>,
+    pub stringtable_players: BTreeMap<u64, UserInfo>,
 }
 
-impl<'a> Parser<'a> {
-    pub fn parse_demo(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
-        Parser::handle_short_header(outer_bytes.len(), &outer_bytes[..16])?;
-        self.ptr = 16;
+pub struct ClassInfoThreadResult {
+    pub cls_by_id: AHashMap<u32, Class>,
+    pub qf_mapper: QfMapper,
+    pub prop_controller: PropController,
+}
+#[derive(Debug, Clone)]
+pub struct FirstPassOutput<'a> {
+    pub fullpacket_offsets: Vec<usize>,
+    pub settings: &'a ParserInputs<'a>,
+    pub baselines: AHashMap<u32, Vec<u8>>,
+    pub prop_controller: &'a PropController,
+    pub cls_by_id: &'a Vec<Class>,
+    pub qfmap: &'a QfMapper,
+    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
+    pub wanted_ticks: AHashSet<i32>,
+    pub string_tables: Vec<StringTable>,
+    pub stringtable_players: BTreeMap<u64, UserInfo>,
+    pub added_temp_props: Vec<String>,
+    pub wanted_players: AHashSet<u64>,
+    pub header: AHashMap<String, String>,
+}
+
+impl<'a> FirstPassParser<'a> {
+    pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<FirstPassOutput, DemoParserError> {
+        FirstPassParser::handle_short_header(demo_bytes.len(), &demo_bytes[..HEADER_ENDS_AT_BYTE])?;
+        self.ptr = HEADER_ENDS_AT_BYTE;
         let mut sendtable = None;
         let mut buf = vec![0_u8; 100_000];
 
         loop {
             let frame_starts_at = self.ptr;
 
-            let cmd = read_varint(outer_bytes, &mut self.ptr)?;
-            let tick = read_varint(outer_bytes, &mut self.ptr)?;
-            let size = read_varint(outer_bytes, &mut self.ptr)?;
-
+            let cmd = read_varint(demo_bytes, &mut self.ptr)?;
+            let tick = read_varint(demo_bytes, &mut self.ptr)?;
+            let size = read_varint(demo_bytes, &mut self.ptr)?;
             self.tick = tick as i32;
+
             // Safety check
-            if self.ptr + size as usize >= outer_bytes.len() {
+            if self.ptr + size as usize >= demo_bytes.len() {
                 break;
             }
+
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
@@ -80,8 +94,8 @@ impl<'a> Parser<'a> {
                 self.ptr += size as usize;
                 continue;
             }
-            let input = &outer_bytes[self.ptr..self.ptr + size as usize];
-            Parser::resize_if_needed(&mut buf, decompress_len(input))?;
+            let input = &demo_bytes[self.ptr..self.ptr + size as usize];
+            FirstPassParser::resize_if_needed(&mut buf, decompress_len(input))?;
 
             self.ptr += size as usize;
             let bytes = match is_compressed {
@@ -120,21 +134,8 @@ impl<'a> Parser<'a> {
             };
             ok?;
         }
-        /*
-        let input = self.create_parser_thread_input(16, true);
-        let mut parser = ParserThread::new(input).unwrap();
-        let x = parser.create_output();
-        return Ok(self.combine_thread_outputs(&mut vec![x]));
-        */
-        self.check_needed()?;
-        // return self.parse_demo_single_thread();
-        // return self.parse_demo_multithread_no_rayon();
-
-        if self.is_multithreadable {
-            self.parse_demo_multithread(outer_bytes)
-        } else {
-            self.parse_demo_single_thread(outer_bytes)
-        }
+        self.fallback_if_first_pass_missing_data()?;
+        Ok(self.create_first_pass_output())
     }
     pub fn resize_if_needed(buf: &mut Vec<u8>, needed_len: Result<usize, snap::Error>) -> Result<(), DemoParserError> {
         match needed_len {
@@ -147,144 +148,49 @@ impl<'a> Parser<'a> {
         };
         Ok(())
     }
-    fn check_needed(&mut self) -> Result<(), DemoParserError> {
-        if !self.fullpacket_offsets.contains(&16) {
-            self.fullpacket_offsets.push(16);
-        }
-        if self.ge_list.is_empty() {
-            self.parse_fallback_event_list()?;
+    pub fn parse_fallback_event_list(&mut self) -> Result<(), DemoParserError> {
+        let event_list: CSVCMsg_GameEventList =
+            Message::parse_from_bytes(&crate::first_pass::fallbackbytes::GAME_EVENT_LIST_FALLBACK_BYTES).unwrap();
+        for event_desc in event_list.descriptors {
+            self.ge_list.insert(event_desc.eventid(), event_desc);
         }
         Ok(())
     }
-
-    fn parse_demo_single_thread(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
-        let input = self.create_parser_thread_input(16, true);
-        let mut parser = ParserThread::new(input).unwrap();
-        parser.start(outer_bytes)?;
-        let x = parser.create_output();
-        for prop in &self.added_temp_props {
-            self.wanted_player_props.retain(|x| x != prop);
-            self.prop_controller.prop_infos.retain(|x| &x.prop_name != prop);
-        }
-        let mut outputs = self.combine_thread_outputs(&mut vec![x]);
-        if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
-            outputs.df = new_df;
-        }
-        Ok(outputs)
-    }
-    fn parse_demo_multithread(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
-        let outputs: Vec<Result<DemoOutput, DemoParserError>> = self
-            .fullpacket_offsets
-            .par_iter()
-            .map(|offset| {
-                let input = self.create_parser_thread_input(*offset, false);
-                let mut parser = ParserThread::new(input).unwrap();
-                parser.start(outer_bytes)?;
-                Ok(parser.create_output())
-            })
-            .collect();
-
-        // check for errors
-        let mut ok = vec![];
-        for result in outputs {
-            match result {
-                Err(e) => return Err(e),
-                Ok(r) => ok.push(r),
-            };
-        }
-        for prop in &self.added_temp_props {
-            self.wanted_player_props.retain(|x| x != prop);
-            self.prop_controller.prop_infos.retain(|x| &x.prop_name != prop);
-        }
-        let mut outputs = self.combine_thread_outputs(&mut ok);
-        if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
-            outputs.df = new_df;
-        }
-        Ok(outputs)
-    }
-    fn rm_unwanted_ticks(&self, hm: &mut AHashMap<u32, PropColumn>) -> Option<AHashMap<u32, PropColumn>> {
-        // Used for removing ticks when velocity is needed
-        if self.wanted_ticks.is_empty() {
-            return None;
-        }
-
-        let mut wanted_indicies = vec![];
-
-        if let Some(ticks) = hm.get(&TICK_ID) {
-            if let Some(crate::variants::VarVec::I32(t)) = &ticks.data {
-                for (idx, val) in t.iter().enumerate() {
-                    if let Some(tick) = val {
-                        if self.wanted_ticks.contains(tick) {
-                            wanted_indicies.push(idx);
-                        }
-                    }
-                }
-            }
-        }
-        let mut new_df = AHashMap::default();
-        for (k, v) in hm {
-            if let Some(new) = v.slice_to_new(&wanted_indicies) {
-                new_df.insert(*k, new);
-            }
-        }
-        Some(new_df)
-    }
-
-    /*
-    fn parse_demo_multithread_no_rayon(&mut self, outer_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
-        use std::thread;
-        use std::thread::ScopedJoinHandle;
-        let my_offsets = self.fullpacket_offsets.clone();
-        let mut inputs = vec![];
-        for offset in my_offsets {
-            let input = self.create_parser_thread_input(offset, false);
-            inputs.push((input, offset));
-        }
-
-        let res: Result<DemoOutput, DemoParserError> = thread::scope(|s| {
-            let mut handles: Vec<ScopedJoinHandle<'_, Result<DemoOutput, DemoParserError>>> = vec![];
-
-            for (input, offset) in inputs {
-                let handler: ScopedJoinHandle<'_, Result<DemoOutput, _>> = s.spawn(|| {
-                    let mut parser = ParserThread::new(input).unwrap();
-                    parser.start(&outer_bytes).unwrap();
-                    Ok(parser.create_output())
-                });
-                handles.push(handler);
-            }
-            println!("hello from the main thread");
-
-            // check for errors
-            let mut ok = vec![];
-            for result in handles {
-                match result.join().unwrap() {
-                    Err(e) => {}
-                    Ok(r) => ok.push(r),
-                };
-            }
-            // Ok(None)
-            return Ok(self.combine_thread_outputs(&mut ok));
-        });
-        res
-    }
-    */
-    // fn parse_stringtables_cmd(bytes: &[u8]) -> Result<(), DemoParserError> {}
-    pub fn create_parser_thread_input(&self, offset: usize, parse_all: bool) -> ParserThreadInput {
-        ParserThreadInput {
-            offset: offset,
+    pub fn create_first_pass_output(&self) -> FirstPassOutput {
+        FirstPassOutput {
+            header: self.header.clone(),
+            fullpacket_offsets: self.fullpacket_offsets.clone(),
             settings: &self.settings,
             baselines: self.baselines.clone(),
             prop_controller: &self.prop_controller,
             cls_by_id: &self.cls_by_id.as_ref().unwrap(),
             qfmap: &self.qf_mapper,
             ge_list: &self.ge_list,
-            parse_all_packets: parse_all,
             // arc?
             wanted_players: self.wanted_players.clone(),
             wanted_ticks: self.wanted_ticks.clone(),
             string_tables: self.string_tables.clone(),
             stringtable_players: self.stringtable_players.clone(),
+            added_temp_props: self.added_temp_props.clone(),
         }
+    }
+    fn fallback_if_first_pass_missing_data(&mut self) -> Result<(), DemoParserError> {
+        if !self.fullpacket_offsets.contains(&HEADER_ENDS_AT_BYTE) {
+            self.fullpacket_offsets.push(HEADER_ENDS_AT_BYTE);
+        }
+        if self.ge_list.is_empty() {
+            self.parse_fallback_event_list()?;
+        }
+        Ok(())
+    }
+    // Message that should come before first game event
+    pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<AHashMap<i32, Descriptor_t>, DemoParserError> {
+        let event_list: CSVCMsg_GameEventList = Message::parse_from_bytes(bytes).unwrap();
+        let mut hm: AHashMap<i32, Descriptor_t> = AHashMap::default();
+        for event_desc in event_list.descriptors {
+            hm.insert(event_desc.eventid(), event_desc);
+        }
+        Ok(hm)
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let full_packet: CDemoFullPacket = Message::parse_from_bytes(bytes).unwrap();
@@ -307,49 +213,9 @@ impl<'a> Parser<'a> {
         }
         Ok(())
     }
-
-    fn combine_thread_outputs(&mut self, outputs: &mut Vec<DemoOutput>) -> DemoOutput {
-        // Combines all inner DemoOutputs into one big output
-        outputs.sort_by_key(|x| x.ptr);
-        let mut dfs = outputs.iter().map(|x| x.df.clone()).collect();
-        let all_dfs_combined = self.combine_dfs(&mut dfs);
-        let all_game_events: AHashSet<String> =
-            AHashSet::from_iter(outputs.iter().flat_map(|x| x.game_events_counter.iter().cloned()));
-        DemoOutput {
-            chat_messages: outputs.iter().flat_map(|x| x.chat_messages.clone()).collect(),
-            item_drops: outputs.iter().flat_map(|x| x.item_drops.clone()).collect(),
-            player_md: outputs.iter().flat_map(|x| x.player_md.clone()).collect(),
-            game_events: outputs.iter().flat_map(|x| x.game_events.clone()).collect(),
-            skins: outputs.iter().flat_map(|x| x.skins.clone()).collect(),
-            convars: outputs.iter().flat_map(|x| x.convars.clone()).collect(),
-            df: all_dfs_combined,
-            header: Some(self.header.clone()),
-            game_events_counter: all_game_events,
-            prop_info: self.prop_controller.clone(),
-            projectiles: outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
-            ptr: self.ptr,
-            voice_data: outputs.iter().flat_map(|x| x.voice_data.clone()).collect_vec(),
-        }
-    }
-    fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
-        let mut big: AHashMap<u32, PropColumn> = AHashMap::default();
-        if v.len() == 1 {
-            return v.remove(0);
-        }
-        for part_df in v {
-            for (k, v) in part_df {
-                if big.contains_key(k) {
-                    big.get_mut(k).unwrap().extend_from(v);
-                } else {
-                    big.insert(*k, v.clone());
-                }
-            }
-        }
-        big
-    }
 }
 
-impl<'a> Parser<'a> {
+impl<'a> FirstPassParser<'a> {
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let mut p = ProtoPacketParser {
             bytes: bytes,
@@ -385,7 +251,6 @@ impl<'a> Parser<'a> {
         self.string_tables = vec![];
         Ok(())
     }
-
     pub fn parse_header(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let header: CDemoFileHeader = Message::parse_from_bytes(bytes).unwrap();
         self.header
@@ -419,7 +284,6 @@ impl<'a> Parser<'a> {
         self.header
             .insert("demo_version_name".to_string(), header.demo_version_name().to_string());
         self.header.insert("addons".to_string(), header.addons().to_string());
-
         Ok(())
     }
     fn handle_short_header(file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
@@ -481,24 +345,4 @@ impl<'a> Parser<'a> {
         self.prop_controller = p;
         return Ok(());
     }
-}
-pub struct ParserThreadInput<'a> {
-    pub offset: usize,
-    pub settings: &'a ParserInputs<'a>,
-    pub baselines: AHashMap<u32, Vec<u8>>,
-    pub prop_controller: &'a PropController,
-    pub cls_by_id: &'a Vec<Class>,
-    pub qfmap: &'a QfMapper,
-    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
-    pub parse_all_packets: bool,
-    pub wanted_players: AHashSet<u64>,
-    pub wanted_ticks: AHashSet<i32>,
-    pub string_tables: Vec<StringTable>,
-    pub stringtable_players: BTreeMap<u64, UserInfo>,
-}
-
-pub struct ClassInfoThreadResult {
-    pub cls_by_id: AHashMap<u32, Class>,
-    pub qf_mapper: QfMapper,
-    pub prop_controller: PropController,
 }

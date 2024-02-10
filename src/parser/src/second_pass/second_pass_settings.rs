@@ -1,18 +1,18 @@
-use super::game_events::GameEvent;
-use super::read_bits::DemoParserError;
-use super::sendtables::Serializer;
-use super::stringtables::StringTable;
-use super::variants::PropColumn;
-use crate::collect_data::ProjectileRecord;
-use crate::decoder::QfMapper;
-use crate::entities::Entity;
-use crate::entities::PlayerMetaData;
-use crate::entities_utils::FieldPath;
-use crate::other_netmessages::Class;
-use crate::parser::DemoOutput;
-use crate::parser::ParserThreadInput;
-use crate::prop_controller::PropController;
-use crate::stringtables::UserInfo;
+use crate::first_pass::parser::FirstPassOutput;
+use crate::first_pass::prop_controller::PropController;
+use crate::first_pass::read_bits::DemoParserError;
+use crate::first_pass::sendtables::Serializer;
+use crate::first_pass::stringtables::StringTable;
+use crate::first_pass::stringtables::UserInfo;
+use crate::second_pass::collect_data::ProjectileRecord;
+use crate::second_pass::decoder::QfMapper;
+use crate::second_pass::entities::Entity;
+use crate::second_pass::entities::PlayerMetaData;
+use crate::second_pass::game_events::GameEvent;
+use crate::second_pass::other_netmessages::Class;
+use crate::second_pass::parser::SecondPassOutput;
+use crate::second_pass::path_ops::FieldPath;
+use crate::second_pass::variants::PropColumn;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
@@ -23,10 +23,10 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::env;
 
-// Wont fit in L1, evaluate if worth to use pointer method
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 const DEFAULT_MAX_ENTITY_ID: usize = 1024;
-pub struct ParserThread<'a> {
+
+pub struct SecondPassParser<'a> {
     pub qf_mapper: &'a QfMapper,
     pub prop_controller: &'a PropController,
     pub cls_by_id: &'a Vec<Class>,
@@ -52,12 +52,11 @@ pub struct ParserThread<'a> {
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub projectiles: BTreeSet<i32>,
     pub fullpackets_parsed: u32,
-    pub packets_parsed: u32,
-    pub projectile_records: Vec<ProjectileRecord>,
     pub wanted_players: AHashSet<u64>,
     pub wanted_ticks: AHashSet<i32>,
-    pub voice_data: Vec<CSVCMsg_VoiceData>,
     // Output from parsing
+    pub projectile_records: Vec<ProjectileRecord>,
+    pub voice_data: Vec<CSVCMsg_VoiceData>,
     pub output: AHashMap<u32, PropColumn, RandomState>,
     pub header: HashMap<String, String>,
     pub skins: Vec<EconItem>,
@@ -111,8 +110,6 @@ pub struct EconItem {
     pub inventory: Option<u32>,
     pub ent_idx: Option<i32>,
     pub steamid: Option<u64>,
-
-    // Custom
     pub item_name: Option<String>,
     pub skin_name: Option<String>,
 }
@@ -123,9 +120,9 @@ pub struct PlayerEndMetaData {
     pub team_number: Option<i32>,
 }
 
-impl<'a> ParserThread<'a> {
-    pub fn create_output(self) -> DemoOutput {
-        DemoOutput {
+impl<'a> SecondPassParser<'a> {
+    pub fn create_output(self) -> SecondPassOutput {
+        SecondPassOutput {
             voice_data: self.voice_data,
             chat_messages: self.chat_messages,
             convars: self.convars,
@@ -141,15 +138,15 @@ impl<'a> ParserThread<'a> {
             ptr: self.ptr,
         }
     }
-    pub fn new(input: ParserThreadInput<'a>) -> Result<Self, DemoParserError> {
-        input
-            .settings
-            .wanted_player_props
-            .clone()
-            .extend(vec!["tick".to_owned(), "steamid".to_owned(), "name".to_owned()]);
+    pub fn new(first_pass_output: FirstPassOutput<'a>, offset: usize, parse_all_packets: bool) -> Result<Self, DemoParserError> {
+        first_pass_output.settings.wanted_player_props.clone().extend(vec![
+            "tick".to_owned(),
+            "steamid".to_owned(),
+            "name".to_owned(),
+        ]);
         let args: Vec<String> = env::args().collect();
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
-        Ok(ParserThread {
+        Ok(SecondPassParser {
             voice_data: vec![],
             paths: vec![
                 FieldPath {
@@ -158,47 +155,46 @@ impl<'a> ParserThread<'a> {
                 };
                 8192
             ],
-            parse_inventory: input.prop_controller.wanted_player_props.contains(&"inventory".to_string()),
+            parse_inventory: first_pass_output
+                .prop_controller
+                .wanted_player_props
+                .contains(&"inventory".to_string()),
             net_tick: 0,
             c4_entity_id: None,
-            stringtable_players: input.stringtable_players,
+            stringtable_players: first_pass_output.stringtable_players,
             is_debug_mode: debug,
             projectile_records: vec![],
-            parse_all_packets: input.parse_all_packets,
-            wanted_players: input.wanted_players.clone(),
-            wanted_ticks: input.wanted_ticks.clone(),
-            prop_controller: &input.prop_controller,
-            qf_mapper: &input.qfmap,
+            parse_all_packets: parse_all_packets,
+            wanted_players: first_pass_output.wanted_players.clone(),
+            wanted_ticks: first_pass_output.wanted_ticks.clone(),
+            prop_controller: &first_pass_output.prop_controller,
+            qf_mapper: &first_pass_output.qfmap,
             fullpackets_parsed: 0,
-            packets_parsed: 0,
             serializers: AHashMap::default(),
-            ptr: input.offset,
-            ge_list: input.ge_list,
-            // bytes: &input.settings.bytes,
-            cls_by_id: &input.cls_by_id,
+            ptr: offset,
+            ge_list: first_pass_output.ge_list,
+            cls_by_id: &first_pass_output.cls_by_id,
             entities: vec![None; DEFAULT_MAX_ENTITY_ID],
             cls_bits: None,
             tick: -99999,
             players: BTreeMap::default(),
             output: AHashMap::default(),
             game_events: vec![],
-            wanted_events: input.settings.wanted_events.clone(),
-            parse_entities: input.settings.parse_ents,
+            wanted_events: first_pass_output.settings.wanted_events.clone(),
+            parse_entities: first_pass_output.settings.parse_ents,
             projectiles: BTreeSet::default(),
-            // projectile_records: ProjectileRecordVec::new(),
-            baselines: input.baselines.clone(),
-            string_tables: input.string_tables.clone(),
-
+            baselines: first_pass_output.baselines.clone(),
+            string_tables: first_pass_output.string_tables.clone(),
             teams: Teams::new(),
             game_events_counter: AHashSet::default(),
-            parse_projectiles: input.settings.parse_projectiles,
+            parse_projectiles: first_pass_output.settings.parse_projectiles,
             rules_entity_id: None,
             convars: AHashMap::default(),
             chat_messages: vec![],
             item_drops: vec![],
             skins: vec![],
             player_end_data: vec![],
-            huffman_lookup_table: &input.settings.huffman_lookup_table,
+            huffman_lookup_table: &first_pass_output.settings.huffman_lookup_table,
             header: HashMap::default(),
         })
     }

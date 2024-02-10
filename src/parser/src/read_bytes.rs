@@ -1,4 +1,4 @@
-use super::read_bits::DemoParserError;
+use crate::first_pass::read_bits::DemoParserError;
 
 #[derive(Debug)]
 pub struct PacketEntitiesParser<'a> {
@@ -10,13 +10,11 @@ pub struct PacketEntitiesParser<'a> {
     pub update_baseline: bool,
     pub baseline: i32,
     pub delta_from: i32,
-    // pub entity_data: Vec<u8>,
     pub pending_full_frame: bool,
     pub active_spawngroup_handle: u32,
     pub max_spawngroup_creationsequence: u32,
     pub last_cmd_number: u32,
     pub server_tick: u32,
-    // pub serialized_entities: Vec<u8>,
     pub data_start: usize,
     pub data_end: usize,
 }
@@ -33,11 +31,9 @@ impl<'a> PacketEntitiesParser<'a> {
             is_delta: false,
             baseline: 0,
             delta_from: 0,
-            // entity_data: Vec::with_capacity(0),
             pending_full_frame: false,
             max_spawngroup_creationsequence: 0,
             last_cmd_number: 0,
-            // serialized_entities: Vec::with_capacity(0),
             server_tick: 0,
             data_end: 0,
             data_start: 0,
@@ -132,7 +128,7 @@ impl<'a> PacketEntitiesParser<'a> {
             }
             114 => {}
             122 => {}
-            _ => panic!("unkown protobuf type in message {}", varint),
+            _ => return true,
         }
         false
     }
@@ -329,7 +325,7 @@ impl<'a> ProtoPacketParser<'a> {
                 self.end = self.ptr + buf_len;
                 return Ok(());
             }
-            _ => panic!("UNK {}", varint),
+            _ => return Err(DemoParserError::MalformedMessage),
         }
     }
     pub fn read_proto_packet(&mut self) -> Result<(), DemoParserError> {

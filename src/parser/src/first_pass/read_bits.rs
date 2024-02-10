@@ -4,6 +4,7 @@ use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum DemoParserError {
+    FieldNoDecoder,
     OutOfBitsError,
     OutOfBytesError,
     FailedByteRead(String),
@@ -87,7 +88,7 @@ impl<'a> Bitreader<'a> {
         self.consume(n);
         return Ok(b as u32);
     }
-    // #[inline(always)]
+    #[inline(always)]
     pub fn read_u_bit_var(&mut self) -> Result<u32, DemoParserError> {
         let bits = self.read_nbits(6)?;
         match bits & 48 {
@@ -183,22 +184,7 @@ impl<'a> Bitreader<'a> {
                 .to_string(),
             )),
         }
-
-        /*
-        match self.reader.read_bytes(buf) {
-            true => Ok(()),
-            false => Err(DemoParserError::FailedByteRead(
-                format!(
-                    "Failed to read message/command. bytes left in stream: {}, requested bytes: {}",
-                    self.reader.bits_remaining().unwrap() / 8,
-                    n,
-                )
-                .to_string(),
-            )),
-        }
-        */
     }
-    // #[inline(always)]
     pub fn read_ubit_var_fp(&mut self) -> Result<u32, DemoParserError> {
         if self.read_boolean()? {
             return Ok(self.read_nbits(2)?);

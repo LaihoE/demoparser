@@ -2,16 +2,16 @@ use crate::arrow::array::*;
 use ahash::AHashMap;
 use arrow::ffi;
 use itertools::Itertools;
-use parser::game_events::EventField;
-use parser::game_events::GameEvent;
-use parser::parser_settings::create_mmap;
-use parser::parser_settings::rm_user_friendly_names;
-use parser::parser_settings::Parser;
-use parser::parser_settings::ParserInputs;
-use parser::parser_thread_settings::create_huffman_lookup_table;
-use parser::read_bits::DemoParserError;
-use parser::variants::VarVec;
-use parser::variants::Variant;
+use parser::first_pass::parser_settings::create_mmap;
+use parser::first_pass::parser_settings::rm_user_friendly_names;
+use parser::first_pass::parser_settings::ParserInputs;
+use parser::first_pass::read_bits::DemoParserError;
+use parser::parse_demo::Parser;
+use parser::second_pass::game_events::EventField;
+use parser::second_pass::game_events::GameEvent;
+use parser::second_pass::second_pass_settings::create_huffman_lookup_table;
+use parser::second_pass::variants::VarVec;
+use parser::second_pass::variants::Variant;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -21,7 +21,6 @@ use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
-use pyo3::types::PyBytes;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
 use pyo3::Python;
@@ -64,9 +63,7 @@ impl DemoParser {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
             wanted_player_props: vec![],
-            wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
             wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -76,12 +73,12 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &huf,
         };
-        let mut parser = Parser::new(&settings);
-        let _output = match parser.parse_demo(&mmap) {
+        let mut parser = Parser::new(settings, false);
+        let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
-        Ok(parser.header.to_object(py))
+        Ok(output.header.unwrap_or(AHashMap::default()).to_object(py))
     }
     /// Returns a dictionary with console vars set. This includes data
     /// like this: "mp_roundtime": "1.92", "mp_buytime": "20" ...
@@ -102,9 +99,7 @@ impl DemoParser {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
             wanted_player_props: vec![],
-            wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
             wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -114,7 +109,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(&settings);
+        let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -150,7 +145,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(&settings);
+         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
@@ -182,9 +177,7 @@ impl DemoParser {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
             wanted_player_props: vec![],
-            wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
             wanted_events: vec!["all".to_string()],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -194,7 +187,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(&settings);
+        let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
@@ -229,9 +222,7 @@ impl DemoParser {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
             wanted_player_props: vec![],
-            wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
             wanted_events: vec![],
             parse_ents: true,
             wanted_ticks: vec![],
@@ -241,7 +232,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(&settings);
+        let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
@@ -319,9 +310,7 @@ impl DemoParser {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
             wanted_player_props: vec![],
-            wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
             wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -331,7 +320,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(&settings);
+        let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
@@ -393,9 +382,7 @@ impl DemoParser {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
             wanted_player_props: vec![],
-            wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
             wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -405,7 +392,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(&settings);
+        let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
@@ -450,9 +437,7 @@ impl DemoParser {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
             wanted_player_props: vec![],
-            wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
             wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -462,7 +447,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(&settings);
+        let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
@@ -544,9 +529,7 @@ impl DemoParser {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
             wanted_player_props: vec![],
-            wanted_player_props_og_names: vec![],
             wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
             wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -556,7 +539,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(&settings);
+        let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
@@ -653,9 +636,7 @@ impl DemoParser {
             real_name_to_og_name: real_name_to_og_name,
             wanted_players: vec![],
             wanted_player_props: real_player_props.clone(),
-            wanted_player_props_og_names: wanted_player_props.clone(),
             wanted_other_props: real_other_props,
-            wanted_other_props_og_names: vec![],
             wanted_events: vec![event_name.clone()],
             parse_ents: true,
             wanted_ticks: vec![],
@@ -665,7 +646,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(&settings);
+        let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
@@ -718,9 +699,7 @@ impl DemoParser {
             real_name_to_og_name: real_name_to_og_name,
             wanted_players: vec![],
             wanted_player_props: real_player_props.clone(),
-            wanted_player_props_og_names: wanted_player_props.clone(),
             wanted_other_props: wanted_other_props,
-            wanted_other_props_og_names: vec![],
             wanted_events: event_name.clone(),
             parse_ents: true,
             wanted_ticks: vec![],
@@ -730,7 +709,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
-        let mut parser = Parser::new(&settings);
+        let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
@@ -752,7 +731,7 @@ impl DemoParser {
         let (wanted_players, wanted_ticks) = parse_kwargs_ticks(py_kwargs);
         let real_props = rm_user_friendly_names(&wanted_props);
 
-        let mut real_props = match real_props {
+        let real_props = match real_props {
             Ok(real_props) => real_props,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
@@ -773,14 +752,11 @@ impl DemoParser {
         for (real_name, user_friendly_name) in real_props.iter().zip(&wanted_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
-
         let settings = ParserInputs {
             real_name_to_og_name: real_name_to_og_name,
             wanted_players: wanted_players,
             wanted_player_props: real_props.clone(),
-            wanted_player_props_og_names: wanted_props.clone(),
             wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
             wanted_events: vec![],
             parse_ents: true,
             wanted_ticks: wanted_ticks,
@@ -791,14 +767,14 @@ impl DemoParser {
             huffman_lookup_table: &arc_huf,
             //huf: huf,
         };
-        let mut parser = Parser::new(&settings);
+        let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{}", e))),
         };
         let mut all_series = vec![];
         let mut all_pyobjects = vec![];
-        let prop_infos = output.prop_info.prop_infos;
+        let prop_infos = output.prop_controller.prop_infos;
         let mut df_column_names_arrow = vec![];
         let mut df_column_names_py = vec![];
 
@@ -1151,7 +1127,7 @@ fn to_u64_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_py_string_col(pairs: &Vec<&EventField>, name: &String, py: Python) -> DataFrameColumn {
+fn to_py_string_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
@@ -1164,7 +1140,7 @@ fn to_py_string_col(pairs: &Vec<&EventField>, name: &String, py: Python) -> Data
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
-fn to_py_u64_col(pairs: &Vec<&EventField>, name: &String, py: Python) -> DataFrameColumn {
+fn to_py_u64_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {

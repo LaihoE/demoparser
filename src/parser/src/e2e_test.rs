@@ -1,16 +1,14 @@
-use crate::game_events::GameEvent;
-use crate::parser::DemoOutput;
-use crate::parser_settings::Parser;
-use crate::parser_settings::ParserInputs;
-use crate::parser_thread_settings::create_huffman_lookup_table;
-use crate::prop_controller::PropController;
-use crate::prop_controller::*;
-use crate::variants::PropColumn;
+use crate::first_pass::parser_settings::ParserInputs;
+use crate::first_pass::prop_controller::PropController;
+use crate::first_pass::prop_controller::*;
+use crate::parse_demo::DemoOutput;
+use crate::parse_demo::Parser;
+use crate::second_pass::game_events::GameEvent;
+use crate::second_pass::second_pass_settings::create_huffman_lookup_table;
 use ahash::AHashMap;
 use itertools::Itertools;
 use memmap2::MmapOptions;
 use std::collections::BTreeMap;
-use std::collections::HashSet;
 use std::fs::File;
 
 pub fn _create_ge_tests() {
@@ -300,9 +298,7 @@ pub fn _create_ge_tests() {
         wanted_player_props: wanted_props.clone(),
         wanted_events: wanted_events,
         real_name_to_og_name: AHashMap::default(),
-        wanted_player_props_og_names: vec![],
         wanted_other_props: vec![],
-        wanted_other_props_og_names: vec![],
         parse_ents: true,
         wanted_players: vec![],
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
@@ -313,14 +309,13 @@ pub fn _create_ge_tests() {
         huffman_lookup_table: &huf,
     };
 
-    let mut ds = Parser::new(&settings);
-    ds.is_multithreadable = false;
+    let mut ds = Parser::new(settings, true);
+    // ds.is_multithreadable = false;
     let file = File::open("test_demo.dem".to_string()).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let d = ds.parse_demo(&mmap).unwrap();
 
-    let v = d.game_events.iter().filter(|x| x.name != "wplayer_hurt").collect_vec();
-    let mut events: HashSet<String> = HashSet::default();
+    let _v = d.game_events.iter().filter(|x| x.name != "wplayer_hurt").collect_vec();
     let events = vec![
         "hltv_versioninfo",
         "round_freeze_end",
@@ -373,7 +368,7 @@ pub fn _create_ge_tests() {
         let test_name = "game_event_".to_string() + &name.replace(".", "_");
         let s = "".to_string();
         let s = s + &format!("fn {}() {{", test_name);
-        let s = s + "use crate::variants::Variant::*;";
+        let s = s + "use crate::second_pass::variants::Variant::*;";
         let s = s + &format!("let prop = ({:?}, {:#?});", name, v);
         let s = s.replace("[", "vec![");
         let s = s.replace("\")", "\".to_string())");
@@ -672,9 +667,7 @@ pub fn _create_tests() {
         wanted_player_props: wanted_props.clone(),
         wanted_events: wanted_events,
         real_name_to_og_name: AHashMap::default(),
-        wanted_player_props_og_names: wanted_props.clone(),
         wanted_other_props: vec![],
-        wanted_other_props_og_names: vec![],
         parse_ents: true,
         wanted_players: vec![],
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
@@ -685,8 +678,7 @@ pub fn _create_tests() {
         huffman_lookup_table: &huf,
     };
 
-    let mut ds = Parser::new(&settings);
-    ds.is_multithreadable = false;
+    let mut ds = Parser::new(settings, true);
     let file = File::open("test_demo.dem".to_string()).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let d = ds.parse_demo(&mmap).unwrap();
@@ -715,7 +707,7 @@ pub fn _create_tests() {
     custom.insert(NAME_ID, "name");
 
     for (k, v) in d.df {
-        if let Some(real_name) = ds.prop_controller.id_to_name.get(&k) {
+        if let Some(real_name) = d.prop_controller.id_to_name.get(&k) {
             let test_name = real_name.replace(".", "_");
             let s = "".to_string();
             let s = s + &format!("fn {}() {{", test_name);
@@ -1032,9 +1024,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         wanted_player_props: wanted_props.clone(),
         wanted_events: wanted_events,
         real_name_to_og_name: AHashMap::default(),
-        wanted_player_props_og_names: wanted_props.clone(),
         wanted_other_props: vec![],
-        wanted_other_props_og_names: vec![],
         parse_ents: true,
         wanted_players: vec![],
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
@@ -1045,8 +1035,8 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         huffman_lookup_table: &huf,
     };
 
-    let mut ds = Parser::new(&settings);
-    ds.is_multithreadable = false;
+    let mut ds = Parser::new(settings, true);
+    // ds.is_multithreadable = false;
 
     let file = File::open("test_demo.dem".to_string()).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
@@ -1059,9 +1049,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         wanted_player_props: vec![],
         wanted_events: wanted_events,
         real_name_to_og_name: AHashMap::default(),
-        wanted_player_props_og_names: wanted_props.clone(),
         wanted_other_props: vec![],
-        wanted_other_props_og_names: vec![],
         parse_ents: true,
         wanted_players: vec![],
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
@@ -1071,9 +1059,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         only_convars: false,
         huffman_lookup_table: &huf,
     };
-
-    let mut ds = Parser::new(&settings);
-    ds.is_multithreadable = false;
+    let mut ds = Parser::new(settings, true);
     let file = File::open("test_demo.dem".to_string()).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let out2 = ds.parse_demo(&mmap).unwrap();
@@ -1135,25 +1121,25 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         v.truncate(2);
         hm.insert(name.to_string(), v);
     }
-    (out1, ds.prop_controller, hm)
+    (out1, out2.prop_controller, hm)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::e2e_test::create_data;
-    use crate::game_events::EventField;
-    use crate::game_events::GameEvent;
-    use crate::parser::DemoOutput;
-    use crate::prop_controller::PropController;
-    use crate::prop_controller::PITCH_ID;
-    use crate::prop_controller::PLAYER_Y_ID;
-    use crate::prop_controller::WEAPON_NAME_ID;
-    use crate::prop_controller::WEAPON_ORIGINGAL_OWNER_ID;
-    use crate::prop_controller::YAW_ID;
-    use crate::prop_controller::*;
-    use crate::variants::PropColumn;
-    use crate::variants::VarVec::String;
-    use crate::variants::VarVec::*;
+    use crate::first_pass::prop_controller::PropController;
+    use crate::first_pass::prop_controller::PITCH_ID;
+    use crate::first_pass::prop_controller::PLAYER_Y_ID;
+    use crate::first_pass::prop_controller::WEAPON_NAME_ID;
+    use crate::first_pass::prop_controller::WEAPON_ORIGINGAL_OWNER_ID;
+    use crate::first_pass::prop_controller::YAW_ID;
+    use crate::first_pass::prop_controller::*;
+    use crate::parse_demo::DemoOutput;
+    use crate::second_pass::game_events::EventField;
+    use crate::second_pass::game_events::GameEvent;
+    use crate::second_pass::variants::PropColumn;
+    use crate::second_pass::variants::VarVec::String;
+    use crate::second_pass::variants::VarVec::*;
     use lazy_static::lazy_static;
     use std::collections::BTreeMap;
 
@@ -15349,7 +15335,7 @@ mod tests {
     }
     #[test]
     fn game_event_hltv_versioninfo() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "hltv_versioninfo".to_string(),
             vec![GameEvent {
@@ -15371,7 +15357,7 @@ mod tests {
     }
     #[test]
     fn game_event_round_freeze_end() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "round_freeze_end".to_string(),
             vec![
@@ -15397,7 +15383,7 @@ mod tests {
     }
     #[test]
     fn game_event_weapon_reload() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "weapon_reload".to_string(),
             vec![
@@ -15443,7 +15429,7 @@ mod tests {
     }
     #[test]
     fn game_event_cs_pre_restart() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "cs_pre_restart".to_string(),
             vec![
@@ -15469,7 +15455,7 @@ mod tests {
     }
     #[test]
     fn game_event_weapon_fire() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "weapon_fire".to_string(),
             vec![
@@ -15531,7 +15517,7 @@ mod tests {
     }
     #[test]
     fn game_event_player_death() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "player_death".to_string(),
             vec![
@@ -15753,7 +15739,7 @@ mod tests {
     }
     #[test]
     fn game_event_smokegrenade_expired() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "smokegrenade_expired".to_string(),
             vec![
@@ -15831,7 +15817,7 @@ mod tests {
     }
     #[test]
     fn game_event_item_equip() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "item_equip".to_string(),
             vec![
@@ -15941,7 +15927,7 @@ mod tests {
     }
     #[test]
     fn game_event_bomb_planted() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "bomb_planted".to_string(),
             vec![
@@ -15995,7 +15981,7 @@ mod tests {
     }
     #[test]
     fn game_event_bomb_exploded() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "bomb_exploded".to_string(),
             vec![
@@ -16049,7 +16035,7 @@ mod tests {
     }
     #[test]
     fn game_event_round_prestart() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "round_prestart".to_string(),
             vec![
@@ -16075,7 +16061,7 @@ mod tests {
     }
     #[test]
     fn game_event_cs_round_final_beep() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "cs_round_final_beep".to_string(),
             vec![
@@ -16101,7 +16087,7 @@ mod tests {
     }
     #[test]
     fn game_event_smokegrenade_detonate() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "smokegrenade_detonate".to_string(),
             vec![
@@ -16179,7 +16165,7 @@ mod tests {
     }
     #[test]
     fn game_event_player_footstep() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "player_footstep".to_string(),
             vec![
@@ -16225,7 +16211,7 @@ mod tests {
     }
     #[test]
     fn game_event_buytime_ended() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "buytime_ended".to_string(),
             vec![
@@ -16251,7 +16237,7 @@ mod tests {
     }
     #[test]
     fn game_event_player_jump() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "player_jump".to_string(),
             vec![
@@ -16297,7 +16283,7 @@ mod tests {
     }
     #[test]
     fn game_event_weapon_zoom() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "weapon_zoom".to_string(),
             vec![
@@ -16343,7 +16329,7 @@ mod tests {
     }
     #[test]
     fn game_event_round_poststart() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "round_poststart".to_string(),
             vec![
@@ -16369,7 +16355,7 @@ mod tests {
     }
     #[test]
     fn game_event_bomb_pickup() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "bomb_pickup".to_string(),
             vec![
@@ -16395,7 +16381,7 @@ mod tests {
     }
     #[test]
     fn game_event_player_blind() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "player_blind".to_string(),
             vec![
@@ -16473,7 +16459,7 @@ mod tests {
     }
     #[test]
     fn game_event_bomb_begindefuse() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "bomb_begindefuse".to_string(),
             vec![GameEvent {
@@ -16503,7 +16489,7 @@ mod tests {
     }
     #[test]
     fn game_event_inferno_startburn() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "inferno_startburn".to_string(),
             vec![
@@ -16581,7 +16567,7 @@ mod tests {
     }
     #[test]
     fn game_event_player_disconnect() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "player_disconnect".to_string(),
             vec![
@@ -16667,7 +16653,7 @@ mod tests {
     }
     #[test]
     fn game_event_player_hurt() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "player_hurt".to_string(),
             vec![
@@ -16777,7 +16763,7 @@ mod tests {
     }
     #[test]
     fn game_event_bomb_beginplant() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "bomb_beginplant".to_string(),
             vec![
@@ -16831,7 +16817,7 @@ mod tests {
     }
     #[test]
     fn game_event_round_officially_ended() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "round_officially_ended".to_string(),
             vec![
@@ -16857,7 +16843,7 @@ mod tests {
     }
     #[test]
     fn game_event_item_pickup() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "item_pickup".to_string(),
             vec![
@@ -16927,7 +16913,7 @@ mod tests {
     }
     #[test]
     fn game_event_player_spawn() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "player_spawn".to_string(),
             vec![
@@ -16973,7 +16959,7 @@ mod tests {
     }
     #[test]
     fn game_event_other_death() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "other_death".to_string(),
             vec![
@@ -17107,7 +17093,7 @@ mod tests {
     }
     #[test]
     fn game_event_bomb_defused() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "bomb_defused".to_string(),
             vec![GameEvent {
@@ -17137,7 +17123,7 @@ mod tests {
     }
     #[test]
     fn game_event_begin_new_match() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "begin_new_match".to_string(),
             vec![GameEvent {
@@ -17153,7 +17139,7 @@ mod tests {
     }
     #[test]
     fn game_event_cs_win_panel_round() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "cs_win_panel_round".to_string(),
             vec![
@@ -17255,7 +17241,7 @@ mod tests {
     }
     #[test]
     fn game_event_cs_win_panel_match() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "cs_win_panel_match".to_string(),
             vec![GameEvent {
@@ -17271,7 +17257,7 @@ mod tests {
     }
     #[test]
     fn game_event_cs_round_start_beep() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "cs_round_start_beep".to_string(),
             vec![
@@ -17297,7 +17283,7 @@ mod tests {
     }
     #[test]
     fn game_event_bomb_dropped() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "bomb_dropped".to_string(),
             vec![
@@ -17351,7 +17337,7 @@ mod tests {
     }
     #[test]
     fn game_event_inferno_expire() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "inferno_expire".to_string(),
             vec![
@@ -17429,7 +17415,7 @@ mod tests {
     }
     #[test]
     fn game_event_round_end() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "round_end".to_string(),
             vec![
@@ -17507,7 +17493,7 @@ mod tests {
     }
     #[test]
     fn game_event_round_start() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "round_start".to_string(),
             vec![
@@ -17561,7 +17547,7 @@ mod tests {
     }
     #[test]
     fn game_event_round_time_warning() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "round_time_warning".to_string(),
             vec![GameEvent {
@@ -17577,7 +17563,7 @@ mod tests {
     }
     #[test]
     fn game_event_flashbang_detonate() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "flashbang_detonate".to_string(),
             vec![
@@ -17655,7 +17641,7 @@ mod tests {
     }
     #[test]
     fn game_event_round_mvp() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "round_mvp".to_string(),
             vec![
@@ -17741,7 +17727,7 @@ mod tests {
     }
     #[test]
     fn game_event_round_announce_match_start() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "round_announce_match_start".to_string(),
             vec![GameEvent {
@@ -17757,7 +17743,7 @@ mod tests {
     }
     #[test]
     fn game_event_hegrenade_detonate() {
-        use crate::variants::Variant::*;
+        use crate::second_pass::variants::Variant::*;
         let prop = (
             "hegrenade_detonate".to_string(),
             vec![

@@ -1,11 +1,12 @@
-use parser::parser_settings::rm_user_friendly_names;
-use parser::parser_settings::Parser;
-use parser::parser_settings::ParserInputs;
-use parser::parser_thread_settings::create_huffman_lookup_table;
-use parser::variants::soa_to_aos;
-use parser::variants::OutputSerdeHelperStruct;
+use parser::first_pass::parser_settings::rm_user_friendly_names;
+use parser::first_pass::parser_settings::ParserInputs;
+use parser::parse_demo::Parser;
+use parser::second_pass::second_pass_settings::create_huffman_lookup_table;
+use parser::second_pass::variants::soa_to_aos;
+use parser::second_pass::variants::OutputSerdeHelperStruct;
 use std::collections::HashMap;
 use std::iter::FromIterator;
+use std::result::Result;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
@@ -44,9 +45,7 @@ pub fn parseEvent(
     let settings = ParserInputs {
         wanted_players: vec![],
         wanted_player_props: real_names_player,
-        wanted_player_props_og_names: vec![],
         wanted_other_props: real_other_props,
-        wanted_other_props_og_names: vec![],
         real_name_to_og_name: real_name_to_og_name.into(),
         wanted_events: vec![event_name.unwrap_or("none".to_string())],
         parse_ents: true,
@@ -57,8 +56,7 @@ pub fn parseEvent(
         only_convars: false,
         huffman_lookup_table: &arc_huf,
     };
-    let mut parser = Parser::new(&settings);
-    parser.is_multithreadable = false;
+    let mut parser = Parser::new(settings, false);
 
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
@@ -108,9 +106,7 @@ pub fn parseEvents(
     let settings = ParserInputs {
         wanted_players: vec![],
         wanted_player_props: real_names_player,
-        wanted_player_props_og_names: vec![],
         wanted_other_props: real_other_props,
-        wanted_other_props_og_names: vec![],
         real_name_to_og_name: real_name_to_og_name.into(),
         wanted_events: event_names,
         parse_ents: true,
@@ -121,8 +117,7 @@ pub fn parseEvents(
         only_convars: false,
         huffman_lookup_table: &arc_huf,
     };
-    let mut parser = Parser::new(&settings);
-    parser.is_multithreadable = false;
+    let mut parser = Parser::new(settings, false);
 
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
@@ -141,9 +136,7 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_players: vec![],
         real_name_to_og_name: HashMap::default().into(),
         wanted_player_props: vec![],
-        wanted_player_props_og_names: vec![],
         wanted_other_props: vec![],
-        wanted_other_props_og_names: vec![],
         wanted_events: vec!["all".to_string()],
         parse_ents: false,
         wanted_ticks: vec![],
@@ -153,8 +146,7 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
     };
-    let mut parser = Parser::new(&settings);
-    parser.is_multithreadable = false;
+    let mut parser = Parser::new(settings, false);
 
     let output = match parser.parse_demo(&fileBytes) {
         Ok(output) => output,
@@ -203,9 +195,7 @@ pub fn parseTicks(
         wanted_players: wanted_players_u64,
         real_name_to_og_name: real_name_to_og_name.into(),
         wanted_player_props: real_names.clone(),
-        wanted_player_props_og_names: wanted_props.clone(),
         wanted_other_props: vec![],
-        wanted_other_props_og_names: vec![],
         wanted_events: vec![],
         parse_ents: true,
         wanted_ticks: wanted_ticks,
@@ -215,8 +205,7 @@ pub fn parseTicks(
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
     };
-    let mut parser = Parser::new(&settings);
-    parser.is_multithreadable = false;
+    let mut parser = Parser::new(settings, false);
 
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
@@ -226,7 +215,7 @@ pub fn parseTicks(
     real_names.push("steamid".to_owned());
     real_names.push("name".to_owned());
 
-    let mut prop_infos = output.prop_info.prop_infos.clone();
+    let mut prop_infos = output.prop_controller.prop_infos.clone();
     prop_infos.sort_by_key(|x| x.prop_name.clone());
     real_names.sort();
 
@@ -264,9 +253,9 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_players: vec![],
         real_name_to_og_name: HashMap::default().into(),
         wanted_player_props: vec![],
-        wanted_player_props_og_names: vec![],
+
         wanted_other_props: vec![],
-        wanted_other_props_og_names: vec![],
+
         wanted_events: vec![],
         parse_ents: true,
         wanted_ticks: vec![],
@@ -276,8 +265,7 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
     };
-    let mut parser = Parser::new(&settings);
-    parser.is_multithreadable = false;
+    let mut parser = Parser::new(settings, false);
 
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
@@ -298,9 +286,9 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_players: vec![],
         real_name_to_og_name: HashMap::default().into(),
         wanted_player_props: vec![],
-        wanted_player_props_og_names: vec![],
+
         wanted_other_props: vec![],
-        wanted_other_props_og_names: vec![],
+
         wanted_events: vec![],
         parse_ents: false,
         wanted_ticks: vec![],
@@ -310,14 +298,16 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
     };
-    let mut parser = Parser::new(&settings);
-    parser.is_multithreadable = false;
+    let mut parser = Parser::new(settings, false);
+
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
     let mut hm: HashMap<String, String> = HashMap::default();
-    hm.extend(parser.header);
+    if let Some(header) = output.header {
+        hm.extend(header);
+    }
     match serde_wasm_bindgen::to_value(&hm) {
         Ok(s) => Ok(s),
         Err(e) => return Err(JsError::new(&format!("{}", e))),

@@ -1,5 +1,6 @@
 use super::read_bits::{Bitreader, DemoParserError};
-use crate::{parser_settings::Parser, parser_thread_settings::ParserThread};
+use crate::first_pass::parser_settings::FirstPassParser;
+use crate::second_pass::second_pass_settings::SecondPassParser;
 use csgoproto::{
     netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable},
     networkbasetypes::CMsgPlayerInfo,
@@ -31,7 +32,7 @@ pub struct UserInfo {
     pub is_hltv: bool,
 }
 
-impl<'a> Parser<'a> {
+impl<'a> FirstPassParser<'a> {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
         match self.string_tables.get(table.table_id() as usize) {
@@ -193,7 +194,7 @@ pub fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
     })
 }
 
-impl<'a> ParserThread<'a> {
+impl<'a> SecondPassParser<'a> {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
         match self.string_tables.get(table.table_id() as usize) {

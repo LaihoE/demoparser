@@ -1,48 +1,74 @@
-use super::netmessage_types;
-use super::read_bits::DemoParserError;
-use crate::netmessage_types::netmessage_type_from_int;
-use crate::parser_settings::Parser;
-use crate::parser_thread_settings::ParserThread;
-use crate::read_bits::Bitreader;
+use crate::first_pass::parser::HEADER_ENDS_AT_BYTE;
+use crate::first_pass::parser_settings::FirstPassParser;
+use crate::first_pass::prop_controller::PropController;
+use crate::first_pass::read_bits::Bitreader;
+use crate::first_pass::read_bits::DemoParserError;
+use crate::first_pass::stringtables::parse_userinfo;
+use crate::maps::demo_cmd_type_from_int;
+use crate::maps::netmessage_type_from_int;
+use crate::maps::NetmessageType::*;
 use crate::read_bytes::read_varint;
 use crate::read_bytes::ProtoPacketParser;
-use crate::stringtables::parse_userinfo;
+use crate::second_pass::collect_data::ProjectileRecord;
+use crate::second_pass::game_events::GameEvent;
+use crate::second_pass::second_pass_settings::SecondPassParser;
+use crate::second_pass::second_pass_settings::*;
+use crate::second_pass::variants::PropColumn;
+use ahash::AHashMap;
+use ahash::AHashSet;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
 use csgoproto::networkbasetypes::CNETMsg_Tick;
-use netmessage_types::NetmessageType::*;
 use protobuf::Message;
 use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
 
-impl<'a> ParserThread<'a> {
-    pub fn start(&mut self, outer_bytes: &[u8]) -> Result<(), DemoParserError> {
+const OUTER_BUF_DEFAULT_LEN: usize = 400_000;
+const INNER_BUF_DEFAULT_LEN: usize = 8192 * 15;
+
+#[derive(Debug)]
+pub struct SecondPassOutput {
+    pub df: AHashMap<u32, PropColumn>,
+    pub game_events: Vec<GameEvent>,
+    pub skins: Vec<EconItem>,
+    pub item_drops: Vec<EconItem>,
+    pub chat_messages: Vec<ChatMessageRecord>,
+    pub convars: AHashMap<String, String>,
+    pub header: Option<AHashMap<String, String>>,
+    pub player_md: Vec<PlayerEndMetaData>,
+    pub game_events_counter: AHashSet<String>,
+    pub prop_info: PropController,
+    pub projectiles: Vec<ProjectileRecord>,
+    pub ptr: usize,
+    pub voice_data: Vec<CSVCMsg_VoiceData>,
+}
+impl<'a> SecondPassParser<'a> {
+    pub fn start(&mut self, demo_bytes: &[u8]) -> Result<(), DemoParserError> {
         let started_at = self.ptr;
-        let mut buf = vec![0_u8; 8192 * 15];
-        let mut buf2 = vec![0_u8; 400_000];
+        // re-use these to avoid allocation
+        let mut buf = vec![0_u8; INNER_BUF_DEFAULT_LEN];
+        let mut buf2 = vec![0_u8; OUTER_BUF_DEFAULT_LEN];
         loop {
-            let cmd = read_varint(outer_bytes, &mut self.ptr)?;
-            let tick = read_varint(outer_bytes, &mut self.ptr)?;
-
-            let size = read_varint(outer_bytes, &mut self.ptr)?;
+            let cmd = read_varint(demo_bytes, &mut self.ptr)?;
+            let tick = read_varint(demo_bytes, &mut self.ptr)?;
+            let size = read_varint(demo_bytes, &mut self.ptr)?;
             self.tick = tick as i32;
-
             // Safety check
-            if self.ptr + size as usize >= outer_bytes.len() {
+            if self.ptr + size as usize >= demo_bytes.len() {
                 break;
             }
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
-
             if demo_cmd == DEM_AnimationData || demo_cmd == DEM_SendTables || demo_cmd == DEM_StringTables {
                 self.ptr += size as usize;
                 continue;
             }
-            let input = &outer_bytes[self.ptr..self.ptr + size as usize];
-            Parser::resize_if_needed(&mut buf2, decompress_len(input))?;
+            let input = &demo_bytes[self.ptr..self.ptr + size as usize];
+            FirstPassParser::resize_if_needed(&mut buf2, decompress_len(input))?;
             self.ptr += size as usize;
+
             let bytes = match is_compressed {
                 true => match SnapDecoder::new().decompress(input, &mut buf2) {
                     Ok(idx) => &buf2[..idx],
@@ -60,7 +86,7 @@ impl<'a> ParserThread<'a> {
                             self.parse_full_packet(&bytes, false)?;
                         }
                         false => {
-                            if self.fullpackets_parsed == 0 && started_at != 16 {
+                            if self.fullpackets_parsed == 0 && started_at != HEADER_ENDS_AT_BYTE {
                                 self.parse_full_packet(&bytes, true)?;
                                 self.fullpackets_parsed += 1;
                             } else {
@@ -93,7 +119,6 @@ impl<'a> ParserThread<'a> {
             }
             bitreader.read_n_bytes_mut(size as usize, buf)?;
             let msg_bytes = &buf[..size as usize];
-
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
@@ -176,9 +201,7 @@ impl<'a> ParserThread<'a> {
                 buf.resize(size as usize, 0)
             }
             bitreader.read_n_bytes_mut(size as usize, &mut buf)?;
-
             let msg_bytes = &buf[..size as usize];
-
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => {
                     if should_parse_entities {
@@ -206,7 +229,6 @@ impl<'a> ParserThread<'a> {
         self.string_tables = vec![];
         Ok(())
     }
-
     pub fn parse_server_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let server_info: CSVCMsg_ServerInfo = match Message::parse_from_bytes(bytes) {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
@@ -216,34 +238,8 @@ impl<'a> ParserThread<'a> {
         self.cls_bits = Some((class_count as f32 + 1.).log2().ceil() as u32);
         Ok(())
     }
-
     pub fn parse_user_command_cmd(&mut self, _data: &[u8]) -> Result<(), DemoParserError> {
         // Only in pov demos. Maybe implement sometime. Includes buttons etc.
         Ok(())
-    }
-}
-pub fn demo_cmd_type_from_int(value: i32) -> ::std::option::Option<EDemoCommands> {
-    match value {
-        -1 => ::std::option::Option::Some(EDemoCommands::DEM_Error),
-        0 => ::std::option::Option::Some(EDemoCommands::DEM_Stop),
-        1 => ::std::option::Option::Some(EDemoCommands::DEM_FileHeader),
-        2 => ::std::option::Option::Some(EDemoCommands::DEM_FileInfo),
-        3 => ::std::option::Option::Some(EDemoCommands::DEM_SyncTick),
-        4 => ::std::option::Option::Some(EDemoCommands::DEM_SendTables),
-        5 => ::std::option::Option::Some(EDemoCommands::DEM_ClassInfo),
-        6 => ::std::option::Option::Some(EDemoCommands::DEM_StringTables),
-        7 => ::std::option::Option::Some(EDemoCommands::DEM_Packet),
-        8 => ::std::option::Option::Some(EDemoCommands::DEM_SignonPacket),
-        9 => ::std::option::Option::Some(EDemoCommands::DEM_ConsoleCmd),
-        10 => ::std::option::Option::Some(EDemoCommands::DEM_CustomData),
-        11 => ::std::option::Option::Some(EDemoCommands::DEM_CustomDataCallbacks),
-        12 => ::std::option::Option::Some(EDemoCommands::DEM_UserCmd),
-        13 => ::std::option::Option::Some(EDemoCommands::DEM_FullPacket),
-        14 => ::std::option::Option::Some(EDemoCommands::DEM_SaveGame),
-        15 => ::std::option::Option::Some(EDemoCommands::DEM_SpawnGroups),
-        16 => ::std::option::Option::Some(EDemoCommands::DEM_AnimationData),
-        17 => ::std::option::Option::Some(EDemoCommands::DEM_Max),
-        64 => ::std::option::Option::Some(EDemoCommands::DEM_IsCompressed),
-        _ => ::std::option::Option::None,
     }
 }

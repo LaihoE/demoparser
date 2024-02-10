@@ -1,19 +1,17 @@
-use super::{read_bits::DemoParserError, sendtables::Serializer};
+use crate::first_pass::read_bits::DemoParserError;
+use crate::first_pass::sendtables::Serializer;
 use crate::maps::PAINTKITS;
 use crate::maps::WEAPINDICIES;
-use crate::parser_thread_settings::ChatMessageRecord;
-use crate::parser_thread_settings::EconItem;
-use crate::parser_thread_settings::ParserThread;
-use crate::parser_thread_settings::PlayerEndMetaData;
+use crate::second_pass::second_pass_settings::ChatMessageRecord;
+use crate::second_pass::second_pass_settings::EconItem;
+use crate::second_pass::second_pass_settings::PlayerEndMetaData;
+use crate::second_pass::second_pass_settings::SecondPassParser;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_EndOfMatchAllPlayersData;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_SendPlayerItemDrops;
 use csgoproto::demo::CDemoFileInfo;
 use csgoproto::networkbasetypes::CNETMsg_SetConVar;
 use csgoproto::usermessages::CUserMessageSayText2;
 use protobuf::Message;
-
-// This file has functions for the simpler netmessages.
-// Don't want to create a new file for each of these.
 
 #[derive(Debug, Clone)]
 pub struct Class {
@@ -22,7 +20,7 @@ pub struct Class {
     pub serializer: Serializer,
 }
 
-impl<'a> ParserThread<'a> {
+impl<'a> SecondPassParser<'a> {
     pub fn parse_item_drops(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let drops: CCSUsrMsg_SendPlayerItemDrops = Message::parse_from_bytes(&bytes).unwrap();
         for item in &drops.entity_updates {
