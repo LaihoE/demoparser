@@ -112,7 +112,7 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
   let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
   let mut hm: HashMap<String, String> = HashMap::default();
-  println!("HEADER {:?}", output.header);
+
   if let Some(header) = output.header {
     hm.extend(header);
   }

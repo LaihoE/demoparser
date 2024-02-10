@@ -253,9 +253,7 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_players: vec![],
         real_name_to_og_name: HashMap::default().into(),
         wanted_player_props: vec![],
-
         wanted_other_props: vec![],
-
         wanted_events: vec![],
         parse_ents: true,
         wanted_ticks: vec![],
@@ -286,9 +284,7 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_players: vec![],
         real_name_to_og_name: HashMap::default().into(),
         wanted_player_props: vec![],
-
         wanted_other_props: vec![],
-
         wanted_events: vec![],
         parse_ents: false,
         wanted_ticks: vec![],
@@ -299,7 +295,6 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         huffman_lookup_table: &arc_huf.clone(),
     };
     let mut parser = Parser::new(settings, false);
-
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),

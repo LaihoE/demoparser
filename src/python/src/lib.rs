@@ -145,7 +145,11 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
         };
+<<<<<<< HEAD
          let mut parser = Parser::new(settings, false);
+=======
+        let mut parser = Parser::new(settings, false);
+>>>>>>> 4d9b8aa (fix bindings)
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
