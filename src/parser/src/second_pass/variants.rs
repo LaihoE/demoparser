@@ -1,6 +1,6 @@
-use crate::collect_data::ProjectileRecord;
-use crate::parser_thread_settings::{EconItem, PlayerEndMetaData};
-use crate::prop_controller::PropInfo;
+use crate::first_pass::prop_controller::PropInfo;
+use crate::second_pass::collect_data::ProjectileRecord;
+use crate::second_pass::second_pass_settings::{EconItem, PlayerEndMetaData};
 use ahash::{HashMap, HashMapExt};
 use itertools::Itertools;
 use memmap2::Mmap;

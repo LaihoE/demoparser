@@ -6,14 +6,14 @@ use ahash::AHashMap;
 use memmap2::MmapOptions;
 use napi::bindgen_prelude::*;
 use napi::Either;
-use parser::parser::DemoOutput;
-use parser::parser_settings::rm_user_friendly_names;
-use parser::parser_settings::Parser;
-use parser::parser_settings::ParserInputs;
-use parser::parser_thread_settings::create_huffman_lookup_table;
-use parser::variants::soa_to_aos;
-use parser::variants::BytesVariant;
-use parser::variants::OutputSerdeHelperStruct;
+use parser::first_pass::parser_settings::rm_user_friendly_names;
+use parser::first_pass::parser_settings::ParserInputs;
+use parser::parse_demo::DemoOutput;
+use parser::parse_demo::Parser;
+use parser::second_pass::second_pass_settings::create_huffman_lookup_table;
+use parser::second_pass::variants::soa_to_aos;
+use parser::second_pass::variants::BytesVariant;
+use parser::second_pass::variants::OutputSerdeHelperStruct;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
@@ -41,9 +41,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     wanted_players: vec![],
     real_name_to_og_name: AHashMap::default(),
     wanted_player_props: vec![],
-    wanted_player_props_og_names: vec![],
     wanted_other_props: vec![],
-    wanted_other_props_og_names: vec![],
     wanted_events: vec!["all".to_string()],
     parse_ents: false,
     wanted_ticks: vec![],
@@ -53,7 +51,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     only_convars: false,
     huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(&settings);
+  let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
 
   let v = Vec::from_iter(output.game_events_counter.iter());
@@ -73,9 +71,7 @@ pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value
     wanted_players: vec![],
     real_name_to_og_name: AHashMap::default(),
     wanted_player_props: vec![],
-    wanted_player_props_og_names: vec![],
     wanted_other_props: vec![],
-    wanted_other_props_og_names: vec![],
     wanted_events: vec![],
     parse_ents: true,
     wanted_ticks: vec![],
@@ -85,7 +81,7 @@ pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value
     only_convars: false,
     huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(&settings);
+  let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
 
   let s = match serde_json::to_value(&output.projectiles) {
@@ -103,24 +99,23 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     real_name_to_og_name: AHashMap::default(),
     wanted_players: vec![],
     wanted_player_props: vec![],
-    wanted_player_props_og_names: vec![],
     wanted_other_props: vec![],
-    wanted_other_props_og_names: vec![],
     wanted_events: vec![],
     parse_ents: false,
     wanted_ticks: vec![],
-    parse_projectiles: true,
+    parse_projectiles: false,
     only_header: true,
     count_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(&settings);
-  let _output = parse_demo(bytes, &mut parser)?;
-
+  let mut parser = Parser::new(settings, false);
+  let output = parse_demo(bytes, &mut parser)?;
   let mut hm: HashMap<String, String> = HashMap::default();
-  hm.extend(parser.header);
 
+  if let Some(header) = output.header {
+    hm.extend(header);
+  }
   let s = match serde_json::to_value(&hm) {
     Ok(s) => s,
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
@@ -167,9 +162,7 @@ pub fn parse_event(
     real_name_to_og_name: real_name_to_og_name,
     wanted_players: vec![],
     wanted_player_props: real_names_player.clone(),
-    wanted_player_props_og_names: vec![],
     wanted_other_props: real_other_props,
-    wanted_other_props_og_names: vec![],
     wanted_events: vec![event_name],
     parse_ents: true,
     wanted_ticks: vec![],
@@ -179,7 +172,7 @@ pub fn parse_event(
     only_convars: false,
     huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(&settings);
+  let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.game_events) {
     Ok(s) => s,
@@ -230,9 +223,7 @@ pub fn parse_events(
     real_name_to_og_name: real_name_to_og_name,
     wanted_players: vec![],
     wanted_player_props: real_names_player.clone(),
-    wanted_player_props_og_names: vec![],
     wanted_other_props: real_other_props.clone(),
-    wanted_other_props_og_names: vec![],
     wanted_events: event_names,
     parse_ents: true,
     wanted_ticks: vec![],
@@ -242,7 +233,7 @@ pub fn parse_events(
     only_convars: false,
     huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(&settings);
+  let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.game_events) {
     Ok(s) => s,
@@ -285,9 +276,7 @@ pub fn parse_ticks(
     real_name_to_og_name: real_name_to_og_name,
     wanted_players: wanted_players_u64,
     wanted_player_props: real_names.clone(),
-    wanted_player_props_og_names: wanted_props.clone(),
     wanted_other_props: vec![],
-    wanted_other_props_og_names: vec![],
     wanted_events: vec![],
     parse_ents: true,
     wanted_ticks: wanted_ticks,
@@ -297,13 +286,13 @@ pub fn parse_ticks(
     only_convars: false,
     huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(&settings);
+  let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
   real_names.push("tick".to_owned());
   real_names.push("steamid".to_owned());
   real_names.push("name".to_owned());
 
-  let mut prop_infos = output.prop_info.prop_infos.clone();
+  let mut prop_infos = output.prop_controller.prop_infos.clone();
   prop_infos.sort_by_key(|x| x.prop_name.clone());
   real_names.sort();
 
@@ -342,9 +331,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     wanted_players: vec![],
     real_name_to_og_name: AHashMap::default(),
     wanted_player_props: vec![],
-    wanted_player_props_og_names: vec![],
     wanted_other_props: vec![],
-    wanted_other_props_og_names: vec![],
     wanted_events: vec![],
     parse_ents: true,
     wanted_ticks: vec![],
@@ -354,7 +341,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     only_convars: false,
     huffman_lookup_table: &huf,
   };
-  let mut parser = Parser::new(&settings);
+  let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.player_md) {
     Ok(s) => s,

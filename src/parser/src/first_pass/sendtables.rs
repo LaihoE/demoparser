@@ -1,13 +1,13 @@
 use super::read_bits::Bitreader;
-use crate::decoder::Decoder;
-use crate::decoder::Decoder::*;
-use crate::decoder::QfMapper;
+use crate::first_pass::parser_settings::needs_velocity;
+use crate::first_pass::parser_settings::FirstPassParser;
+use crate::first_pass::prop_controller::PropController;
 use crate::maps::BASETYPE_DECODERS;
-use crate::parser_settings::needs_velocity;
-use crate::parser_settings::Parser;
-use crate::prop_controller::PropController;
-use crate::q_float::QuantalizedFloat;
-use crate::variants::Variant;
+use crate::second_pass::decoder::Decoder;
+use crate::second_pass::decoder::Decoder::*;
+use crate::second_pass::decoder::QfMapper;
+use crate::second_pass::decoder::QuantalizedFloat;
+use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use csgoproto::netmessages::ProtoFlattenedSerializer_t;
 use csgoproto::{
@@ -20,12 +20,10 @@ use regex::Regex;
 
 // Majority of this file is implemented based on how clarity does it: https://github.com/skadistats/clarity
 // Majority of this file is implemented based on how clarity does it: https://github.com/skadistats/clarity
-
 #[derive(Debug, Clone)]
 pub struct Serializer {
     pub name: String,
     pub fields: Vec<Field>,
-    // pub names: Vec<String>,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum FieldCategory {
@@ -56,7 +54,7 @@ pub struct ConstructorField {
     pub base_decoder: Option<Decoder>,
     pub child_decoder: Option<Decoder>,
 }
-impl<'a> Parser<'a> {
+impl<'a> FirstPassParser<'a> {
     pub fn parse_sendtable(&mut self, tables: CDemoSendTables) -> (AHashMap<String, Serializer>, QfMapper, PropController) {
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint().unwrap();
@@ -618,7 +616,7 @@ fn to_string(ft: &FieldType, omit_count: bool) -> String {
     }
     s
 }
-use crate::sendtables::Decoder::BaseDecoder;
+// use crate::sendtables::Decoder::BaseDecoder;
 pub const POINTER_TYPES: &'static [&'static str] = &[
     "CBodyComponent",
     "CLightComponent",

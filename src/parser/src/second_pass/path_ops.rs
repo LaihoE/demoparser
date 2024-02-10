@@ -1,5 +1,4 @@
-use super::read_bits::DemoParserError;
-use crate::read_bits::Bitreader;
+use crate::first_pass::read_bits::{Bitreader, DemoParserError};
 
 #[inline(always)]
 pub fn do_op(opcode: u8, bitreader: &mut Bitreader, field_path: &mut FieldPath) -> Result<(), DemoParserError> {

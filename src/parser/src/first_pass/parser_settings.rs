@@ -1,34 +1,31 @@
 use super::sendtables::Serializer;
 use super::stringtables::StringTable;
-use crate::decoder::QfMapper;
+use crate::first_pass::prop_controller::PropController;
+use crate::first_pass::prop_controller::PropInfo;
+use crate::first_pass::read_bits::DemoParserError;
+use crate::first_pass::stringtables::UserInfo;
 use crate::maps::FRIENDLY_NAMES_MAPPING;
 use crate::maps::NON_MULTITHREADABLE_PROPS;
-use crate::other_netmessages::Class;
-use crate::parser_thread_settings::PlayerEndMetaData;
-use crate::parser_thread_settings::SpecialIDs;
-use crate::prop_controller::PropController;
-use crate::prop_controller::PropInfo;
-use crate::read_bits::DemoParserError;
-use crate::stringtables::UserInfo;
+use crate::second_pass::decoder::QfMapper;
+use crate::second_pass::other_netmessages::Class;
+use crate::second_pass::second_pass_settings::PlayerEndMetaData;
+use crate::second_pass::second_pass_settings::SpecialIDs;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use memmap2::Mmap;
+use memmap2::MmapOptions;
 use std::collections::BTreeMap;
+use std::fs::File;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct ParserInputs<'a> {
-    // pub bytes: &'a BytesVariant,
     pub real_name_to_og_name: AHashMap<String, String>,
-
     pub wanted_players: Vec<u64>,
     pub wanted_player_props: Vec<String>,
-    pub wanted_player_props_og_names: Vec<String>,
     pub wanted_other_props: Vec<String>,
-    pub wanted_other_props_og_names: Vec<String>,
-
     pub wanted_ticks: Vec<i32>,
     pub wanted_events: Vec<String>,
     pub parse_ents: bool,
@@ -39,12 +36,11 @@ pub struct ParserInputs<'a> {
     pub huffman_lookup_table: &'a Vec<(u8, u8)>,
 }
 
-pub struct Parser<'a> {
+pub struct FirstPassParser<'a> {
     pub added_temp_props: Vec<String>,
     pub real_name_to_og_name: AHashMap<String, String>,
     pub fullpacket_offsets: Vec<usize>,
     pub ptr: usize,
-    // pub bytes: &'a BytesVariant,
     pub tick: i32,
     pub huf: &'a Vec<(u8, u8)>,
     pub settings: &'a ParserInputs<'a>,
@@ -54,43 +50,28 @@ pub struct Parser<'a> {
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub convars: AHashMap<String, String>,
     pub player_md: Vec<PlayerEndMetaData>,
-    pub maps_ready: bool,
     pub prop_controller: PropController,
-    pub prop_controller_is_set: bool,
     pub ge_list: AHashMap<i32, Descriptor_t>,
     pub qf_mapper: QfMapper,
     pub stringtable_players: BTreeMap<u64, UserInfo>,
-
     pub qf_map_set: bool,
     pub ge_list_set: bool,
     pub cls_by_id_set: bool,
-
     pub wanted_player_props: Vec<String>,
-
     pub wanted_players: AHashSet<u64, RandomState>,
     pub wanted_ticks: AHashSet<i32, RandomState>,
-    pub wanted_player_props_og_names: Vec<String>,
-    // Team and rules props
     pub wanted_other_props: Vec<String>,
-    pub wanted_other_props_og_names: Vec<String>,
     pub wanted_events: Vec<String>,
     pub parse_entities: bool,
     pub parse_projectiles: bool,
     pub name_to_id: AHashMap<String, u32>,
-
     pub id: u32,
     pub wanted_prop_ids: Vec<u32>,
     pub controller_ids: SpecialIDs,
-    pub player_output_ids: Vec<u8>,
-    pub prop_out_id: u8,
     pub only_header: bool,
     pub prop_infos: Vec<PropInfo>,
-    pub largest_wanted_tick: i32,
-
     pub header: AHashMap<String, String>,
-    pub threads_spawned: u32,
     pub is_multithreadable: bool,
-
     pub needs_velocity: bool,
 }
 pub fn needs_velocity(props: &[String]) -> bool {
@@ -102,14 +83,12 @@ pub fn needs_velocity(props: &[String]) -> bool {
     false
 }
 
-impl<'a> Parser<'a> {
+impl<'a> FirstPassParser<'a> {
     pub fn new(inputs: &'a ParserInputs<'a>) -> Self {
-        Parser {
+        FirstPassParser {
             needs_velocity: false,
             added_temp_props: vec![],
-            threads_spawned: 0,
             is_multithreadable: check_multithreadability(&inputs.wanted_player_props),
-            largest_wanted_tick: *inputs.wanted_ticks.iter().max().unwrap_or(&999999999),
             stringtable_players: BTreeMap::default(),
             only_header: inputs.only_header,
             ge_list_set: false,
@@ -122,13 +101,10 @@ impl<'a> Parser<'a> {
                 inputs.real_name_to_og_name.clone(),
                 false,
             ),
-            prop_controller_is_set: false,
             cls_by_id: None,
             player_md: vec![],
-            maps_ready: false,
             name_to_id: AHashMap::default(),
             convars: AHashMap::default(),
-            // bytes: inputs.bytes,
             string_tables: vec![],
             fullpacket_offsets: vec![],
             ptr: 0,
@@ -148,20 +124,16 @@ impl<'a> Parser<'a> {
             wanted_players: AHashSet::from_iter(inputs.wanted_players.iter().cloned()),
             wanted_ticks: AHashSet::from_iter(inputs.wanted_ticks.iter().cloned()),
             wanted_other_props: inputs.wanted_other_props.clone(),
-            wanted_other_props_og_names: inputs.wanted_other_props_og_names.clone(),
             settings: &inputs,
-            wanted_player_props_og_names: vec![],
             controller_ids: SpecialIDs::new(),
             id: 0,
-            player_output_ids: vec![],
             wanted_prop_ids: vec![],
-            prop_out_id: 0,
             prop_infos: vec![],
             header: AHashMap::default(),
         }
     }
 }
-fn check_multithreadability(player_props: &[String]) -> bool {
+pub fn check_multithreadability(player_props: &[String]) -> bool {
     for name in player_props {
         if NON_MULTITHREADABLE_PROPS.contains(name) {
             return false;
@@ -180,8 +152,6 @@ pub fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoPa
     }
     Ok(real_names)
 }
-use memmap2::MmapOptions;
-use std::fs::File;
 
 pub fn create_mmap(path: String) -> Result<Mmap, DemoParserError> {
     let file = match File::open(path) {
