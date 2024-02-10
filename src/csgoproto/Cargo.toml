@@ -5,12 +5,6 @@ version = "0.1.5"
 authors = ["Laiho"]
 
 [dependencies]
-<<<<<<< HEAD
 proc-macro2 = "1.0.78"
 protobuf = "3.1.0"
 protobuf-codegen = "3.3.0"
-=======
-protobuf = "3.3.0"
-protobuf-codegen = "3.3.0"
-protobuf-support = "3.3.0"
->>>>>>> 4da9de1 (update csgoproto toml)
