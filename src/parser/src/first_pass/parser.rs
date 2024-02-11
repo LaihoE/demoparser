@@ -17,6 +17,7 @@ use ahash::AHashMap;
 use ahash::AHashSet;
 use csgoproto::demo::CDemoFullPacket;
 use csgoproto::demo::CDemoPacket;
+use csgoproto::demo::EDemoCommands;
 use csgoproto::demo::EDemoCommands::*;
 use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoSendTables};
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
@@ -64,79 +65,91 @@ pub struct FirstPassOutput<'a> {
     pub wanted_players: AHashSet<u64>,
     pub header: AHashMap<String, String>,
 }
+struct Frame {
+    pub size: usize,
+    pub frame_starts_at: usize,
+    pub is_compressed: bool,
+    pub demo_cmd: EDemoCommands,
+}
 
 impl<'a> FirstPassParser<'a> {
-    pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<FirstPassOutput, DemoParserError> {
-        FirstPassParser::handle_short_header(demo_bytes.len(), &demo_bytes[..HEADER_ENDS_AT_BYTE])?;
-        self.ptr = HEADER_ENDS_AT_BYTE;
-        let mut sendtable = None;
-        let mut buf = vec![0_u8; 100_000];
-
+    pub fn parse_demo(&mut self, demo_bytes: &'a [u8]) -> Result<FirstPassOutput, DemoParserError> {
+        self.handle_short_header(demo_bytes.len(), &demo_bytes[..HEADER_ENDS_AT_BYTE])?;
+        let mut reuseable_buffer = vec![0_u8; 100_000];
+        // Loop that goes trough the entire file
         loop {
-            let frame_starts_at = self.ptr;
-
-            let cmd = read_varint(demo_bytes, &mut self.ptr)?;
-            let tick = read_varint(demo_bytes, &mut self.ptr)?;
-            let size = read_varint(demo_bytes, &mut self.ptr)?;
-            self.tick = tick as i32;
-
-            // Safety check
-            if self.ptr + size as usize >= demo_bytes.len() {
-                break;
-            }
-
-            let msg_type = cmd & !64;
-            let is_compressed = (cmd & 64) == 64;
-            let demo_cmd = demo_cmd_type_from_int(msg_type as i32)?;
-
-            // skip these for performance reasons
-            if demo_cmd == DEM_Packet || demo_cmd == DEM_AnimationData {
-                self.ptr += size as usize;
+            let frame = self.read_frame(demo_bytes)?;
+            if self.is_packet_we_skip_on_first_pass(frame.demo_cmd) {
+                self.ptr += frame.size;
                 continue;
             }
+            let bytes = self.slice_packet_bytes(demo_bytes, frame.size)?;
+            let bytes = self.decompress_if_needed(&mut reuseable_buffer, bytes, &frame)?;
+            self.ptr += frame.size;
 
-            let input = &demo_bytes[self.ptr..self.ptr + size as usize];
-            FirstPassParser::resize_if_needed(&mut buf, decompress_len(input))?;
-
-            self.ptr += size as usize;
-            let bytes = match is_compressed {
-                true => match SnapDecoder::new().decompress(input, &mut buf) {
-                    Ok(idx) => &buf[..idx],
-                    Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
-                },
-                false => input,
-            };
-
-            let ok: Result<(), DemoParserError> = match demo_cmd {
-                DEM_SendTables => {
-                    sendtable = match Message::parse_from_bytes(&bytes) {
-                        Ok(m) => Some(m),
-                        Err(_e) => return Err(DemoParserError::MalformedMessage),
-                    };
-                    Ok(())
-                }
-                DEM_FileHeader => self.parse_header(&bytes),
-                DEM_ClassInfo => {
-                    let table = match sendtable.take() {
-                        Some(table) => table,
-                        None => return Err(DemoParserError::NoSendTableMessage),
-                    };
-                    self.parse_class_info(&bytes, table)?;
-                    Ok(())
-                }
-                DEM_SignonPacket => self.parse_packet(&bytes),
+            match frame.demo_cmd {
+                DEM_SendTables => self.parse_sendtable_bytes(bytes)?,
+                DEM_FileHeader => self.parse_header(&bytes)?,
+                DEM_ClassInfo => self.parse_class_info(&bytes)?,
+                DEM_SignonPacket => self.parse_packet(&bytes)?,
+                DEM_FullPacket => self.parse_full_packet(&bytes, &frame)?,
                 DEM_Stop => break,
-                DEM_FullPacket => {
-                    self.parse_full_packet(&bytes)?;
-                    self.fullpacket_offsets.push(frame_starts_at);
-                    Ok(())
-                }
-                _ => Ok(()),
+                _ => {}
             };
-            ok?;
         }
         self.fallback_if_first_pass_missing_data()?;
         self.create_first_pass_output()
+    }
+
+    fn parse_sendtable_bytes(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        self.sendtable_message = match Message::parse_from_bytes(&bytes) {
+            Ok(m) => Some(m),
+            Err(_e) => return Err(DemoParserError::MalformedMessage),
+        };
+        Ok(())
+    }
+    fn read_frame(&mut self, demo_bytes: &[u8]) -> Result<Frame, DemoParserError> {
+        let frame_starts_at = self.ptr;
+        let cmd = read_varint(demo_bytes, &mut self.ptr)?;
+        let tick = read_varint(demo_bytes, &mut self.ptr)?;
+        let size = read_varint(demo_bytes, &mut self.ptr)?;
+        self.tick = tick as i32;
+
+        let msg_type = cmd & !64;
+        let is_compressed = (cmd & 64) == 64;
+        let demo_cmd = demo_cmd_type_from_int(msg_type as i32)?;
+
+        Ok(Frame {
+            size: size as usize,
+            frame_starts_at: frame_starts_at,
+            is_compressed: is_compressed,
+            demo_cmd: demo_cmd,
+        })
+    }
+    fn is_packet_we_skip_on_first_pass(&self, demo_cmd: EDemoCommands) -> bool {
+        demo_cmd == DEM_Packet || demo_cmd == DEM_AnimationData
+    }
+    fn slice_packet_bytes(&mut self, demo_bytes: &'a [u8], frame_size: usize) -> Result<&'a [u8], DemoParserError> {
+        if self.ptr + frame_size as usize >= demo_bytes.len() {
+            return Err(DemoParserError::MalformedMessage);
+        }
+        Ok(&demo_bytes[self.ptr..self.ptr + frame_size])
+    }
+    fn decompress_if_needed<'b>(
+        &mut self,
+        buf: &'b mut Vec<u8>,
+        possibly_uncompressed_bytes: &'b [u8],
+        frame: &Frame,
+    ) -> Result<&'b [u8], DemoParserError> {
+        FirstPassParser::resize_if_needed(buf, decompress_len(possibly_uncompressed_bytes))?;
+
+        match frame.is_compressed {
+            true => match SnapDecoder::new().decompress(possibly_uncompressed_bytes, buf) {
+                Ok(idx) => Ok(&buf[..idx]),
+                Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
+            },
+            false => Ok(possibly_uncompressed_bytes),
+        }
     }
     pub fn resize_if_needed(buf: &mut Vec<u8>, needed_len: Result<usize, snap::Error>) -> Result<(), DemoParserError> {
         match needed_len {
@@ -192,7 +205,7 @@ impl<'a> FirstPassParser<'a> {
         Ok(())
     }
     // Message that should come before first game event
-    pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<AHashMap<i32, Descriptor_t>, DemoParserError> {
+    pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let event_list: CSVCMsg_GameEventList = match Message::parse_from_bytes(&bytes) {
             Ok(list) => list,
             Err(_) => return Err(DemoParserError::MalformedMessage),
@@ -201,9 +214,12 @@ impl<'a> FirstPassParser<'a> {
         for event_desc in event_list.descriptors {
             hm.insert(event_desc.eventid(), event_desc);
         }
-        Ok(hm)
+        self.ge_list = hm;
+        Ok(())
     }
-    pub fn parse_full_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+    pub fn parse_full_packet(&mut self, bytes: &[u8], frame: &Frame) -> Result<(), DemoParserError> {
+        self.fullpacket_offsets.push(frame.frame_starts_at);
+
         let full_packet: CDemoFullPacket = match Message::parse_from_bytes(&bytes) {
             Ok(list) => list,
             Err(_) => return Err(DemoParserError::MalformedMessage),
@@ -243,12 +259,7 @@ impl<'a> FirstPassParser<'a> {
             let msg_bytes = bitreader.read_n_bytes(size as usize)?;
 
             let ok = match netmessage_type_from_int(msg_type as i32) {
-                GE_Source1LegacyGameEventList => {
-                    let hm = self.parse_game_event_list(&msg_bytes)?;
-                    self.ge_list = hm;
-                    self.ge_list_set = true;
-                    Ok(())
-                }
+                GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),
                 svc_ClearAllStringTables => self.clear_stringtables(),
@@ -300,7 +311,7 @@ impl<'a> FirstPassParser<'a> {
         self.header.insert("addons".to_string(), header.addons().to_string());
         Ok(())
     }
-    fn handle_short_header(file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
+    fn handle_short_header(&mut self, file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
         match std::str::from_utf8(&bytes[..8]) {
             Ok(magic) => match magic {
                 "PBDEMS2\0" => {}
@@ -333,11 +344,12 @@ impl<'a> FirstPassParser<'a> {
             Err(_) => return Err(DemoParserError::OutOfBytesError),
             Ok(arr) => i32::from_le_bytes(arr),
         };
+        self.ptr = HEADER_ENDS_AT_BYTE;
         Ok(())
     }
 
-    pub fn parse_class_info(&mut self, bytes: &[u8], sendtables: CDemoSendTables) -> Result<(), DemoParserError> {
-        let (mut serializers, qf_mapper, p) = self.parse_sendtable(sendtables)?;
+    pub fn parse_class_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        let (mut serializers, qf_mapper, p) = self.parse_sendtable()?;
         let msg: CDemoClassInfo = match Message::parse_from_bytes(bytes) {
             Err(_) => return Err(DemoParserError::MalformedMessage),
             Ok(msg) => msg,

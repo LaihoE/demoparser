@@ -59,10 +59,12 @@ pub struct ConstructorField {
     pub child_decoder: Option<Decoder>,
 }
 impl<'a> FirstPassParser<'a> {
-    pub fn parse_sendtable(
-        &mut self,
-        tables: CDemoSendTables,
-    ) -> Result<(AHashMap<String, Serializer>, QfMapper, PropController), DemoParserError> {
+    pub fn parse_sendtable(&mut self) -> Result<(AHashMap<String, Serializer>, QfMapper, PropController), DemoParserError> {
+        let tables = match &self.sendtable_message {
+            Some(table) => table,
+            None => return Err(DemoParserError::NoSendTableMessage),
+        };
+
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint()?;
         let bytes = bitreader.read_n_bytes(n_bytes as usize)?;
