@@ -4,9 +4,11 @@ use crate::first_pass::sendtables::ValueField;
 use crate::maps::BUTTONMAP;
 use crate::maps::TYPEHM;
 use crate::second_pass::collect_data::PropType;
-use crate::second_pass::second_pass_settings::SpecialIDs;
+use crate::second_pass::parser_settings::SpecialIDs;
 use ahash::AHashMap;
 
+pub const PLAYER_ENTITY_HANDLE_MISSING: i32 = 2047;
+pub const SPECTATOR_TEAM_NUM: u32 = 1;
 pub const BUTTONS_BASEID: u32 = 100000;
 pub const NORMAL_PROP_BASEID: u32 = 1000;
 pub const WEAPON_SKIN_ID: u32 = 420420420;
@@ -325,33 +327,33 @@ impl PropController {
     }
 
     fn insert_propinfo(&mut self, prop_name: &str, f: &mut ValueField) {
-        let prop_type = TYPEHM.get(&prop_name);
-
-        if self.wanted_player_props.contains(&prop_name.to_string()) {
-            self.prop_infos.push(PropInfo {
-                id: f.prop_id as u32,
-                prop_type: prop_type.copied().unwrap(),
-                prop_name: prop_name.to_string(),
-                prop_friendly_name: self
-                    .real_name_to_og_name
-                    .get(&prop_name.to_string())
-                    .unwrap_or(&prop_name.to_string())
-                    .to_string(),
-                is_player_prop: true,
-            })
-        }
-        if self.wanted_other_props.contains(&prop_name.to_string()) {
-            self.prop_infos.push(PropInfo {
-                id: f.prop_id as u32,
-                prop_type: prop_type.copied().unwrap(),
-                prop_name: prop_name.to_string(),
-                prop_friendly_name: self
-                    .real_name_to_og_name
-                    .get(&prop_name.to_string())
-                    .unwrap_or(&(prop_name.to_string() + "notfound"))
-                    .to_string(),
-                is_player_prop: false,
-            })
+        if let Some(prop_type) = TYPEHM.get(&prop_name) {
+            if self.wanted_player_props.contains(&prop_name.to_string()) {
+                self.prop_infos.push(PropInfo {
+                    id: f.prop_id as u32,
+                    prop_type: *prop_type,
+                    prop_name: prop_name.to_string(),
+                    prop_friendly_name: self
+                        .real_name_to_og_name
+                        .get(&prop_name.to_string())
+                        .unwrap_or(&prop_name.to_string())
+                        .to_string(),
+                    is_player_prop: true,
+                })
+            }
+            if self.wanted_other_props.contains(&prop_name.to_string()) {
+                self.prop_infos.push(PropInfo {
+                    id: f.prop_id as u32,
+                    prop_type: *prop_type,
+                    prop_name: prop_name.to_string(),
+                    prop_friendly_name: self
+                        .real_name_to_og_name
+                        .get(&prop_name.to_string())
+                        .unwrap_or(&(prop_name.to_string()))
+                        .to_string(),
+                    is_player_prop: false,
+                })
+            }
         }
     }
     pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField, path: Vec<i32>) {
@@ -467,29 +469,30 @@ impl PropController {
                 },
                 Field::Vector(_x) => {
                     let vec_path = path.clone();
-                    let inner = f.get_inner_mut(0);
-                    match inner {
-                        Field::Serializer(s) => {
-                            for (inner_idx, f) in &mut s.serializer.fields.iter_mut().enumerate() {
-                                match f {
-                                    Field::Value(v) => {
-                                        let mut myp = vec_path.clone();
-                                        myp.push(inner_idx as i32);
-                                        self.handle_prop(&(ser_name.clone() + "." + &v.name), v, myp);
+                    if let Ok(inner) = f.get_inner_mut(0) {
+                        match inner {
+                            Field::Serializer(s) => {
+                                for (inner_idx, f) in &mut s.serializer.fields.iter_mut().enumerate() {
+                                    match f {
+                                        Field::Value(v) => {
+                                            let mut myp = vec_path.clone();
+                                            myp.push(inner_idx as i32);
+                                            self.handle_prop(&(ser_name.clone() + "." + &v.name), v, myp);
+                                        }
+                                        _ => {}
                                     }
-                                    _ => {}
                                 }
+                                self.traverse_fields(
+                                    &mut s.serializer.fields,
+                                    ser_name.clone() + "." + &s.serializer.name,
+                                    path_og.clone(),
+                                )
                             }
-                            self.traverse_fields(
-                                &mut s.serializer.fields,
-                                ser_name.clone() + "." + &s.serializer.name,
-                                path_og.clone(),
-                            )
+                            Field::Value(x) => {
+                                self.handle_prop(&(ser_name.clone() + "." + &x.name), x, path.clone());
+                            }
+                            _ => {}
                         }
-                        Field::Value(x) => {
-                            self.handle_prop(&(ser_name.clone() + "." + &x.name), x, path.clone());
-                        }
-                        _ => {}
                     }
                 }
                 _ => {}

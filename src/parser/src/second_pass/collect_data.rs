@@ -6,7 +6,7 @@ use crate::maps::BUTTONMAP;
 use crate::maps::GRENADE_FRIENDLY_NAMES;
 use crate::maps::PAINTKITS;
 use crate::maps::WEAPINDICIES;
-use crate::second_pass::second_pass_settings::SecondPassParser;
+use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::PropColumn;
 use crate::second_pass::variants::VarVec;
 use std::fmt;

@@ -1,6 +1,6 @@
 use crate::first_pass::prop_controller::PropInfo;
 use crate::second_pass::collect_data::ProjectileRecord;
-use crate::second_pass::second_pass_settings::{EconItem, PlayerEndMetaData};
+use crate::second_pass::parser_settings::{EconItem, PlayerEndMetaData};
 use ahash::{HashMap, HashMapExt};
 use itertools::Itertools;
 use memmap2::Mmap;
@@ -452,16 +452,16 @@ impl Serialize for Variant {
             Variant::U64(u) => serializer.serialize_str(&u.to_string()),
             Variant::U8(u) => serializer.serialize_u8(*u),
             Variant::StringVec(v) => {
-                let mut s = serializer.serialize_seq(Some(v.len())).unwrap();
+                let mut s = serializer.serialize_seq(Some(v.len()))?;
                 for item in v {
-                    s.serialize_element(item).unwrap();
+                    s.serialize_element(item)?;
                 }
                 s.end()
             }
             Variant::U64Vec(v) => {
-                let mut s = serializer.serialize_seq(Some(v.len())).unwrap();
+                let mut s = serializer.serialize_seq(Some(v.len()))?;
                 for item in v {
-                    s.serialize_element(&item.to_string()).unwrap();
+                    s.serialize_element(&item.to_string())?;
                 }
                 s.end()
             }
@@ -476,13 +476,13 @@ impl Serialize for PlayerEndMetaData {
         S: serde::Serializer,
     {
         let mut state = serializer.serialize_struct("PlayerEndMetaData", 3)?;
-        state.serialize_field("name", &self.name).unwrap();
+        state.serialize_field("name", &self.name)?;
         let steamid = match self.steamid {
             Some(u) => Some(u.to_string()),
             None => None,
         };
-        state.serialize_field("steamid", &steamid).unwrap();
-        state.serialize_field("team_number", &self.team_number).unwrap();
+        state.serialize_field("steamid", &steamid)?;
+        state.serialize_field("team_number", &self.team_number)?;
         state.end()
     }
 }
@@ -496,22 +496,22 @@ impl Serialize for EconItem {
             Some(u) => Some(u.to_string()),
             None => None,
         };
-        state.serialize_field("steamid", &steamid).unwrap();
-        state.serialize_field("account_id", &self.account_id).unwrap();
-        state.serialize_field("custom_name", &self.custom_name).unwrap();
-        state.serialize_field("def_index", &self.def_index).unwrap();
-        state.serialize_field("dropreason", &self.dropreason).unwrap();
-        state.serialize_field("item_id", &self.item_id).unwrap();
-        state.serialize_field("inventory", &self.inventory).unwrap();
-        state.serialize_field("item_id", &self.item_id).unwrap();
-        state.serialize_field("paint_index", &self.paint_index).unwrap();
-        state.serialize_field("paint_seed", &self.paint_seed).unwrap();
-        state.serialize_field("paint_wear", &self.paint_wear).unwrap();
-        state.serialize_field("quality", &self.quality).unwrap();
-        state.serialize_field("quest_id", &self.quest_id).unwrap();
-        state.serialize_field("rarity", &self.rarity).unwrap();
-        state.serialize_field("item_name", &self.item_name).unwrap();
-        state.serialize_field("skin_name", &self.skin_name).unwrap();
+        state.serialize_field("steamid", &steamid)?;
+        state.serialize_field("account_id", &self.account_id)?;
+        state.serialize_field("custom_name", &self.custom_name)?;
+        state.serialize_field("def_index", &self.def_index)?;
+        state.serialize_field("dropreason", &self.dropreason)?;
+        state.serialize_field("item_id", &self.item_id)?;
+        state.serialize_field("inventory", &self.inventory)?;
+        state.serialize_field("item_id", &self.item_id)?;
+        state.serialize_field("paint_index", &self.paint_index)?;
+        state.serialize_field("paint_seed", &self.paint_seed)?;
+        state.serialize_field("paint_wear", &self.paint_wear)?;
+        state.serialize_field("quality", &self.quality)?;
+        state.serialize_field("quest_id", &self.quest_id)?;
+        state.serialize_field("rarity", &self.rarity)?;
+        state.serialize_field("item_name", &self.item_name)?;
+        state.serialize_field("skin_name", &self.skin_name)?;
         state.end()
     }
 }
@@ -525,14 +525,14 @@ impl Serialize for ProjectileRecord {
             Some(u) => Some(u.to_string()),
             None => None,
         };
-        state.serialize_field("steamid", &steamid).unwrap();
-        state.serialize_field("grenade_type", &self.grenade_type).unwrap();
-        state.serialize_field("name", &self.name).unwrap();
-        state.serialize_field("tick", &self.tick).unwrap();
-        state.serialize_field("x", &self.x).unwrap();
-        state.serialize_field("y", &self.y).unwrap();
-        state.serialize_field("z", &self.z).unwrap();
-        state.serialize_field("entity_id", &self.entity_id).unwrap();
+        state.serialize_field("steamid", &steamid)?;
+        state.serialize_field("grenade_type", &self.grenade_type)?;
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("tick", &self.tick)?;
+        state.serialize_field("x", &self.x)?;
+        state.serialize_field("y", &self.y)?;
+        state.serialize_field("z", &self.z)?;
+        state.serialize_field("entity_id", &self.entity_id)?;
         state.end()
     }
 }
@@ -581,37 +581,37 @@ pub fn soa_to_aos(soa: OutputSerdeHelperStruct) -> Vec<HashMap<String, Option<Va
             if soa.inner.contains_key(&prop_info.id) {
                 match &soa.inner[&prop_info.id].data {
                     None => continue,
-                    Some(VarVec::F32(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::F32(*f))),
-                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                    Some(VarVec::F32(val)) => match val.get(idx) {
+                        Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::F32(*f))),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
-                    Some(VarVec::I32(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::I32(*f))),
-                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                    Some(VarVec::I32(val)) => match val.get(idx) {
+                        Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::I32(*f))),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
-                    Some(VarVec::String(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
-                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                    Some(VarVec::String(val)) => match val.get(idx) {
+                        Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
-                    Some(VarVec::U64(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
-                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                    Some(VarVec::U64(val)) => match val.get(idx) {
+                        Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
-                    Some(VarVec::Bool(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::Bool(*f))),
-                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                    Some(VarVec::Bool(val)) => match val.get(idx) {
+                        Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::Bool(*f))),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
-                    Some(VarVec::U32(val)) => match val.get(idx).unwrap() {
-                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::U32(*f))),
-                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                    Some(VarVec::U32(val)) => match val.get(idx) {
+                        Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::U32(*f))),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
                     Some(VarVec::StringVec(val)) => match val.get(idx) {
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::StringVec(f.clone()))),
-                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
                     Some(VarVec::U64Vec(val)) => match val.get(idx) {
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::U64Vec(f.clone()))),
-                        None => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
                     Some(VarVec::XYVec(val)) => match val.get(idx) {
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::VecXY(f.clone()))),
@@ -640,13 +640,13 @@ impl Serialize for OutputSerdeHelperStruct {
                 match &self.inner[&prop_info.id].data {
                     None => panic!("failed to serialize data"),
                     Some(VarVec::F32(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::I32(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::String(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::U64(val)) => {
                         let as_str: Vec<Option<String>> = val
@@ -656,22 +656,22 @@ impl Serialize for OutputSerdeHelperStruct {
                                 None => None,
                             })
                             .collect_vec();
-                        map.serialize_entry(&prop_info.prop_friendly_name, &as_str).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, &as_str)?;
                     }
                     Some(VarVec::Bool(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::U32(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::StringVec(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::XYVec(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::XYZVec(val)) => {
-                        map.serialize_entry(&prop_info.prop_friendly_name, val).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::U64Vec(val)) => {
                         let string_sid = val
@@ -681,7 +681,7 @@ impl Serialize for OutputSerdeHelperStruct {
                                 as_sid
                             })
                             .collect_vec();
-                        map.serialize_entry(&prop_info.prop_friendly_name, &string_sid).unwrap();
+                        map.serialize_entry(&prop_info.prop_friendly_name, &string_sid)?;
                     }
                 }
             }
