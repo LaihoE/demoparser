@@ -1,7 +1,7 @@
 use parser::first_pass::parser_settings::rm_user_friendly_names;
 use parser::first_pass::parser_settings::ParserInputs;
 use parser::parse_demo::Parser;
-use parser::second_pass::second_pass_settings::create_huffman_lookup_table;
+use parser::second_pass::parser_settings::create_huffman_lookup_table;
 use parser::second_pass::variants::soa_to_aos;
 use parser::second_pass::variants::OutputSerdeHelperStruct;
 use std::collections::HashMap;

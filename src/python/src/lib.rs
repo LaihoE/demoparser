@@ -9,7 +9,7 @@ use parser::first_pass::read_bits::DemoParserError;
 use parser::parse_demo::Parser;
 use parser::second_pass::game_events::EventField;
 use parser::second_pass::game_events::GameEvent;
-use parser::second_pass::second_pass_settings::create_huffman_lookup_table;
+use parser::second_pass::parser_settings::create_huffman_lookup_table;
 use parser::second_pass::variants::VarVec;
 use parser::second_pass::variants::Variant;
 use polars::prelude::ArrowField;
@@ -117,52 +117,52 @@ impl DemoParser {
         Ok(output.convars.to_object(py))
     }
     /*
-    pub fn parse_voice(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let arc_huf = create_huffman_lookup_table();
+        pub fn parse_voice(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+            let mmap = match create_mmap(self.path.clone()) {
+                Ok(mmap) => mmap,
+                Err(e) => {
+                    return Err(Exception::new_err(format!(
+                        "{}. File name: {}",
+                        e,
+                        self.path.clone()
+                    )))
+                }
+            };
+            let arc_huf = create_huffman_lookup_table();
 
-        let settings = ParserInputs {
-            real_name_to_og_name: AHashMap::default(),
-            wanted_player_props: vec![],
-            wanted_player_props_og_names: vec![],
-            wanted_other_props: vec![],
-            wanted_other_props_og_names: vec![],
-            wanted_events: vec![],
-            parse_ents: false,
-            wanted_ticks: vec![],
-            parse_projectiles: false,
-            only_header: true,
-            count_props: false,
-            only_convars: false,
-            huffman_lookup_table: &arc_huf,
-        };
-<<<<<<< HEAD
-         let mut parser = Parser::new(settings, false);
-=======
-        let mut parser = Parser::new(settings, false);
->>>>>>> 4d9b8aa (fix bindings)
-        let output = match parser.parse_demo(&mmap) {
-            Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
-        };
-        let out = convert_voice_data_to_wav(output.voice_data).unwrap();
-        let mut out_hm = AHashMap::default();
-        for (steamid, bytes) in out {
-            let py_bytes = PyBytes::new(py, &bytes);
-            out_hm.insert(steamid, py_bytes);
+            let settings = ParserInputs {
+                real_name_to_og_name: AHashMap::default(),
+                wanted_player_props: vec![],
+                wanted_player_props_og_names: vec![],
+                wanted_other_props: vec![],
+                wanted_other_props_og_names: vec![],
+                wanted_events: vec![],
+                parse_ents: false,
+                wanted_ticks: vec![],
+                parse_projectiles: false,
+                only_header: true,
+                count_props: false,
+                only_convars: false,
+                huffman_lookup_table: &arc_huf,
+            };
+    <<<<<<< HEAD
+             let mut parser = Parser::new(settings, false);
+    =======
+            let mut parser = Parser::new(settings, false);
+    >>>>>>> 4d9b8aa (fix bindings)
+            let output = match parser.parse_demo(&mmap) {
+                Ok(output) => output,
+                Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            };
+            let out = convert_voice_data_to_wav(output.voice_data).unwrap();
+            let mut out_hm = AHashMap::default();
+            for (steamid, bytes) in out {
+                let py_bytes = PyBytes::new(py, &bytes);
+                out_hm.insert(steamid, py_bytes);
+            }
+            Ok(out_hm.to_object(py))
         }
-        Ok(out_hm.to_object(py))
-    }
-    */
+        */
     /// Returns the names of game events present in the demo
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let mmap = match create_mmap(self.path.clone()) {
