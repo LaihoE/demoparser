@@ -1,3 +1,4 @@
+use crate::first_pass::read_bits::DemoParserError;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::decoder::Decoder;
 use crate::second_pass::decoder::Decoder::*;
@@ -434,29 +435,29 @@ pub enum NetmessageType {
     UM_RequestInventory,
     UM_InventoryResponse,
 }
-pub fn demo_cmd_type_from_int(value: i32) -> ::std::option::Option<EDemoCommands> {
+pub fn demo_cmd_type_from_int(value: i32) -> Result<EDemoCommands, DemoParserError> {
     match value {
-        -1 => ::std::option::Option::Some(EDemoCommands::DEM_Error),
-        0 => ::std::option::Option::Some(EDemoCommands::DEM_Stop),
-        1 => ::std::option::Option::Some(EDemoCommands::DEM_FileHeader),
-        2 => ::std::option::Option::Some(EDemoCommands::DEM_FileInfo),
-        3 => ::std::option::Option::Some(EDemoCommands::DEM_SyncTick),
-        4 => ::std::option::Option::Some(EDemoCommands::DEM_SendTables),
-        5 => ::std::option::Option::Some(EDemoCommands::DEM_ClassInfo),
-        6 => ::std::option::Option::Some(EDemoCommands::DEM_StringTables),
-        7 => ::std::option::Option::Some(EDemoCommands::DEM_Packet),
-        8 => ::std::option::Option::Some(EDemoCommands::DEM_SignonPacket),
-        9 => ::std::option::Option::Some(EDemoCommands::DEM_ConsoleCmd),
-        10 => ::std::option::Option::Some(EDemoCommands::DEM_CustomData),
-        11 => ::std::option::Option::Some(EDemoCommands::DEM_CustomDataCallbacks),
-        12 => ::std::option::Option::Some(EDemoCommands::DEM_UserCmd),
-        13 => ::std::option::Option::Some(EDemoCommands::DEM_FullPacket),
-        14 => ::std::option::Option::Some(EDemoCommands::DEM_SaveGame),
-        15 => ::std::option::Option::Some(EDemoCommands::DEM_SpawnGroups),
-        16 => ::std::option::Option::Some(EDemoCommands::DEM_AnimationData),
-        17 => ::std::option::Option::Some(EDemoCommands::DEM_Max),
-        64 => ::std::option::Option::Some(EDemoCommands::DEM_IsCompressed),
-        _ => ::std::option::Option::None,
+        -1 => Ok(EDemoCommands::DEM_Error),
+        0 => Ok(EDemoCommands::DEM_Stop),
+        1 => Ok(EDemoCommands::DEM_FileHeader),
+        2 => Ok(EDemoCommands::DEM_FileInfo),
+        3 => Ok(EDemoCommands::DEM_SyncTick),
+        4 => Ok(EDemoCommands::DEM_SendTables),
+        5 => Ok(EDemoCommands::DEM_ClassInfo),
+        6 => Ok(EDemoCommands::DEM_StringTables),
+        7 => Ok(EDemoCommands::DEM_Packet),
+        8 => Ok(EDemoCommands::DEM_SignonPacket),
+        9 => Ok(EDemoCommands::DEM_ConsoleCmd),
+        10 => Ok(EDemoCommands::DEM_CustomData),
+        11 => Ok(EDemoCommands::DEM_CustomDataCallbacks),
+        12 => Ok(EDemoCommands::DEM_UserCmd),
+        13 => Ok(EDemoCommands::DEM_FullPacket),
+        14 => Ok(EDemoCommands::DEM_SaveGame),
+        15 => Ok(EDemoCommands::DEM_SpawnGroups),
+        16 => Ok(EDemoCommands::DEM_AnimationData),
+        17 => Ok(EDemoCommands::DEM_Max),
+        64 => Ok(EDemoCommands::DEM_IsCompressed),
+        _ => Err(DemoParserError::UnknownDemoCmd(value)),
     }
 }
 
