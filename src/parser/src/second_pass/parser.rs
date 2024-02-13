@@ -1,18 +1,17 @@
 use crate::first_pass::parser::HEADER_ENDS_AT_BYTE;
 use crate::first_pass::parser_settings::FirstPassParser;
 use crate::first_pass::prop_controller::PropController;
+use crate::first_pass::read_bits::read_varint;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::stringtables::parse_userinfo;
 use crate::maps::demo_cmd_type_from_int;
 use crate::maps::netmessage_type_from_int;
 use crate::maps::NetmessageType::*;
-use crate::read_bytes::read_varint;
-use crate::read_bytes::ProtoPacketParser;
 use crate::second_pass::collect_data::ProjectileRecord;
 use crate::second_pass::game_events::GameEvent;
-use crate::second_pass::second_pass_settings::SecondPassParser;
-use crate::second_pass::second_pass_settings::*;
+use crate::second_pass::parser_settings::SecondPassParser;
+use crate::second_pass::parser_settings::*;
 use crate::second_pass::variants::PropColumn;
 use ahash::AHashMap;
 use ahash::AHashSet;
@@ -60,11 +59,13 @@ impl<'a> SecondPassParser<'a> {
             }
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
-            let demo_cmd = demo_cmd_type_from_int(msg_type as i32).unwrap();
+            let demo_cmd = demo_cmd_type_from_int(msg_type as i32)?;
+
             if demo_cmd == DEM_AnimationData || demo_cmd == DEM_SendTables || demo_cmd == DEM_StringTables {
                 self.ptr += size as usize;
                 continue;
             }
+
             let input = &demo_bytes[self.ptr..self.ptr + size as usize];
             FirstPassParser::resize_if_needed(&mut buf2, decompress_len(input))?;
             self.ptr += size as usize;
@@ -106,39 +107,42 @@ impl<'a> SecondPassParser<'a> {
     }
 
     pub fn parse_packet(&mut self, bytes: &[u8], buf: &mut Vec<u8>) -> Result<(), DemoParserError> {
-        let mut packet_parser = ProtoPacketParser::new(bytes);
-        packet_parser.read_proto_packet()?;
-        let mut bitreader = Bitreader::new(&bytes[packet_parser.start..packet_parser.end]);
+        let msg: CDemoPacket = match Message::parse_from_bytes(bytes) {
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+            Ok(msg) => msg,
+        };
+        let mut bitreader = Bitreader::new(msg.data());
         let mut wrong_order_events = vec![];
 
-        while bitreader.bits_remaining().unwrap() > 8 {
+        while bitreader.bits_remaining().unwrap_or(0) > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
             if buf.len() < size as usize {
                 buf.resize(size as usize, 0)
             }
+
             bitreader.read_n_bytes_mut(size as usize, buf)?;
             let msg_bytes = &buf[..size as usize];
             let ok = match netmessage_type_from_int(msg_type as i32) {
-                svc_PacketEntities => self.parse_packet_ents(&msg_bytes),
-                svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
-                svc_UpdateStringTable => self.update_string_table(&msg_bytes),
-                svc_ServerInfo => self.parse_server_info(&msg_bytes),
-                CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
-                CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
-                UM_SayText2 => self.parse_chat_messages(&msg_bytes),
-                net_SetConVar => self.create_custom_event_parse_convars(&msg_bytes),
-                CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
-                CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(&msg_bytes),
-                net_Tick => self.parse_net_tick(&msg_bytes),
+                svc_PacketEntities => self.parse_packet_ents(msg_bytes),
+                svc_CreateStringTable => self.parse_create_stringtable(msg_bytes),
+                svc_UpdateStringTable => self.update_string_table(msg_bytes),
+                svc_ServerInfo => self.parse_server_info(msg_bytes),
+                CS_UM_SendPlayerItemDrops => self.parse_item_drops(msg_bytes),
+                CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(msg_bytes),
+                UM_SayText2 => self.parse_chat_messages(msg_bytes),
+                net_SetConVar => self.create_custom_event_parse_convars(msg_bytes),
+                CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(msg_bytes),
+                CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(msg_bytes),
+                net_Tick => self.parse_net_tick(msg_bytes),
                 svc_ClearAllStringTables => self.clear_stringtables(),
                 svc_VoiceData => {
-                    if let Ok(m) = Message::parse_from_bytes(&msg_bytes) {
+                    if let Ok(m) = Message::parse_from_bytes(msg_bytes) {
                         self.voice_data.push(m);
                     }
                     Ok(())
                 }
-                GE_Source1LegacyGameEvent => match self.parse_event(&msg_bytes) {
+                GE_Source1LegacyGameEvent => match self.parse_event(msg_bytes) {
                     Ok(Some(event)) => {
                         wrong_order_events.push(event);
                         Ok(())
@@ -174,8 +178,8 @@ impl<'a> SecondPassParser<'a> {
         for item in &full_packet.string_table.tables {
             if item.table_name == Some("instancebaseline".to_string()) {
                 for i in &item.items {
-                    let k = i.str().parse::<u32>().unwrap_or(999999);
-                    self.baselines.insert(k, i.data.as_ref().unwrap().clone());
+                    let k = i.str().parse::<u32>().unwrap_or(u32::MAX);
+                    self.baselines.insert(k, i.data().to_vec());
                 }
             }
             if item.table_name == Some("userinfo".to_string()) {
@@ -188,13 +192,14 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
         }
-
-        let p = full_packet.packet.0.unwrap();
-        let mut bitreader = Bitreader::new(p.data());
+        let packet = match full_packet.packet.0 {
+            Some(packet) => packet,
+            None => return Err(DemoParserError::MalformedMessage),
+        };
+        let mut bitreader = Bitreader::new(packet.data());
         let mut buf = vec![0; 5_00_000];
-
         // Inner loop
-        while bitreader.bits_remaining().unwrap() > 8 {
+        while bitreader.bits_remaining().unwrap_or(0) > 8 {
             let msg_type = bitreader.read_u_bit_var()?;
             let size = bitreader.read_varint()?;
             if buf.len() < size as usize {

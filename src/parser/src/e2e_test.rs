@@ -4,7 +4,7 @@ use crate::first_pass::prop_controller::*;
 use crate::parse_demo::DemoOutput;
 use crate::parse_demo::Parser;
 use crate::second_pass::game_events::GameEvent;
-use crate::second_pass::second_pass_settings::create_huffman_lookup_table;
+use crate::second_pass::parser_settings::create_huffman_lookup_table;
 use ahash::AHashMap;
 use itertools::Itertools;
 use memmap2::MmapOptions;

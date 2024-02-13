@@ -2,51 +2,31 @@ use bitter::BitReader;
 use bitter::LittleEndianReader;
 use std::fmt;
 
-#[derive(Debug, PartialEq)]
-pub enum DemoParserError {
-    FieldNoDecoder,
-    OutOfBitsError,
-    OutOfBytesError,
-    FailedByteRead(String),
-    UnknownPathOP,
-    EntityNotFound,
-    ClassNotFound,
-    MalformedMessage,
-    StringTableNotFound,
-    Source1DemoError,
-    DemoEndsEarly(String),
-    UnknownFile,
-    IncorrectMetaDataProp,
-    UnknownPropName(String),
-    GameEventListNotSet,
-    PropTypeNotFound(String),
-    GameEventUnknownId(String),
-    UnknownPawnPrefix(String),
-    UnknownEntityHandle(String),
-    ClsIdOutOfBounds,
-    UnknownGameEventVariant(String),
-    FileNotFound(String),
-    NoEvents,
-    DecompressionFailure(String),
-    NoSendTableMessage,
-    UserIdNotFound,
-    EventListFallbackNotFound(String),
-    VoiceDataWriteError(String),
-}
-
-impl std::error::Error for DemoParserError {}
-
-impl fmt::Display for DemoParserError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-// Cursed, at this point ive just re-implemented 80% the underlying lib...
 pub struct Bitreader<'a> {
     reader: LittleEndianReader<'a>,
     pub bits_left: u32,
     pub bits: u64,
     pub total_bits_left: u32,
+}
+pub fn read_varint(bytes: &[u8], ptr: &mut usize) -> Result<u32, DemoParserError> {
+    let mut result: u32 = 0;
+    let mut count: u8 = 0;
+    loop {
+        if count >= 5 {
+            return Ok(result as u32);
+        }
+        let b = match bytes.get(*ptr) {
+            Some(b) => *b as u32,
+            None => return Err(DemoParserError::OutOfBytesError),
+        };
+        *ptr += 1;
+        result |= (b & 127) << (7 * count);
+        count += 1;
+        if b & 0x80 == 0 {
+            break;
+        }
+    }
+    Ok(result as u32)
 }
 
 impl<'a> Bitreader<'a> {
@@ -135,7 +115,7 @@ impl<'a> Bitreader<'a> {
             b = self.read_nbits(8)?;
             if b < 0x80 {
                 if count > 9 || count == 9 && b > 1 {
-                    panic!("overflow!");
+                    return Err(DemoParserError::MalformedMessage);
                 }
                 return Ok(result | (b as u64) << s);
             }
@@ -162,7 +142,7 @@ impl<'a> Bitreader<'a> {
             false => Err(DemoParserError::FailedByteRead(
                 format!(
                     "Failed to read message/command. bytes left in stream: {}, requested bytes: {}",
-                    self.reader.bits_remaining().unwrap() / 8,
+                    self.reader.bits_remaining().unwrap_or(0).checked_div(8).unwrap_or(0),
                     n,
                 )
                 .to_string(),
@@ -170,6 +150,9 @@ impl<'a> Bitreader<'a> {
         }
     }
     pub fn read_n_bytes_mut(&mut self, n: usize, buf: &mut [u8]) -> Result<(), DemoParserError> {
+        if buf.len() < n {
+            return Err(DemoParserError::MalformedMessage);
+        }
         match self.reader.read_bytes(&mut buf[..n]) {
             true => {
                 self.refill();
@@ -178,7 +161,7 @@ impl<'a> Bitreader<'a> {
             false => Err(DemoParserError::FailedByteRead(
                 format!(
                     "Failed to read message/command. bytes left in stream: {}, requested bytes: {}",
-                    self.reader.bits_remaining().unwrap() / 8,
+                    self.reader.bits_remaining().unwrap_or(0).checked_div(8).unwrap_or(0),
                     n,
                 )
                 .to_string(),
@@ -223,5 +206,50 @@ impl<'a> Bitreader<'a> {
         } else {
             Ok(result)
         }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum DemoParserError {
+    ClassMapperNotFoundFirstPass,
+    FieldNoDecoder,
+    OutOfBitsError,
+    OutOfBytesError,
+    FailedByteRead(String),
+    UnknownPathOP,
+    EntityNotFound,
+    ClassNotFound,
+    MalformedMessage,
+    StringTableNotFound,
+    Source1DemoError,
+    DemoEndsEarly(String),
+    UnknownFile,
+    IncorrectMetaDataProp,
+    UnknownPropName(String),
+    GameEventListNotSet,
+    PropTypeNotFound(String),
+    GameEventUnknownId(String),
+    UnknownPawnPrefix(String),
+    UnknownEntityHandle(String),
+    ClsIdOutOfBounds,
+    UnknownGameEventVariant(String),
+    FileNotFound(String),
+    NoEvents,
+    DecompressionFailure(String),
+    NoSendTableMessage,
+    UserIdNotFound,
+    EventListFallbackNotFound(String),
+    VoiceDataWriteError(String),
+    UnknownDemoCmd(i32),
+    IllegalPathOp,
+    VectorResizeFailure,
+    ImpossibleCmd,
+}
+
+impl std::error::Error for DemoParserError {}
+
+impl fmt::Display for DemoParserError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }

@@ -1,6 +1,6 @@
 use super::read_bits::{Bitreader, DemoParserError};
 use crate::first_pass::parser_settings::FirstPassParser;
-use crate::second_pass::second_pass_settings::SecondPassParser;
+use crate::second_pass::parser_settings::SecondPassParser;
 use csgoproto::{
     netmessages::{CSVCMsg_CreateStringTable, CSVCMsg_UpdateStringTable},
     networkbasetypes::CMsgPlayerInfo,
@@ -34,7 +34,10 @@ pub struct UserInfo {
 
 impl<'a> FirstPassParser<'a> {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
+        let table: CSVCMsg_UpdateStringTable = match Message::parse_from_bytes(&bytes) {
+            Ok(table) => table,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
         match self.string_tables.get(table.table_id() as usize) {
             Some(st) => self.parse_string_table(
                 table.string_data().to_vec(),
@@ -51,14 +54,18 @@ impl<'a> FirstPassParser<'a> {
     }
 
     pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
-
+        let table: CSVCMsg_CreateStringTable = match Message::parse_from_bytes(&bytes) {
+            Ok(table) => table,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
         if !(table.name() == "instancebaseline" || table.name() == "userinfo") {
             return Ok(());
         }
-
         let bytes = match table.data_compressed() {
-            true => snap::raw::Decoder::new().decompress_vec(table.string_data()).unwrap(),
+            true => match snap::raw::Decoder::new().decompress_vec(table.string_data()) {
+                Ok(bytes) => bytes,
+                Err(_) => return Err(DemoParserError::MalformedMessage),
+            },
             false => table.string_data().to_vec(),
         };
         self.parse_string_table(
@@ -112,11 +119,12 @@ impl<'a> FirstPassParser<'a> {
                         if position >= keys.len() as u32 {
                             key = key.to_owned() + &bitreader.read_string()?;
                         } else {
-                            let s = &keys[position as usize];
-                            if length > s.len() as u32 {
-                                key = key.to_owned() + &s + &bitreader.read_string()?;
-                            } else {
-                                key = key.to_owned() + &s[0..length as usize] + &bitreader.read_string()?;
+                            if let Some(s) = &keys.get(position as usize) {
+                                if length > s.len() as u32 {
+                                    key = key.to_owned() + &s + &bitreader.read_string()?;
+                                } else {
+                                    key = key.to_owned() + &s[0..length as usize] + &bitreader.read_string()?;
+                                }
                             }
                         }
                     }
@@ -143,9 +151,12 @@ impl<'a> FirstPassParser<'a> {
                             }
                         }
                     }
-                    value = bitreader.read_n_bytes((bits / 8) as usize)?;
+                    value = bitreader.read_n_bytes((bits.checked_div(8).unwrap_or(0)) as usize)?;
                     value = if is_compressed {
-                        Decoder::new().decompress_vec(&value).unwrap()
+                        match Decoder::new().decompress_vec(&value) {
+                            Ok(bytes) => bytes,
+                            Err(_) => return Err(DemoParserError::MalformedMessage),
+                        }
                     } else {
                         value
                     };
@@ -196,7 +207,10 @@ pub fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
 
 impl<'a> SecondPassParser<'a> {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).unwrap();
+        let table: CSVCMsg_UpdateStringTable = match Message::parse_from_bytes(&bytes) {
+            Ok(table) => table,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
         match self.string_tables.get(table.table_id() as usize) {
             Some(st) => self.parse_string_table(
                 table.string_data().to_vec(),
@@ -213,11 +227,16 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(())
     }
-
     pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).unwrap();
+        let table: CSVCMsg_CreateStringTable = match Message::parse_from_bytes(&bytes) {
+            Ok(table) => table,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
         let bytes = match table.data_compressed() {
-            true => snap::raw::Decoder::new().decompress_vec(table.string_data()).unwrap(),
+            true => match snap::raw::Decoder::new().decompress_vec(table.string_data()) {
+                Ok(bytes) => bytes,
+                Err(_) => return Err(DemoParserError::MalformedMessage),
+            },
             false => table.string_data().to_vec(),
         };
         self.parse_string_table(
@@ -302,9 +321,12 @@ impl<'a> SecondPassParser<'a> {
                             }
                         }
                     }
-                    value = bitreader.read_n_bytes((bits / 8) as usize)?;
+                    value = bitreader.read_n_bytes((bits.checked_div(8).unwrap_or(0)) as usize)?;
                     value = if is_compressed {
-                        Decoder::new().decompress_vec(&value).unwrap()
+                        match Decoder::new().decompress_vec(&value) {
+                            Ok(bytes) => bytes,
+                            Err(_) => return Err(DemoParserError::MalformedMessage),
+                        }
                     } else {
                         value
                     };

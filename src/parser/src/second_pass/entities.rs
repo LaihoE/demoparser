@@ -1,4 +1,6 @@
 use crate::first_pass::prop_controller::MY_WEAPONS_OFFSET;
+use crate::first_pass::prop_controller::PLAYER_ENTITY_HANDLE_MISSING;
+use crate::first_pass::prop_controller::SPECTATOR_TEAM_NUM;
 use crate::first_pass::prop_controller::WEAPON_SKIN_ID;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
@@ -6,8 +8,8 @@ use crate::first_pass::sendtables::Field;
 use crate::first_pass::sendtables::Serializer;
 use crate::second_pass::decoder::Decoder;
 use crate::second_pass::decoder::Decoder::UnsignedDecoder;
+use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::path_ops::*;
-use crate::second_pass::second_pass_settings::SecondPassParser;
 use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use csgoproto::netmessages::CSVCMsg_PacketEntities;
@@ -63,7 +65,6 @@ impl<'a> SecondPassParser<'a> {
             Err(_) => return Err(DemoParserError::MalformedMessage),
             Ok(msg) => msg,
         };
-
         let mut bitreader = Bitreader::new(msg.entity_data());
         let mut entity_id: i32 = -1;
 
@@ -75,12 +76,14 @@ impl<'a> SecondPassParser<'a> {
                 0b11 => EntityCmd::Delete,
                 0b10 => EntityCmd::CreateAndUpdate,
                 0b00 => EntityCmd::Update,
-                _ => panic!("impossible cmd"),
+                _ => return Err(DemoParserError::ImpossibleCmd),
             };
             match cmd {
                 EntityCmd::Delete => {
                     self.projectiles.remove(&entity_id);
-                    self.entities[entity_id as usize] = None;
+                    if let Some(entry) = self.entities.get_mut(entity_id as usize) {
+                        *entry = None;
+                    }
                 }
                 EntityCmd::CreateAndUpdate => {
                     self.create_new_entity(&mut bitreader, &entity_id)?;
@@ -122,8 +125,9 @@ impl<'a> SecondPassParser<'a> {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),
         };
-        for path in &self.paths[..n_updates] {
-            let field = SecondPassParser::find_field(&path, &class.serializer);
+
+        for path in self.paths.iter().take(n_updates) {
+            let field = SecondPassParser::find_field(&path, &class.serializer)?;
             let field_info = SecondPassParser::get_propinfo(&field, path);
             let decoder = SecondPassParser::get_decoder_from_field(field)?;
             let result = bitreader.decode(&decoder, self.qf_mapper)?;
@@ -164,7 +168,7 @@ impl<'a> SecondPassParser<'a> {
                 prop_id: v.prop_id,
             }),
             Field::Vector(v) => match field.get_inner(0) {
-                Field::Value(inner) => Some(FieldInfo {
+                Ok(Field::Value(inner)) => Some(FieldInfo {
                     decoder: v.decoder,
                     should_parse: inner.should_parse,
                     prop_id: inner.prop_id,
@@ -181,9 +185,11 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
             if fi.prop_id == WEAPON_SKIN_ID {
-                if path.path[path.last - 1] != 0 {
-                    // Fill with impossible id
-                    fi.prop_id = u32::MAX;
+                if let Some(entry) = path.path.get(path.last - 1) {
+                    if *entry != 0 {
+                        // Fill with impossible id
+                        fi.prop_id = u32::MAX;
+                    }
                 }
             }
             return Some(fi);
@@ -279,40 +285,51 @@ impl<'a> SecondPassParser<'a> {
                 break;
             }
             do_op(symbol, bitreader, &mut fp)?;
-            self.write_fp(&mut fp, idx);
+            self.write_fp(&mut fp, idx)?;
             idx += 1;
         }
         Ok(idx)
     }
-    fn write_fp(&mut self, fp_src: &mut FieldPath, idx: usize) {
-        if self.paths.len() <= idx {
-            self.paths.resize(idx + 1, generate_fp())
+    fn write_fp(&mut self, fp_src: &mut FieldPath, idx: usize) -> Result<(), DemoParserError> {
+        match self.paths.get_mut(idx) {
+            Some(entry) => *entry = *fp_src,
+            // need to extend vec (rare)
+            None => {
+                self.paths.resize(idx + 1, generate_fp());
+                match self.paths.get_mut(idx) {
+                    Some(entry) => *entry = *fp_src,
+                    None => return Err(DemoParserError::VectorResizeFailure),
+                }
+            }
         }
-        self.paths[idx] = *fp_src;
+        Ok(())
     }
     #[inline(always)]
-    fn find_field<'b>(fp: &FieldPath, ser: &'b Serializer) -> &'b Field {
-        let f = &ser.fields[fp.path[0] as usize];
+    fn find_field<'b>(fp: &FieldPath, ser: &'b Serializer) -> Result<&'b Field, DemoParserError> {
+        let f = match ser.fields.get(fp.path[0] as usize) {
+            Some(entry) => entry,
+            None => return Err(DemoParserError::IllegalPathOp),
+        };
         match fp.last {
-            0 => f,
-            1 => f.get_inner(fp.path[1] as usize),
-            2 => f.get_inner(fp.path[1] as usize).get_inner(fp.path[2] as usize),
-            3 => f
-                .get_inner(fp.path[1] as usize)
-                .get_inner(fp.path[2] as usize)
-                .get_inner(fp.path[3] as usize),
-            4 => f
-                .get_inner(fp.path[1] as usize)
-                .get_inner(fp.path[2] as usize)
-                .get_inner(fp.path[3] as usize)
-                .get_inner(fp.path[4] as usize),
-            5 => f
-                .get_inner(fp.path[1] as usize)
-                .get_inner(fp.path[2] as usize)
-                .get_inner(fp.path[3] as usize)
-                .get_inner(fp.path[4] as usize)
-                .get_inner(fp.path[5] as usize),
-            _ => panic!("Impossible field path length!"),
+            0 => Ok(f),
+            1 => Ok(f.get_inner(fp.path[1] as usize)?),
+            2 => Ok(f.get_inner(fp.path[1] as usize)?.get_inner(fp.path[2] as usize)?),
+            3 => Ok(f
+                .get_inner(fp.path[1] as usize)?
+                .get_inner(fp.path[2] as usize)?
+                .get_inner(fp.path[3] as usize)?),
+            4 => Ok(f
+                .get_inner(fp.path[1] as usize)?
+                .get_inner(fp.path[2] as usize)?
+                .get_inner(fp.path[3] as usize)?
+                .get_inner(fp.path[4] as usize)?),
+            5 => Ok(f
+                .get_inner(fp.path[1] as usize)?
+                .get_inner(fp.path[2] as usize)?
+                .get_inner(fp.path[3] as usize)?
+                .get_inner(fp.path[4] as usize)?
+                .get_inner(fp.path[5] as usize)?),
+            _ => return Err(DemoParserError::IllegalPathOp),
         }
     }
 
@@ -326,50 +343,61 @@ impl<'a> SecondPassParser<'a> {
             return Ok(());
         }
         if entity.entity_type == EntityType::Team && !is_baseline {
-            if let Ok(Variant::U32(t)) =
-                self.get_prop_from_ent(self.prop_controller.special_ids.team_team_num.as_ref().unwrap(), entity_id)
-            {
-                match t {
-                    1 => self.teams.team1_entid = Some(*entity_id),
-                    2 => self.teams.team2_entid = Some(*entity_id),
-                    3 => self.teams.team3_entid = Some(*entity_id),
-                    _ => {}
+            if let Some(team_num_id) = self.prop_controller.special_ids.team_team_num {
+                if let Ok(Variant::U32(t)) = self.get_prop_from_ent(&team_num_id, entity_id) {
+                    match t {
+                        1 => self.teams.team1_entid = Some(*entity_id),
+                        2 => self.teams.team2_entid = Some(*entity_id),
+                        3 => self.teams.team3_entid = Some(*entity_id),
+                        _ => {}
+                    }
                 }
             }
-            return Ok(());
         }
-        let team_num = match self.get_prop_from_ent(self.prop_controller.special_ids.teamnum.as_ref().unwrap(), entity_id) {
-            Ok(team_num) => match team_num {
-                Variant::U32(team_num) => Some(team_num),
-                // Signals that something went very wrong
-                _ => return Err(DemoParserError::IncorrectMetaDataProp),
+
+        let team_num = match self.prop_controller.special_ids.teamnum {
+            Some(team_num_id) => match self.get_prop_from_ent(&team_num_id, entity_id) {
+                Ok(team_num) => match team_num {
+                    Variant::U32(team_num) => Some(team_num),
+                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
+                },
+                Err(_) => None,
             },
-            Err(_) => None,
+            _ => None,
         };
-        let name = match self.get_prop_from_ent(self.prop_controller.special_ids.player_name.as_ref().unwrap(), entity_id) {
-            Ok(name) => match name {
-                Variant::String(name) => Some(name),
-                _ => return Err(DemoParserError::IncorrectMetaDataProp),
+
+        let name = match self.prop_controller.special_ids.player_name {
+            Some(id) => match self.get_prop_from_ent(&id, entity_id) {
+                Ok(team_num) => match team_num {
+                    Variant::String(team_num) => Some(team_num),
+                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
+                },
+                Err(_) => None,
             },
-            Err(_) => None,
+            _ => None,
         };
-        let steamid = match self.get_prop_from_ent(self.prop_controller.special_ids.steamid.as_ref().unwrap(), entity_id) {
-            Ok(steamid) => match steamid {
-                Variant::U64(steamid) => Some(steamid),
-                _ => return Err(DemoParserError::IncorrectMetaDataProp),
+        let steamid = match self.prop_controller.special_ids.steamid {
+            Some(id) => match self.get_prop_from_ent(&id, entity_id) {
+                Ok(team_num) => match team_num {
+                    Variant::U64(team_num) => Some(team_num),
+                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
+                },
+                Err(_) => None,
             },
-            Err(_) => None,
+            _ => None,
         };
-        let player_entid = match self.get_prop_from_ent(self.prop_controller.special_ids.player_pawn.as_ref().unwrap(), entity_id)
-        {
-            Ok(player_entid) => match player_entid {
-                Variant::U32(handle) => Some((handle & 0x7FF) as i32),
-                _ => return Err(DemoParserError::IncorrectMetaDataProp),
+        let player_entid = match self.prop_controller.special_ids.player_pawn {
+            Some(id) => match self.get_prop_from_ent(&id, entity_id) {
+                Ok(player_entid) => match player_entid {
+                    Variant::U32(handle) => Some((handle & 0x7FF) as i32),
+                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
+                },
+                Err(_) => None,
             },
-            Err(_) => None,
+            _ => None,
         };
         if let Some(e) = player_entid {
-            if e != 2047 && steamid != Some(0) && team_num != Some(1) {
+            if e != PLAYER_ENTITY_HANDLE_MISSING && steamid != Some(0) && team_num != Some(SPECTATOR_TEAM_NUM) {
                 match self.should_remove(steamid) {
                     Some(eid) => {
                         self.players.remove(&eid);
@@ -418,8 +446,10 @@ impl<'a> SecondPassParser<'a> {
         if self.entities.len() as i32 <= *entity_id {
             self.entities.resize(*entity_id as usize + 1, None);
         }
-        self.entities[*entity_id as usize] = Some(entity);
-
+        match self.entities.get_mut(*entity_id as usize) {
+            Some(entry) => *entry = Some(entity),
+            None => return Err(DemoParserError::VectorResizeFailure),
+        };
         // Insert baselines
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
             let b = &baseline_bytes.clone();

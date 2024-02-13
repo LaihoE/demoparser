@@ -1,14 +1,12 @@
 use crate::first_pass::parser::FirstPassOutput;
 use crate::first_pass::parser_settings::check_multithreadability;
-use crate::first_pass::parser_settings::FirstPassParser;
-use crate::first_pass::parser_settings::ParserInputs;
-use crate::first_pass::prop_controller::PropController;
-use crate::first_pass::prop_controller::TICK_ID;
+use crate::first_pass::parser_settings::{FirstPassParser, ParserInputs};
+use crate::first_pass::prop_controller::{PropController, TICK_ID};
 use crate::first_pass::read_bits::DemoParserError;
 use crate::second_pass::collect_data::ProjectileRecord;
 use crate::second_pass::game_events::GameEvent;
 use crate::second_pass::parser::SecondPassOutput;
-use crate::second_pass::second_pass_settings::*;
+use crate::second_pass::parser_settings::*;
 use crate::second_pass::variants::PropColumn;
 use crate::second_pass::variants::VarVec;
 use ahash::AHashMap;
@@ -53,12 +51,9 @@ impl<'a> Parser<'a> {
         let first_pass_output = first_pass_parser.parse_demo(&demo_bytes)?;
 
         if check_multithreadability(&self.input.wanted_player_props) && !self.force_singlethread {
-            // self.second_pass_multi_threaded(demo_bytes, first_pass_output)
-            // self.second_pass_single_threaded(demo_bytes, first_pass_output)
             self.second_pass_multi_threaded(demo_bytes, first_pass_output)
         } else {
             self.second_pass_single_threaded(demo_bytes, first_pass_output)
-            // self.second_pass_multi_threaded(demo_bytes, first_pass_output)
         }
     }
 
@@ -86,8 +81,8 @@ impl<'a> Parser<'a> {
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
-                let mut parser = SecondPassParser::new(first_pass_output.clone(), *offset, false).unwrap();
-                parser.start(outer_bytes).unwrap();
+                let mut parser = SecondPassParser::new(first_pass_output.clone(), *offset, false)?;
+                parser.start(outer_bytes)?;
                 Ok(parser.create_output())
             })
             .collect();
@@ -167,7 +162,9 @@ impl<'a> Parser<'a> {
         for part_df in v {
             for (k, v) in part_df {
                 if big.contains_key(k) {
-                    big.get_mut(k).unwrap().extend_from(v);
+                    if let Some(inner) = big.get_mut(k) {
+                        inner.extend_from(v)
+                    }
                 } else {
                     big.insert(*k, v.clone());
                 }

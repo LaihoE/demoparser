@@ -3,7 +3,7 @@ use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::stringtables::UserInfo;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::entities::PlayerMetaData;
-use crate::second_pass::second_pass_settings::SecondPassParser;
+use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::*;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_ServerRankUpdate;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
@@ -34,7 +34,10 @@ impl<'a> SecondPassParser<'a> {
         if self.wanted_events.len() == 0 && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(None);
         }
-        let event: CSVCMsg_GameEvent = Message::parse_from_bytes(&bytes).unwrap();
+        let event: CSVCMsg_GameEvent = match Message::parse_from_bytes(&bytes) {
+            Ok(event) => event,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
         // Check if this events id is found in our game event list
         let event_desc = match self.ge_list.get(&event.eventid()) {
             Some(desc) => desc,
@@ -42,7 +45,9 @@ impl<'a> SecondPassParser<'a> {
                 return Ok(None);
             }
         };
-        self.game_events_counter.insert(event_desc.name.as_ref().unwrap().clone());
+        if let Some(event_name) = &event_desc.name {
+            self.game_events_counter.insert(event_name.to_owned());
+        }
         // Return early if this is not a wanted event.
         if !self.wanted_events.contains(&event_desc.name().to_string()) && self.wanted_events.first() != Some(&"all".to_string())
         {
@@ -124,7 +129,9 @@ impl<'a> SecondPassParser<'a> {
         if let Some(userinfo) = self.find_user_by_userid(userid) {
             for player in self.players.values() {
                 if player.steamid == Some(userinfo.steamid) {
-                    return Some(player.player_entity_id.unwrap());
+                    if let Some(entity_id) = player.player_entity_id {
+                        return Some(entity_id);
+                    }
                 }
             }
         }
@@ -360,7 +367,9 @@ impl<'a> SecondPassParser<'a> {
         for (_entid, player) in &self.players {
             if let Some(steamid) = player.steamid {
                 if steamid - STEAMID64INDIVIDUALIDENTIFIER == steamid32 as u64 {
-                    return Some(player.player_entity_id.unwrap());
+                    if let Some(entity_id) = player.player_entity_id {
+                        return Some(entity_id);
+                    }
                 }
             }
         }
@@ -415,7 +424,7 @@ impl<'a> SecondPassParser<'a> {
         for update in update_msg.rank_update {
             let mut fields = vec![];
 
-            let entity_id = match self.player_from_steamid32(update.account_id.unwrap()) {
+            let entity_id = match self.player_from_steamid32(update.account_id.unwrap_or(-1)) {
                 Some(eid) => eid,
                 None => continue,
             };
@@ -463,12 +472,12 @@ fn parse_key(key: &Key_t) -> Option<Variant> {
         2 => Some(Variant::F32(key.val_float())),
         // These seem to return an i32
         3 => Some(Variant::I32(key.val_long())),
-        4 => Some(Variant::I32(key.val_short().try_into().unwrap())),
-        5 => Some(Variant::I32(key.val_byte().try_into().unwrap())),
+        4 => Some(Variant::I32(key.val_short().try_into().unwrap_or(-1))),
+        5 => Some(Variant::I32(key.val_byte().try_into().unwrap_or(-1))),
         6 => Some(Variant::Bool(key.val_bool())),
         7 => Some(Variant::U64(key.val_uint64())),
-        8 => Some(Variant::I32(key.val_long().try_into().unwrap())),
-        9 => Some(Variant::I32(key.val_short().try_into().unwrap())),
+        8 => Some(Variant::I32(key.val_long().try_into().unwrap_or(-1))),
+        9 => Some(Variant::I32(key.val_short().try_into().unwrap_or(-1))),
         _ => {
             return None;
         }
@@ -493,10 +502,10 @@ impl Serialize for GameEvent {
         S: serde::Serializer,
     {
         let mut map = serializer.serialize_map(Some(2))?;
-        map.serialize_entry(&"tick", &self.tick).unwrap();
-        map.serialize_entry(&"event_name", &self.name).unwrap();
+        map.serialize_entry(&"tick", &self.tick)?;
+        map.serialize_entry(&"event_name", &self.name)?;
         for field in &self.fields {
-            map.serialize_entry(&field.name, &field.data).unwrap();
+            map.serialize_entry(&field.name, &field.data)?;
         }
         map.end()
     }
