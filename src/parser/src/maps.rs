@@ -17,30 +17,7 @@ pub static FACTORIES_MAP: phf::Set<&'static str> = phf_set! {
     "Vector4D",
     "Quaternion",
 };
-/*
-RoundEndReasonStillInProgress      RoundEndReason = 0
-RoundEndReasonTargetBombed         RoundEndReason = 1
-RoundEndReasonVIPEscaped           RoundEndReason = 2
-RoundEndReasonVIPKilled            RoundEndReason = 3
-RoundEndReasonTerroristsEscaped    RoundEndReason = 4
-RoundEndReasonCTStoppedEscape      RoundEndReason = 5
-RoundEndReasonTerroristsStopped    RoundEndReason = 6
-RoundEndReasonBombDefused          RoundEndReason = 7
-RoundEndReasonCTWin                RoundEndReason = 8
-RoundEndReasonTerroristsWin        RoundEndReason = 9
-RoundEndReasonDraw                 RoundEndReason = 10
-RoundEndReasonHostagesRescued      RoundEndReason = 11
-RoundEndReasonTargetSaved          RoundEndReason = 12
-RoundEndReasonHostagesNotRescued   RoundEndReason = 13
-RoundEndReasonTerroristsNotEscaped RoundEndReason = 14
-RoundEndReasonVIPNotEscaped        RoundEndReason = 15
-RoundEndReasonGameStart            RoundEndReason = 16
-RoundEndReasonTerroristsSurrender  RoundEndReason = 17
-RoundEndReasonCTSurrender          RoundEndReason = 18
-RoundEndReasonTerroristsPlanted    RoundEndReason = 19
-RoundEndReasonCTsReachedHostage    RoundEndReason = 20
-*/
-
+// https://github.com/markus-wa/demoinfocs-golang/blob/205b0bb25e9f3e96e1d306d154199b4a6292940e/pkg/demoinfocs/events/events.go#L53
 pub static ROUND_WIN_REASON: phf::Map<i32, &'static str> = phf_map! {
     0_i32 => "still_in_progress",
     1_i32 => "bomb_exploded",
