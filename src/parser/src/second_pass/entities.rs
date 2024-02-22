@@ -1,3 +1,4 @@
+use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::MY_WEAPONS_OFFSET;
 use crate::first_pass::prop_controller::PLAYER_ENTITY_HANDLE_MISSING;
 use crate::first_pass::prop_controller::SPECTATOR_TEAM_NUM;
@@ -55,9 +56,24 @@ enum EntityCmd {
     CreateAndUpdate,
     Update,
 }
+#[derive(Debug, Clone)]
+pub struct RoundEnd {
+    pub old_value: Option<Variant>,
+    pub new_value: Option<Variant>,
+}
+#[derive(Debug, Clone)]
+pub struct RoundWinReason {
+    pub reason: i32,
+}
+#[derive(Debug, Clone)]
+pub enum GameEventInfo {
+    RoundEnd(RoundEnd),
+    RoundWinReason(RoundWinReason),
+    FreezePeriodEnd(bool),
+}
 
 impl<'a> SecondPassParser<'a> {
-    pub fn parse_packet_ents(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+    pub fn parse_packet_ents(&mut self, bytes: &[u8], is_fullpacket: bool) -> Result<(), DemoParserError> {
         if !self.parse_entities {
             return Ok(());
         }
@@ -67,6 +83,8 @@ impl<'a> SecondPassParser<'a> {
         };
         let mut bitreader = Bitreader::new(msg.entity_data());
         let mut entity_id: i32 = -1;
+
+        let mut events_to_emit = vec![];
 
         for _ in 0..msg.updated_entries() {
             entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
@@ -87,7 +105,7 @@ impl<'a> SecondPassParser<'a> {
                 }
                 EntityCmd::CreateAndUpdate => {
                     self.create_new_entity(&mut bitreader, &entity_id)?;
-                    self.update_entity(&mut bitreader, entity_id, false)?;
+                    self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
                 EntityCmd::Update => {
                     if msg.has_has_pvs_vis_bits() {
@@ -96,107 +114,32 @@ impl<'a> SecondPassParser<'a> {
                             continue;
                         }
                     }
-                    self.update_entity(&mut bitreader, entity_id, false)?;
+                    self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
             }
+        }
+        if !events_to_emit.is_empty() {
+            self.emit_events(events_to_emit)?;
         }
         Ok(())
     }
 
-    pub fn update_entity(&mut self, bitreader: &mut Bitreader, entity_id: i32, is_baseline: bool) -> Result<(), DemoParserError> {
+    pub fn update_entity(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: i32,
+        is_baseline: bool,
+        events_to_emit: &mut Vec<GameEventInfo>,
+        is_fullpacket: bool,
+    ) -> Result<(), DemoParserError> {
         let n_updates = self.parse_paths(bitreader)?;
-        let n_updated_values = self.decode_entity_update(bitreader, entity_id, n_updates)?;
+        let n_updated_values =
+            self.decode_entity_update(bitreader, entity_id, n_updates, is_fullpacket, is_baseline, events_to_emit)?;
         if n_updated_values > 0 {
             self.gather_extra_info(&entity_id, is_baseline)?;
         }
         Ok(())
     }
-    pub fn decode_entity_update(
-        &mut self,
-        bitreader: &mut Bitreader,
-        entity_id: i32,
-        n_updates: usize,
-    ) -> Result<usize, DemoParserError> {
-        let entity = match self.entities.get_mut(entity_id as usize) {
-            Some(Some(entity)) => entity,
-            _ => return Err(DemoParserError::EntityNotFound),
-        };
-        let class = match self.cls_by_id.get(entity.cls_id as usize) {
-            Some(cls) => cls,
-            None => return Err(DemoParserError::ClassNotFound),
-        };
-
-        for path in self.paths.iter().take(n_updates) {
-            let field = SecondPassParser::find_field(&path, &class.serializer)?;
-            let field_info = SecondPassParser::get_propinfo(&field, path);
-            let decoder = SecondPassParser::get_decoder_from_field(field)?;
-            let result = bitreader.decode(&decoder, self.qf_mapper)?;
-            // Only relevant for debugging
-            if self.is_debug_mode {
-                SecondPassParser::debug_inspect(&result, field);
-            }
-            SecondPassParser::insert_field(entity, result, field_info);
-        }
-        Ok(n_updates)
-    }
-    pub fn debug_inspect(_result: &Variant, field: &Field) {
-        if let Field::Value(_v) = field {
-            println!("{:?} {:?}", _v.full_name, _result);
-        }
-    }
-    fn get_decoder_from_field(field: &Field) -> Result<Decoder, DemoParserError> {
-        let decoder = match field {
-            Field::Value(inner) => inner.decoder,
-            Field::Vector(_) => UnsignedDecoder,
-            Field::Pointer(inner) => inner.decoder,
-            _ => return Err(DemoParserError::FieldNoDecoder),
-        };
-        Ok(decoder)
-    }
-    pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
-        if let Some(fi) = field_info {
-            if fi.should_parse {
-                entity.props.insert(fi.prop_id, result);
-            }
-        }
-    }
-    pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
-        let info = match field {
-            Field::Value(v) => Some(FieldInfo {
-                decoder: v.decoder,
-                should_parse: v.should_parse,
-                prop_id: v.prop_id,
-            }),
-            Field::Vector(v) => match field.get_inner(0) {
-                Ok(Field::Value(inner)) => Some(FieldInfo {
-                    decoder: v.decoder,
-                    should_parse: inner.should_parse,
-                    prop_id: inner.prop_id,
-                }),
-                _ => None,
-            },
-            _ => None,
-        };
-        if let Some(mut fi) = info {
-            if fi.prop_id == MY_WEAPONS_OFFSET {
-                if path.last == 1 {
-                } else {
-                    fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
-                }
-            }
-            if fi.prop_id == WEAPON_SKIN_ID {
-                if let Some(entry) = path.path.get(path.last - 1) {
-                    if *entry != 0 {
-                        // Fill with impossible id
-                        fi.prop_id = u32::MAX;
-                    }
-                }
-            }
-            return Some(fi);
-        }
-        return None;
-    }
-
     pub fn parse_paths(&mut self, bitreader: &mut Bitreader) -> Result<usize, DemoParserError> {
         /*
         Create a field path by decoding using a Huffman tree.
@@ -290,6 +233,145 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(idx)
     }
+
+    pub fn decode_entity_update(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: i32,
+        n_updates: usize,
+        is_fullpacket: bool,
+        is_baseline: bool,
+        events_to_emit: &mut Vec<GameEventInfo>,
+    ) -> Result<usize, DemoParserError> {
+        let entity = match self.entities.get_mut(entity_id as usize) {
+            Some(Some(entity)) => entity,
+            _ => return Err(DemoParserError::EntityNotFound),
+        };
+        let class = match self.cls_by_id.get(entity.cls_id as usize) {
+            Some(cls) => cls,
+            None => return Err(DemoParserError::ClassNotFound),
+        };
+
+        for path in self.paths.iter().take(n_updates) {
+            let field = SecondPassParser::find_field(&path, &class.serializer)?;
+            let field_info = SecondPassParser::get_propinfo(&field, path);
+            let decoder = SecondPassParser::get_decoder_from_field(field)?;
+            let result = bitreader.decode(&decoder, self.qf_mapper)?;
+
+            if !is_fullpacket && !is_baseline {
+                events_to_emit.extend(SecondPassParser::listen_for_events(
+                    entity,
+                    &result,
+                    field,
+                    field_info,
+                    &self.prop_controller,
+                ));
+            }
+            if self.is_debug_mode {
+                SecondPassParser::debug_inspect(&result, field, self.tick);
+            }
+            SecondPassParser::insert_field(entity, result, field_info);
+        }
+        Ok(n_updates)
+    }
+    pub fn debug_inspect(_result: &Variant, field: &Field, tick: i32) {
+        if let Field::Value(_v) = field {
+            if _v.full_name.contains("Started") || _v.full_name.contains("Reason") {
+                println!("{:?} {:?} {:?}", _v.full_name, _result, tick);
+            }
+        }
+    }
+    fn get_decoder_from_field(field: &Field) -> Result<Decoder, DemoParserError> {
+        let decoder = match field {
+            Field::Value(inner) => inner.decoder,
+            Field::Vector(_) => UnsignedDecoder,
+            Field::Pointer(inner) => inner.decoder,
+            _ => return Err(DemoParserError::FieldNoDecoder),
+        };
+        Ok(decoder)
+    }
+    pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
+        if let Some(fi) = field_info {
+            if fi.should_parse {
+                entity.props.insert(fi.prop_id, result);
+            }
+        }
+    }
+    pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
+        let info = match field {
+            Field::Value(v) => Some(FieldInfo {
+                decoder: v.decoder,
+                should_parse: v.should_parse,
+                prop_id: v.prop_id,
+            }),
+            Field::Vector(v) => match field.get_inner(0) {
+                Ok(Field::Value(inner)) => Some(FieldInfo {
+                    decoder: v.decoder,
+                    should_parse: inner.should_parse,
+                    prop_id: inner.prop_id,
+                }),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some(mut fi) = info {
+            if fi.prop_id == MY_WEAPONS_OFFSET {
+                if path.last == 1 {
+                } else {
+                    fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
+                }
+            }
+            if fi.prop_id == WEAPON_SKIN_ID {
+                if let Some(entry) = path.path.get(path.last - 1) {
+                    if *entry != 0 {
+                        // Fill with impossible id
+                        fi.prop_id = u32::MAX;
+                    }
+                }
+            }
+            return Some(fi);
+        }
+        return None;
+    }
+    fn listen_for_events(
+        entity: &mut Entity,
+        result: &Variant,
+        _field: &Field,
+        field_info: Option<FieldInfo>,
+        prop_controller: &PropController,
+    ) -> Vec<GameEventInfo> {
+        let mut events = vec![];
+
+        if let Some(fi) = field_info {
+            // Total rounds played
+            if let Some(id) = prop_controller.special_ids.total_rounds_played {
+                if fi.prop_id == id {
+                    events.push(GameEventInfo::RoundEnd(RoundEnd {
+                        old_value: entity.props.get(&id).cloned(),
+                        new_value: Some(result.clone()),
+                    }));
+                }
+            }
+            // Round win reason
+            if let Some(id) = prop_controller.special_ids.round_win_reason {
+                if fi.prop_id == id {
+                    if let Variant::I32(reason) = result {
+                        events.push(GameEventInfo::RoundWinReason(RoundWinReason { reason: *reason }));
+                    }
+                }
+            }
+            // freeze period end
+            if let Some(id) = prop_controller.special_ids.is_freeze_period {
+                if fi.prop_id == id {
+                    if let Variant::Bool(true) = result {
+                        events.push(GameEventInfo::FreezePeriodEnd(true));
+                    }
+                }
+            }
+        }
+        events
+    }
+
     fn write_fp(&mut self, fp_src: &mut FieldPath, idx: usize) -> Result<(), DemoParserError> {
         match self.paths.get_mut(idx) {
             Some(entry) => *entry = *fp_src,
@@ -454,7 +536,7 @@ impl<'a> SecondPassParser<'a> {
         if let Some(baseline_bytes) = self.baselines.get(&cls_id) {
             let b = &baseline_bytes.clone();
             let mut br = Bitreader::new(&b);
-            self.update_entity(&mut br, *entity_id, true)?;
+            self.update_entity(&mut br, *entity_id, true, &mut vec![], false)?;
         }
         Ok(())
     }

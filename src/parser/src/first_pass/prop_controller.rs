@@ -420,6 +420,9 @@ impl PropController {
             };
         } else {
             match name {
+                "CCSGameRulesProxy.CCSGameRules.m_bFreezePeriod" => self.special_ids.is_freeze_period = Some(id),
+                "CCSGameRulesProxy.CCSGameRules.m_eRoundWinReason" => self.special_ids.round_win_reason = Some(id),
+                "CCSGameRulesProxy.CCSGameRules.m_totalRoundsPlayed" => self.special_ids.total_rounds_played = Some(id),
                 "CCSTeam.m_iTeamNum" => self.special_ids.team_team_num = Some(id),
                 "CCSPlayerPawn.m_iTeamNum" => self.special_ids.player_team_pointer = Some(id),
                 "CBasePlayerWeapon.m_nOwnerId" => self.special_ids.weapon_owner_pointer = Some(id),

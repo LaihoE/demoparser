@@ -124,7 +124,7 @@ impl<'a> SecondPassParser<'a> {
             bitreader.read_n_bytes_mut(size as usize, buf)?;
             let msg_bytes = &buf[..size as usize];
             let ok = match netmessage_type_from_int(msg_type as i32) {
-                svc_PacketEntities => self.parse_packet_ents(msg_bytes),
+                svc_PacketEntities => self.parse_packet_ents(msg_bytes, false),
                 svc_CreateStringTable => self.parse_create_stringtable(msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(msg_bytes),
                 svc_ServerInfo => self.parse_server_info(msg_bytes),
@@ -210,7 +210,7 @@ impl<'a> SecondPassParser<'a> {
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => {
                     if should_parse_entities {
-                        self.parse_packet_ents(&msg_bytes)?;
+                        self.parse_packet_ents(&msg_bytes, true)?;
                     }
                     Ok(())
                 }
