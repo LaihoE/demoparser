@@ -116,53 +116,6 @@ impl DemoParser {
         };
         Ok(output.convars.to_object(py))
     }
-    /*
-        pub fn parse_voice(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-            let mmap = match create_mmap(self.path.clone()) {
-                Ok(mmap) => mmap,
-                Err(e) => {
-                    return Err(Exception::new_err(format!(
-                        "{}. File name: {}",
-                        e,
-                        self.path.clone()
-                    )))
-                }
-            };
-            let arc_huf = create_huffman_lookup_table();
-
-            let settings = ParserInputs {
-                real_name_to_og_name: AHashMap::default(),
-                wanted_player_props: vec![],
-                wanted_player_props_og_names: vec![],
-                wanted_other_props: vec![],
-                wanted_other_props_og_names: vec![],
-                wanted_events: vec![],
-                parse_ents: false,
-                wanted_ticks: vec![],
-                parse_projectiles: false,
-                only_header: true,
-                count_props: false,
-                only_convars: false,
-                huffman_lookup_table: &arc_huf,
-            };
-    <<<<<<< HEAD
-             let mut parser = Parser::new(settings, false);
-    =======
-            let mut parser = Parser::new(settings, false);
-    >>>>>>> 4d9b8aa (fix bindings)
-            let output = match parser.parse_demo(&mmap) {
-                Ok(output) => output,
-                Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
-            };
-            let out = convert_voice_data_to_wav(output.voice_data).unwrap();
-            let mut out_hm = AHashMap::default();
-            for (steamid, bytes) in out {
-                let py_bytes = PyBytes::new(py, &bytes);
-                out_hm.insert(steamid, py_bytes);
-            }
-            Ok(out_hm.to_object(py))
-        }
-        */
     /// Returns the names of game events present in the demo
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let mmap = match create_mmap(self.path.clone()) {
@@ -350,11 +303,11 @@ impl DemoParser {
             .iter()
             .map(|x| x.param4.clone())
             .collect();
-        let entids = arr_to_py(Box::new(Int32Array::from(entids))).unwrap();
-        let param1 = rust_series_to_py_series(&Series::new("param1", param1)).unwrap();
-        let param2 = rust_series_to_py_series(&Series::new("param2", param2)).unwrap();
-        let param3 = rust_series_to_py_series(&Series::new("param3", param3)).unwrap();
-        let param4 = rust_series_to_py_series(&Series::new("param4", param4)).unwrap();
+        let entids = arr_to_py(Box::new(Int32Array::from(entids)))?;
+        let param1 = rust_series_to_py_series(&Series::new("param1", param1))?;
+        let param2 = rust_series_to_py_series(&Series::new("param2", param2))?;
+        let param3 = rust_series_to_py_series(&Series::new("param3", param3))?;
+        let param4 = rust_series_to_py_series(&Series::new("param4", param4))?;
 
         let polars = py.import("polars")?;
         let all_series_py = [entids, param1, param2, param3, param4].to_object(py);
@@ -362,10 +315,10 @@ impl DemoParser {
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
             // Set column names
             let column_names = ["entid", "name", "message", "param3", "param4"];
-            df.setattr("columns", column_names.to_object(py)).unwrap();
+            df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
             let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -407,9 +360,9 @@ impl DemoParser {
         let names: Vec<Option<String>> = output.player_md.iter().map(|p| p.name.clone()).collect();
 
         // SoA form
-        let steamid = rust_series_to_py_series(&Series::new("Steamid", steamids)).unwrap();
-        let team_number = arr_to_py(Box::new(Int32Array::from(team_numbers))).unwrap();
-        let name = rust_series_to_py_series(&Series::new("param2", names)).unwrap();
+        let steamid = rust_series_to_py_series(&Series::new("Steamid", steamids))?;
+        let team_number = arr_to_py(Box::new(Int32Array::from(team_numbers)))?;
+        let name = rust_series_to_py_series(&Series::new("param2", names))?;
 
         let polars = py.import("polars")?;
         let all_series_py = [steamid, name, team_number].to_object(py);
@@ -417,10 +370,10 @@ impl DemoParser {
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
             // Set column names
             let column_names = ["steamid", "name", "team_number"];
-            df.setattr("columns", column_names.to_object(py)).unwrap();
+            df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
             let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -471,16 +424,15 @@ impl DemoParser {
             .map(|x| x.custom_name.clone())
             .collect();
         // SoA form
-        let account_id = arr_to_py(Box::new(UInt32Array::from(account_id))).unwrap();
-        let def_index = arr_to_py(Box::new(UInt32Array::from(def_index))).unwrap();
-        let dropreason = arr_to_py(Box::new(UInt32Array::from(dropreason))).unwrap();
-        let inventory = arr_to_py(Box::new(UInt32Array::from(inventory))).unwrap();
-        let item_id = arr_to_py(Box::new(UInt64Array::from(item_id))).unwrap();
-        let paint_index = arr_to_py(Box::new(UInt32Array::from(paint_index))).unwrap();
-        let paint_seed = arr_to_py(Box::new(UInt32Array::from(paint_seed))).unwrap();
-        let paint_wear = arr_to_py(Box::new(UInt32Array::from(paint_wear))).unwrap();
-        let custom_name =
-            rust_series_to_py_series(&Series::new("custom_name", custom_name)).unwrap();
+        let account_id = arr_to_py(Box::new(UInt32Array::from(account_id)))?;
+        let def_index = arr_to_py(Box::new(UInt32Array::from(def_index)))?;
+        let dropreason = arr_to_py(Box::new(UInt32Array::from(dropreason)))?;
+        let inventory = arr_to_py(Box::new(UInt32Array::from(inventory)))?;
+        let item_id = arr_to_py(Box::new(UInt64Array::from(item_id)))?;
+        let paint_index = arr_to_py(Box::new(UInt32Array::from(paint_index)))?;
+        let paint_seed = arr_to_py(Box::new(UInt32Array::from(paint_seed)))?;
+        let paint_wear = arr_to_py(Box::new(UInt32Array::from(paint_wear)))?;
+        let custom_name = rust_series_to_py_series(&Series::new("custom_name", custom_name))?;
 
         let polars = py.import("polars")?;
         let all_series_py = [
@@ -509,10 +461,10 @@ impl DemoParser {
                 "paint_wear",
                 "custom_name",
             ];
-            df.setattr("columns", column_names.to_object(py)).unwrap();
+            df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
             let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -558,14 +510,13 @@ impl DemoParser {
         let custom_name: Vec<Option<String>> =
             output.skins.iter().map(|s| s.custom_name.clone()).collect();
 
-        let def_index = arr_to_py(Box::new(UInt32Array::from(def_idx_vec))).unwrap();
-        let item_id = arr_to_py(Box::new(UInt64Array::from(item_id))).unwrap();
-        let paint_index = arr_to_py(Box::new(UInt32Array::from(paint_index))).unwrap();
-        let paint_seed = arr_to_py(Box::new(UInt32Array::from(paint_seed))).unwrap();
-        let paint_wear = arr_to_py(Box::new(UInt32Array::from(paint_wear))).unwrap();
-        let steamid = arr_to_py(Box::new(UInt64Array::from(steamid))).unwrap();
-        let custom_name =
-            rust_series_to_py_series(&Series::new("custom_name", custom_name)).unwrap();
+        let def_index = arr_to_py(Box::new(UInt32Array::from(def_idx_vec)))?;
+        let item_id = arr_to_py(Box::new(UInt64Array::from(item_id)))?;
+        let paint_index = arr_to_py(Box::new(UInt32Array::from(paint_index)))?;
+        let paint_seed = arr_to_py(Box::new(UInt32Array::from(paint_seed)))?;
+        let paint_wear = arr_to_py(Box::new(UInt32Array::from(paint_wear)))?;
+        let steamid = arr_to_py(Box::new(UInt64Array::from(steamid)))?;
+        let custom_name = rust_series_to_py_series(&Series::new("custom_name", custom_name))?;
 
         let polars = py.import("polars")?;
         let all_series_py = [
@@ -590,10 +541,10 @@ impl DemoParser {
                 "custom_name",
                 "steamid",
             ];
-            df.setattr("columns", column_names.to_object(py)).unwrap();
+            df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
             let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -787,28 +738,28 @@ impl DemoParser {
                 match &output.df[&prop_info.id].data {
                     Some(VarVec::F32(data)) => {
                         df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(Float32Array::from(data))).unwrap());
+                        all_series.push(arr_to_py(Box::new(Float32Array::from(data)))?);
                     }
                     Some(VarVec::I32(data)) => {
                         df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(Int32Array::from(data))).unwrap());
+                        all_series.push(arr_to_py(Box::new(Int32Array::from(data)))?);
                     }
                     Some(VarVec::U64(data)) => {
                         df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(UInt64Array::from(data))).unwrap());
+                        all_series.push(arr_to_py(Box::new(UInt64Array::from(data)))?);
                     }
                     Some(VarVec::U32(data)) => {
                         df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(UInt32Array::from(data))).unwrap());
+                        all_series.push(arr_to_py(Box::new(UInt32Array::from(data)))?);
                     }
                     Some(VarVec::Bool(data)) => {
                         df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(BooleanArray::from(data))).unwrap());
+                        all_series.push(arr_to_py(Box::new(BooleanArray::from(data)))?);
                     }
                     Some(VarVec::String(data)) => {
                         df_column_names_arrow.push(prop_info.prop_friendly_name.clone());
                         let s = Series::new(&prop_info.prop_friendly_name.clone(), data);
-                        let py_series = rust_series_to_py_series(&s).unwrap();
+                        let py_series = rust_series_to_py_series(&s)?;
                         all_series.push(py_series);
                     }
                     Some(VarVec::StringVec(data)) => {
@@ -827,21 +778,16 @@ impl DemoParser {
             let polars = py.import("polars")?;
             let all_series_py = all_series.to_object(py);
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
-            df.setattr("columns", df_column_names_arrow.to_object(py))
-                .unwrap();
-            let pandas_df = df.call_method0("to_pandas").unwrap();
+            df.setattr("columns", df_column_names_arrow.to_object(py))?;
+            let pandas_df = df.call_method0("to_pandas")?;
             for (pyobj, col_name) in all_pyobjects.iter().zip(&df_column_names_py) {
-                pandas_df
-                    .call_method1("insert", (0, col_name, pyobj))
-                    .unwrap();
+                pandas_df.call_method1("insert", (0, col_name, pyobj))?;
             }
             df_column_names_arrow.extend(df_column_names_py);
             df_column_names_arrow.sort();
             let kwargs = vec![("axis", 1)].into_py_dict(py);
             let args = (df_column_names_arrow,);
-            pandas_df
-                .call_method("reindex", args, Some(kwargs))
-                .unwrap();
+            pandas_df.call_method("reindex", args, Some(kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
