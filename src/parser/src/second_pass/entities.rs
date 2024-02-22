@@ -361,11 +361,9 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
             // freeze period end
-            if let Some(id) = prop_controller.special_ids.is_freeze_period {
+            if let Some(id) = prop_controller.special_ids.round_start_time {
                 if fi.prop_id == id {
-                    if let Variant::Bool(true) = result {
-                        events.push(GameEventInfo::FreezePeriodStart(true));
-                    }
+                    events.push(GameEventInfo::FreezePeriodStart(true));
                 }
             }
         }

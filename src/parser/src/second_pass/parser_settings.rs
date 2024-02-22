@@ -243,11 +243,13 @@ pub struct SpecialIDs {
 
     pub round_win_reason: Option<u32>,
     pub is_freeze_period: Option<u32>,
+    pub round_start_time: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
         SpecialIDs {
             is_freeze_period: None,
+            round_start_time: None,
             round_win_reason: None,
             total_rounds_played: None,
             h_owner_entity: None,

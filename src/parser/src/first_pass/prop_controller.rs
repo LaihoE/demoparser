@@ -421,6 +421,7 @@ impl PropController {
         } else {
             match name {
                 "CCSGameRulesProxy.CCSGameRules.m_bFreezePeriod" => self.special_ids.is_freeze_period = Some(id),
+                "CCSGameRulesProxy.CCSGameRules.m_fRoundStartTime" => self.special_ids.round_start_time = Some(id),
                 "CCSGameRulesProxy.CCSGameRules.m_eRoundWinReason" => self.special_ids.round_win_reason = Some(id),
                 "CCSGameRulesProxy.CCSGameRules.m_totalRoundsPlayed" => self.special_ids.total_rounds_played = Some(id),
                 "CCSTeam.m_iTeamNum" => self.special_ids.team_team_num = Some(id),
