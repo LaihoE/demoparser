@@ -69,7 +69,7 @@ pub struct RoundWinReason {
 pub enum GameEventInfo {
     RoundEnd(RoundEnd),
     RoundWinReason(RoundWinReason),
-    FreezePeriodEnd(bool),
+    FreezePeriodStart(bool),
 }
 
 impl<'a> SecondPassParser<'a> {
@@ -364,7 +364,7 @@ impl<'a> SecondPassParser<'a> {
             if let Some(id) = prop_controller.special_ids.is_freeze_period {
                 if fi.prop_id == id {
                     if let Variant::Bool(true) = result {
-                        events.push(GameEventInfo::FreezePeriodEnd(true));
+                        events.push(GameEventInfo::FreezePeriodStart(true));
                     }
                 }
             }

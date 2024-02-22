@@ -27,7 +27,7 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
 ];
 
 static ENTITIES_FIRST_EVENTS: &'static [&str] = &["inferno_startburn", "decoy_started", "inferno_expire"];
-static REMOVEDEVENTS: &'static [&str] = &["server_cvar", "round_end", "round_start"];
+static REMOVEDEVENTS: &'static [&str] = &["server_cvar", "round_end", "round_start", "round_officially_ended"];
 
 const ENTITYIDNONE: i32 = 2047;
 // https://developer.valvesoftware.com/wiki/SteamID
@@ -421,9 +421,9 @@ impl<'a> SecondPassParser<'a> {
             _ => false,
         })
     }
-    fn contains_round_start_event(events: &[GameEventInfo]) -> bool {
+    fn contains_freeze_period_start(events: &[GameEventInfo]) -> bool {
         events.iter().any(|s| match s {
-            &GameEventInfo::FreezePeriodEnd(_) => true,
+            &GameEventInfo::FreezePeriodStart(_) => true,
             _ => false,
         })
     }
@@ -431,7 +431,9 @@ impl<'a> SecondPassParser<'a> {
         if SecondPassParser::contains_round_end_event(&events) {
             self.create_custom_event_round_end(&events)?;
         }
-        if SecondPassParser::contains_round_start_event(&events) {
+
+        if SecondPassParser::contains_freeze_period_start(&events) {
+            self.create_custom_event_round_officially_ended(&events)?;
             self.create_custom_event_round_start(&events)?;
         }
         Ok(())
@@ -512,6 +514,39 @@ impl<'a> SecondPassParser<'a> {
 
         Ok(())
     }
+
+    pub fn create_custom_event_round_officially_ended(&mut self, _events: &[GameEventInfo]) -> Result<(), DemoParserError> {
+        self.game_events_counter.insert("round_officially_ended".to_string());
+        if !self.wanted_events.contains(&"round_officially_ended".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
+            return Ok(());
+        }
+
+        // if round is 1 then we shouldn't publish `round_officially_ended`
+        // as there is no prior round
+        // keep an eye on this for potential bugs, possibly during match medic
+        if let Some(Variant::I32(x)) = self.find_current_round() {
+            if x <= 1 {
+                return Ok(());
+            }
+        }
+
+        let mut fields = vec![];
+        fields.extend(self.find_non_player_props());
+
+        fields.push(EventField {
+            data: Some(Variant::I32(self.tick)),
+            name: "tick".to_string(),
+        });
+        let ge = GameEvent {
+            name: "round_officially_ended".to_string(),
+            fields: fields,
+            tick: self.tick,
+        };
+        self.game_events.push(ge);
+
+        Ok(())
+    }
+
     pub fn find_current_round(&self) -> Option<Variant> {
         if let Some(prop_id) = self.prop_controller.special_ids.total_rounds_played {
             match self.rules_entity_id {
