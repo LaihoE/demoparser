@@ -19,7 +19,7 @@ use csgoproto::demo::CDemoFullPacket;
 use csgoproto::demo::CDemoPacket;
 use csgoproto::demo::EDemoCommands;
 use csgoproto::demo::EDemoCommands::*;
-use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader, CDemoSendTables};
+use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader};
 use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
 use csgoproto::netmessages::CSVCMsg_GameEventList;
 use protobuf::Message;

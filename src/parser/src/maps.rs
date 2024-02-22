@@ -17,6 +17,70 @@ pub static FACTORIES_MAP: phf::Set<&'static str> = phf_set! {
     "Vector4D",
     "Quaternion",
 };
+/*
+RoundEndReasonStillInProgress      RoundEndReason = 0
+RoundEndReasonTargetBombed         RoundEndReason = 1
+RoundEndReasonVIPEscaped           RoundEndReason = 2
+RoundEndReasonVIPKilled            RoundEndReason = 3
+RoundEndReasonTerroristsEscaped    RoundEndReason = 4
+RoundEndReasonCTStoppedEscape      RoundEndReason = 5
+RoundEndReasonTerroristsStopped    RoundEndReason = 6
+RoundEndReasonBombDefused          RoundEndReason = 7
+RoundEndReasonCTWin                RoundEndReason = 8
+RoundEndReasonTerroristsWin        RoundEndReason = 9
+RoundEndReasonDraw                 RoundEndReason = 10
+RoundEndReasonHostagesRescued      RoundEndReason = 11
+RoundEndReasonTargetSaved          RoundEndReason = 12
+RoundEndReasonHostagesNotRescued   RoundEndReason = 13
+RoundEndReasonTerroristsNotEscaped RoundEndReason = 14
+RoundEndReasonVIPNotEscaped        RoundEndReason = 15
+RoundEndReasonGameStart            RoundEndReason = 16
+RoundEndReasonTerroristsSurrender  RoundEndReason = 17
+RoundEndReasonCTSurrender          RoundEndReason = 18
+RoundEndReasonTerroristsPlanted    RoundEndReason = 19
+RoundEndReasonCTsReachedHostage    RoundEndReason = 20
+*/
+
+pub static ROUND_WIN_REASON: phf::Map<i32, &'static str> = phf_map! {
+    0_i32 => "still_in_progress",
+    1_i32 => "bomb_exploded",
+    2_i32 => "vip_escaped",
+    3_i32 => "vip_killed",
+    4_i32 => "t_saved",
+    5_i32 => "ct_stopped_escape",
+    6_i32 => "RoundEndReasonTerroristsStopped",
+    7_i32 => "bomb_defused",
+    8_i32 => "t_killed",
+    9_i32 => "ct_killed",
+    10_i32 => "draw",
+    11_i32 => "hostage_rescued",
+    12_i32 => "time_ran_out",
+    13_i32 => "RoundEndReasonHostagesNotRescued",
+    14_i32 => "terrorists_not_escaped",
+    15_i32 => "vip_not_escaped",
+    16_i32 => "game_start",
+    17_i32 => "t_surrender",
+    18_i32 => "ct_surrender",
+    19_i32 => "t_planted",
+    20_i32 => "ct_reached_hostage",
+};
+pub static ROUND_WIN_REASON_TO_WINNER: phf::Map<i32, &'static str> = phf_map! {
+    1_i32 => "T",
+    4_i32 => "CT",
+    5_i32 => "CT",
+    6_i32 => "CT",
+    7_i32 => "CT",
+    8_i32 => "CT",
+    9_i32 => "T",
+    11_i32 => "CT",
+    12_i32 => "CT",
+    13_i32 => "T",
+    14_i32 => "CT",
+    17_i32 => "CT",
+    18_i32 => "T",
+    19_i32 => "CT",
+    20_i32 => "CT",
+};
 
 pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
     "bool" =>   BooleanDecoder,

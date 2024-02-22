@@ -11,10 +11,7 @@ use crate::second_pass::decoder::QuantalizedFloat;
 use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use csgoproto::netmessages::ProtoFlattenedSerializer_t;
-use csgoproto::{
-    demo::CDemoSendTables,
-    netmessages::{CSVCMsg_FlattenedSerializer, ProtoFlattenedSerializerField_t},
-};
+use csgoproto::netmessages::{CSVCMsg_FlattenedSerializer, ProtoFlattenedSerializerField_t};
 use lazy_static::lazy_static;
 use protobuf::Message;
 use regex::Regex;

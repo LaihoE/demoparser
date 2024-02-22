@@ -239,10 +239,17 @@ pub struct SpecialIDs {
 
     pub h_owner_entity: Option<u32>,
     pub agent_skin_idx: Option<u32>,
+    pub total_rounds_played: Option<u32>,
+
+    pub round_win_reason: Option<u32>,
+    pub is_freeze_period: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
         SpecialIDs {
+            is_freeze_period: None,
+            round_win_reason: None,
+            total_rounds_played: None,
             h_owner_entity: None,
             teamnum: None,
             player_name: None,

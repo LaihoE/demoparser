@@ -1,7 +1,11 @@
+use super::entities::RoundEnd;
 use crate::first_pass::prop_controller::PropInfo;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::stringtables::UserInfo;
+use crate::maps::ROUND_WIN_REASON;
+use crate::maps::ROUND_WIN_REASON_TO_WINNER;
 use crate::second_pass::collect_data::PropType;
+use crate::second_pass::entities::GameEventInfo;
 use crate::second_pass::entities::PlayerMetaData;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::*;
@@ -23,7 +27,7 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
 ];
 
 static ENTITIES_FIRST_EVENTS: &'static [&str] = &["inferno_startburn", "decoy_started", "inferno_expire"];
-static REMOVEDEVENTS: &'static [&str] = &["server_cvar"];
+static REMOVEDEVENTS: &'static [&str] = &["server_cvar", "round_end", "round_start"];
 
 const ENTITYIDNONE: i32 = 2047;
 // https://developer.valvesoftware.com/wiki/SteamID
@@ -378,7 +382,7 @@ impl<'a> SecondPassParser<'a> {
 
     pub fn create_custom_event_parse_convars(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("server_cvar".to_string());
-        if !self.wanted_events.contains(&"server_cvar".to_string()) {
+        if !self.wanted_events.contains(&"server_cvar".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
         let convar: CNETMsg_SetConVar = match Message::parse_from_bytes(&bytes) {
@@ -411,9 +415,144 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(())
     }
+    fn contains_round_end_event(events: &[GameEventInfo]) -> bool {
+        events.iter().any(|s| match s {
+            &GameEventInfo::RoundEnd(_) => true,
+            _ => false,
+        })
+    }
+    fn contains_round_start_event(events: &[GameEventInfo]) -> bool {
+        events.iter().any(|s| match s {
+            &GameEventInfo::FreezePeriodEnd(_) => true,
+            _ => false,
+        })
+    }
+    pub fn emit_events(&mut self, events: Vec<GameEventInfo>) -> Result<(), DemoParserError> {
+        if SecondPassParser::contains_round_end_event(&events) {
+            self.create_custom_event_round_end(&events)?;
+        }
+        if SecondPassParser::contains_round_start_event(&events) {
+            self.create_custom_event_round_start(&events)?;
+        }
+        Ok(())
+    }
+    fn extract_win_reason(&self, events: &[GameEventInfo]) -> Option<Variant> {
+        for event in events {
+            if let GameEventInfo::RoundWinReason(reason) = event {
+                match ROUND_WIN_REASON.get(&reason.reason) {
+                    Some(name) => {
+                        return Some(Variant::String(name.to_string()));
+                    }
+                    _ => return Some(Variant::String(reason.reason.to_string())),
+                }
+            }
+        }
+        None
+    }
+    fn extract_winner(&self, events: &[GameEventInfo]) -> Option<Variant> {
+        for event in events {
+            if let GameEventInfo::RoundWinReason(reason) = event {
+                match ROUND_WIN_REASON_TO_WINNER.get(&reason.reason) {
+                    Some(name) => {
+                        return Some(Variant::String(name.to_string()));
+                    }
+                    _ => return Some(Variant::String(reason.reason.to_string())),
+                }
+            }
+        }
+        None
+    }
+    fn extract_round_end(&self, events: &[GameEventInfo]) -> Option<RoundEnd> {
+        for event in events {
+            if let GameEventInfo::RoundEnd(round_end) = event {
+                return Some(round_end.clone());
+            }
+        }
+        None
+    }
+    pub fn create_custom_event_round_end(&mut self, events: &[GameEventInfo]) -> Result<(), DemoParserError> {
+        self.game_events_counter.insert("round_end".to_string());
+        if !self.wanted_events.contains(&"round_end".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
+            return Ok(());
+        }
+        let event = match self.extract_round_end(&events) {
+            Some(event) => event,
+            None => return Ok(()),
+        };
+        if let (Some(Variant::I32(old)), Some(Variant::I32(new))) = (&event.old_value, &event.new_value) {
+            if new - old != 1 {
+                return Ok(());
+            }
+            let mut fields = vec![];
+            fields.extend(self.find_non_player_props());
+            fields.push(EventField {
+                data: Some(Variant::I32(old + 1)),
+                name: "round".to_string(),
+            });
+            fields.push(EventField {
+                data: SecondPassParser::extract_win_reason(&self, &events),
+                name: "reason".to_string(),
+            });
+            fields.push(EventField {
+                data: SecondPassParser::extract_winner(&self, &events),
+                name: "winner".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(Variant::I32(self.tick)),
+                name: "tick".to_string(),
+            });
+            let ge = GameEvent {
+                name: "round_end".to_string(),
+                fields: fields,
+                tick: self.tick,
+            };
+            self.game_events.push(ge);
+            self.game_events_counter.insert("rank_update".to_string());
+        }
+
+        Ok(())
+    }
+    pub fn find_current_round(&self) -> Option<Variant> {
+        if let Some(prop_id) = self.prop_controller.special_ids.total_rounds_played {
+            match self.rules_entity_id {
+                Some(entid) => match self.get_prop_from_ent(&prop_id, &entid).ok() {
+                    Some(Variant::I32(val)) => return Some(Variant::I32(val + 1)),
+                    _ => {}
+                },
+                None => return None,
+            }
+        }
+        None
+    }
+    pub fn create_custom_event_round_start(&mut self, _events: &[GameEventInfo]) -> Result<(), DemoParserError> {
+        self.game_events_counter.insert("round_start".to_string());
+        if !self.wanted_events.contains(&"round_start".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
+            return Ok(());
+        }
+        let mut fields = vec![];
+        fields.extend(self.find_non_player_props());
+
+        fields.push(EventField {
+            data: self.find_current_round(),
+            name: "round".to_string(),
+        });
+        fields.push(EventField {
+            data: Some(Variant::I32(self.tick)),
+            name: "tick".to_string(),
+        });
+        let ge = GameEvent {
+            name: "round_start".to_string(),
+            fields: fields,
+            tick: self.tick,
+        };
+        self.game_events.push(ge);
+
+        Ok(())
+    }
+
     pub fn create_custom_event_rank_update(&mut self, msg_bytes: &[u8]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("rank_update".to_string());
-        if !self.wanted_events.contains(&"rank_update".to_string()) {
+        if !self.wanted_events.contains(&"rank_update".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
         let update_msg: CCSUsrMsg_ServerRankUpdate = match Message::parse_from_bytes(&msg_bytes) {
@@ -459,9 +598,7 @@ impl<'a> SecondPassParser<'a> {
                 tick: self.tick,
             };
             self.game_events.push(ge);
-            self.game_events_counter.insert("rank_update".to_string());
         }
-
         Ok(())
     }
 }
