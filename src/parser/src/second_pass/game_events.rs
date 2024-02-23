@@ -27,7 +27,7 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
 ];
 
 static ENTITIES_FIRST_EVENTS: &'static [&str] = &["inferno_startburn", "decoy_started", "inferno_expire"];
-static REMOVEDEVENTS: &'static [&str] = &["server_cvar", "round_end", "round_start", "round_officially_ended"];
+static REMOVEDEVENTS: &'static [&str] = &["server_cvar"];
 
 const ENTITYIDNONE: i32 = 2047;
 // https://developer.valvesoftware.com/wiki/SteamID
@@ -437,12 +437,10 @@ impl<'a> SecondPassParser<'a> {
         if SecondPassParser::contains_round_end_event(&events) {
             self.create_custom_event_round_end(&events)?;
         }
-
         if SecondPassParser::contains_freeze_period_start(&events) {
             self.create_custom_event_round_officially_ended(&events)?;
             self.create_custom_event_round_start(&events)?;
         }
-
         if SecondPassParser::contains_match_end(&events) {
             self.create_custom_event_match_end(&events)?;
         }
@@ -491,14 +489,14 @@ impl<'a> SecondPassParser<'a> {
             Some(event) => event,
             None => return Ok(()),
         };
-        if let (Some(Variant::I32(old)), Some(Variant::I32(new))) = (&event.old_value, &event.new_value) {
+        if let (Some(Variant::U32(old)), Some(Variant::U32(new))) = (&event.old_value, &event.new_value) {
             if new - old != 1 {
                 return Ok(());
             }
             let mut fields = vec![];
             fields.extend(self.find_non_player_props());
             fields.push(EventField {
-                data: Some(Variant::I32(old + 1)),
+                data: Some(Variant::U32(old + 1)),
                 name: "round".to_string(),
             });
             fields.push(EventField {
@@ -527,7 +525,9 @@ impl<'a> SecondPassParser<'a> {
 
     pub fn create_custom_event_round_officially_ended(&mut self, _events: &[GameEventInfo]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("round_officially_ended".to_string());
-        if !self.wanted_events.contains(&"round_officially_ended".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
+        if !self.wanted_events.contains(&"round_officially_ended".to_string())
+            && self.wanted_events.first() != Some(&"all".to_string())
+        {
             return Ok(());
         }
 
@@ -559,7 +559,9 @@ impl<'a> SecondPassParser<'a> {
 
     pub fn create_custom_event_match_end(&mut self, _events: &[GameEventInfo]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("cs_win_panel_match".to_string());
-        if !self.wanted_events.contains(&"cs_win_panel_match".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
+        if !self.wanted_events.contains(&"cs_win_panel_match".to_string())
+            && self.wanted_events.first() != Some(&"all".to_string())
+        {
             return Ok(());
         }
 
