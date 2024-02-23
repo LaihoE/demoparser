@@ -17423,16 +17423,28 @@ mod tests {
                     name: "round_end".to_string(),
                     fields: vec![
                         EventField {
-                            name: "round".to_string(),
-                            data: Some(I32(1)),
+                            name: "winner".to_string(),
+                            data: Some(I32(2)),
                         },
                         EventField {
                             name: "reason".to_string(),
-                            data: Some(String("ct_killed".to_string())),
+                            data: Some(I32(9)),
                         },
                         EventField {
-                            name: "winner".to_string(),
-                            data: Some(String("T".to_string())),
+                            name: "message".to_string(),
+                            data: Some(String("#SFUI_Notice_Terrorists_Win".to_string())),
+                        },
+                        EventField {
+                            name: "legacy".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "player_count".to_string(),
+                            data: Some(I32(20)),
+                        },
+                        EventField {
+                            name: "nomusic".to_string(),
+                            data: Some(I32(0)),
                         },
                         EventField {
                             name: "tick".to_string(),
@@ -17445,16 +17457,28 @@ mod tests {
                     name: "round_end".to_string(),
                     fields: vec![
                         EventField {
-                            name: "round".to_string(),
-                            data: Some(I32(2)),
+                            name: "winner".to_string(),
+                            data: Some(I32(3)),
                         },
                         EventField {
                             name: "reason".to_string(),
-                            data: Some(String("bomb_defused".to_string())),
+                            data: Some(I32(7)),
                         },
                         EventField {
-                            name: "winner".to_string(),
-                            data: Some(String("CT".to_string())),
+                            name: "message".to_string(),
+                            data: Some(String("#SFUI_Notice_Bomb_Defused".to_string())),
+                        },
+                        EventField {
+                            name: "legacy".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "player_count".to_string(),
+                            data: Some(I32(20)),
+                        },
+                        EventField {
+                            name: "nomusic".to_string(),
+                            data: Some(I32(0)),
                         },
                         EventField {
                             name: "tick".to_string(),
@@ -17477,8 +17501,16 @@ mod tests {
                     name: "round_start".to_string(),
                     fields: vec![
                         EventField {
-                            name: "round".to_string(),
-                            data: Some(I32(1)),
+                            name: "timelimit".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "fraglimit".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "objective".to_string(),
+                            data: Some(String("".to_string())),
                         },
                         EventField {
                             name: "tick".to_string(),
@@ -17491,8 +17523,16 @@ mod tests {
                     name: "round_start".to_string(),
                     fields: vec![
                         EventField {
-                            name: "round".to_string(),
-                            data: Some(I32(2)),
+                            name: "timelimit".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "fraglimit".to_string(),
+                            data: Some(I32(0)),
+                        },
+                        EventField {
+                            name: "objective".to_string(),
+                            data: Some(String("".to_string())),
                         },
                         EventField {
                             name: "tick".to_string(),
