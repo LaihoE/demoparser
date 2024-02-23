@@ -427,6 +427,12 @@ impl<'a> SecondPassParser<'a> {
             _ => false,
         })
     }
+    fn contains_match_end(events: &[GameEventInfo]) -> bool {
+        events.iter().any(|s| match s {
+            &GameEventInfo::MatchEnd() => true,
+            _ => false,
+        })
+    }
     pub fn emit_events(&mut self, events: Vec<GameEventInfo>) -> Result<(), DemoParserError> {
         if SecondPassParser::contains_round_end_event(&events) {
             self.create_custom_event_round_end(&events)?;
@@ -435,6 +441,10 @@ impl<'a> SecondPassParser<'a> {
         if SecondPassParser::contains_freeze_period_start(&events) {
             self.create_custom_event_round_officially_ended(&events)?;
             self.create_custom_event_round_start(&events)?;
+        }
+
+        if SecondPassParser::contains_match_end(&events) {
+            self.create_custom_event_match_end(&events)?;
         }
         Ok(())
     }
@@ -539,6 +549,29 @@ impl<'a> SecondPassParser<'a> {
         });
         let ge = GameEvent {
             name: "round_officially_ended".to_string(),
+            fields: fields,
+            tick: self.tick,
+        };
+        self.game_events.push(ge);
+
+        Ok(())
+    }
+
+    pub fn create_custom_event_match_end(&mut self, _events: &[GameEventInfo]) -> Result<(), DemoParserError> {
+        self.game_events_counter.insert("cs_win_panel_match".to_string());
+        if !self.wanted_events.contains(&"cs_win_panel_match".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
+            return Ok(());
+        }
+
+        let mut fields = vec![];
+        fields.extend(self.find_non_player_props());
+
+        fields.push(EventField {
+            data: Some(Variant::I32(self.tick)),
+            name: "tick".to_string(),
+        });
+        let ge = GameEvent {
+            name: "cs_win_panel_match".to_string(),
             fields: fields,
             tick: self.tick,
         };

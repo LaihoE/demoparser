@@ -70,6 +70,7 @@ pub enum GameEventInfo {
     RoundEnd(RoundEnd),
     RoundWinReason(RoundWinReason),
     FreezePeriodStart(bool),
+    MatchEnd(),
 }
 
 impl<'a> SecondPassParser<'a> {
@@ -267,9 +268,9 @@ impl<'a> SecondPassParser<'a> {
                     &self.prop_controller,
                 ));
             }
-            if self.is_debug_mode {
+            if !is_fullpacket && !is_baseline && self.is_debug_mode {
                 SecondPassParser::debug_inspect(&result, field, self.tick);
-            }
+              }
             SecondPassParser::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
@@ -343,8 +344,8 @@ impl<'a> SecondPassParser<'a> {
         let mut events = vec![];
 
         if let Some(fi) = field_info {
-            // Total rounds played
-            if let Some(id) = prop_controller.special_ids.total_rounds_played {
+            // round end
+            if let Some(id) = prop_controller.special_ids.round_end_count {
                 if fi.prop_id == id {
                     events.push(GameEventInfo::RoundEnd(RoundEnd {
                         old_value: entity.props.get(&id).cloned(),
@@ -360,10 +361,17 @@ impl<'a> SecondPassParser<'a> {
                     }
                 }
             }
-            // freeze period end
-            if let Some(id) = prop_controller.special_ids.round_start_time {
+
+            // freeze period start
+            if let Some(id) = prop_controller.special_ids.round_start_count {
                 if fi.prop_id == id {
                     events.push(GameEventInfo::FreezePeriodStart(true));
+                }
+            }
+
+            if let Some(id) = prop_controller.special_ids.match_end_count {
+                if fi.prop_id == id {
+                    events.push(GameEventInfo::MatchEnd());
                 }
             }
         }
