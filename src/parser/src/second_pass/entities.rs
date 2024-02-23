@@ -270,7 +270,7 @@ impl<'a> SecondPassParser<'a> {
             }
             if !is_fullpacket && !is_baseline && self.is_debug_mode {
                 SecondPassParser::debug_inspect(&result, field, self.tick);
-              }
+            }
             SecondPassParser::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
@@ -341,8 +341,8 @@ impl<'a> SecondPassParser<'a> {
         field_info: Option<FieldInfo>,
         prop_controller: &PropController,
     ) -> Vec<GameEventInfo> {
+        // Might want to start splitting this function
         let mut events = vec![];
-
         if let Some(fi) = field_info {
             // round end
             if let Some(id) = prop_controller.special_ids.round_end_count {
@@ -361,14 +361,12 @@ impl<'a> SecondPassParser<'a> {
                     }
                 }
             }
-
             // freeze period start
             if let Some(id) = prop_controller.special_ids.round_start_count {
                 if fi.prop_id == id {
                     events.push(GameEventInfo::FreezePeriodStart(true));
                 }
             }
-
             if let Some(id) = prop_controller.special_ids.match_end_count {
                 if fi.prop_id == id {
                     events.push(GameEventInfo::MatchEnd());
