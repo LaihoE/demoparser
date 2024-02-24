@@ -388,6 +388,7 @@ impl<'a> SecondPassParser<'a> {
             "yaw" => self.find_pitch_or_yaw(entity_id, 1),
             "weapon_name" => self.find_weapon_name(entity_id),
             "weapon_skin" => self.find_weapon_skin(entity_id),
+            "weapon_skin_id" => self.find_weapon_skin_id(entity_id),
             "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
             "inventory" => self.find_my_inventory(entity_id),
             "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
@@ -649,6 +650,22 @@ impl<'a> SecondPassParser<'a> {
             Err(e) => return Err(e),
         }
     }
+
+    pub fn find_weapon_skin_id(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
+        match self.find_weapon_prop(&WEAPON_SKIN_ID, player_entid) {
+            Ok(Variant::F32(f)) => {
+                // The value is stored as a float for some reason
+                if f.fract() == 0.0 && f >= 0.0 {
+                    return Ok(Variant::U32(f as u32));
+                } else {
+                    return Err(PropCollectionError::WeaponSkinFloatConvertionError);
+                }
+            }
+            Ok(_) => return Err(PropCollectionError::WeaponSkinIdxIncorrectVariant),
+            Err(e) => return Err(e),
+        }
+    }
+
     pub fn find_weapon_prop(&self, prop: &u32, player_entid: &i32) -> Result<Variant, PropCollectionError> {
         let p = match self.prop_controller.special_ids.active_weapon {
             Some(p) => p,

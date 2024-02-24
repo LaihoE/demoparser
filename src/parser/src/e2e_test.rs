@@ -283,6 +283,7 @@ pub fn _create_ge_tests() {
         "yaw".to_string(),
         "weapon_name".to_string(),
         "weapon_skin".to_string(),
+        "weapon_skin_id".to_string(),
         "active_weapon_original_owner".to_string(),
         "inventory".to_string(),
         "entity_id".to_string(),
@@ -654,6 +655,7 @@ pub fn _create_tests() {
         "yaw".to_string(),
         "weapon_name".to_string(),
         "weapon_skin".to_string(),
+        "weapon_skin_id".to_string(),
         "active_weapon_original_owner".to_string(),
         "inventory".to_string(),
         "entity_id".to_string(),
@@ -694,7 +696,8 @@ pub fn _create_tests() {
     custom.insert(IS_ALIVE_ID, "is_alive");
     custom.insert(ENTITY_ID_ID, "entity_id");
     custom.insert(GAME_TIME_ID, "game_time");
-    custom.insert(WEAPON_SKIN_ID, "weapon_skin");
+    custom.insert(WEAPON_SKIN_NAME, "weapon_skin");
+    custom.insert(WEAPON_SKIN_ID, "weapon_skin_id");
 
     custom.insert(WEAPON_NAME_ID, "weapon_name");
     custom.insert(PITCH_ID, "pitch");
@@ -1009,6 +1012,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         "yaw".to_string(),
         "weapon_name".to_string(),
         "weapon_skin".to_string(),
+        "weapon_skin_id".to_string(),
         "active_weapon_original_owner".to_string(),
         "inventory".to_string(),
         "entity_id".to_string(),
@@ -5692,6 +5696,58 @@ mod tests {
                     None,
                     None,
                     Some("CaseHardened".to_string()),
+                ])),
+                num_nones: 0,
+            },
+        );
+        assert_eq!(out.0.df[&WEAPON_SKIN_NAME], prop.1);
+    }
+    #[test]
+    fn weapon_skin_id() {
+        let prop = (
+            "weapon_skin_id",
+            PropColumn {
+                data: Some(U32(vec![
+                    None,
+                    Some(1104),
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(175),
+                    None,
+                    None,
+                    None,
+                    Some(1221),
+                    Some(844),
+                    None,
+                    Some(1150),
+                    None,
+                    Some(811),
+                    None,
+                    Some(1150),
+                    None,
+                    Some(538),
+                    Some(1221),
+                    Some(962),
+                    None,
+                    None,
+                    Some(77),
+                    None,
+                    None,
+                    None,
+                    Some(777),
+                    Some(538),
+                    None,
+                    Some(77),
+                    None,
+                    None,
+                    None,
+                    Some(357),
+                    Some(175),
+                    None,
+                    None,
+                    Some(44),
                 ])),
                 num_nones: 0,
             },
