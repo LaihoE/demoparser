@@ -654,7 +654,7 @@ impl DemoParser {
             real_name_to_og_name: real_name_to_og_name,
             wanted_players: vec![],
             wanted_player_props: real_player_props.clone(),
-            wanted_other_props: wanted_other_props,
+            wanted_other_props: real_other_props,
             wanted_events: event_name.clone(),
             parse_ents: true,
             wanted_ticks: vec![],
