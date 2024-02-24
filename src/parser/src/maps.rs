@@ -2574,6 +2574,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
 
 pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_map! {
     "active_weapon_skin" => "weapon_skin",
+    "weapon_skin_id" => "weapon_skin_id",
     "FORWARD" => "FORWARD",
     "LEFT" => "LEFT",
     "RIGHT" => "RIGHT",

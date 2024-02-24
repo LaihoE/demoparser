@@ -86,7 +86,6 @@ impl<'a> FirstPassParser<'a> {
             let bytes = self.slice_packet_bytes(demo_bytes, frame.size)?;
             let bytes = self.decompress_if_needed(&mut reuseable_buffer, bytes, &frame)?;
             self.ptr += frame.size;
-
             match frame.demo_cmd {
                 DEM_SendTables => self.parse_sendtable_bytes(bytes)?,
                 DEM_FileHeader => self.parse_header(&bytes)?,
