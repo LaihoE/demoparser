@@ -126,6 +126,9 @@ impl<'a> Parser<'a> {
         }
         Some(new_df)
     }
+    fn rm_duplicate_events(events: &mut Vec<GameEvent>) {
+        events.dedup_by(|a, b| a.tick == b.tick && a.name == b.name)
+    }
     fn combine_outputs(&self, second_pass_outputs: &mut Vec<SecondPassOutput>, first_pass_output: FirstPassOutput) -> DemoOutput {
         // Combines all inner DemoOutputs into one big output
         second_pass_outputs.sort_by_key(|x| x.ptr);
@@ -133,6 +136,8 @@ impl<'a> Parser<'a> {
         let all_dfs_combined = self.combine_dfs(&mut dfs);
         let all_game_events: AHashSet<String> =
             AHashSet::from_iter(second_pass_outputs.iter().flat_map(|x| x.game_events_counter.iter().cloned()));
+        let mut events: Vec<GameEvent> = second_pass_outputs.iter().flat_map(|x| x.game_events.clone()).collect();
+        Parser::rm_duplicate_events(&mut events);
         // Remove temp props
         let mut prop_controller = first_pass_output.prop_controller.clone();
         for prop in first_pass_output.added_temp_props {
@@ -144,7 +149,7 @@ impl<'a> Parser<'a> {
             chat_messages: second_pass_outputs.iter().flat_map(|x| x.chat_messages.clone()).collect(),
             item_drops: second_pass_outputs.iter().flat_map(|x| x.item_drops.clone()).collect(),
             player_md: second_pass_outputs.iter().flat_map(|x| x.player_md.clone()).collect(),
-            game_events: second_pass_outputs.iter().flat_map(|x| x.game_events.clone()).collect(),
+            game_events: events,
             skins: second_pass_outputs.iter().flat_map(|x| x.skins.clone()).collect(),
             convars: second_pass_outputs.iter().flat_map(|x| x.convars.clone()).collect(),
             df: all_dfs_combined,

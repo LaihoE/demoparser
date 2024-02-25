@@ -63,8 +63,18 @@ impl<'a> SecondPassParser<'a> {
         let mut event_fields: Vec<EventField> = vec![];
         // Parsing game events is this easy, the complexity comes from adding "extra" fields into events.
         for i in 0..event.keys.len() {
-            let ge = &event.keys[i];
-            let desc = &event_desc.keys[i];
+            let ge = match event.keys.get(i) {
+                Some(entry) => entry,
+                None => {
+                    return Ok(None);
+                }
+            };
+            let desc = match event_desc.keys.get(i) {
+                Some(entry) => entry,
+                None => {
+                    return Ok(None);
+                }
+            };
             let val = parse_key(ge);
             event_fields.push(EventField {
                 name: desc.name().to_owned(),
