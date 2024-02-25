@@ -65,7 +65,7 @@ pub struct FirstPassOutput<'a> {
     pub wanted_players: AHashSet<u64>,
     pub header: AHashMap<String, String>,
 }
-struct Frame {
+pub struct Frame {
     pub size: usize,
     pub frame_starts_at: usize,
     pub is_compressed: bool,
