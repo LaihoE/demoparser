@@ -350,6 +350,34 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
   Ok(s)
 }
 
+#[napi]
+pub fn parse_player_skins(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
+  let bytes = resolve_byte_type(path_or_buf)?;
+  let huf = create_huffman_lookup_table();
+
+  let settings = ParserInputs {
+    wanted_players: vec![],
+    real_name_to_og_name: AHashMap::default(),
+    wanted_player_props: vec![],
+    wanted_other_props: vec![],
+    wanted_events: vec![],
+    parse_ents: true,
+    wanted_ticks: vec![],
+    parse_projectiles: false,
+    only_header: true,
+    count_props: false,
+    only_convars: false,
+    huffman_lookup_table: &huf,
+  };
+  let mut parser = Parser::new(settings, false);
+  let output = parse_demo(bytes, &mut parser)?;
+  let s = match serde_json::to_value(&output.skins) {
+    Ok(s) => s,
+    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+  };
+  Ok(s)
+}
+
 fn resolve_byte_type(path_or_buf: Either<String, Buffer>) -> Result<BytesVariant, napi::Error> {
   match path_or_buf {
     Either::A(path) => {
