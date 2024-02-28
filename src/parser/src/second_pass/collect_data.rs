@@ -6,6 +6,7 @@ use crate::maps::AGENTSMAP;
 use crate::maps::BUTTONMAP;
 use crate::maps::GRENADE_FRIENDLY_NAMES;
 use crate::maps::PAINTKITS;
+use crate::maps::STICKER_ID_TO_NAME;
 use crate::maps::WEAPINDICIES;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::PropColumn;
@@ -389,11 +390,9 @@ impl<'a> SecondPassParser<'a> {
             "weapon_name" => self.find_weapon_name(entity_id),
             "weapon_skin" => self.find_weapon_skin(entity_id),
             "weapon_skin_id" => self.find_weapon_skin_id(entity_id),
-
-            "weapon_skin_paint_seed" => self.find_skin_paint_seed(player),
-            "weapon_skin_float" => self.find_skin_float(player),
+            "weapon_paint_seed" => self.find_skin_paint_seed(player),
+            "weapon_float" => self.find_skin_float(player),
             "weapon_stickers" => self.find_stickers(player),
-
             "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
             "inventory" => self.find_my_inventory(entity_id),
             "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
@@ -415,7 +414,7 @@ impl<'a> SecondPassParser<'a> {
     }
     pub fn find_skin_float(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         if let Some(player_entity_id) = &player.player_entity_id {
-            return self.find_weapon_prop(&WEAPON_SKIN_FLOAT, &player_entity_id);
+            return self.find_weapon_prop(&WEAPON_FLOAT, &player_entity_id);
         }
         Err(PropCollectionError::PlayerNotFound)
     }
@@ -451,22 +450,19 @@ impl<'a> SecondPassParser<'a> {
         if let (Ok(Variant::F32(id)), Ok(Variant::F32(wear)), Ok(Variant::F32(sticker_x)), Ok(Variant::F32(sticker_y))) =
             (id, wear, sticker_x, sticker_y)
         {
-            // ID 0 means no sticker
-            //if id > 0.1 {
             return Some(Sticker {
                 id: id.to_bits(),
-                name: ID_TO_N,
-                wear: wear,
+                name: STICKER_ID_TO_NAME.get(&id.to_bits()).unwrap_or(&"Missing").to_string(),
+                wear: if wear < 0.0000000 { 0.0 } else { wear },
                 x: sticker_x,
                 y: sticker_y,
             });
-            //}
         }
         None
     }
     pub fn find_skin_paint_seed(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         if let Some(player_entity_id) = &player.player_entity_id {
-            return self.find_weapon_prop(&WEAPON_SKIN_PAINT_SEED, &player_entity_id);
+            return self.find_weapon_prop(&WEAPON_PAINT_SEED, &player_entity_id);
         }
         Err(PropCollectionError::PlayerNotFound)
     }

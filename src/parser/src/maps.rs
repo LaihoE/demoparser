@@ -59,7 +59,6 @@ pub static ROUND_WIN_REASON_TO_WINNER: phf::Map<i32, &'static str> = phf_map! {
     20_i32 => "CT",
 };
 
-
 pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
     "bool" =>   BooleanDecoder,
     "char" =>    StringDecoder,
@@ -2388,8 +2387,8 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_bSpottedByMask" => PropType::Custom,
     "agent_skin" => PropType::Custom,
     "is_alive" => PropType::Custom,
-    "weapon_skin_paint_seed" => PropType::Custom,
-    "weapon_skin_float" => PropType::Custom,
+    "weapon_paint_seed" => PropType::Custom,
+    "weapon_float" => PropType::Custom,
     "weapon_stickers" => PropType::Custom,
     // Weapon
     "m_flAnimTime" => PropType::Weapon,
@@ -2792,8 +2791,8 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "time" => "CCSPlayerPawn.m_flSimulationTime",
     "health" => "CCSPlayerPawn.m_iHealth",
     "life_state" => "CCSPlayerPawn.m_lifeState",
-    "weapon_skin_paint_seed" => "weapon_skin_paint_seed",
-    "weapon_skin_float" => "weapon_skin_float",
+    "weapon_paint_seed" => "weapon_paint_seed",
+    "weapon_float" => "weapon_float",
     "weapon_stickers" => "weapon_stickers",
     "X"=> "X",
     "Y"=> "Y",
@@ -9917,5 +9916,5 @@ pub static STICKER_ID_TO_NAME: phf::Map<u32, &'static str> = phf_map! {
     6604_u32=>"community2022_ninja_smokes_foil",
     6605_u32=>"community2022_old_eye_foil",
     6606_u32=>"community2022_peek_foil",
-    
+
 };
