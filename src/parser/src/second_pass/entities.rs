@@ -326,16 +326,7 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
             if fi.prop_id == WEAPON_SKIN_ID {
-                // println!("{:?}", path);
                 fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
-                /*
-                if let Some(entry) = path.path.get(path.last - 1) {
-                    if *entry != 0 {
-                        // Fill with impossible id
-                        fi.prop_id = u32::MAX;
-                    }
-                }
-                */
             }
             return Some(fi);
         }
