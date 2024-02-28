@@ -1123,21 +1123,7 @@ fn to_py_u64_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFr
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
-/*
-fn to_py_sticker_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
-    let mut v = vec![];
-    for pair in pairs {
-        match &pair.data {
-            Some(k) => match k {
-                Variant::Stickers(val) => v.push(Some(val.clone())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
-        }
-    }
-    DataFrameColumn::Pyany(v.to_object(py))
-}
-*/
+
 fn to_string_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
