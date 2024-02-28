@@ -12,7 +12,6 @@ pub const SPECTATOR_TEAM_NUM: u32 = 1;
 pub const BUTTONS_BASEID: u32 = 100000;
 pub const NORMAL_PROP_BASEID: u32 = 1000;
 pub const WEAPON_SKIN_NAME: u32 = 420420420;
-pub const WEAPON_SKIN_ID: u32 = 42042069;
 pub const WEAPON_ORIGINGAL_OWNER_ID: u32 = 6942000;
 pub const MY_WEAPONS_OFFSET: u32 = 500000;
 pub const GRENADE_AMMO_ID: u32 = 1111111;
@@ -35,6 +34,37 @@ pub const NAME_ID: u32 = 100000015;
 pub const PLAYER_X_ID: u32 = 100000016;
 pub const PLAYER_Y_ID: u32 = 100000017;
 pub const PLAYER_Z_ID: u32 = 100000018;
+
+pub const WEAPON_SKIN_ID: u32 = 10000000;
+pub const WEAPON_SKIN_PAINT_SEED: u32 = 10000001;
+pub const WEAPON_SKIN_FLOAT: u32 = 10000002;
+pub const WEAPON_SKIN_UNK1: u32 = 10000003;
+pub const WEAPON_SKIN_UNK2: u32 = 10000004;
+
+pub const WEAPON_SKIN_STICKER_1_ID: u32 = 10000005;
+pub const WEAPON_SKIN_STICKER_1_FLOAT: u32 = 10000006;
+pub const WEAPON_SKIN_STICKER_1_X: u32 = 10000007;
+pub const WEAPON_SKIN_STICKER_1_Y: u32 = 10000008;
+
+pub const WEAPON_SKIN_STICKER_2_ID: u32 = 10000009;
+pub const WEAPON_SKIN_STICKER_2_FLOAT: u32 = 10000010;
+pub const WEAPON_SKIN_STICKER_2_X: u32 = 100000011;
+pub const WEAPON_SKIN_STICKER_2_Y: u32 = 100000012;
+
+pub const WEAPON_SKIN_STICKER_3_ID: u32 = 10000013;
+pub const WEAPON_SKIN_STICKER_3_FLOAT: u32 = 10000014;
+pub const WEAPON_SKIN_STICKER_3_X: u32 = 10000015;
+pub const WEAPON_SKIN_STICKER_3_Y: u32 = 10000016;
+
+pub const WEAPON_SKIN_STICKER_4_ID: u32 = 10000017;
+pub const WEAPON_SKIN_STICKER_4_FLOAT: u32 = 10000018;
+pub const WEAPON_SKIN_STICKER_4_X: u32 = 10000019;
+pub const WEAPON_SKIN_STICKER_4_Y: u32 = 10000020;
+
+pub const WEAPON_SKIN_STICKER_5_ID: u32 = 10000021;
+pub const WEAPON_SKIN_STICKER_5_FLOAT: u32 = 10000022;
+pub const WEAPON_SKIN_STICKER_5_X: u32 = 10000023;
+pub const WEAPON_SKIN_STICKER_5_Y: u32 = 10000024;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -224,6 +254,33 @@ impl PropController {
                 prop_type: PropType::Custom,
                 prop_name: "weapon_skin_id".to_string(),
                 prop_friendly_name: "weapon_skin_id".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("weapon_skin_paint_seed".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: WEAPON_SKIN_PAINT_SEED,
+                prop_type: PropType::Custom,
+                prop_name: "weapon_skin_paint_seed".to_string(),
+                prop_friendly_name: "weapon_skin_paint_seed".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("weapon_skin_float".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: WEAPON_SKIN_FLOAT,
+                prop_type: PropType::Custom,
+                prop_name: "weapon_skin_float".to_string(),
+                prop_friendly_name: "weapon_skin_float".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("weapon_stickers".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: 598479842,
+                prop_type: PropType::Custom,
+                prop_name: "weapon_stickers".to_string(),
+                prop_friendly_name: "weapon_stickers".to_string(),
                 is_player_prop: true,
             });
         }

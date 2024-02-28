@@ -268,17 +268,20 @@ impl<'a> SecondPassParser<'a> {
                     &self.prop_controller,
                 ));
             }
-            if !is_fullpacket && !is_baseline && self.is_debug_mode {
-                SecondPassParser::debug_inspect(&result, field, self.tick);
+
+            if self.is_debug_mode {
+                SecondPassParser::debug_inspect(&result, field, self.tick, field_info, path);
             }
             SecondPassParser::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
     }
-    pub fn debug_inspect(_result: &Variant, field: &Field, tick: i32) {
+    pub fn debug_inspect(_result: &Variant, field: &Field, tick: i32, field_info: Option<FieldInfo>, path: &FieldPath) {
         if let Field::Value(_v) = field {
-            if _v.full_name.contains("Started") || _v.full_name.contains("Reason") {
-                println!("{:?} {:?} {:?}", _v.full_name, _result, tick);
+            if let Some(field_info) = field_info {
+                if _v.full_name.contains("CAK47.CEconItemAttribute.m_iRawValue32") && tick < 5000 {
+                    println!("{:?} {:?} {:?} {:?} {:?}", _v.full_name, _result, tick, field_info, path);
+                }
             }
         }
     }
@@ -323,12 +326,16 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
             if fi.prop_id == WEAPON_SKIN_ID {
+                // println!("{:?}", path);
+                fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
+                /*
                 if let Some(entry) = path.path.get(path.last - 1) {
                     if *entry != 0 {
                         // Fill with impossible id
                         fi.prop_id = u32::MAX;
                     }
                 }
+                */
             }
             return Some(fi);
         }
