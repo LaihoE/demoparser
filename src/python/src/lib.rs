@@ -25,6 +25,7 @@ use pyo3::types::PyDict;
 use pyo3::types::PyList;
 use pyo3::Python;
 use pyo3::{PyAny, PyObject, PyResult};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use pyo3::create_exception;
@@ -770,6 +771,25 @@ impl DemoParser {
                         df_column_names_py.push(prop_info.prop_friendly_name);
                         all_pyobjects.push(data.to_object(py))
                     }
+
+                    Some(VarVec::Stickers(data)) => {
+                        let mut dicts = vec![];
+                        for weapon in data {
+                            let mut v = vec![];
+                            for sticker in weapon {
+                                let dict = PyDict::new(py);
+                                dict.set_item("id", sticker.id.to_object(py))?;
+                                dict.set_item("name", sticker.name.to_object(py))?;
+                                dict.set_item("wear", sticker.wear.to_object(py))?;
+                                dict.set_item("x", sticker.x.to_object(py))?;
+                                dict.set_item("y", sticker.y.to_object(py))?;
+                                v.push(dict);
+                            }
+                            dicts.push(v);
+                        }
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(dicts.to_object(py))
+                    }
                     _ => {}
                 }
             }
@@ -1131,6 +1151,31 @@ fn to_bool_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
+fn to_py_sticker_col(pairs: &Vec<&EventField>, name: &String, py: Python) -> DataFrameColumn {
+    let mut v: Vec<Vec<_>> = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(k) => match k {
+                Variant::Stickers(weapon) => {
+                    let mut vv = vec![];
+                    for sticker in weapon {
+                        let dict = PyDict::new(py);
+                        dict.set_item("id", sticker.id.to_object(py));
+                        dict.set_item("name", sticker.name.to_object(py));
+                        dict.set_item("wear", sticker.wear.to_object(py));
+                        dict.set_item("x", sticker.x.to_object(py));
+                        dict.set_item("y", sticker.y.to_object(py));
+                        vv.push(dict);
+                    }
+                    v.push(vv)
+                }
+                _ => v.push(vec![]),
+            },
+            None => v.push(vec![]),
+        }
+    }
+    DataFrameColumn::Pyany(v.to_object(py))
+}
 
 fn to_null_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     // All series are null can pick any type
@@ -1158,6 +1203,7 @@ pub fn column_from_pairs(
         Some(Variant::String(_)) => to_string_series(pairs, name),
         Some(Variant::StringVec(_)) => to_py_string_col(pairs, name, py),
         Some(Variant::U64Vec(_)) => to_py_u64_col(pairs, name, py),
+        Some(Variant::Stickers(_)) => to_py_sticker_col(pairs, name, py),
         _ => panic!("unkown ge key: {:?}", field_type),
     };
     Ok(s)
@@ -1175,13 +1221,13 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
             Some(Variant::U32(u)) => Some(Variant::U32(*u)),
             Some(Variant::StringVec(_u)) => Some(Variant::StringVec(vec![])),
             Some(Variant::U64Vec(_u)) => Some(Variant::U64Vec(vec![])),
+            Some(Variant::Stickers(_u)) => Some(Variant::Stickers(vec![])),
             None => None,
             _ => {
                 return Err(DemoParserError::UnknownGameEventVariant(pair.name.clone()));
             }
         });
     }
-
     for t in &all_types {
         if t.is_some() {
             return Ok(t.clone());

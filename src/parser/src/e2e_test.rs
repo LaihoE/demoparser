@@ -708,6 +708,7 @@ pub fn _create_tests() {
     custom.insert(TICK_ID, "tick");
     custom.insert(STEAMID_ID, "steamid");
     custom.insert(NAME_ID, "name");
+    custom.insert(WEAPON_STICKERS_ID, "weapon_stickers");
 
     for (k, v) in d.df {
         if let Some(real_name) = d.prop_controller.id_to_name.get(&k) {
@@ -1019,6 +1020,9 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         "is_alive".to_string(),
         "user_id".to_string(),
         "agent_skin".to_string(),
+        "weapon_stickers".to_string(),
+        "weapon_float".to_string(),
+        "weapon_paint_seed".to_string(),
     ];
 
     let wanted_events = vec![];
@@ -1040,8 +1044,6 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
     };
 
     let mut ds = Parser::new(settings, true);
-    // ds.is_multithreadable = false;
-
     let file = File::open("test_demo.dem".to_string()).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let out1 = ds.parse_demo(&mmap).unwrap();
@@ -1142,6 +1144,7 @@ mod tests {
     use crate::second_pass::game_events::EventField;
     use crate::second_pass::game_events::GameEvent;
     use crate::second_pass::variants::PropColumn;
+    use crate::second_pass::variants::Sticker;
     use crate::second_pass::variants::VarVec::String;
     use crate::second_pass::variants::VarVec::*;
     use lazy_static::lazy_static;
@@ -2129,6 +2132,176 @@ mod tests {
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
+    #[test]
+    fn weapon_stickers() {
+        let prop = (
+            "weapon_stickers",
+            PropColumn {
+                data: Some(Stickers(vec![
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![Sticker {
+                        name: "eslcologne2015_signature_taz_foil".to_string(),
+                        wear: 0.0,
+                        id: 477,
+                        x: 6.711e-42,
+                        y: 6.711e-42,
+                    }],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![Sticker {
+                        name: "eslcologne2015_signature_taz_gold".to_string(),
+                        wear: 0.0,
+                        id: 478,
+                        x: 6.711e-42,
+                        y: 6.711e-42,
+                    }],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                ])),
+                num_nones: 0,
+            },
+        );
+        assert_eq!(out.0.df[&WEAPON_STICKERS_ID], prop.1);
+    }
+    #[test]
+    fn weapon_float() {
+        let prop = (
+            "weapon_float",
+            PropColumn {
+                data: Some(F32(vec![
+                    None,
+                    Some(0.98352885),
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(0.3540078),
+                    None,
+                    None,
+                    None,
+                    Some(0.43085524),
+                    Some(0.6917364),
+                    None,
+                    Some(0.7812842),
+                    None,
+                    Some(0.25730723),
+                    None,
+                    Some(0.7812842),
+                    None,
+                    Some(0.6907767),
+                    Some(0.43085524),
+                    Some(0.3268206),
+                    None,
+                    None,
+                    Some(0.12372956),
+                    None,
+                    None,
+                    None,
+                    Some(0.07466238),
+                    Some(0.6907767),
+                    None,
+                    Some(0.12372956),
+                    None,
+                    None,
+                    None,
+                    Some(0.09038387),
+                    Some(0.3540078),
+                    None,
+                    None,
+                    Some(0.41596374),
+                ])),
+                num_nones: 0,
+            },
+        );
+        assert_eq!(out.0.df[&WEAPON_FLOAT], prop.1);
+    }
+
+    #[test]
+    fn weapon_paint_seed() {
+        let prop = (
+            "weapon_paint_seed",
+            PropColumn {
+                data: Some(F32(vec![
+                    None,
+                    Some(647.8849),
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(201.31105),
+                    None,
+                    None,
+                    None,
+                    Some(762.7262),
+                    Some(804.3764),
+                    None,
+                    Some(760.18475),
+                    None,
+                    Some(16.234646),
+                    None,
+                    Some(760.18475),
+                    None,
+                    Some(711.0891),
+                    Some(762.7262),
+                    Some(377.8302),
+                    None,
+                    None,
+                    Some(410.4961),
+                    None,
+                    None,
+                    None,
+                    Some(528.8964),
+                    Some(711.0891),
+                    None,
+                    Some(410.4961),
+                    None,
+                    None,
+                    None,
+                    Some(976.17224),
+                    Some(201.31105),
+                    None,
+                    None,
+                    Some(362.73822),
+                ])),
+                num_nones: 0,
+            },
+        );
+        assert_eq!(out.0.df[&WEAPON_PAINT_SEED], prop.1);
+    }
+
     #[test]
     fn m_nEntityId() {
         let prop = (

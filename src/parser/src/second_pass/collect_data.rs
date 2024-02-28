@@ -1,10 +1,12 @@
 use super::entities::PlayerMetaData;
+use super::variants::Sticker;
 use super::variants::Variant;
 use crate::first_pass::prop_controller::*;
 use crate::maps::AGENTSMAP;
 use crate::maps::BUTTONMAP;
 use crate::maps::GRENADE_FRIENDLY_NAMES;
 use crate::maps::PAINTKITS;
+use crate::maps::STICKER_ID_TO_NAME;
 use crate::maps::WEAPINDICIES;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::PropColumn;
@@ -358,7 +360,6 @@ impl<'a> SecondPassParser<'a> {
         };
         Ok(Variant::F32(coordinate?))
     }
-
     fn find_pitch_or_yaw(&self, entity_id: &i32, idx: usize) -> Result<Variant, PropCollectionError> {
         match self.prop_controller.special_ids.eye_angles {
             Some(prop_id) => match self.get_prop_from_ent(&prop_id, entity_id) {
@@ -389,6 +390,9 @@ impl<'a> SecondPassParser<'a> {
             "weapon_name" => self.find_weapon_name(entity_id),
             "weapon_skin" => self.find_weapon_skin(entity_id),
             "weapon_skin_id" => self.find_weapon_skin_id(entity_id),
+            "weapon_paint_seed" => self.find_skin_paint_seed(player),
+            "weapon_float" => self.find_skin_float(player),
+            "weapon_stickers" => self.find_stickers(player),
             "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
             "inventory" => self.find_my_inventory(entity_id),
             "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
@@ -396,6 +400,7 @@ impl<'a> SecondPassParser<'a> {
             "is_alive" => return self.find_is_alive(entity_id),
             "user_id" => return self.get_userid(player),
             "agent_skin" => return self.find_agent_skin(player),
+
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
     }
@@ -406,6 +411,60 @@ impl<'a> SecondPassParser<'a> {
             }
         }
         Err(PropCollectionError::UseridNotFound)
+    }
+    pub fn find_skin_float(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        if let Some(player_entity_id) = &player.player_entity_id {
+            return self.find_weapon_prop(&WEAPON_FLOAT, &player_entity_id);
+        }
+        Err(PropCollectionError::PlayerNotFound)
+    }
+    pub fn find_stickers(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        if let Some(player_entity_id) = &player.player_entity_id {
+            let mut stickers = vec![];
+            // indicies 0..4 info about skin. 4..24 info about stickers. 5 MAX STICKERS (4 idx per sticker),
+            for idx in (4..25).step_by(4) {
+                let sticker_id_id = WEAPON_SKIN_ID + idx;
+                let sticker_wear_id = WEAPON_SKIN_ID + idx + 1;
+                let sticker_x = WEAPON_SKIN_ID + idx + 2;
+                let sticker_y = WEAPON_SKIN_ID + idx + 3;
+                if let Some(sticker) = self.find_sticker(player_entity_id, sticker_id_id, sticker_wear_id, sticker_x, sticker_y) {
+                    stickers.push(sticker);
+                }
+            }
+            return Ok(Variant::Stickers(stickers));
+        }
+        Err(PropCollectionError::PlayerNotFound)
+    }
+    fn find_sticker(
+        &self,
+        entity_id: &i32,
+        sticker_id_id: u32,
+        sticker_wear_id: u32,
+        sticker_x: u32,
+        sticker_y: u32,
+    ) -> Option<Sticker> {
+        let id = self.find_weapon_prop(&sticker_id_id, entity_id);
+        let wear = self.find_weapon_prop(&sticker_wear_id, entity_id);
+        let sticker_x = self.find_weapon_prop(&sticker_x, entity_id);
+        let sticker_y = self.find_weapon_prop(&sticker_y, entity_id);
+        if let (Ok(Variant::F32(id)), Ok(Variant::F32(wear)), Ok(Variant::F32(sticker_x)), Ok(Variant::F32(sticker_y))) =
+            (id, wear, sticker_x, sticker_y)
+        {
+            return Some(Sticker {
+                id: id.to_bits(),
+                name: STICKER_ID_TO_NAME.get(&id.to_bits()).unwrap_or(&"Missing").to_string(),
+                wear: if wear < 0.0000000 { 0.0 } else { wear },
+                x: sticker_x,
+                y: sticker_y,
+            });
+        }
+        None
+    }
+    pub fn find_skin_paint_seed(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        if let Some(player_entity_id) = &player.player_entity_id {
+            return self.find_weapon_prop(&WEAPON_PAINT_SEED, &player_entity_id);
+        }
+        Err(PropCollectionError::PlayerNotFound)
     }
     pub fn find_agent_skin(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         let id = match self.prop_controller.special_ids.agent_skin_idx {

@@ -12,7 +12,6 @@ pub const SPECTATOR_TEAM_NUM: u32 = 1;
 pub const BUTTONS_BASEID: u32 = 100000;
 pub const NORMAL_PROP_BASEID: u32 = 1000;
 pub const WEAPON_SKIN_NAME: u32 = 420420420;
-pub const WEAPON_SKIN_ID: u32 = 42042069;
 pub const WEAPON_ORIGINGAL_OWNER_ID: u32 = 6942000;
 pub const MY_WEAPONS_OFFSET: u32 = 500000;
 pub const GRENADE_AMMO_ID: u32 = 1111111;
@@ -35,6 +34,11 @@ pub const NAME_ID: u32 = 100000015;
 pub const PLAYER_X_ID: u32 = 100000016;
 pub const PLAYER_Y_ID: u32 = 100000017;
 pub const PLAYER_Z_ID: u32 = 100000018;
+pub const WEAPON_STICKERS_ID: u32 = 100000019;
+
+pub const WEAPON_SKIN_ID: u32 = 10000000;
+pub const WEAPON_PAINT_SEED: u32 = 10000001;
+pub const WEAPON_FLOAT: u32 = 10000002;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -224,6 +228,33 @@ impl PropController {
                 prop_type: PropType::Custom,
                 prop_name: "weapon_skin_id".to_string(),
                 prop_friendly_name: "weapon_skin_id".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("weapon_paint_seed".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: WEAPON_PAINT_SEED,
+                prop_type: PropType::Custom,
+                prop_name: "weapon_paint_seed".to_string(),
+                prop_friendly_name: "weapon_paint_seed".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("weapon_float".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: WEAPON_FLOAT,
+                prop_type: PropType::Custom,
+                prop_name: "weapon_float".to_string(),
+                prop_friendly_name: "weapon_float".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("weapon_stickers".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: WEAPON_STICKERS_ID,
+                prop_type: PropType::Custom,
+                prop_name: "weapon_stickers".to_string(),
+                prop_friendly_name: "weapon_stickers".to_string(),
                 is_player_prop: true,
             });
         }
