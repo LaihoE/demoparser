@@ -2860,7 +2860,6 @@ pub static GRENADE_FRIENDLY_NAMES: phf::Map<&'static str, &'static str> = phf_ma
     "CMolotovProjectile" => "molotov",
     "CHEGrenadeProjectile" => "he_grenade",
     "CFlashbangProjectile" => "flashbang",
-    "CIncendiaryGrenade" => "incendiary_grenade"
 };
 pub static NON_MULTITHREADABLE_PROPS: phf::Set<&'static str> = phf_set! {
     "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iUtilityDamage",
