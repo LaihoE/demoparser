@@ -197,14 +197,11 @@ impl<'a> SecondPassParser<'a> {
                     Some(name) => {
                         // Seperate between ct and t molotovs
                         if cls.name == "CMolotovProjectile" {
-                            println!("{:?}", self.prop_controller.special_ids.is_incendiary_grenade);
                             if let Some(id) = self.prop_controller.special_ids.is_incendiary_grenade {
                                 if let Ok(Variant::Bool(true)) = self.get_prop_from_ent(&id, entity_id) {
-                                    println!("CT");
                                     return Some("incendiary_grenade".to_string());
                                 }
                             }
-                            println!("T");
                         }
                         return Some(name.to_string());
                     }
