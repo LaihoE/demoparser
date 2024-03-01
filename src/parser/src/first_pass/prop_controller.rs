@@ -446,6 +446,7 @@ impl PropController {
     fn set_special_ids(&mut self, name: &str, is_grenade_or_weapon: bool, id: u32) {
         if is_grenade_or_weapon {
             match name {
+                "m_bIsIncGrenade" => self.special_ids.is_incendiary_grenade = Some(id),
                 "m_hOwnerEntity" => self.special_ids.h_owner_entity = Some(id),
                 "m_nOwnerId" => self.special_ids.grenade_owner_id = Some(id),
                 "CBodyComponentBaseAnimGraph.m_vecX" => self.special_ids.m_vec_x_grenade = Some(id),

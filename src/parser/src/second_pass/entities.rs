@@ -279,8 +279,8 @@ impl<'a> SecondPassParser<'a> {
     pub fn debug_inspect(_result: &Variant, field: &Field, tick: i32, field_info: Option<FieldInfo>, path: &FieldPath) {
         if let Field::Value(_v) = field {
             if let Some(field_info) = field_info {
-                if _v.full_name.contains("CAK47.CEconItemAttribute.m_iRawValue32") && tick < 5000 {
-                    println!("{:?} {:?} {:?} {:?} {:?}", _v.full_name, _result, tick, field_info, path);
+                if _v.full_name.contains("Molotov") && _v.full_name.contains("Inc") {
+                    println!("{:?} {:?} {:?} {:?} ", _v.full_name, _result, tick, field_info);
                 }
             }
         }

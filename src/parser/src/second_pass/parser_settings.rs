@@ -244,7 +244,9 @@ pub struct SpecialIDs {
     pub round_win_reason: Option<u32>,
     pub round_start_count: Option<u32>,
     pub round_end_count: Option<u32>,
-    pub match_end_count: Option<u32>
+    pub match_end_count: Option<u32>,
+
+    pub is_incendiary_grenade: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -283,6 +285,7 @@ impl SpecialIDs {
             orig_own_low: None,
             life_state: None,
             agent_skin_idx: None,
+            is_incendiary_grenade: None,
         }
     }
 }
