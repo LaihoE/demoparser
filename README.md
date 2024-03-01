@@ -307,6 +307,9 @@ True/Flase if player is pressing button.
 | next_primary_attack_tick_ratio |  m_flNextPrimaryAttackTickRatio |
 | next_secondary_attack_tick  |  m_nNextSecondaryAttackTick |
 | next_secondary_attack_tick_ratio |  m_flNextSecondaryAttackTickRatio |
+| weapon_float |  m_iRawValue32 |
+| weapon_paint_seed |  m_iRawValue32 |
+| weapon_stickers |  m_iRawValue32 |
 
 #### Aggregate stats (updates one time per round)
 |         Name          | Real name                                                                                                                               |
