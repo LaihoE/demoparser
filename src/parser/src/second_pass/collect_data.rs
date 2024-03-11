@@ -65,6 +65,13 @@ impl<'a> SecondPassParser<'a> {
         // if either one is missing then push None to output
         for (entity_id, player) in &self.players {
             for prop_info in &self.prop_controller.prop_infos {
+                let player_steamid = match player.steamid {
+                    Some(steamid) => steamid,
+                    None => 0,
+                };
+                if !self.wanted_players.is_empty() && !self.wanted_players.contains(&player_steamid) {
+                    continue;
+                }
                 // All values come trough here. None if cant be found.
                 match self.find_prop(prop_info, entity_id, player) {
                     Ok(prop) => {

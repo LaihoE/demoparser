@@ -1133,6 +1133,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
 #[cfg(test)]
 mod tests {
     use crate::e2e_test::create_data;
+    use crate::first_pass::parser_settings::ParserInputs;
     use crate::first_pass::prop_controller::PropController;
     use crate::first_pass::prop_controller::PITCH_ID;
     use crate::first_pass::prop_controller::PLAYER_Y_ID;
@@ -1141,17 +1142,52 @@ mod tests {
     use crate::first_pass::prop_controller::YAW_ID;
     use crate::first_pass::prop_controller::*;
     use crate::parse_demo::DemoOutput;
+    use crate::parse_demo::Parser;
     use crate::second_pass::game_events::EventField;
     use crate::second_pass::game_events::GameEvent;
+    use crate::second_pass::parser_settings::create_huffman_lookup_table;
     use crate::second_pass::variants::PropColumn;
     use crate::second_pass::variants::Sticker;
+    use crate::second_pass::variants::VarVec;
     use crate::second_pass::variants::VarVec::String;
     use crate::second_pass::variants::VarVec::*;
+    use ahash::AHashMap;
     use lazy_static::lazy_static;
+    use memmap2::MmapOptions;
     use std::collections::BTreeMap;
-
+    use std::fs::File;
     lazy_static! {
         static ref out: (DemoOutput, PropController, BTreeMap<std::string::String, Vec<GameEvent>>) = create_data();
+    }
+    #[test]
+    fn test_player_filter() {
+        let huf = create_huffman_lookup_table();
+
+        let settings = ParserInputs {
+            wanted_players: vec![76561198244754626],
+            real_name_to_og_name: AHashMap::default(),
+            wanted_player_props: vec!["X".to_string()],
+            wanted_events: vec![],
+            wanted_other_props: vec!["CCSTeam.m_iScore".to_string()],
+            parse_ents: true,
+            wanted_ticks: vec![10000, 10001],
+            parse_projectiles: true,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
+            huffman_lookup_table: &huf,
+        };
+        let mut ds = Parser::new(settings, true);
+        let file = File::open("test_demo.dem").unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+        let output = ds.parse_demo(&mmap).unwrap();
+
+        let steamids = output.df.get(&STEAMID_ID).unwrap();
+
+        assert_eq!(
+            steamids.data,
+            Some(VarVec::U64(vec![Some(76561198244754626), Some(76561198244754626)]))
+        );
     }
 
     #[test]
