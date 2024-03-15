@@ -244,6 +244,8 @@ pub enum DemoParserError {
     IllegalPathOp,
     VectorResizeFailure,
     ImpossibleCmd,
+    UnkVoiceFormat,
+    MalformedVoicePacket,
 }
 
 impl std::error::Error for DemoParserError {}

@@ -7,3 +7,4 @@ pub mod parser;
 pub mod parser_settings;
 pub mod path_ops;
 pub mod variants;
+pub mod voice_data;
