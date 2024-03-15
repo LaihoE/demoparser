@@ -84,8 +84,6 @@ pub fn convert_voice_data_to_wav(voice_data: Vec<CSVCMsg_VoiceData>) -> Result<V
         .map(|(xuid, data)| {
             let mut decoder = Decoder::new(48000, opus::Channels::Mono).unwrap();
             let mut data_this_player = Vec::with_capacity(AVG_BYTES_PER_PACKET * data.len());
-            // add header
-            data_this_player.extend(generate_wav_header(1, 48000, 16, data_this_player.len() as u32));
             // add voice data
             for chunk in data {
                 match chunk.audio.format() {
@@ -104,7 +102,10 @@ pub fn convert_voice_data_to_wav(voice_data: Vec<CSVCMsg_VoiceData>) -> Result<V
                     }
                 };
             }
-            Ok((xuid.to_string(), data_this_player))
+            let mut out = vec![];
+            out.extend(generate_wav_header(1, 48000, 16, data_this_player.len() as u32));
+            out.extend(data_this_player);
+            Ok((xuid.to_string(), out))
         })
         .collect();
 
