@@ -80,7 +80,7 @@ pub fn convert_voice_data_to_wav(voice_data: Vec<CSVCMsg_VoiceData>) -> Result<V
     }
     // Collect voice data per steamid
     let voice_data_wav: Vec<Result<(String, Vec<u8>), DemoParserError>> = hm
-        .iter()
+        .par_iter()
         .map(|(xuid, data)| {
             let mut decoder = Decoder::new(48000, opus::Channels::Mono).unwrap();
             let mut data_this_player = Vec::with_capacity(AVG_BYTES_PER_PACKET * data.len());
