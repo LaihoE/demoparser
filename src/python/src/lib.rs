@@ -12,6 +12,7 @@ use parser::second_pass::game_events::GameEvent;
 use parser::second_pass::parser_settings::create_huffman_lookup_table;
 use parser::second_pass::variants::VarVec;
 use parser::second_pass::variants::Variant;
+use parser::second_pass::voice_data::convert_voice_data_to_wav;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -21,11 +22,11 @@ use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
+use pyo3::types::PyBytes;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
 use pyo3::Python;
 use pyo3::{PyAny, PyObject, PyResult};
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use pyo3::create_exception;
@@ -676,6 +677,44 @@ impl DemoParser {
         };
         Ok(event_series)
     }
+    pub fn parse_voice(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let mmap = match create_mmap(self.path.clone()) {
+            Ok(mmap) => mmap,
+            Err(e) => {
+                return Err(Exception::new_err(format!(
+                    "{}. File name: {}",
+                    e,
+                    self.path.clone()
+                )))
+            }
+        };
+        let settings = ParserInputs {
+            wanted_players: vec![],
+            wanted_player_props: vec![],
+            wanted_other_props: vec![],
+            wanted_events: vec![],
+            wanted_ticks: vec![],
+            real_name_to_og_name: AHashMap::default(),
+            parse_ents: false,
+            parse_projectiles: false,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
+            huffman_lookup_table: &vec![],
+        };
+        let mut parser = Parser::new(settings, false);
+        let output = match parser.parse_demo(&mmap) {
+            Ok(output) => output,
+            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+        };
+        let out = convert_voice_data_to_wav(output.voice_data).unwrap();
+        let mut out_hm = AHashMap::default();
+        for (steamid, bytes) in out {
+            let py_bytes = PyBytes::new(py, &bytes);
+            out_hm.insert(steamid, py_bytes);
+        }
+        Ok(out_hm.to_object(py))
+    }
 
     #[args(py_kwargs = "**")]
     pub fn parse_ticks(
@@ -1151,7 +1190,7 @@ fn to_bool_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_py_sticker_col(pairs: &Vec<&EventField>, name: &String, py: Python) -> DataFrameColumn {
+fn to_py_sticker_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
     let mut v: Vec<Vec<_>> = vec![];
     for pair in pairs {
         match &pair.data {
@@ -1160,11 +1199,11 @@ fn to_py_sticker_col(pairs: &Vec<&EventField>, name: &String, py: Python) -> Dat
                     let mut vv = vec![];
                     for sticker in weapon {
                         let dict = PyDict::new(py);
-                        dict.set_item("id", sticker.id.to_object(py));
-                        dict.set_item("name", sticker.name.to_object(py));
-                        dict.set_item("wear", sticker.wear.to_object(py));
-                        dict.set_item("x", sticker.x.to_object(py));
-                        dict.set_item("y", sticker.y.to_object(py));
+                        let _ = dict.set_item("id", sticker.id.to_object(py));
+                        let _ = dict.set_item("name", sticker.name.to_object(py));
+                        let _ = dict.set_item("wear", sticker.wear.to_object(py));
+                        let _ = dict.set_item("x", sticker.x.to_object(py));
+                        let _ = dict.set_item("y", sticker.y.to_object(py));
                         vv.push(dict);
                     }
                     v.push(vv)
