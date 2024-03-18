@@ -53,7 +53,7 @@ jobs:
           toolchain: stable
           override: true
       - name: Install libopus-dev
-        run: sudo apt-get install -y libopus-dev
+        run: sudo apt-get install -y libopus-dev opus-tools autoconf automake libtool gcc make
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
         env:
