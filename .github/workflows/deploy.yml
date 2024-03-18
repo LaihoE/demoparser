@@ -52,7 +52,8 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-
+      - name: Install libopus-dev
+        run: sudo apt-get install -y libopus-dev
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
         env:
