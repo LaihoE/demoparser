@@ -4,7 +4,10 @@ name = "csgoproto"
 version = "0.1.5"
 authors = ["Laiho"]
 
+edition = "2021"
 [dependencies]
+bytes = "1.5.0"
+glob = "0.3.1"
 proc-macro2 = "1.0.78"
-protobuf = "3.1.0"
+protobuf = { version = "3.1.0", features = ["bytes"] }
 protobuf-codegen = "=3.3.0"

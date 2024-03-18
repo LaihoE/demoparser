@@ -1,5 +1,4 @@
 fn main() {
-    /*
     protobuf_codegen::Codegen::new()
         // Use `protoc` parser, optional.
         .protoc()
@@ -39,7 +38,6 @@ fn main() {
         .input("Protobufs/csgo/steammessages_cloud.steamworkssdk.proto")
         .input("Protobufs/csgo/steamnetworkingsockets_messages.proto")
         .input("Protobufs/csgo/te.proto")
-        .input("Protobufs/csgo/steammessages_steamlearn.steamworkssdk.proto")
         .input("Protobufs/csgo/cs_usercmd.proto")
         .input("Protobufs/csgo/valveextensions.proto")
         .input("Protobufs/csgo/clientmessages.proto")
@@ -48,7 +46,7 @@ fn main() {
         .input("Protobufs/csgo/fatdemo.proto")
         .input("Protobufs/csgo/gcsdk_gcmessages.proto")
         .input("Protobufs/csgo/steammessages_player.steamworkssdk.proto")
-        .out_dir("src/")
+        .out_dir("src2/")
+        .customize(protobuf_codegen::Customize::default().tokio_bytes(true))
         .run_from_script();
-    */
 }
