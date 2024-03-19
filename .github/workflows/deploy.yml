@@ -34,7 +34,7 @@ jobs:
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
           LIBOPUS_NO_PKG: true
-          LIBCLANG_PATH: /usr/bin/clang
+          LIBCLANG_PATH: /usr/lib64/llvm/
         with:
           command: publish
           target: ${{ matrix.target }}
