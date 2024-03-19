@@ -10,32 +10,6 @@ permissions:
   id-token: write
 
 jobs:
-  windows:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
-        target: [x86, x64]
-    defaults:
-      run:
-        working-directory: ./src/python
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - name: Build Wheels
-        uses: PyO3/maturin-action@v1
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        with:
-          command: publish
-          target: ${{ matrix.target }}
-          args: -i ${{ matrix.python-version }} --no-sdist --skip-existing -m src/python/Cargo.toml
-
   linux:
     runs-on: ubuntu-latest
     strategy:
@@ -56,33 +30,8 @@ jobs:
         run: |
           sudo apt-get install -y libopus-dev opus-tools autoconf automake libtool gcc make
           export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:$LD_LIBRARY_PATH
-          LIBOPUS_LIB_DIR=/usr/lib/x86_64-linux-gnu/
-      - name: Build Wheels
-        uses: PyO3/maturin-action@v1
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        with:
-          command: publish
-          target: ${{ matrix.target }}
-          args: -i ${{ matrix.python-version }} --no-sdist --skip-existing -m src/python/Cargo.toml
-
-  macos:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
-        target: [x86_64, aarch64]
-    defaults:
-      run:
-        working-directory: ./src/python
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
+          export LIBOPUS_LIB_DIR=/usr/lib/x86_64-linux-gnu/
+          export OPUS_NO_PKG=true
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
         env:
