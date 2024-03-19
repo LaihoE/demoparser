@@ -32,6 +32,9 @@ jobs:
           export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:$LD_LIBRARY_PATH
           export LIBOPUS_LIB_DIR=/usr/lib/x86_64-linux-gnu/
           export OPUS_NO_PKG=true
+          sudo yum install opus-devel
+          ldconfig -p | grep libopus
+
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
         env:
