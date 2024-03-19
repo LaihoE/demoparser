@@ -24,8 +24,6 @@ proc-macro2 = "1.0.69"
 rand = "0.8.5"
 bytes = "1.5.0"
 opus = "0.3.0"
-audiopus_sys = { version = "0.2.2", features = ["static"] }
-
 
 [dependencies.csgoproto]
 path = "../csgoproto"
