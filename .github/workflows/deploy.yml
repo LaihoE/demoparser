@@ -29,12 +29,8 @@ jobs:
       - name: Install libopus-dev
         run: |
           sudo apt-get install -y libopus-dev opus-tools autoconf automake libtool gcc make
-          export LD_LIBRARY_PATH=/lib/x86_64-linux-gnu/:$LD_LIBRARY_PATH
-          export LIBOPUS_LIB_DIR=/lib/x86_64-linux-gnu/
-          export OPUS_NO_PKG=true
-          ldconfig -p | grep libopus
-
       - name: Build Wheels
+        container: ubuntu:latest
         uses: PyO3/maturin-action@v1
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
