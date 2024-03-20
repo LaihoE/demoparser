@@ -20,7 +20,6 @@ itertools = "0.10.5"
 memmap2 = "0.5.10"
 protobuf-support = "3.3.0"
 
-
 [dependencies.parser]
 path = "../parser"
 
@@ -31,10 +30,7 @@ path = "../csgoproto"
 [profile.dev]
 overflow-checks = false
 
-[profile.release]
-#debug = true
 
-#opt-level = 3
-#lto = "fat"
-#codegen-units = 1
-#panic = "abort"
+[features]
+default = ["parser/voice", "voice"]
+voice = []

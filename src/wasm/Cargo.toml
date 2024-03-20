@@ -26,6 +26,7 @@ wasm-opt = false
 [dependencies.parser]
 path = "../parser"
 
+
 [dependencies.csgoproto]
 path = "../csgoproto"
 [target.'cfg(not(target_env = "msvc"))'.dependencies]

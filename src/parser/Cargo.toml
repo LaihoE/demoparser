@@ -22,12 +22,13 @@ rayon = "1.7.0"
 protobuf-support = "3.3.0"
 proc-macro2 = "1.0.69"
 rand = "0.8.5"
-opus = "0.3.0"
+opus = { version ="0.3.0", optional = true}
 bytes = "1.5.0"
 
 [dependencies.csgoproto]
 path = "../csgoproto"
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
+
 
 [profile.dev]
 overflow-checks = false
@@ -35,7 +36,6 @@ overflow-checks = false
 [profile.release]
 debug = true
 
-#opt-level = 3
-#lto = "fat"
-#codegen-units = 1
-#panic = "abort"
+[features]
+default = ["voice"]
+voice = ["opus"]
