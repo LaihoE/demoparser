@@ -60,7 +60,7 @@ jobs:
         with:
           command: publish
           target: ${{ matrix.target }}
-          args: --no-default-features --release -i ${{ matrix.python-version }} --no-sdist --skip-existing -m src/python/Cargo.toml
+          args: --no-default-features -i ${{ matrix.python-version }} --no-sdist --skip-existing -m src/python/Cargo.toml
 
   macos:
     runs-on: macos-latest
