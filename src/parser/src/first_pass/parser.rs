@@ -65,7 +65,7 @@ pub struct FirstPassOutput<'a> {
     pub wanted_players: AHashSet<u64>,
     pub header: AHashMap<String, String>,
 }
-struct Frame {
+pub struct Frame {
     pub size: usize,
     pub frame_starts_at: usize,
     pub is_compressed: bool,
@@ -140,13 +140,14 @@ impl<'a> FirstPassParser<'a> {
         possibly_uncompressed_bytes: &'b [u8],
         frame: &Frame,
     ) -> Result<&'b [u8], DemoParserError> {
-        FirstPassParser::resize_if_needed(buf, decompress_len(possibly_uncompressed_bytes))?;
-
         match frame.is_compressed {
-            true => match SnapDecoder::new().decompress(possibly_uncompressed_bytes, buf) {
-                Ok(idx) => Ok(&buf[..idx]),
-                Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
-            },
+            true => {
+                FirstPassParser::resize_if_needed(buf, decompress_len(possibly_uncompressed_bytes))?;
+                match SnapDecoder::new().decompress(possibly_uncompressed_bytes, buf) {
+                    Ok(idx) => Ok(&buf[..idx]),
+                    Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
+                }
+            }
             false => Ok(possibly_uncompressed_bytes),
         }
     }
@@ -311,6 +312,9 @@ impl<'a> FirstPassParser<'a> {
         Ok(())
     }
     fn handle_short_header(&mut self, file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
+        if bytes.len() < 16 {
+            return Err(DemoParserError::OutOfBytesError);
+        }
         match std::str::from_utf8(&bytes[..8]) {
             Ok(magic) => match magic {
                 "PBDEMS2\0" => {}
