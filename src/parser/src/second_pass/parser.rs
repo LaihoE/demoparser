@@ -67,14 +67,15 @@ impl<'a> SecondPassParser<'a> {
             }
 
             let input = &demo_bytes[self.ptr..self.ptr + size as usize];
-            FirstPassParser::resize_if_needed(&mut buf2, decompress_len(input))?;
             self.ptr += size as usize;
-
             let bytes = match is_compressed {
-                true => match SnapDecoder::new().decompress(input, &mut buf2) {
-                    Ok(idx) => &buf2[..idx],
-                    Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
-                },
+                true => {
+                    FirstPassParser::resize_if_needed(&mut buf2, decompress_len(input))?;
+                    match SnapDecoder::new().decompress(input, &mut buf2) {
+                        Ok(idx) => &buf2[..idx],
+                        Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
+                    }
+                }
                 false => input,
             };
 
@@ -120,7 +121,6 @@ impl<'a> SecondPassParser<'a> {
             if buf.len() < size as usize {
                 buf.resize(size as usize, 0)
             }
-
             bitreader.read_n_bytes_mut(size as usize, buf)?;
             let msg_bytes = &buf[..size as usize];
             let ok = match netmessage_type_from_int(msg_type as i32) {
