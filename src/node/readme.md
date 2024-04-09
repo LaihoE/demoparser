@@ -1,3 +1,10 @@
-1. yarn build
-2. unzip tests/zipped_testdata.zip
-3. npm test
+# Building instructions
+
+```yarn build```
+
+
+after that you should be able to import like this:
+
+```JavaScript 
+var {parseEvent, parseTicks} = require('./index');
+```

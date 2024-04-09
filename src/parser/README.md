@@ -1,3 +1,63 @@
+## Building instructions
+
+```cargo build --release```
+
+
+
+## Running tests
+```cargo test --release```
+
+
+## Running in rust
+For example add this main.rs inside the src/ folder:
+
+```Rust
+use ahash::AHashMap;
+use memmap2::MmapOptions;
+use parser::first_pass::parser_settings::ParserInputs;
+use parser::parse_demo::Parser;
+use parser::second_pass::parser_settings::create_huffman_lookup_table;
+use std::fs::File;
+
+fn main() {
+    let path_to_demo = "test_demo.dem";
+    let huf = create_huffman_lookup_table();
+
+    let settings = ParserInputs {
+        wanted_players: vec![],
+        real_name_to_og_name: AHashMap::default(),
+        wanted_player_props: vec!["X".to_string()],
+        wanted_events: vec!["player_death".to_string()],
+        wanted_other_props: vec![],
+        parse_ents: true,
+        wanted_ticks: vec![],
+        parse_projectiles: false,
+        only_header: false,
+        count_props: false,
+        only_convars: false,
+        huffman_lookup_table: &huf,
+    };
+    let mut ds = Parser::new(settings, false);
+    let file = File::open(path_to_demo).unwrap();
+    let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+    let _output = ds.parse_demo(&mmap).unwrap();
+}
+```
+Then we can run with ```cargo run --release```
+
+
+Another useful command is ```cargo run --release -- -debug true``` which will print all decoded entity updates according to your filter in "debug_inspect()" function in second_pass/entities.rs
+
+
+
+Note that the library is (at least currently) not meant to be used directly from rust and this is just to develop the library without having to build bindings during development.
+
+
+
+
+
+
+
 ### Notes on parser
 
 
