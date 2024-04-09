@@ -30,7 +30,6 @@ path = "../csgoproto"
 [profile.dev]
 overflow-checks = false
 
-
 [features]
 default = ["parser/voice", "voice"]
 voice = []
