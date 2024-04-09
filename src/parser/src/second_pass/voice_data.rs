@@ -4,7 +4,7 @@ use csgoproto::netmessages::CSVCMsg_VoiceData;
 use opus::Decoder;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
-use std::{i16, time::Instant};
+use std::i16;
 
 #[derive(Debug)]
 struct VoicePacket {
@@ -14,6 +14,7 @@ struct VoicePacket {
 const FRAME_SIZE: usize = 480;
 const AVG_BYTES_PER_PACKET: usize = 1600;
 
+#[cfg(feature = "voice")]
 pub fn parse_voice_chunk_old_format(bytes: &[u8], decoder: &mut Decoder) -> Result<Vec<i16>, DemoParserError> {
     // based on https://github.com/DandrewsDev/CS2VoiceData
     let mut decoded_bytes = vec![];
@@ -42,6 +43,8 @@ pub fn parse_voice_chunk_old_format(bytes: &[u8], decoder: &mut Decoder) -> Resu
     }
     Ok(decoded_bytes)
 }
+
+#[cfg(feature = "voice")]
 pub fn parse_voice_chunk_new_format(bytes: &[u8], decoder: &mut Decoder) -> Result<Vec<i16>, DemoParserError> {
     let mut decoded_bytes = vec![0; 1024];
     let n = match decoder.decode(&bytes, &mut decoded_bytes, false) {
@@ -51,7 +54,7 @@ pub fn parse_voice_chunk_new_format(bytes: &[u8], decoder: &mut Decoder) -> Resu
     decoded_bytes.truncate(n);
     Ok(decoded_bytes)
 }
-
+#[cfg(feature = "voice")]
 fn generate_wav_header(num_channels: u16, sample_rate: u32, bits_per_sample: u16, data_size: u32) -> Vec<u8> {
     let mut header = Vec::new();
     // RIFF header
@@ -72,6 +75,7 @@ fn generate_wav_header(num_channels: u16, sample_rate: u32, bits_per_sample: u16
     header.extend_from_slice(&data_size.to_le_bytes());
     header
 }
+#[cfg(feature = "voice")]
 pub fn convert_voice_data_to_wav(voice_data: Vec<CSVCMsg_VoiceData>) -> Result<Vec<(String, Vec<u8>)>, DemoParserError> {
     // Group by steamid
     let mut hm: AHashMap<u64, Vec<&CSVCMsg_VoiceData>> = AHashMap::default();

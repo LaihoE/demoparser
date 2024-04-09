@@ -35,10 +35,15 @@ pub const PLAYER_X_ID: u32 = 100000016;
 pub const PLAYER_Y_ID: u32 = 100000017;
 pub const PLAYER_Z_ID: u32 = 100000018;
 pub const WEAPON_STICKERS_ID: u32 = 100000019;
-
 pub const WEAPON_SKIN_ID: u32 = 10000000;
 pub const WEAPON_PAINT_SEED: u32 = 10000001;
 pub const WEAPON_FLOAT: u32 = 10000002;
+pub const ITEM_PURCHASE_COUNT: u32 = 200000000;
+pub const ITEM_PURCHASE_DEF_IDX: u32 = 300000000;
+pub const ITEM_PURCHASE_COST: u32 = 400000000;
+pub const ITEM_PURCHASE_HANDLE: u32 = 500000000;
+pub const ITEM_PURCHASE_NEW_DEF_IDX: u32 = 600000000;
+pub const FLATTENED_VEC_MAX_LEN: u32 = 100000;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -437,6 +442,21 @@ impl PropController {
         if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {
             f.prop_id = MY_WEAPONS_OFFSET as u32;
         }
+        if full_name == "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.WeaponPurchaseCount_t.m_nCount" {
+            f.prop_id = ITEM_PURCHASE_COUNT as u32;
+        }
+        if full_name == "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_unDefIdx" {
+            f.prop_id = ITEM_PURCHASE_DEF_IDX as u32;
+        }
+        if full_name == "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_nCost" {
+            f.prop_id = ITEM_PURCHASE_COST as u32;
+        }
+        if full_name == "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.WeaponPurchaseCount_t.m_nItemDefIndex" {
+            f.prop_id = ITEM_PURCHASE_NEW_DEF_IDX as u32;
+        }
+        if full_name == "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_hItem" {
+            f.prop_id = ITEM_PURCHASE_HANDLE as u32;
+        }
         if prop_name.contains("CEconItemAttribute.m_iRawValue32") {
             f.prop_id = WEAPON_SKIN_ID as u32;
         }
@@ -458,6 +478,7 @@ impl PropController {
                 "m_iItemDefinitionIndex" => self.special_ids.item_def = Some(id),
                 "m_OriginalOwnerXuidLow" => self.special_ids.orig_own_low = Some(id),
                 "m_OriginalOwnerXuidHigh" => self.special_ids.orig_own_high = Some(id),
+                "m_szCustomName" => self.special_ids.custom_name = Some(id),
                 _ => {}
             };
         } else {
@@ -485,6 +506,7 @@ impl PropController {
                 "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => self.special_ids.active_weapon = Some(id),
                 "CCSPlayerPawn.m_lifeState" => self.special_ids.life_state = Some(id),
                 "CCSPlayerController.m_nPawnCharacterDefIndex" => self.special_ids.agent_skin_idx = Some(id),
+                "CCSPlayerPawn.m_bInBuyZone" => self.special_ids.in_buy_zone = Some(id),
                 _ => {}
             };
         }

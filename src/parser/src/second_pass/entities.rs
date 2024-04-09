@@ -1,4 +1,10 @@
 use crate::first_pass::prop_controller::PropController;
+use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_COST;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_COUNT;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_DEF_IDX;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_HANDLE;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_NEW_DEF_IDX;
 use crate::first_pass::prop_controller::MY_WEAPONS_OFFSET;
 use crate::first_pass::prop_controller::PLAYER_ENTITY_HANDLE_MISSING;
 use crate::first_pass::prop_controller::SPECTATOR_TEAM_NUM;
@@ -9,6 +15,7 @@ use crate::first_pass::sendtables::Field;
 use crate::first_pass::sendtables::Serializer;
 use crate::second_pass::decoder::Decoder;
 use crate::second_pass::decoder::Decoder::UnsignedDecoder;
+use crate::second_pass::other_netmessages::Class;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::path_ops::*;
 use crate::second_pass::variants::Variant;
@@ -71,6 +78,10 @@ pub enum GameEventInfo {
     RoundWinReason(RoundWinReason),
     FreezePeriodStart(bool),
     MatchEnd(),
+    WeaponCreateHitem((Variant, i32)),
+    WeaponCreateNCost((Variant, i32)),
+    WeaponCreateDefIdx((Variant, i32, u32)),
+    WeaponPurchaseCount((Variant, i32, u32)),
 }
 
 impl<'a> SecondPassParser<'a> {
@@ -105,7 +116,7 @@ impl<'a> SecondPassParser<'a> {
                     }
                 }
                 EntityCmd::CreateAndUpdate => {
-                    self.create_new_entity(&mut bitreader, &entity_id)?;
+                    self.create_new_entity(&mut bitreader, &entity_id, &mut events_to_emit)?;
                     self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
                 EntityCmd::Update => {
@@ -270,18 +281,38 @@ impl<'a> SecondPassParser<'a> {
             }
 
             if self.is_debug_mode {
-                SecondPassParser::debug_inspect(&result, field, self.tick, field_info, path);
+                SecondPassParser::debug_inspect(
+                    &result,
+                    field,
+                    self.tick,
+                    field_info,
+                    path,
+                    is_fullpacket,
+                    is_baseline,
+                    class,
+                    &entity.cls_id,
+                    &entity_id,
+                );
             }
             SecondPassParser::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
     }
-    pub fn debug_inspect(_result: &Variant, field: &Field, tick: i32, field_info: Option<FieldInfo>, path: &FieldPath) {
+    pub fn debug_inspect(
+        _result: &Variant,
+        field: &Field,
+        tick: i32,
+        field_info: Option<FieldInfo>,
+        path: &FieldPath,
+        is_fullpacket: bool,
+        is_baseline: bool,
+        cls: &Class,
+        cls_id: &u32,
+        entity_id: &i32,
+    ) {
         if let Field::Value(_v) = field {
-            if let Some(field_info) = field_info {
-                if _v.full_name.contains("Molotov") && _v.full_name.contains("Inc") {
-                    println!("{:?} {:?} {:?} {:?} ", _v.full_name, _result, tick, field_info);
-                }
+            if _v.full_name.contains("Custom") {
+                println!("{:?} {:?} {:?}", field_info, _v.full_name, _result);
             }
         }
     }
@@ -318,6 +349,7 @@ impl<'a> SecondPassParser<'a> {
             },
             _ => None,
         };
+        // Flatten vector props
         if let Some(mut fi) = info {
             if fi.prop_id == MY_WEAPONS_OFFSET {
                 if path.last == 1 {
@@ -327,6 +359,23 @@ impl<'a> SecondPassParser<'a> {
             }
             if fi.prop_id == WEAPON_SKIN_ID {
                 fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
+            }
+            if path.path[1] != 1 {
+                if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
+                    fi.prop_id = ITEM_PURCHASE_COUNT + path.path[2] as u32;
+                }
+                if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
+                    fi.prop_id = ITEM_PURCHASE_DEF_IDX + path.path[2] as u32;
+                }
+                if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
+                    fi.prop_id = ITEM_PURCHASE_COST + path.path[2] as u32;
+                }
+                if fi.prop_id >= ITEM_PURCHASE_HANDLE && fi.prop_id < ITEM_PURCHASE_HANDLE + FLATTENED_VEC_MAX_LEN {
+                    fi.prop_id = ITEM_PURCHASE_HANDLE + path.path[2] as u32;
+                }
+                if fi.prop_id >= ITEM_PURCHASE_NEW_DEF_IDX && fi.prop_id < ITEM_PURCHASE_NEW_DEF_IDX + FLATTENED_VEC_MAX_LEN {
+                    fi.prop_id = ITEM_PURCHASE_NEW_DEF_IDX + path.path[2] as u32;
+                }
             }
             return Some(fi);
         }
@@ -369,6 +418,26 @@ impl<'a> SecondPassParser<'a> {
                 if fi.prop_id == id {
                     events.push(GameEventInfo::MatchEnd());
                 }
+            }
+            if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
+                events.push(GameEventInfo::WeaponCreateNCost((result.clone(), entity.entity_id)));
+            }
+            if fi.prop_id >= ITEM_PURCHASE_HANDLE && fi.prop_id < ITEM_PURCHASE_HANDLE + FLATTENED_VEC_MAX_LEN {
+                events.push(GameEventInfo::WeaponCreateHitem((result.clone(), entity.entity_id)));
+            }
+            if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
+                events.push(GameEventInfo::WeaponPurchaseCount((
+                    result.clone(),
+                    entity.entity_id,
+                    fi.prop_id,
+                )));
+            }
+            if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
+                events.push(GameEventInfo::WeaponCreateDefIdx((
+                    result.clone(),
+                    entity.entity_id,
+                    fi.prop_id,
+                )));
             }
         }
         events
@@ -511,12 +580,16 @@ impl<'a> SecondPassParser<'a> {
         None
     }
 
-    fn create_new_entity(&mut self, bitreader: &mut Bitreader, entity_id: &i32) -> Result<(), DemoParserError> {
+    fn create_new_entity(
+        &mut self,
+        bitreader: &mut Bitreader,
+        entity_id: &i32,
+        events_to_emit: &mut Vec<GameEventInfo>,
+    ) -> Result<(), DemoParserError> {
         let cls_id: u32 = bitreader.read_nbits(8)?;
         // Both of these are not used. Don't think they are interesting for the parser
         let _serial = bitreader.read_nbits(NSERIALBITS)?;
         let _unknown = bitreader.read_varint();
-
         let entity_type = self.check_entity_type(&cls_id)?;
         match entity_type {
             EntityType::Projectile => {
