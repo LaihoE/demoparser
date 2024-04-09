@@ -255,6 +255,7 @@ pub struct SpecialIDs {
 
     pub weapon_purchase_count: Option<u32>,
     pub in_buy_zone: Option<u32>,
+    pub custom_name: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -301,6 +302,7 @@ impl SpecialIDs {
             sellback_entry_prev_helmet: None,
             weapon_purchase_count: None,
             in_buy_zone: None,
+            custom_name: None,
         }
     }
 }

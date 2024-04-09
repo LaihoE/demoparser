@@ -490,6 +490,7 @@ impl PropController {
                 "m_iItemDefinitionIndex" => self.special_ids.item_def = Some(id),
                 "m_OriginalOwnerXuidLow" => self.special_ids.orig_own_low = Some(id),
                 "m_OriginalOwnerXuidHigh" => self.special_ids.orig_own_high = Some(id),
+                "m_szCustomName" => self.special_ids.custom_name = Some(id),
                 _ => {}
             };
         } else {
@@ -518,21 +519,6 @@ impl PropController {
                 "CCSPlayerPawn.m_lifeState" => self.special_ids.life_state = Some(id),
                 "CCSPlayerController.m_nPawnCharacterDefIndex" => self.special_ids.agent_skin_idx = Some(id),
                 "CCSPlayerPawn.m_bInBuyZone" => self.special_ids.in_buy_zone = Some(id),
-                "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_unDefIdx" => {
-                    self.special_ids.sellback_entry_def_idx = Some(id)
-                }
-                "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_nCost" => {
-                    self.special_ids.sellback_entry_n_cost = Some(id)
-                }
-                "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_nPrevArmor" => {
-                    self.special_ids.sellback_entry_prev_armor = Some(id)
-                }
-                "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_bPrevHelmet" => {
-                    self.special_ids.sellback_entry_prev_helmet = Some(id)
-                }
-                "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_hItem" => {
-                    self.special_ids.sellback_entry_h_item = Some(id)
-                }
                 _ => {}
             };
         }

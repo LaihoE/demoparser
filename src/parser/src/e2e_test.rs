@@ -1114,6 +1114,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         "round_mvp",
         "round_announce_match_start",
         "hegrenade_detonate",
+        "item_purchase",
     ];
     let mut hm = BTreeMap::default();
 
@@ -17826,6 +17827,133 @@ mod tests {
         );
         assert_eq!(out.2["round_time_warning"], prop.1);
     }
+    #[test]
+    fn game_event_item_purchase() {
+        use crate::second_pass::variants::Variant::*;
+        let prop = (
+            "item_purchase".to_string(),
+            vec![
+                GameEvent {
+                    name: "item_purchase".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "item_name".to_string(),
+                            data: Some(String("item_assaultsuit".to_string())),
+                        },
+                        EventField {
+                            name: "name".to_string(),
+                            data: Some(String("123".to_string())),
+                        },
+                        EventField {
+                            name: "steamid".to_string(),
+                            data: Some(U64(76561198265366770)),
+                        },
+                        EventField {
+                            name: "inventory_slot".to_string(),
+                            data: Some(U32(0)),
+                        },
+                        EventField {
+                            name: "cost".to_string(),
+                            data: Some(I32(1000)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(1)),
+                        },
+                        EventField {
+                            name: "float".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "skin".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "skin_id".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "paint_seed".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "stickers".to_string(),
+                            data: Some(Stickers(vec![])),
+                        },
+                        EventField {
+                            name: "custom_name".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "was_sold".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                    ],
+                    tick: 1,
+                },
+                GameEvent {
+                    name: "item_purchase".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "item_name".to_string(),
+                            data: Some(String("AK-47".to_string())),
+                        },
+                        EventField {
+                            name: "name".to_string(),
+                            data: Some(String("123".to_string())),
+                        },
+                        EventField {
+                            name: "steamid".to_string(),
+                            data: Some(U64(76561198265366770)),
+                        },
+                        EventField {
+                            name: "inventory_slot".to_string(),
+                            data: Some(U32(1)),
+                        },
+                        EventField {
+                            name: "cost".to_string(),
+                            data: Some(I32(2700)),
+                        },
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(1)),
+                        },
+                        EventField {
+                            name: "float".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "skin".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "skin_id".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "paint_seed".to_string(),
+                            data: None,
+                        },
+                        EventField {
+                            name: "stickers".to_string(),
+                            data: Some(Stickers(vec![])),
+                        },
+                        EventField {
+                            name: "custom_name".to_string(),
+                            data: Some(String("".to_string())),
+                        },
+                        EventField {
+                            name: "was_sold".to_string(),
+                            data: Some(Bool(false)),
+                        },
+                    ],
+                    tick: 1,
+                },
+            ],
+        );
+        assert_eq!(out.2["item_purchase"], prop.1);
+    }
+
     #[test]
     fn game_event_flashbang_detonate() {
         use crate::second_pass::variants::Variant::*;

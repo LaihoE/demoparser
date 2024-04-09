@@ -82,7 +82,6 @@ pub enum GameEventInfo {
     WeaponCreateNCost((Variant, i32)),
     WeaponCreateDefIdx((Variant, i32, u32)),
     WeaponPurchaseCount((Variant, i32, u32)),
-    OwnerId((Variant, i32)),
 }
 
 impl<'a> SecondPassParser<'a> {
@@ -295,8 +294,7 @@ impl<'a> SecondPassParser<'a> {
                     &entity_id,
                 );
             }
-
-            SecondPassParser::insert_field(entity, result, field_info, &self.tick, path);
+            SecondPassParser::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
     }
@@ -313,8 +311,8 @@ impl<'a> SecondPassParser<'a> {
         entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
-            if _v.full_name.contains("Sell") {
-                println!("{:?} {:?}", field_info, _v.full_name);
+            if _v.full_name.contains("Custom") {
+                println!("{:?} {:?} {:?}", field_info, _v.full_name, _result);
             }
         }
     }
@@ -327,7 +325,7 @@ impl<'a> SecondPassParser<'a> {
         };
         Ok(decoder)
     }
-    pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>, tick: &i32, path: &FieldPath) {
+    pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
         if let Some(fi) = field_info {
             if fi.should_parse {
                 entity.props.insert(fi.prop_id, result);
@@ -359,18 +357,21 @@ impl<'a> SecondPassParser<'a> {
                     fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
                 }
             }
-            if path.path[1] != 1 {
-                if fi.prop_id == WEAPON_SKIN_ID {
-                    fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
+            if fi.prop_id == MY_WEAPONS_OFFSET {
+                if path.last == 1 {
+                } else {
+                    fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
                 }
+            }
+            if fi.prop_id == WEAPON_SKIN_ID {
+                fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
+            }
+            if path.path[1] != 1 {
                 if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
                     fi.prop_id = ITEM_PURCHASE_COUNT + path.path[2] as u32;
                 }
                 if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
                     fi.prop_id = ITEM_PURCHASE_DEF_IDX + path.path[2] as u32;
-                }
-                if fi.prop_id >= ITEM_PURCHASE_NEW_DEF_IDX && fi.prop_id < ITEM_PURCHASE_NEW_DEF_IDX + FLATTENED_VEC_MAX_LEN {
-                    fi.prop_id = ITEM_PURCHASE_NEW_DEF_IDX + path.path[2] as u32;
                 }
                 if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
                     fi.prop_id = ITEM_PURCHASE_COST + path.path[2] as u32;
@@ -378,8 +379,11 @@ impl<'a> SecondPassParser<'a> {
                 if fi.prop_id >= ITEM_PURCHASE_HANDLE && fi.prop_id < ITEM_PURCHASE_HANDLE + FLATTENED_VEC_MAX_LEN {
                     fi.prop_id = ITEM_PURCHASE_HANDLE + path.path[2] as u32;
                 }
-                return Some(fi);
+                if fi.prop_id >= ITEM_PURCHASE_NEW_DEF_IDX && fi.prop_id < ITEM_PURCHASE_NEW_DEF_IDX + FLATTENED_VEC_MAX_LEN {
+                    fi.prop_id = ITEM_PURCHASE_NEW_DEF_IDX + path.path[2] as u32;
+                }
             }
+            return Some(fi);
         }
         return None;
     }

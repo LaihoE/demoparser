@@ -405,8 +405,8 @@ impl<'a> SecondPassParser<'a> {
             "pitch" => self.find_pitch_or_yaw(entity_id, 0),
             "yaw" => self.find_pitch_or_yaw(entity_id, 1),
             "weapon_name" => self.find_weapon_name(entity_id),
-            "weapon_skin" => self.find_weapon_skin(entity_id),
-            "weapon_skin_id" => self.find_weapon_skin_id(entity_id),
+            "weapon_skin" => self.find_weapon_skin_from_player(entity_id),
+            "weapon_skin_id" => self.find_weapon_skin_id_from_player(entity_id),
             "weapon_paint_seed" => self.find_skin_paint_seed(player),
             "weapon_float" => self.find_skin_float(player),
             "weapon_stickers" => self.find_stickers_from_active_weapon(player),
@@ -484,7 +484,7 @@ impl<'a> SecondPassParser<'a> {
         {
             return Some(Sticker {
                 id: id.to_bits(),
-                name: STICKER_ID_TO_NAME.get(&id.to_bits()).unwrap_or(&"Missing").to_string(),
+                name: STICKER_ID_TO_NAME.get(&id.to_bits()).unwrap_or(&"unknown").to_string(),
                 wear: if wear < 0.0000000 { 0.0 } else { wear },
                 x: sticker_x,
                 y: sticker_y,
@@ -723,8 +723,8 @@ impl<'a> SecondPassParser<'a> {
         Ok(Variant::String(combined.to_string()))
     }
 
-    pub fn find_weapon_skin(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
-        match self.find_weapon_prop(&WEAPON_SKIN_ID, player_entid) {
+    pub fn find_weapon_skin(&self, weapon_entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        match self.get_prop_from_ent(&WEAPON_SKIN_ID, weapon_entity_id) {
             Ok(Variant::F32(f)) => {
                 // The value is stored as a float for some reason
                 if f.fract() == 0.0 && f >= 0.0 {
@@ -741,9 +741,22 @@ impl<'a> SecondPassParser<'a> {
             Err(e) => return Err(e),
         }
     }
-
-    pub fn find_weapon_skin_id(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
-        match self.find_weapon_prop(&WEAPON_SKIN_ID, player_entid) {
+    pub fn find_weapon_skin_id_from_player(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
+        let p = match self.prop_controller.special_ids.active_weapon {
+            Some(p) => p,
+            None => return Err(PropCollectionError::SpecialidsActiveWeaponNotSet),
+        };
+        return match self.get_prop_from_ent(&p, player_entid) {
+            Ok(Variant::U32(weap_handle)) => {
+                let weapon_entity_id = (weap_handle & 0x7FF) as i32;
+                self.find_weapon_skin_id(&weapon_entity_id)
+            }
+            Ok(_) => Err(PropCollectionError::WeaponHandleIncorrectVariant),
+            Err(e) => Err(e),
+        };
+    }
+    pub fn find_weapon_skin_id(&self, weapon_entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        match self.get_prop_from_ent(&WEAPON_SKIN_ID, weapon_entity_id) {
             Ok(Variant::F32(f)) => {
                 // The value is stored as a float for some reason
                 if f.fract() == 0.0 && f >= 0.0 {
@@ -755,6 +768,20 @@ impl<'a> SecondPassParser<'a> {
             Ok(_) => return Err(PropCollectionError::WeaponSkinIdxIncorrectVariant),
             Err(e) => return Err(e),
         }
+    }
+    pub fn find_weapon_skin_from_player(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
+        let p = match self.prop_controller.special_ids.active_weapon {
+            Some(p) => p,
+            None => return Err(PropCollectionError::SpecialidsActiveWeaponNotSet),
+        };
+        return match self.get_prop_from_ent(&p, player_entid) {
+            Ok(Variant::U32(weap_handle)) => {
+                let weapon_entity_id = (weap_handle & 0x7FF) as i32;
+                self.find_weapon_skin(&weapon_entity_id)
+            }
+            Ok(_) => Err(PropCollectionError::WeaponHandleIncorrectVariant),
+            Err(e) => Err(e),
+        };
     }
 
     pub fn find_weapon_prop(&self, prop: &u32, player_entid: &i32) -> Result<Variant, PropCollectionError> {

@@ -660,12 +660,29 @@ impl<'a> SecondPassParser<'a> {
                             name: "float".to_string(),
                         });
                         fields.push(EventField {
+                            data: self.find_weapon_skin(&purchase.weapon_entid).ok(),
+                            name: "skin".to_string(),
+                        });
+                        fields.push(EventField {
+                            data: self.find_weapon_skin_id(&purchase.weapon_entid).ok(),
+                            name: "skin_id".to_string(),
+                        });
+                        fields.push(EventField {
                             data: self.get_prop_from_ent(&WEAPON_PAINT_SEED, &purchase.weapon_entid).ok(),
                             name: "paint_seed".to_string(),
                         });
                         fields.push(EventField {
                             data: self.find_stickers(&purchase.weapon_entid).ok(),
                             name: "stickers".to_string(),
+                        });
+                        let custom_name = if let Some(custom_name_id) = self.prop_controller.special_ids.custom_name {
+                            self.get_prop_from_ent(&custom_name_id, &purchase.weapon_entid).ok()
+                        } else {
+                            None
+                        };
+                        fields.push(EventField {
+                            data: custom_name,
+                            name: "custom_name".to_string(),
                         });
                         fields.extend(self.find_extra_props_events(purchase.entid, "user"));
                         fields.extend(self.find_non_player_props());
