@@ -247,6 +247,14 @@ pub struct SpecialIDs {
     pub match_end_count: Option<u32>,
 
     pub is_incendiary_grenade: Option<u32>,
+    pub sellback_entry_def_idx: Option<u32>,
+    pub sellback_entry_n_cost: Option<u32>,
+    pub sellback_entry_prev_armor: Option<u32>,
+    pub sellback_entry_prev_helmet: Option<u32>,
+    pub sellback_entry_h_item: Option<u32>,
+
+    pub weapon_purchase_count: Option<u32>,
+    pub in_buy_zone: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -286,6 +294,13 @@ impl SpecialIDs {
             life_state: None,
             agent_skin_idx: None,
             is_incendiary_grenade: None,
+            sellback_entry_def_idx: None,
+            sellback_entry_h_item: None,
+            sellback_entry_n_cost: None,
+            sellback_entry_prev_armor: None,
+            sellback_entry_prev_helmet: None,
+            weapon_purchase_count: None,
+            in_buy_zone: None,
         }
     }
 }

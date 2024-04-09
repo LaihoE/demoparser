@@ -124,14 +124,14 @@ impl<'a> SecondPassParser<'a> {
         // This can't actually fail
         return Ok(Variant::I32(self.tick));
     }
-    fn create_steamid(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+    pub fn create_steamid(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         match player.steamid {
             Some(steamid) => return Ok(Variant::U64(steamid)),
             // Revisit this as it was related to pandas null support with u64's
             _ => return Ok(Variant::U64(0)),
         }
     }
-    fn create_name(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+    pub fn create_name(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         match &player.name {
             Some(name) => return Ok(Variant::String(name.to_string())),
             _ => return Err(PropCollectionError::PlayerMetaDataNameNone),
@@ -173,7 +173,7 @@ impl<'a> SecondPassParser<'a> {
             Err(e) => return Err(e),
         }
     }
-    fn find_player_metadata(&self, entity_id: i32) -> Result<&PlayerMetaData, PropCollectionError> {
+    pub fn find_player_metadata(&self, entity_id: i32) -> Result<&PlayerMetaData, PropCollectionError> {
         match self.players.get(&entity_id) {
             Some(metadata) => Ok(metadata),
             None => Err(PropCollectionError::PlayerNotFound),
@@ -409,7 +409,7 @@ impl<'a> SecondPassParser<'a> {
             "weapon_skin_id" => self.find_weapon_skin_id(entity_id),
             "weapon_paint_seed" => self.find_skin_paint_seed(player),
             "weapon_float" => self.find_skin_float(player),
-            "weapon_stickers" => self.find_stickers(player),
+            "weapon_stickers" => self.find_stickers_from_active_weapon(player),
             "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
             "inventory" => self.find_my_inventory(entity_id),
             "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
@@ -417,7 +417,6 @@ impl<'a> SecondPassParser<'a> {
             "is_alive" => return self.find_is_alive(entity_id),
             "user_id" => return self.get_userid(player),
             "agent_skin" => return self.find_agent_skin(player),
-
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
     }
@@ -435,22 +434,38 @@ impl<'a> SecondPassParser<'a> {
         }
         Err(PropCollectionError::PlayerNotFound)
     }
-    pub fn find_stickers(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
-        if let Some(player_entity_id) = &player.player_entity_id {
-            let mut stickers = vec![];
-            // indicies 0..4 info about skin. 4..24 info about stickers. 5 MAX STICKERS (4 idx per sticker),
-            for idx in (4..25).step_by(4) {
-                let sticker_id_id = WEAPON_SKIN_ID + idx;
-                let sticker_wear_id = WEAPON_SKIN_ID + idx + 1;
-                let sticker_x = WEAPON_SKIN_ID + idx + 2;
-                let sticker_y = WEAPON_SKIN_ID + idx + 3;
-                if let Some(sticker) = self.find_sticker(player_entity_id, sticker_id_id, sticker_wear_id, sticker_x, sticker_y) {
-                    stickers.push(sticker);
+    pub fn find_stickers_from_active_weapon(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        let p = match self.prop_controller.special_ids.active_weapon {
+            Some(p) => p,
+            None => return Err(PropCollectionError::SpecialidsActiveWeaponNotSet),
+        };
+        if let Some(eid) = player.player_entity_id {
+            return match self.get_prop_from_ent(&p, &eid) {
+                Ok(Variant::U32(weap_handle)) => {
+                    // Could be more specific
+                    let weapon_entity_id = (weap_handle & 0x7FF) as i32;
+                    self.find_stickers(&weapon_entity_id)
                 }
-            }
-            return Ok(Variant::Stickers(stickers));
+                Ok(_) => Err(PropCollectionError::WeaponHandleIncorrectVariant),
+                Err(e) => Err(e),
+            };
         }
         Err(PropCollectionError::PlayerNotFound)
+    }
+
+    pub fn find_stickers(&self, weapon_entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        let mut stickers = vec![];
+        // indicies 0..4 info about skin. 4..24 info about stickers. 5 MAX STICKERS (4 idx per sticker),
+        for idx in (4..25).step_by(4) {
+            let sticker_id_id = WEAPON_SKIN_ID + idx;
+            let sticker_wear_id = WEAPON_SKIN_ID + idx + 1;
+            let sticker_x = WEAPON_SKIN_ID + idx + 2;
+            let sticker_y = WEAPON_SKIN_ID + idx + 3;
+            if let Some(sticker) = self.find_sticker(weapon_entity_id, sticker_id_id, sticker_wear_id, sticker_x, sticker_y) {
+                stickers.push(sticker);
+            }
+        }
+        return Ok(Variant::Stickers(stickers));
     }
     fn find_sticker(
         &self,
@@ -460,10 +475,10 @@ impl<'a> SecondPassParser<'a> {
         sticker_x: u32,
         sticker_y: u32,
     ) -> Option<Sticker> {
-        let id = self.find_weapon_prop(&sticker_id_id, entity_id);
-        let wear = self.find_weapon_prop(&sticker_wear_id, entity_id);
-        let sticker_x = self.find_weapon_prop(&sticker_x, entity_id);
-        let sticker_y = self.find_weapon_prop(&sticker_y, entity_id);
+        let id = self.get_prop_from_ent(&sticker_id_id, entity_id);
+        let wear = self.get_prop_from_ent(&sticker_wear_id, entity_id);
+        let sticker_x = self.get_prop_from_ent(&sticker_x, entity_id);
+        let sticker_y = self.get_prop_from_ent(&sticker_y, entity_id);
         if let (Ok(Variant::F32(id)), Ok(Variant::F32(wear)), Ok(Variant::F32(sticker_x)), Ok(Variant::F32(sticker_y))) =
             (id, wear, sticker_x, sticker_y)
         {

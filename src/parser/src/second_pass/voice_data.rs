@@ -4,7 +4,7 @@ use csgoproto::netmessages::CSVCMsg_VoiceData;
 use opus::Decoder;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
-use std::{i16, time::Instant};
+use std::i16;
 
 #[derive(Debug)]
 struct VoicePacket {

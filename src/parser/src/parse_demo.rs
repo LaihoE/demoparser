@@ -1,14 +1,16 @@
+use std::time::Instant;
+
 use crate::first_pass::parser::FirstPassOutput;
 use crate::first_pass::parser_settings::check_multithreadability;
 use crate::first_pass::parser_settings::{FirstPassParser, ParserInputs};
 use crate::first_pass::prop_controller::{PropController, TICK_ID};
 use crate::first_pass::read_bits::DemoParserError;
 use crate::second_pass::collect_data::ProjectileRecord;
-use crate::second_pass::game_events::GameEvent;
+use crate::second_pass::game_events::{EventField, GameEvent};
 use crate::second_pass::parser::SecondPassOutput;
 use crate::second_pass::parser_settings::*;
-use crate::second_pass::variants::PropColumn;
 use crate::second_pass::variants::VarVec;
+use crate::second_pass::variants::{PropColumn, Variant};
 use ahash::AHashMap;
 use ahash::AHashSet;
 use csgoproto::netmessages::CSVCMsg_VoiceData;
@@ -69,6 +71,8 @@ impl<'a> Parser<'a> {
         if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
             outputs.df = new_df;
         }
+        Parser::add_item_purchase_sell_column(&mut outputs.game_events);
+        Parser::remove_item_sold_events(&mut outputs.game_events);
         Ok(outputs)
     }
 
@@ -98,9 +102,59 @@ impl<'a> Parser<'a> {
         if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
             outputs.df = new_df;
         }
+        Parser::add_item_purchase_sell_column(&mut outputs.game_events);
+        Parser::remove_item_sold_events(&mut outputs.game_events);
         Ok(outputs)
     }
+    fn remove_item_sold_events(events: &mut Vec<GameEvent>) {
+        events.retain(|x| x.name != "item_sold")
+    }
+    fn add_item_purchase_sell_column(events: &mut Vec<GameEvent>) {
+        // Checks each item_purchase event for if the item was eventually sold
 
+        let purchases = events.iter().filter(|x| x.name == "item_purchase").collect_vec();
+        let sells = events.iter().filter(|x| x.name == "item_sold").collect_vec();
+
+        let purchases = purchases
+            .iter()
+            .filter_map(|event| SellBackHelper::from_event(event))
+            .collect_vec();
+        let sells = sells
+            .iter()
+            .filter_map(|event| SellBackHelper::from_event(event))
+            .collect_vec();
+
+        let mut was_sold = vec![];
+        for purchase in &purchases {
+            let wanted_sells = sells.iter().filter(|sell| {
+                sell.tick > purchase.tick && sell.steamid == purchase.steamid && sell.inventory_slot == purchase.inventory_slot
+            });
+            let wanted_buys = purchases.iter().filter(|buy| {
+                buy.tick > purchase.tick && buy.steamid == purchase.steamid && buy.inventory_slot == purchase.inventory_slot
+            });
+            let min_tick_sells = wanted_sells.min_by_key(|x| x.tick);
+            let min_tick_buys = wanted_buys.min_by_key(|x| x.tick);
+            if let (Some(sell_tick), Some(buy_tick)) = (min_tick_sells, min_tick_buys) {
+                if sell_tick.tick < buy_tick.tick {
+                    was_sold.push(true);
+                } else {
+                    was_sold.push(false);
+                }
+            } else {
+                was_sold.push(false);
+            }
+        }
+        let mut idx = 0;
+        for event in events {
+            if event.name == "item_purchase" {
+                event.fields.push(EventField {
+                    name: "was_sold".to_string(),
+                    data: Some(Variant::Bool(was_sold[idx])),
+                });
+                idx += 1;
+            }
+        }
+    }
     fn rm_unwanted_ticks(&self, hm: &mut AHashMap<u32, PropColumn>) -> Option<AHashMap<u32, PropColumn>> {
         // Used for removing ticks when velocity is needed
         if self.input.wanted_ticks.is_empty() {
@@ -171,5 +225,36 @@ impl<'a> Parser<'a> {
             }
         }
         big
+    }
+}
+
+#[derive(Debug)]
+pub struct SellBackHelper {
+    pub tick: i32,
+    pub steamid: u64,
+    pub inventory_slot: u32,
+}
+impl SellBackHelper {
+    pub fn from_event(event: &GameEvent) -> Option<Self> {
+        if let Some(Variant::I32(tick)) = SellBackHelper::extract_field("tick", &event.fields) {
+            if let Some(Variant::U64(steamid)) = SellBackHelper::extract_field("steamid", &event.fields) {
+                if let Some(Variant::U32(slot)) = SellBackHelper::extract_field("inventory_slot", &event.fields) {
+                    return Some(SellBackHelper {
+                        tick: tick,
+                        steamid: steamid,
+                        inventory_slot: slot,
+                    });
+                }
+            }
+        }
+        None
+    }
+    fn extract_field(name: &str, fields: &[EventField]) -> Option<Variant> {
+        for field in fields {
+            if field.name == name {
+                return field.data.clone();
+            }
+        }
+        None
     }
 }

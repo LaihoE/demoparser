@@ -35,10 +35,15 @@ pub const PLAYER_X_ID: u32 = 100000016;
 pub const PLAYER_Y_ID: u32 = 100000017;
 pub const PLAYER_Z_ID: u32 = 100000018;
 pub const WEAPON_STICKERS_ID: u32 = 100000019;
-
 pub const WEAPON_SKIN_ID: u32 = 10000000;
 pub const WEAPON_PAINT_SEED: u32 = 10000001;
 pub const WEAPON_FLOAT: u32 = 10000002;
+pub const ITEM_PURCHASE_COUNT: u32 = 200000000;
+pub const ITEM_PURCHASE_DEF_IDX: u32 = 300000000;
+pub const ITEM_PURCHASE_COST: u32 = 400000000;
+pub const ITEM_PURCHASE_HANDLE: u32 = 500000000;
+pub const ITEM_PURCHASE_NEW_DEF_IDX: u32 = 600000000;
+pub const FLATTENED_VEC_MAX_LEN: u32 = 100000;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -397,6 +402,18 @@ impl PropController {
             }
         }
     }
+    pub fn is_grenade_or_weapon_from_class_name(name: &str) -> bool {
+        let is_weapon_prop = (name.contains("Weapon") || name.contains("AK")) && !name.contains("Player")
+            || name.contains("Knife")
+            || name.contains("CDEagle")
+            || name.contains("C4")
+            || name.contains("Molo")
+            || name.contains("Inc")
+            || name.contains("Infer");
+        let is_projectile_prop =
+            (name.contains("Projectile") || name.contains("Grenade") || name.contains("Flash")) && !name.contains("Player");
+        is_weapon_prop || is_projectile_prop
+    }
     pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField, path: Vec<i32>) {
         f.full_name = full_name.to_string();
         // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]
@@ -436,6 +453,21 @@ impl PropController {
         f.should_parse = true;
         if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {
             f.prop_id = MY_WEAPONS_OFFSET as u32;
+        }
+        if full_name == "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.WeaponPurchaseCount_t.m_nCount" {
+            f.prop_id = ITEM_PURCHASE_COUNT as u32;
+        }
+        if full_name == "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_unDefIdx" {
+            f.prop_id = ITEM_PURCHASE_DEF_IDX as u32;
+        }
+        if full_name == "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_nCost" {
+            f.prop_id = ITEM_PURCHASE_COST as u32;
+        }
+        if full_name == "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.WeaponPurchaseCount_t.m_nItemDefIndex" {
+            f.prop_id = ITEM_PURCHASE_NEW_DEF_IDX as u32;
+        }
+        if full_name == "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_hItem" {
+            f.prop_id = ITEM_PURCHASE_HANDLE as u32;
         }
         if prop_name.contains("CEconItemAttribute.m_iRawValue32") {
             f.prop_id = WEAPON_SKIN_ID as u32;
@@ -485,6 +517,22 @@ impl PropController {
                 "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon" => self.special_ids.active_weapon = Some(id),
                 "CCSPlayerPawn.m_lifeState" => self.special_ids.life_state = Some(id),
                 "CCSPlayerController.m_nPawnCharacterDefIndex" => self.special_ids.agent_skin_idx = Some(id),
+                "CCSPlayerPawn.m_bInBuyZone" => self.special_ids.in_buy_zone = Some(id),
+                "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_unDefIdx" => {
+                    self.special_ids.sellback_entry_def_idx = Some(id)
+                }
+                "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_nCost" => {
+                    self.special_ids.sellback_entry_n_cost = Some(id)
+                }
+                "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_nPrevArmor" => {
+                    self.special_ids.sellback_entry_prev_armor = Some(id)
+                }
+                "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_bPrevHelmet" => {
+                    self.special_ids.sellback_entry_prev_helmet = Some(id)
+                }
+                "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_hItem" => {
+                    self.special_ids.sellback_entry_h_item = Some(id)
+                }
                 _ => {}
             };
         }
