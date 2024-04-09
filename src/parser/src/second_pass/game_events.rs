@@ -469,10 +469,7 @@ impl<'a> SecondPassParser<'a> {
         Ok(())
     }
     fn create_custom_event_weapon_sold(&mut self, events: &[GameEventInfo]) {
-        self.game_events_counter.insert("item_sold".to_string());
-        if !self.wanted_events.contains(&"item_sold".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
-            return;
-        }
+        // This event is always emitted and is always removed in the end.
         events.iter().for_each(|x| match x {
             GameEventInfo::WeaponPurchaseCount((Variant::U32(0), entid, prop_id)) => {
                 if let Ok(player) = self.find_player_metadata(*entid) {

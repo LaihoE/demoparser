@@ -402,18 +402,6 @@ impl PropController {
             }
         }
     }
-    pub fn is_grenade_or_weapon_from_class_name(name: &str) -> bool {
-        let is_weapon_prop = (name.contains("Weapon") || name.contains("AK")) && !name.contains("Player")
-            || name.contains("Knife")
-            || name.contains("CDEagle")
-            || name.contains("C4")
-            || name.contains("Molo")
-            || name.contains("Inc")
-            || name.contains("Infer");
-        let is_projectile_prop =
-            (name.contains("Projectile") || name.contains("Grenade") || name.contains("Flash")) && !name.contains("Player");
-        is_weapon_prop || is_projectile_prop
-    }
     pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField, path: Vec<i32>) {
         f.full_name = full_name.to_string();
         // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]

@@ -357,12 +357,6 @@ impl<'a> SecondPassParser<'a> {
                     fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
                 }
             }
-            if fi.prop_id == MY_WEAPONS_OFFSET {
-                if path.last == 1 {
-                } else {
-                    fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
-                }
-            }
             if fi.prop_id == WEAPON_SKIN_ID {
                 fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
             }
