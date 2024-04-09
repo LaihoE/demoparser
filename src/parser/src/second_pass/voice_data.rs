@@ -1,6 +1,7 @@
 use crate::first_pass::read_bits::DemoParserError;
 use ahash::AHashMap;
 use csgoproto::netmessages::CSVCMsg_VoiceData;
+#[cfg(feature = "voice")]
 use opus::Decoder;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
