@@ -43,8 +43,8 @@ pub fn parse_voice_chunk_old_format(bytes: &[u8], decoder: &mut Decoder) -> Resu
     }
     Ok(decoded_bytes)
 }
-#[cfg(feature = "voice")]
 
+#[cfg(feature = "voice")]
 pub fn parse_voice_chunk_new_format(bytes: &[u8], decoder: &mut Decoder) -> Result<Vec<i16>, DemoParserError> {
     let mut decoded_bytes = vec![0; 1024];
     let n = match decoder.decode(&bytes, &mut decoded_bytes, false) {
