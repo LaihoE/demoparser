@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use crate::first_pass::parser::FirstPassOutput;
 use crate::first_pass::parser_settings::check_multithreadability;
 use crate::first_pass::parser_settings::{FirstPassParser, ParserInputs};

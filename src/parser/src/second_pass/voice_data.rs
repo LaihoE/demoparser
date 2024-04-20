@@ -1,18 +1,26 @@
+// there has to be a better way to disable multiple :D
+#[cfg(feature = "voice")]
 use crate::first_pass::read_bits::DemoParserError;
+#[cfg(feature = "voice")]
 use ahash::AHashMap;
+#[cfg(feature = "voice")]
 use csgoproto::netmessages::CSVCMsg_VoiceData;
 #[cfg(feature = "voice")]
 use opus::Decoder;
+#[cfg(feature = "voice")]
 use rayon::iter::IntoParallelRefIterator;
+#[cfg(feature = "voice")]
 use rayon::iter::ParallelIterator;
-use std::i16;
 
+#[cfg(feature = "voice")]
 #[derive(Debug)]
 struct VoicePacket {
     pub length: u16,
     pub voice_type: u8,
 }
+#[cfg(feature = "voice")]
 const FRAME_SIZE: usize = 480;
+#[cfg(feature = "voice")]
 const AVG_BYTES_PER_PACKET: usize = 1600;
 
 #[cfg(feature = "voice")]

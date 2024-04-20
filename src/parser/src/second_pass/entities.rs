@@ -233,6 +233,7 @@ impl<'a> SecondPassParser<'a> {
             if bitreader.bits_left < HUFFMAN_CODE_MAXLEN {
                 bitreader.refill();
             }
+
             let peeked_bits = bitreader.peek(HUFFMAN_CODE_MAXLEN);
             let (symbol, code_len) = self.huffman_lookup_table[peeked_bits as usize];
             bitreader.consume(code_len as u32);
@@ -301,14 +302,14 @@ impl<'a> SecondPassParser<'a> {
     pub fn debug_inspect(
         _result: &Variant,
         field: &Field,
-        tick: i32,
+        _tick: i32,
         field_info: Option<FieldInfo>,
-        path: &FieldPath,
-        is_fullpacket: bool,
-        is_baseline: bool,
-        cls: &Class,
-        cls_id: &u32,
-        entity_id: &i32,
+        _path: &FieldPath,
+        _is_fullpacket: bool,
+        _is_baseline: bool,
+        _cls: &Class,
+        _cls_id: &u32,
+        _entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
             if _v.full_name.contains("Custom") {
@@ -584,7 +585,7 @@ impl<'a> SecondPassParser<'a> {
         &mut self,
         bitreader: &mut Bitreader,
         entity_id: &i32,
-        events_to_emit: &mut Vec<GameEventInfo>,
+        _events_to_emit: &mut Vec<GameEventInfo>,
     ) -> Result<(), DemoParserError> {
         let cls_id: u32 = bitreader.read_nbits(8)?;
         // Both of these are not used. Don't think they are interesting for the parser
