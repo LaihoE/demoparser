@@ -378,7 +378,7 @@ pub fn create_huffman_lookup_table() -> Vec<(u8, u8)> {
     for x in v {
         let shifta = msb(x);
         for (idx, pair) in idx_msb_map.iter().enumerate() {
-            if x == idx as u32 >> pair - shifta {
+            if x == idx as u32 >> pair.wrapping_sub(shifta) {
                 let peekbits = (idx as u64).reverse_bits() >> RIGHTSHIFT_BITORDER;
                 huffman_table[idx as usize] = huffman_table[x as usize];
                 huffman_rev_table[peekbits as usize] = huffman_table[x as usize];

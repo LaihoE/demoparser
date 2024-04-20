@@ -1,15 +1,11 @@
-use std::sync::Arc;
-
 use super::entities::RoundEnd;
 use crate::first_pass::prop_controller::PropInfo;
-use crate::first_pass::prop_controller::IS_ALIVE_ID;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COST;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COUNT;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_DEF_IDX;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_NEW_DEF_IDX;
 use crate::first_pass::prop_controller::WEAPON_FLOAT;
 use crate::first_pass::prop_controller::WEAPON_PAINT_SEED;
-use crate::first_pass::prop_controller::WEAPON_STICKERS_ID;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::stringtables::UserInfo;
 use crate::maps::ROUND_WIN_REASON;

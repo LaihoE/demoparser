@@ -3,7 +3,7 @@ use bitter::LittleEndianReader;
 use std::fmt;
 
 pub struct Bitreader<'a> {
-    reader: LittleEndianReader<'a>,
+    pub reader: LittleEndianReader<'a>,
     pub bits_left: u32,
     pub bits: u64,
     pub total_bits_left: u32,
@@ -52,7 +52,9 @@ impl<'a> Bitreader<'a> {
     #[inline(always)]
     pub fn refill(&mut self) {
         let refilled = self.reader.refill_lookahead();
-        self.bits = self.reader.peek(refilled);
+        if refilled > 0 {
+            self.bits = self.reader.peek(refilled);
+        }
         self.bits_left = refilled;
     }
     #[inline(always)]
