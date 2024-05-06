@@ -602,6 +602,10 @@ impl<'a> SecondPassParser<'a> {
         };
         let entity = SecondPassParser::make_ent(entity_id, cls_id, entity_type);
         if self.entities.len() as i32 <= *entity_id {
+            // if corrupt, this can cause oom allocations
+            if *entity_id > 100000 {
+                return Err(DemoParserError::EntityNotFound);
+            }
             self.entities.resize(*entity_id as usize + 1, None);
         }
         match self.entities.get_mut(*entity_id as usize) {
