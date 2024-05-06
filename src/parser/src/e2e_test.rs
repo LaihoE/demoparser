@@ -286,6 +286,7 @@ pub fn _create_ge_tests() {
         "weapon_skin_id".to_string(),
         "active_weapon_original_owner".to_string(),
         "inventory".to_string(),
+        "inventory_as_ids".to_string(),
         "entity_id".to_string(),
         "is_alive".to_string(),
         "user_id".to_string(),
@@ -659,6 +660,7 @@ pub fn _create_tests() {
         "weapon_skin_id".to_string(),
         "active_weapon_original_owner".to_string(),
         "inventory".to_string(),
+        "inventory_as_ids".to_string(),
         "entity_id".to_string(),
         "is_alive".to_string(),
         "user_id".to_string(),
@@ -690,6 +692,8 @@ pub fn _create_tests() {
 
     custom.insert(WEAPON_ORIGINGAL_OWNER_ID, "active_weapon_original_owner");
     custom.insert(INVENTORY_ID, "inventory");
+    custom.insert(INVENTORY_AS_IDS_ID, "inventory_as_ids");
+
     custom.insert(USERID_ID, "user_id");
     custom.insert(VELOCITY_X_ID, "velocity_X");
     custom.insert(VELOCITY_Y_ID, "velocity_Y");
@@ -1018,6 +1022,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         "weapon_skin_id".to_string(),
         "active_weapon_original_owner".to_string(),
         "inventory".to_string(),
+        "inventory_as_ids".to_string(),
         "entity_id".to_string(),
         "is_alive".to_string(),
         "user_id".to_string(),
@@ -3236,6 +3241,59 @@ mod tests {
         );
         assert_eq!(out.0.df[&INVENTORY_ID], prop.1);
     }
+    #[test]
+    fn inventory_as_ids() {
+        let prop = (
+            "inventory_as_ids",
+            PropColumn {
+                data: Some(U32Vec(vec![
+                    vec![59, 1, 45, 43],
+                    vec![514, 61],
+                    vec![59, 1],
+                    vec![59, 4, 7, 44],
+                    vec![42, 61],
+                    vec![42, 32],
+                    vec![508, 61],
+                    vec![59, 4, 49, 7, 45],
+                    vec![42, 61],
+                    vec![59],
+                    vec![59, 4, 7, 43],
+                    vec![514, 61, 16],
+                    vec![59, 4, 7],
+                    vec![59, 4, 17],
+                    vec![],
+                    vec![42, 32, 16],
+                    vec![508, 61, 7, 45],
+                    vec![59, 4, 17, 45, 43, 49],
+                    vec![42, 61, 10],
+                    vec![509, 4, 40, 43],
+                    vec![59, 7, 1],
+                    vec![514, 1],
+                    vec![],
+                    vec![59, 4, 7],
+                    vec![42, 61, 60],
+                    vec![],
+                    vec![508, 61, 60, 43],
+                    vec![],
+                    vec![42, 36],
+                    vec![509, 40, 36, 45, 43],
+                    vec![59, 4, 7, 45, 46, 43],
+                    vec![514, 61, 60],
+                    vec![59, 4, 7],
+                    vec![59, 4, 7, 46, 44, 45, 43],
+                    vec![42, 61],
+                    vec![42, 32, 45, 44, 48],
+                    vec![508, 61],
+                    vec![59, 4, 49, 9, 45, 46, 44],
+                    vec![42, 61],
+                    vec![509, 7, 64, 44, 46, 45, 43],
+                ])),
+                num_nones: 0,
+            },
+        );
+        assert_eq!(out.0.df[&INVENTORY_AS_IDS_ID], prop.1);
+    }
+
     #[test]
     fn CCSPlayerPawn_CCSPlayer_WeaponServices_m_iAmmo() {
         let prop = (
