@@ -41,6 +41,7 @@ pub struct SecondPassOutput {
     pub projectiles: Vec<ProjectileRecord>,
     pub ptr: usize,
     pub voice_data: Vec<CSVCMsg_VoiceData>,
+    pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
 }
 impl<'a> SecondPassParser<'a> {
     pub fn start(&mut self, demo_bytes: &[u8]) -> Result<(), DemoParserError> {

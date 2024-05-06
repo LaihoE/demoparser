@@ -64,6 +64,7 @@ pub struct FirstPassOutput<'a> {
     pub added_temp_props: Vec<String>,
     pub wanted_players: AHashSet<u64>,
     pub header: AHashMap<String, String>,
+    pub order_by_steamid: bool,
 }
 pub struct Frame {
     pub size: usize,
@@ -179,6 +180,7 @@ impl<'a> FirstPassParser<'a> {
             None => return Err(DemoParserError::ClassMapperNotFoundFirstPass),
         };
         Ok(FirstPassOutput {
+            order_by_steamid: self.order_by_steamid,
             header: self.header.clone(),
             fullpacket_offsets: self.fullpacket_offsets.clone(),
             settings: &self.settings,

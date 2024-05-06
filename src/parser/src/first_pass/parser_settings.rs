@@ -35,6 +35,7 @@ pub struct ParserInputs<'a> {
     pub count_props: bool,
     pub only_convars: bool,
     pub huffman_lookup_table: &'a Vec<(u8, u8)>,
+    pub order_by_steamid: bool,
 }
 
 pub struct FirstPassParser<'a> {
@@ -75,6 +76,7 @@ pub struct FirstPassParser<'a> {
     pub is_multithreadable: bool,
     pub needs_velocity: bool,
     pub sendtable_message: Option<CDemoSendTables>,
+    pub order_by_steamid: bool,
 }
 pub fn needs_velocity(props: &[String]) -> bool {
     for prop in props {
@@ -88,6 +90,7 @@ pub fn needs_velocity(props: &[String]) -> bool {
 impl<'a> FirstPassParser<'a> {
     pub fn new(inputs: &'a ParserInputs<'a>) -> Self {
         FirstPassParser {
+            order_by_steamid: inputs.order_by_steamid,
             sendtable_message: None,
             needs_velocity: false,
             added_temp_props: vec![],

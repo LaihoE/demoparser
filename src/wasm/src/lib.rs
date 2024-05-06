@@ -55,6 +55,7 @@ pub fn parseEvent(
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf,
+        order_by_steamid: false,
     };
     let mut parser = Parser::new(settings, false);
 
@@ -116,6 +117,7 @@ pub fn parseEvents(
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf,
+        order_by_steamid: false,
     };
     let mut parser = Parser::new(settings, false);
 
@@ -145,6 +147,7 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
+        order_by_steamid: false,
     };
     let mut parser = Parser::new(settings, false);
 
@@ -204,6 +207,7 @@ pub fn parseTicks(
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
+        order_by_steamid: false,
     };
     let mut parser = Parser::new(settings, false);
 
@@ -262,6 +266,7 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
+        order_by_steamid: false,
     };
     let mut parser = Parser::new(settings, false);
 
@@ -293,6 +298,7 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
+        order_by_steamid: false,
     };
     let mut parser = Parser::new(settings, false);
     let output = match parser.parse_demo(&file) {

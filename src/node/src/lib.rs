@@ -18,7 +18,9 @@ use parser::second_pass::voice_data::convert_voice_data_to_wav;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
+use std::hash::RandomState;
 use std::result::Result;
+use std::time::Instant;
 
 fn parse_demo(bytes: BytesVariant, parser: &mut Parser) -> Result<DemoOutput, Error> {
   match bytes {
@@ -48,6 +50,7 @@ pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<HashMap<
     count_props: false,
     only_convars: false,
     huffman_lookup_table: &vec![],
+    order_by_steamid: false,
   };
   let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
@@ -80,6 +83,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     count_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
+    order_by_steamid: false,
   };
   let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
@@ -110,6 +114,7 @@ pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value
     count_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
+    order_by_steamid: false,
   };
   let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
@@ -138,6 +143,7 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     count_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
+    order_by_steamid: false,
   };
   let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
@@ -201,6 +207,7 @@ pub fn parse_event(
     count_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
+    order_by_steamid: false,
   };
   let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
@@ -262,6 +269,7 @@ pub fn parse_events(
     count_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
+    order_by_steamid: false,
   };
   let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
@@ -279,6 +287,7 @@ pub fn parse_ticks(
   wanted_ticks: Option<Vec<i32>>,
   wanted_players: Option<Vec<String>>,
   struct_of_arrays: Option<bool>,
+  order_by_steamid: Option<bool>,
 ) -> napi::Result<Value> {
   let mut real_names = match rm_user_friendly_names(&wanted_props) {
     Ok(names) => names,
@@ -301,6 +310,10 @@ pub fn parse_ticks(
     Some(t) => t,
     None => vec![],
   };
+  let order_by_steamid = match order_by_steamid {
+    Some(true) => true,
+    _ => false,
+  };
 
   let settings = ParserInputs {
     real_name_to_og_name: real_name_to_og_name,
@@ -315,7 +328,9 @@ pub fn parse_ticks(
     count_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
+    order_by_steamid: order_by_steamid,
   };
+
   let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
   real_names.push("tick".to_owned());
@@ -327,8 +342,8 @@ pub fn parse_ticks(
   real_names.sort();
 
   let helper = OutputSerdeHelperStruct {
-    prop_infos: prop_infos,
-    inner: output.df.into(),
+    prop_infos: prop_infos.clone(),
+    inner: output.df.clone().into(),
   };
 
   let is_soa = match struct_of_arrays {
@@ -336,6 +351,21 @@ pub fn parse_ticks(
     _ => false,
   };
 
+  if order_by_steamid {
+    let mut helper_hm: HashMap<u64, _, RandomState> = HashMap::default();
+    for (k, v) in output.df_per_player {
+      let helper = OutputSerdeHelperStruct {
+        prop_infos: prop_infos.clone(),
+        inner: v.into(),
+      };
+      helper_hm.insert(k, helper);
+    }
+    let s = match serde_json::to_value(helper_hm) {
+      Ok(s) => s,
+      Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+    };
+    return Ok(s);
+  }
   if is_soa {
     let s = match serde_json::to_value(&helper) {
       Ok(s) => s,
@@ -370,6 +400,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     count_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
+    order_by_steamid: false,
   };
   let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
@@ -398,6 +429,7 @@ pub fn parse_player_skins(path_or_buf: Either<String, Buffer>) -> napi::Result<V
     count_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
+    order_by_steamid: false,
   };
   let mut parser = Parser::new(settings, false);
   let output = parse_demo(bytes, &mut parser)?;
