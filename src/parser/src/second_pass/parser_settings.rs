@@ -69,6 +69,8 @@ pub struct SecondPassParser<'a> {
     pub parse_entities: bool,
     pub parse_projectiles: bool,
     pub is_debug_mode: bool,
+    pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
+    pub order_by_steamid: bool,
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -136,6 +138,7 @@ impl<'a> SecondPassParser<'a> {
             prop_info: PropController::new(vec![], vec![], AHashMap::default(), false),
             projectiles: self.projectile_records,
             ptr: self.ptr,
+            df_per_player: self.df_per_player,
         }
     }
     pub fn new(first_pass_output: FirstPassOutput<'a>, offset: usize, parse_all_packets: bool) -> Result<Self, DemoParserError> {
@@ -147,6 +150,8 @@ impl<'a> SecondPassParser<'a> {
         let args: Vec<String> = env::args().collect();
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
         Ok(SecondPassParser {
+            order_by_steamid: first_pass_output.order_by_steamid,
+            df_per_player: AHashMap::default(),
             voice_data: vec![],
             paths: vec![
                 FieldPath {

@@ -308,6 +308,7 @@ pub fn _create_ge_tests() {
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &huf,
+        order_by_steamid: false,
     };
 
     let mut ds = Parser::new(settings, true);
@@ -678,6 +679,7 @@ pub fn _create_tests() {
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &huf,
+        order_by_steamid: false,
     };
 
     let mut ds = Parser::new(settings, true);
@@ -1041,6 +1043,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &huf,
+        order_by_steamid: false,
     };
 
     let mut ds = Parser::new(settings, true);
@@ -1064,6 +1067,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &huf,
+        order_by_steamid: false,
     };
     let mut ds = Parser::new(settings, true);
     let file = File::open("test_demo.dem".to_string()).unwrap();
@@ -1177,6 +1181,7 @@ mod tests {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &huf,
+            order_by_steamid: false,
         };
         let mut ds = Parser::new(settings, true);
         let file = File::open("test_demo.dem").unwrap();

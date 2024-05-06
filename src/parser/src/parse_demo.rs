@@ -1,7 +1,7 @@
 use crate::first_pass::parser::FirstPassOutput;
 use crate::first_pass::parser_settings::check_multithreadability;
 use crate::first_pass::parser_settings::{FirstPassParser, ParserInputs};
-use crate::first_pass::prop_controller::{PropController, TICK_ID};
+use crate::first_pass::prop_controller::{PropController, NAME_ID, STEAMID_ID, TICK_ID};
 use crate::first_pass::read_bits::DemoParserError;
 use crate::second_pass::collect_data::ProjectileRecord;
 use crate::second_pass::game_events::{EventField, GameEvent};
@@ -9,8 +9,8 @@ use crate::second_pass::parser::SecondPassOutput;
 use crate::second_pass::parser_settings::*;
 use crate::second_pass::variants::VarVec;
 use crate::second_pass::variants::{PropColumn, Variant};
-use ahash::AHashMap;
 use ahash::AHashSet;
+use ahash::{AHashMap, HashSet};
 use csgoproto::netmessages::CSVCMsg_VoiceData;
 use itertools::Itertools;
 use rayon::iter::IntoParallelRefIterator;
@@ -32,6 +32,7 @@ pub struct DemoOutput {
     pub projectiles: Vec<ProjectileRecord>,
     pub voice_data: Vec<CSVCMsg_VoiceData>,
     pub prop_controller: PropController,
+    pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
 }
 
 pub struct Parser<'a> {
@@ -182,7 +183,7 @@ impl<'a> Parser<'a> {
         // Combines all inner DemoOutputs into one big output
         second_pass_outputs.sort_by_key(|x| x.ptr);
         let mut dfs = second_pass_outputs.iter().map(|x| x.df.clone()).collect();
-        let all_dfs_combined = self.combine_dfs(&mut dfs);
+        let all_dfs_combined = self.combine_dfs(&mut dfs, false);
         let all_game_events: AHashSet<String> =
             AHashSet::from_iter(second_pass_outputs.iter().flat_map(|x| x.game_events_counter.iter().cloned()));
         // Remove temp props
@@ -191,6 +192,32 @@ impl<'a> Parser<'a> {
             prop_controller.wanted_player_props.retain(|x| x != &prop);
             prop_controller.prop_infos.retain(|x| &x.prop_name != &prop);
         }
+        let mut per_players: Vec<AHashMap<u64, AHashMap<u32, PropColumn>>> =
+            second_pass_outputs.iter().map(|x| x.df_per_player.clone()).collect();
+
+        let mut all_steamids = AHashSet::default();
+
+        for entry in &per_players {
+            for (k, _) in entry {
+                all_steamids.insert(k);
+            }
+        }
+
+        // Vec<HM<steamid, <propid, propcol>>>
+        // all_steamids.insert(76561198073049527);
+
+        let mut pp = AHashMap::default();
+        for steamid in all_steamids {
+            let mut v = vec![];
+            for output in &per_players {
+                if let Some(df) = output.get(&steamid) {
+                    v.push(df.clone());
+                }
+            }
+            let combined = self.combine_dfs(&mut v, true);
+            pp.insert(*steamid, combined);
+        }
+
         DemoOutput {
             prop_controller: prop_controller,
             chat_messages: second_pass_outputs.iter().flat_map(|x| x.chat_messages.clone()).collect(),
@@ -204,15 +231,28 @@ impl<'a> Parser<'a> {
             game_events_counter: all_game_events,
             projectiles: second_pass_outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
             voice_data: second_pass_outputs.iter().flat_map(|x| x.voice_data.clone()).collect_vec(),
+            df_per_player: pp,
         }
     }
-    fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>) -> AHashMap<u32, PropColumn> {
+    fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>, remove_name_and_steamid: bool) -> AHashMap<u32, PropColumn> {
         let mut big: AHashMap<u32, PropColumn> = AHashMap::default();
         if v.len() == 1 {
-            return v.remove(0);
+            let mut result = v.remove(0);
+            if remove_name_and_steamid {
+                result.remove(&STEAMID_ID);
+                result.remove(&NAME_ID);
+            }
+            return result;
         }
+
         for part_df in v {
             for (k, v) in part_df {
+                if remove_name_and_steamid {
+                    if k == &STEAMID_ID || k == &NAME_ID {
+                        continue;
+                    }
+                }
+
                 if big.contains_key(k) {
                     if let Some(inner) = big.get_mut(k) {
                         inner.extend_from(v)

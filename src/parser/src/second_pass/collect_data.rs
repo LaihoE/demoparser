@@ -1,3 +1,5 @@
+use ahash::AHashMap;
+
 use super::entities::PlayerMetaData;
 use super::variants::Sticker;
 use super::variants::Variant;
@@ -72,20 +74,43 @@ impl<'a> SecondPassParser<'a> {
                 if !self.wanted_players.is_empty() && !self.wanted_players.contains(&player_steamid) {
                     continue;
                 }
-                // All values come trough here. None if cant be found.
-                match self.find_prop(prop_info, entity_id, player) {
-                    Ok(prop) => {
-                        self.output
-                            .entry(prop_info.id)
-                            .or_insert_with(|| PropColumn::new())
-                            .push(Some(prop));
+
+                if self.order_by_steamid && !self.df_per_player.contains_key(&player_steamid) {
+                    self.df_per_player.insert(player_steamid, AHashMap::default());
+                }
+
+                if self.order_by_steamid {
+                    match self.find_prop(prop_info, entity_id, player) {
+                        Ok(prop) => {
+                            let df_this_player = self.df_per_player.get_mut(&player.steamid.unwrap_or(0)).unwrap();
+                            df_this_player
+                                .entry(prop_info.id)
+                                .or_insert_with(|| PropColumn::new())
+                                .push(Some(prop.clone()));
+                        }
+                        Err(_e) => {
+                            let df_this_player = self.df_per_player.get_mut(&player.steamid.unwrap_or(0)).unwrap();
+                            df_this_player
+                                .entry(prop_info.id)
+                                .or_insert_with(|| PropColumn::new())
+                                .push(None);
+                        }
                     }
-                    Err(_e) => {
-                        // Ultimate debugger is to print this error
-                        self.output
-                            .entry(prop_info.id)
-                            .or_insert_with(|| PropColumn::new())
-                            .push(None);
+                } else {
+                    match self.find_prop(prop_info, entity_id, player) {
+                        Ok(prop) => {
+                            self.output
+                                .entry(prop_info.id)
+                                .or_insert_with(|| PropColumn::new())
+                                .push(Some(prop));
+                        }
+                        Err(_e) => {
+                            // Ultimate debugger is to print this error
+                            self.output
+                                .entry(prop_info.id)
+                                .or_insert_with(|| PropColumn::new())
+                                .push(None);
+                        }
                     }
                 }
             }
@@ -412,6 +437,7 @@ impl<'a> SecondPassParser<'a> {
             "weapon_stickers" => self.find_stickers_from_active_weapon(player),
             "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
             "inventory" => self.find_my_inventory(entity_id),
+            "inventory_as_ids" => self.find_my_inventory_as_ids(entity_id),
             "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
             "entity_id" => return Ok(Variant::I32(*entity_id)),
             "is_alive" => return self.find_is_alive(entity_id),
@@ -661,6 +687,73 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(Variant::StringVec(names))
     }
+    pub fn find_my_inventory_as_ids(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        let mut names = vec![];
+        let mut unique_eids = vec![];
+
+        match self.find_is_alive(entity_id) {
+            Ok(Variant::Bool(true)) => {}
+            _ => return Ok(Variant::U32Vec(vec![])),
+        };
+        let inventory_max_len = match self.get_prop_from_ent(&(MY_WEAPONS_OFFSET as u32), entity_id) {
+            Ok(Variant::U32(p)) => p,
+            _ => return Err(PropCollectionError::InventoryMaxNotFound),
+        };
+        for i in 1..inventory_max_len + 1 {
+            let prop_id = MY_WEAPONS_OFFSET + i;
+            match self.get_prop_from_ent(&(prop_id as u32), entity_id) {
+                Err(_e) => {}
+                Ok(Variant::U32(x)) => {
+                    let eid = (x & ((1 << 14) - 1)) as i32;
+                    // Sometimes multiple references to same eid?
+                    if unique_eids.contains(&eid) {
+                        continue;
+                    }
+                    unique_eids.push(eid);
+
+                    if let Some(item_def_id) = &self.prop_controller.special_ids.item_def {
+                        let res = match self.get_prop_from_ent(item_def_id, &eid) {
+                            Err(_e) => continue,
+                            Ok(def) => def,
+                        };
+                        self.insert_equipment_id(&mut names, res, entity_id);
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(Variant::U32Vec(names))
+    }
+    fn insert_equipment_id(&self, names: &mut Vec<u32>, res: Variant, player_entid: &i32) {
+        if let Variant::U32(def_idx) = res {
+            match WEAPINDICIES.get(&def_idx) {
+                None => return,
+                Some(weap_name) => {
+                    match weap_name {
+                        // Check how many flashbangs player has (only prop that works like this)
+                        &"flashbang" => {
+                            if let Ok(Variant::U32(2)) = self.get_prop_from_ent(&GRENADE_AMMO_ID, player_entid) {
+                                names.push(def_idx);
+                            }
+                            names.push(def_idx);
+                        }
+                        // c4 seems bugged. Find c4 entity and check owner from it.
+                        &"c4" => {
+                            if let Some(c4_owner_id) = self.find_c4_owner() {
+                                if *player_entid == c4_owner_id {
+                                    names.push(def_idx);
+                                }
+                            }
+                        }
+                        _ => {
+                            names.push(def_idx);
+                        }
+                    }
+                }
+            };
+        }
+    }
+
     fn insert_equipment_name(&self, names: &mut Vec<String>, res: Variant, player_entid: &i32) {
         if let Variant::U32(def_idx) = res {
             match WEAPINDICIES.get(&def_idx) {

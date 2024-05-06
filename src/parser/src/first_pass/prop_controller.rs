@@ -35,6 +35,8 @@ pub const PLAYER_X_ID: u32 = 100000016;
 pub const PLAYER_Y_ID: u32 = 100000017;
 pub const PLAYER_Z_ID: u32 = 100000018;
 pub const WEAPON_STICKERS_ID: u32 = 100000019;
+pub const INVENTORY_AS_IDS_ID: u32 = 100000020;
+
 pub const WEAPON_SKIN_ID: u32 = 10000000;
 pub const WEAPON_PAINT_SEED: u32 = 10000001;
 pub const WEAPON_FLOAT: u32 = 10000002;
@@ -133,6 +135,15 @@ impl PropController {
                 prop_type: PropType::Custom,
                 prop_name: "inventory".to_string(),
                 prop_friendly_name: "inventory".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("inventory_as_ids".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: INVENTORY_AS_IDS_ID,
+                prop_type: PropType::Custom,
+                prop_name: "inventory_as_ids".to_string(),
+                prop_friendly_name: "inventory_as_ids".to_string(),
                 is_player_prop: true,
             });
         }

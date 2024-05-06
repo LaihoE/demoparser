@@ -75,6 +75,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &huf,
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -111,6 +112,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -146,6 +148,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -191,6 +194,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -279,6 +283,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -351,6 +356,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -406,6 +412,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -497,6 +504,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -603,6 +611,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -666,6 +675,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -703,6 +713,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &vec![],
+            order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
@@ -762,6 +773,7 @@ impl DemoParser {
             count_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
+            order_by_steamid: false,
             //huf: huf,
         };
         let mut parser = Parser::new(settings, false);
@@ -809,6 +821,11 @@ impl DemoParser {
                         all_pyobjects.push(data.to_object(py))
                     }
                     Some(VarVec::U64Vec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.to_object(py))
+                    }
+
+                    Some(VarVec::U32Vec(data)) => {
                         df_column_names_py.push(prop_info.prop_friendly_name);
                         all_pyobjects.push(data.to_object(py))
                     }
@@ -1164,7 +1181,19 @@ fn to_py_u64_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFr
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
-
+fn to_py_u32_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(k) => match k {
+                Variant::U32Vec(val) => v.push(Some(val.clone())),
+                _ => v.push(None),
+            },
+            None => v.push(None),
+        }
+    }
+    DataFrameColumn::Pyany(v.to_object(py))
+}
 fn to_string_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
@@ -1244,6 +1273,7 @@ pub fn column_from_pairs(
         Some(Variant::String(_)) => to_string_series(pairs, name),
         Some(Variant::StringVec(_)) => to_py_string_col(pairs, name, py),
         Some(Variant::U64Vec(_)) => to_py_u64_col(pairs, name, py),
+        Some(Variant::U32Vec(_)) => to_py_u32_col(pairs, name, py),
         Some(Variant::Stickers(_)) => to_py_sticker_col(pairs, name, py),
         _ => panic!("unkown ge key: {:?}", field_type),
     };
@@ -1262,6 +1292,7 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
             Some(Variant::U32(u)) => Some(Variant::U32(*u)),
             Some(Variant::StringVec(_u)) => Some(Variant::StringVec(vec![])),
             Some(Variant::U64Vec(_u)) => Some(Variant::U64Vec(vec![])),
+            Some(Variant::U32Vec(_u)) => Some(Variant::U64Vec(vec![])),
             Some(Variant::Stickers(_u)) => Some(Variant::Stickers(vec![])),
             None => None,
             _ => {

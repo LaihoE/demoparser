@@ -2402,6 +2402,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "active_weapon_original_owner" => PropType::Custom,
     "game_time" => PropType::GameTime,
     "inventory" => PropType::Custom,
+    "inventory_as_ids" => PropType::Custom,
     "CCSPlayerPawn.m_bSpottedByMask" => PropType::Custom,
     "agent_skin" => PropType::Custom,
     "is_alive" => PropType::Custom,
@@ -2612,6 +2613,8 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "yaw" => "yaw",
     "game_time" => "game_time",
     "inventory" => "inventory",
+    "inventory_as_ids" => "inventory_as_ids",
+
     "entity_id" => "entity_id",
     "is_alive"=>"is_alive",
     "agent_skin" => "agent_skin",
