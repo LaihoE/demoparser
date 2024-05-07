@@ -67,6 +67,7 @@ Python/JS are rougly as fast.
 | is_alive | m_bPawnIsAlive |
 | balance | m_iAccount |
 | inventory| _ |
+| inventory_as_ids  | - |
 | life_state  | m_lifeState |
 | pitch  | m_angEyeAngles[0] |
 | yaw  | m_angEyeAngles[1] |
