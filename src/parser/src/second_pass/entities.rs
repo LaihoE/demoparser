@@ -93,9 +93,9 @@ impl<'a> SecondPassParser<'a> {
             Err(_) => return Err(DemoParserError::MalformedMessage),
             Ok(msg) => msg,
         };
+
         let mut bitreader = Bitreader::new(msg.entity_data());
         let mut entity_id: i32 = -1;
-
         let mut events_to_emit = vec![];
 
         for _ in 0..msg.updated_entries() {
@@ -120,12 +120,6 @@ impl<'a> SecondPassParser<'a> {
                     self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
                 EntityCmd::Update => {
-                    if msg.has_has_pvs_vis_bits() {
-                        // Most entities pass trough here. Seems like entities that are not updated.
-                        if bitreader.read_nbits(2)? & 0x01 == 1 {
-                            continue;
-                        }
-                    }
                     self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
             }
