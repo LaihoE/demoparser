@@ -108,6 +108,7 @@ impl<'a> SecondPassParser<'a> {
                 0b00 => EntityCmd::Update,
                 _ => return Err(DemoParserError::ImpossibleCmd),
             };
+
             match cmd {
                 EntityCmd::Delete => {
                     self.projectiles.remove(&entity_id);
@@ -120,6 +121,12 @@ impl<'a> SecondPassParser<'a> {
                     self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
                 EntityCmd::Update => {
+                    if msg.has_pvs_vis_bits() > 0 {
+                        // Most entities pass trough here. Seems like entities that are not updated.
+                        if bitreader.read_nbits(2)? & 0x01 == 1 {
+                            continue;
+                        }
+                    }
                     self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
             }
