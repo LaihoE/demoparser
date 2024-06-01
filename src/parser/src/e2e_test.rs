@@ -89,6 +89,7 @@ pub fn _create_ge_tests() {
         "CCSPlayerPawn.m_nRagdollDamageBone".to_string(),
         "CCSPlayerPawn.m_nWhichBombZone".to_string(),
         "CCSPlayerPawn.m_qDeathEyeAngles".to_string(),
+        "CCSPlayerPawn.m_iItemDefinitionIndex".to_string(),
         "CCSPlayerPawn.m_szLastPlaceName".to_string(),
         "CCSPlayerPawn.m_szRagdollDamageWeaponName".to_string(),
         "CCSPlayerPawn.m_thirdPersonHeading".to_string(),
@@ -296,7 +297,7 @@ pub fn _create_ge_tests() {
     let wanted_events = vec!["all".to_string()];
     let huf = create_huffman_lookup_table();
 
-    let settings = ParserInputs {
+    let settings: ParserInputs = ParserInputs {
         wanted_player_props: wanted_props.clone(),
         wanted_events: wanted_events,
         real_name_to_og_name: AHashMap::default(),
@@ -463,6 +464,7 @@ pub fn _create_tests() {
         "CCSPlayerPawn.m_nRagdollDamageBone".to_string(),
         "CCSPlayerPawn.m_nWhichBombZone".to_string(),
         "CCSPlayerPawn.m_qDeathEyeAngles".to_string(),
+        "CCSPlayerPawn.m_iItemDefinitionIndex".to_string(),
         "CCSPlayerPawn.m_szLastPlaceName".to_string(),
         "CCSPlayerPawn.m_szRagdollDamageWeaponName".to_string(),
         "CCSPlayerPawn.m_thirdPersonHeading".to_string(),
@@ -825,6 +827,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         "CCSPlayerPawn.m_nRagdollDamageBone".to_string(),
         "CCSPlayerPawn.m_nWhichBombZone".to_string(),
         "CCSPlayerPawn.m_qDeathEyeAngles".to_string(),
+        "CCSPlayerPawn.m_iItemDefinitionIndex".to_string(),
         "CCSPlayerPawn.m_szLastPlaceName".to_string(),
         "CCSPlayerPawn.m_szRagdollDamageWeaponName".to_string(),
         "CCSPlayerPawn.m_thirdPersonHeading".to_string(),
@@ -11029,6 +11032,59 @@ mod tests {
                     Some([5.75, 145.71875, 0.0]),
                     Some([1.96875, 110.34375, 0.0]),
                     Some([6.125, 9.6875, 0.0]),
+                ])),
+                num_nones: 0,
+            },
+        );
+        let prop_id = out.1.name_to_id[prop.0];
+        assert_eq!(out.0.df[&prop_id], prop.1);
+    }
+    #[test]
+    fn CCSPlayerPawn_m_iItemDefinitionIndex() {
+        let prop = (
+            "CCSPlayerPawn.m_iItemDefinitionIndex",
+            PropColumn {
+                data: Some(U32(vec![
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
+                    Some(0),
                 ])),
                 num_nones: 0,
             },

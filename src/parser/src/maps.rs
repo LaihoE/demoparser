@@ -2391,6 +2391,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_bRagdollDamageHeadshot"=> PropType::Player,
     "CCSPlayerPawn.m_vRagdollServerOrigin"=> PropType::Player,
     "CCSPlayerPawn.m_qDeathEyeAngles"=> PropType::Player,
+    "CCSPlayerPawn.m_iItemDefinitionIndex" => PropType::Player,
     // Custom
     "X"=> PropType::Custom,
     "user_id"=> PropType::Custom,
@@ -2750,6 +2751,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "move_collide" => "CCSPlayerPawn.m_MoveCollide",
     "move_type" =>  "CCSPlayerPawn.m_MoveType",
     "team_num" => "CCSPlayerPawn.m_iTeamNum",
+    "glove_item_idx" => "CCSPlayerPawn.m_iItemDefinitionIndex",
     "active_weapon" => "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hActiveWeapon",
     "looking_at_weapon" => "CCSPlayerPawn.CCSPlayer_WeaponServices.m_bIsLookingAtWeapon",
     "holding_look_at_weapon" => "CCSPlayerPawn.CCSPlayer_WeaponServices.m_bIsHoldingLookAtWeapon",
