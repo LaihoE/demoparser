@@ -740,7 +740,7 @@ impl Serialize for OutputSerdeHelperStruct {
         for prop_info in &self.prop_infos {
             if self.inner.contains_key(&prop_info.id) {
                 match &self.inner[&prop_info.id].data {
-                    None => panic!("failed to serialize data"),
+                    None => panic!("failed to serialize data {}", prop_info.id),
                     Some(VarVec::F32(val)) => {
                         map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }

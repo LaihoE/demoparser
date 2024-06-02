@@ -429,6 +429,9 @@ impl<'a> SecondPassParser<'a> {
             "velocity_Z" => self.collect_velocity_axis(player, CoordinateAxis::Z),
             "pitch" => self.find_pitch_or_yaw(entity_id, 0),
             "yaw" => self.find_pitch_or_yaw(entity_id, 1),
+            "glove_paint_id" => self.find_glove_skin_id(entity_id),
+            "glove_paint_seed" => self.find_glove_paint_seed(entity_id),
+            "glove_paint_float" => self.find_glove_paint_float(entity_id),
             "weapon_name" => self.find_weapon_name(entity_id),
             "weapon_skin" => self.find_weapon_skin_from_player(entity_id),
             "weapon_skin_id" => self.find_weapon_skin_id_from_player(entity_id),
@@ -816,6 +819,35 @@ impl<'a> SecondPassParser<'a> {
         Ok(Variant::String(combined.to_string()))
     }
 
+    pub fn find_glove_skin_id(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
+        match self.get_prop_from_ent(&GLOVE_PAINT_ID, player_entid) {
+            Ok(Variant::F32(f)) => {
+                // The value is stored as a float for some reason
+                if f.fract() == 0.0 && f >= 0.0 {
+                    return Ok(Variant::U32(f as u32));
+                } else {
+                    return Err(PropCollectionError::GloveSkinFloatConvertionError);
+                }
+            }
+            Ok(_) => return Err(PropCollectionError::GloveSkinIdxIncorrectVariant),
+            Err(e) => return Err(e),
+        }
+    }
+
+    pub fn find_glove_paint_seed(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
+        match self.get_prop_from_ent(&GLOVE_PAINT_SEED, player_entid) {
+            Ok(p) => Ok(p),
+            Err(e) => return Err(e),
+        }
+    }
+
+    pub fn find_glove_paint_float(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
+        match self.get_prop_from_ent(&GLOVE_PAINT_FLOAT, player_entid) {
+            Ok(p) => Ok(p),
+            Err(e) => return Err(e),
+        }
+    }
+
     pub fn find_weapon_skin(&self, weapon_entity_id: &i32) -> Result<Variant, PropCollectionError> {
         match self.get_prop_from_ent(&WEAPON_SKIN_ID, weapon_entity_id) {
             Ok(Variant::F32(f)) => {
@@ -989,9 +1021,16 @@ pub enum PropCollectionError {
     UnknownCoordinateAxis,
     WeaponEntityNotFound,
     WeaponEntityWantedPropNotFound,
+    PlayerEntityNotFound,
+    PlayerEntityWantedPropNotFound,
     WeaponSkinFloatConvertionError,
     WeaponSkinNoSkinMapping,
     WeaponSkinIdxIncorrectVariant,
+    GloveSkinFloatConvertionError,
+    GloveSkinIdxIncorrectVariant,
+    GlovePaintSeedConvertionError,
+    GlovePaintSeedIdxIncorrectVariant,
+    GlovePaintFloatIdxIncorrectVariant,
     OriginalOwnerXuidIdLowNotSet,
     OriginalOwnerXuidIdHighNotSet,
     OriginalOwnerXuidLowNotFound,

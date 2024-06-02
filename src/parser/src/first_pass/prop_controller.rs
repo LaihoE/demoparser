@@ -40,6 +40,9 @@ pub const INVENTORY_AS_IDS_ID: u32 = 100000020;
 pub const WEAPON_SKIN_ID: u32 = 10000000;
 pub const WEAPON_PAINT_SEED: u32 = 10000001;
 pub const WEAPON_FLOAT: u32 = 10000002;
+pub const GLOVE_PAINT_ID: u32 = 20000000;
+pub const GLOVE_PAINT_SEED: u32 = 20000001;
+pub const GLOVE_PAINT_FLOAT: u32 = 20000002;
 pub const ITEM_PURCHASE_COUNT: u32 = 200000000;
 pub const ITEM_PURCHASE_DEF_IDX: u32 = 300000000;
 pub const ITEM_PURCHASE_COST: u32 = 400000000;
@@ -274,6 +277,33 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if self.wanted_player_props.contains(&("glove_paint_id".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: GLOVE_PAINT_ID,
+                prop_type: PropType::Custom,
+                prop_name: "glove_paint_id".to_string(),
+                prop_friendly_name: "glove_paint_id".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("glove_paint_seed".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: GLOVE_PAINT_SEED,
+                prop_type: PropType::Custom,
+                prop_name: "glove_paint_seed".to_string(),
+                prop_friendly_name: "glove_paint_seed".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("glove_paint_float".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: GLOVE_PAINT_FLOAT,
+                prop_type: PropType::Custom,
+                prop_name: "glove_paint_float".to_string(),
+                prop_friendly_name: "glove_paint_float".to_string(),
+                is_player_prop: true,
+            });
+        }
         if self.wanted_player_props.contains(&("weapon_name".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: WEAPON_NAME_ID,
@@ -468,8 +498,11 @@ impl PropController {
         if full_name == "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_hItem" {
             f.prop_id = ITEM_PURCHASE_HANDLE as u32;
         }
-        if prop_name.contains("CEconItemAttribute.m_iRawValue32") {
+        if !full_name.starts_with("CCSPlayerPawn") && prop_name.contains("CEconItemAttribute.m_iRawValue32") {
             f.prop_id = WEAPON_SKIN_ID as u32;
+        }
+        if full_name.starts_with("CCSPlayerPawn") && prop_name.contains("CEconItemAttribute.m_iRawValue32") {
+            f.prop_id = GLOVE_PAINT_ID as u32;
         }
         self.id += 1;
     }

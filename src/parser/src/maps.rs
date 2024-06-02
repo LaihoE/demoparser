@@ -2615,6 +2615,9 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "game_time" => "game_time",
     "inventory" => "inventory",
     "inventory_as_ids" => "inventory_as_ids",
+    "glove_paint_id" => "glove_paint_id",
+    "glove_paint_seed" => "glove_paint_seed",
+    "glove_paint_float" => "glove_paint_float",
 
     "entity_id" => "entity_id",
     "is_alive"=>"is_alive",
