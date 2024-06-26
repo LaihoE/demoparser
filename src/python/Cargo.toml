@@ -16,7 +16,7 @@ pyo3 = { version = "0.16", features = ["extension-module"] }
 polars = "0.24.3"
 polars-arrow = "0.24.3"
 derive_more = "0.99.17"
-itertools = "0.10.5"
+itertools = "0.13.0"
 memmap2 = "0.5.10"
 protobuf-support = "3.3.0"
 
