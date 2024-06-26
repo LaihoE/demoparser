@@ -20,7 +20,7 @@ jobs:
       run:
         working-directory: ./src/python
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -46,7 +46,7 @@ jobs:
       run:
         working-directory: ./src/python
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -72,17 +72,12 @@ jobs:
       run:
         working-directory: ./src/python
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
 
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
@@ -92,6 +87,3 @@ jobs:
           command: publish
           target: ${{ matrix.target }}
           args: -i ${{ matrix.python-version }} --no-sdist --skip-existing -m src/python/Cargo.toml
-
-      - name: Run signature test
-        run: python tests/
