@@ -891,25 +891,31 @@ pub(crate) fn to_py_array(py: Python, pyarrow: &PyModule, array: ArrayRef) -> Py
 pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
     let series = series.rechunk();
     let array = series.to_arrow(0);
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let pyarrow = py.import("pyarrow")?;
-    let pyarrow_array = to_py_array(py, pyarrow, array)?;
-    let polars = py.import("polars")?;
-    let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
-    Ok(out.to_object(py))
+    
+    Python::with_gil(|py| {
+        // import pyarrow
+        let pyarrow = py.import("pyarrow")?;
+
+        // pyarrow array
+        let pyarrow_array = to_py_array(py, &pyarrow, array)?;
+
+        // import polars
+        let polars = py.import("polars")?;
+        let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
+        Ok(out.to_object(py))
+    })
 }
 /// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
 pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
     //let series = series.rechunk();
     //let array = series.to_arrow(0);
-    let gil = Python::acquire_gil();
-    let py = gil.python();
+    Python::with_gil(|py| {
     let pyarrow = py.import("pyarrow")?;
     let pyarrow_array = to_py_array(py, pyarrow, array)?;
     let polars = py.import("polars")?;
     let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
     Ok(out.to_object(py))
+    })
 }
 #[pyclass]
 struct DemoParser {
