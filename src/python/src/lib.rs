@@ -560,14 +560,16 @@ impl DemoParser {
         })
     }
 
-    #[args(py_kwargs = "**")]
+    #[pyo3(signature = (event_name, *, player=None, other=None))]
     pub fn parse_event(
         &self,
         py: Python<'_>,
         event_name: String,
-        py_kwargs: Option<&PyDict>,
+        player: Option<Vec<String>>,
+        other: Option<Vec<String>>,
     ) -> PyResult<Py<PyAny>> {
-        let (wanted_player_props, wanted_other_props) = parse_kwargs_event(py_kwargs);
+        let wanted_player_props = player.unwrap_or(vec![]);
+        let wanted_other_props = other.unwrap_or(vec![]);
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
@@ -624,14 +626,17 @@ impl DemoParser {
         };
         Ok(event_series)
     }
-    #[args(py_kwargs = "**")]
+
+    #[pyo3(signature = (event_name, *, player=None, other=None))]
     pub fn parse_events(
         &self,
         py: Python<'_>,
         event_name: Vec<String>,
-        py_kwargs: Option<&PyDict>,
+        player: Option<Vec<String>>,
+        other: Option<Vec<String>>,
     ) -> PyResult<Py<PyAny>> {
-        let (wanted_player_props, wanted_other_props) = parse_kwargs_event(py_kwargs);
+        let wanted_player_props = player.unwrap_or(vec![]);
+        let wanted_other_props = other.unwrap_or(vec![]);
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
@@ -729,14 +734,16 @@ impl DemoParser {
         Ok(out_hm.to_object(py))
     }
 
-    #[args(py_kwargs = "**")]
+    #[pyo3(signature = (wanted_props, *, players=None, ticks=None))]
     pub fn parse_ticks(
         &self,
         py: Python,
         wanted_props: Vec<String>,
-        py_kwargs: Option<&PyDict>,
+        players: Option<Vec<u64>>,
+        ticks: Option<Vec<i32>>,
     ) -> PyResult<PyObject> {
-        let (wanted_players, wanted_ticks) = parse_kwargs_ticks(py_kwargs);
+        let wanted_players = players.unwrap_or(vec![]);
+        let wanted_ticks = ticks.unwrap_or(vec![]);
         let real_props = rm_user_friendly_names(&wanted_props);
 
         let real_props = match real_props {
@@ -920,64 +927,6 @@ pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
 #[pyclass]
 struct DemoParser {
     path: String,
-}
-
-pub fn parse_kwargs_ticks(kwargs: Option<&PyDict>) -> (Vec<u64>, Vec<i32>) {
-    match kwargs {
-        Some(k) => {
-            let mut players: Vec<u64> = vec![];
-            let mut ticks: Vec<i32> = vec![];
-            match k.get_item("players") {
-                Some(p) => {
-                    players = p.extract().unwrap();
-                }
-                None => {}
-            }
-            match k.get_item("ticks") {
-                Some(t) => {
-                    ticks = t.extract().unwrap();
-                }
-                None => {}
-            }
-            (players, ticks)
-        }
-        None => (vec![], vec![]),
-    }
-}
-pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (Vec<String>, Vec<String>) {
-    match kwargs {
-        Some(k) => {
-            let mut player_props: Vec<String> = vec![];
-            let mut other_props: Vec<String> = vec![];
-
-            match k.get_item("player_extra") {
-                Some(t) => {
-                    player_props = t.extract().unwrap();
-                }
-                None => {}
-            }
-            match k.get_item("other_extra") {
-                Some(t) => {
-                    other_props = t.extract().unwrap();
-                }
-                None => {}
-            }
-            match k.get_item("player") {
-                Some(t) => {
-                    player_props = t.extract().unwrap();
-                }
-                None => {}
-            }
-            match k.get_item("other") {
-                Some(t) => {
-                    other_props = t.extract().unwrap();
-                }
-                None => {}
-            }
-            (player_props, other_props)
-        }
-        None => (vec![], vec![]),
-    }
 }
 
 pub fn series_from_multiple_events(

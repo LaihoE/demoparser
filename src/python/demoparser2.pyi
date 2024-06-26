@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Dict, Sequence
+from typing import Dict, Sequence, Optional
 
 class DemoParser:
     def __init__(self, path: str) -> None: ...
@@ -14,32 +14,30 @@ class DemoParser:
     def parse_event(
         self,
         event_name: str,
-        player: Sequence[str] = [],
-        other: Sequence[str] = [],
-        player_extra: Sequence[str] = [],
-        other_extra: Sequence[str] = [],
+        player: Optional[Sequence[str]] = None,
+        other: Optional[Sequence[str]] = None,
     ) -> pd.DataFrame: ...
     def parse_events(
         self,
         event_name: Sequence[str],
-        player: Sequence[str] = [],
-        other: Sequence[str] = [],
-        player_extra: Sequence[str] = [],
-        other_extra: Sequence[str] = [],
+        player: Optional[Sequence[str]] = None,
+        other: Optional[Sequence[str]] = None,
     ) -> pd.DataFrame: ...
     def parse_voice(self) -> Dict[str, bytes]: ...
     def parse_ticks(
         self,
         wanted_props: Sequence[str],
-        player: Sequence[str] = [],
-        ticks: Sequence[str] = [],
+        player: Optional[Sequence[int]] = None,
+        ticks: Optional[Sequence[int]] = None,
     ) -> pd.DataFrame:
         """Parse the specified props.
 
         Args:
             wanted_props (Sequence[str]): The props to parse for each player at each tick.
-            player (Sequence[int]): Sequence of Steam IDs of the players to parse. An empty Sequence means all players.
-            ticks (Sequence[int]): Sequence of ticks to parse. An empty Sequence means all ticks.
+            player (Optional[Sequence[int]]): Sequence of Steam IDs of the players to parse.
+                `None` or an empty Sequence means all players. Defaults to `None`.
+            ticks (Optional[Sequence[int]]): Sequence of ticks to parse.
+                `None` or an empty Sequence means all ticks. Defaults to `None`.
 
         Returns:
             pd.DataFrame: Dataframe of all the parsed props for each player at each tick.

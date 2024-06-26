@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ahash = "0.8.3"
-pyo3 = { version = "0.17", features = ["extension-module"] }
+pyo3 = { version = "0.18", features = ["extension-module"] }
 polars = "0.24.3"
 polars-arrow = "0.24.3"
 derive_more = "0.99.17"
