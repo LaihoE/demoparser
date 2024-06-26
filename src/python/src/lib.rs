@@ -1,6 +1,4 @@
-use crate::arrow::array::*;
 use ahash::AHashMap;
-use arrow::ffi;
 use itertools::Itertools;
 use parser::first_pass::parser_settings::create_mmap;
 use parser::first_pass::parser_settings::rm_user_friendly_names;
@@ -14,11 +12,13 @@ use parser::second_pass::variants::VarVec;
 use parser::second_pass::variants::Variant;
 #[cfg(feature = "voice")]
 use parser::second_pass::voice_data::convert_voice_data_to_wav;
+use polars::prelude::ArrayRef;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
-use polars_arrow::export::arrow;
-use polars_arrow::prelude::ArrayRef;
+use polars_arrow;
+use polars_arrow::array::*;
+use polars_arrow::ffi;
 use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::prelude::*;
@@ -906,7 +906,7 @@ pub(crate) fn to_py_array(
 pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
     // ensure we have a single chunk
     let series = series.rechunk();
-    let array = series.to_arrow(0);
+    let array = series.to_arrow(0, false);
 
     Python::with_gil(|py| {
         // import pyarrow
