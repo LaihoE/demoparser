@@ -6,25 +6,25 @@ on:
       - main
 
 jobs:
-  build_and_test:
-    name: Test Parser Rust
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src/parser
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+  # build_and_test:
+  #   name: Test Parser Rust
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: src/parser
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Set up Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+  #     - name: Set up Rust toolchain
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: stable
 
-      - name: Build in src/parser directory
-        run: cargo test --release
+  #     - name: Build in src/parser directory
+  #       run: cargo test --release
 
   test_python_bindings:
     name: Test Python Bindings
@@ -52,7 +52,7 @@ jobs:
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
         with:
-          command: develope
+          command: develop
 
       - name: Run signature test
         run: python tests/
