@@ -1,7 +1,7 @@
 use crate::first_pass::prop_controller::PropInfo;
 use crate::second_pass::collect_data::ProjectileRecord;
 use crate::second_pass::parser_settings::{EconItem, PlayerEndMetaData};
-use ahash::{HashMap, HashMapExt};
+use ahash::HashMap;
 use itertools::Itertools;
 use memmap2::Mmap;
 use serde::ser::{SerializeMap, SerializeSeq, SerializeStruct};
