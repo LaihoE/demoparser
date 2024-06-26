@@ -227,7 +227,7 @@ impl DemoParser {
         let steamids = arr_to_py(Box::new(UInt64Array::from(steamid))).unwrap();
         let entity_ids = arr_to_py(Box::new(Int32Array::from(entity_id))).unwrap();
 
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let all_series_py =
             [xs, ys, zs, ticks, steamids, name, grenade_type, entity_ids].to_object(py);
         Python::with_gil(|py| {
@@ -245,8 +245,8 @@ impl DemoParser {
             ];
             df.setattr("columns", column_names.to_object(py)).unwrap();
             // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs)).unwrap();
             Ok(pandas_df.to_object(py))
         })
     }
@@ -317,7 +317,7 @@ impl DemoParser {
         let param3 = rust_series_to_py_series(&Series::new("param3", param3))?;
         let param4 = rust_series_to_py_series(&Series::new("param4", param4))?;
 
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let all_series_py = [entids, param1, param2, param3, param4].to_object(py);
         Python::with_gil(|py| {
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
@@ -325,8 +325,8 @@ impl DemoParser {
             let column_names = ["entid", "name", "message", "param3", "param4"];
             df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -373,7 +373,7 @@ impl DemoParser {
         let team_number = arr_to_py(Box::new(Int32Array::from(team_numbers)))?;
         let name = rust_series_to_py_series(&Series::new("param2", names))?;
 
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let all_series_py = [steamid, name, team_number].to_object(py);
         Python::with_gil(|py| {
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
@@ -381,8 +381,8 @@ impl DemoParser {
             let column_names = ["steamid", "name", "team_number"];
             df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -444,7 +444,7 @@ impl DemoParser {
         let paint_wear = arr_to_py(Box::new(UInt32Array::from(paint_wear)))?;
         let custom_name = rust_series_to_py_series(&Series::new("custom_name", custom_name))?;
 
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let all_series_py = [
             account_id,
             def_index,
@@ -473,8 +473,8 @@ impl DemoParser {
             ];
             df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -529,7 +529,7 @@ impl DemoParser {
         let steamid = arr_to_py(Box::new(UInt64Array::from(steamid)))?;
         let custom_name = rust_series_to_py_series(&Series::new("custom_name", custom_name))?;
 
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let all_series_py = [
             def_index,
             item_id,
@@ -554,8 +554,8 @@ impl DemoParser {
             ];
             df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -622,7 +622,7 @@ impl DemoParser {
         };
         let event_series = match series_from_event(&output.game_events, py) {
             Ok(ser) => ser,
-            Err(_e) => return Ok(PyList::empty(py).into()),
+            Err(_e) => return Ok(PyList::empty_bound(py).into()),
         };
         Ok(event_series)
     }
@@ -728,7 +728,7 @@ impl DemoParser {
         let out = convert_voice_data_to_wav(output.voice_data).unwrap();
         let mut out_hm = AHashMap::default();
         for (steamid, bytes) in out {
-            let py_bytes = PyBytes::new(py, &bytes);
+            let py_bytes = PyBytes::new_bound(py, &bytes);
             out_hm.insert(steamid, py_bytes);
         }
         Ok(out_hm.to_object(py))
@@ -842,7 +842,7 @@ impl DemoParser {
                         for weapon in data {
                             let mut v = vec![];
                             for sticker in weapon {
-                                let dict = PyDict::new(py);
+                                let dict = PyDict::new_bound(py);
                                 dict.set_item("id", sticker.id.to_object(py))?;
                                 dict.set_item("name", sticker.name.to_object(py))?;
                                 dict.set_item("wear", sticker.wear.to_object(py))?;
@@ -860,7 +860,7 @@ impl DemoParser {
             }
         }
         Python::with_gil(|py| {
-            let polars = py.import("polars")?;
+            let polars = py.import_bound("polars")?;
             let all_series_py = all_series.to_object(py);
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
             df.setattr("columns", df_column_names_arrow.to_object(py))?;
@@ -870,58 +870,68 @@ impl DemoParser {
             }
             df_column_names_arrow.extend(df_column_names_py);
             df_column_names_arrow.sort();
-            let kwargs = vec![("axis", 1)].into_py_dict(py);
+            let kwargs = vec![("axis", 1)].into_py_dict_bound(py);
             let args = (df_column_names_arrow,);
-            pandas_df.call_method("reindex", args, Some(kwargs))?;
+            pandas_df.call_method("reindex", args, Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
 }
 
 /// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
-pub(crate) fn to_py_array(py: Python, pyarrow: &PyModule, array: ArrayRef) -> PyResult<PyObject> {
+pub(crate) fn to_py_array(
+    py: Python,
+    pyarrow: &Bound<PyModule>,
+    array: ArrayRef,
+) -> PyResult<PyObject> {
     let schema = Box::new(ffi::export_field_to_c(&ArrowField::new(
         "",
         array.data_type().clone(),
         true,
     )));
     let array = Box::new(ffi::export_array_to_c(array));
+
     let schema_ptr: *const ffi::ArrowSchema = &*schema;
     let array_ptr: *const ffi::ArrowArray = &*array;
+
     let array = pyarrow.getattr("Array")?.call_method1(
         "_import_from_c",
         (array_ptr as Py_uintptr_t, schema_ptr as Py_uintptr_t),
     )?;
+
     Ok(array.to_object(py))
 }
+
 /// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
 pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
+    // ensure we have a single chunk
     let series = series.rechunk();
     let array = series.to_arrow(0);
-    
+
     Python::with_gil(|py| {
         // import pyarrow
-        let pyarrow = py.import("pyarrow")?;
+        let pyarrow = py.import_bound("pyarrow")?;
 
         // pyarrow array
         let pyarrow_array = to_py_array(py, &pyarrow, array)?;
 
         // import polars
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
         Ok(out.to_object(py))
     })
 }
+
 /// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
 pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
     //let series = series.rechunk();
     //let array = series.to_arrow(0);
     Python::with_gil(|py| {
-    let pyarrow = py.import("pyarrow")?;
-    let pyarrow_array = to_py_array(py, pyarrow, array)?;
-    let polars = py.import("polars")?;
-    let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
-    Ok(out.to_object(py))
+        let pyarrow = py.import_bound("pyarrow")?;
+        let pyarrow_array = to_py_array(py, &pyarrow, array)?;
+        let polars = py.import_bound("polars")?;
+        let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
+        Ok(out.to_object(py))
     })
 }
 #[pyclass]
@@ -967,7 +977,7 @@ pub fn series_from_multiple_events(
 
         if rows != 0 {
             let dfp = Python::with_gil(|py| {
-                let polars = py.import("polars").unwrap();
+                let polars = py.import_bound("polars").unwrap();
                 let all_series_py = series_columns.to_object(py);
                 let df = polars.call_method1("DataFrame", (all_series_py,)).unwrap();
                 df.setattr("columns", series_col_names.to_object(py))
@@ -982,10 +992,10 @@ pub fn series_from_multiple_events(
                 series_col_names.extend(py_col_names);
                 series_col_names.sort();
 
-                let kwargs = vec![("axis", 1)].into_py_dict(py);
+                let kwargs = vec![("axis", 1)].into_py_dict_bound(py);
                 let args = (series_col_names,);
                 let df = pandas_df
-                    .call_method("reindex", args, Some(kwargs))
+                    .call_method("reindex", args, Some(&kwargs))
                     .unwrap();
                 df.to_object(py)
             });
@@ -1036,7 +1046,7 @@ pub fn series_from_event(
         return Err(DemoParserError::NoEvents);
     }
     let dfp = Python::with_gil(|py| {
-        let polars = py.import("polars").unwrap();
+        let polars = py.import_bound("polars").unwrap();
         let all_series_py = series_columns.to_object(py);
         let df = polars.call_method1("DataFrame", (all_series_py,)).unwrap();
         df.setattr("columns", series_col_names.to_object(py))
@@ -1049,10 +1059,10 @@ pub fn series_from_event(
         }
         series_col_names.extend(py_col_names);
         series_col_names.sort();
-        let kwargs = vec![("axis", 1)].into_py_dict(py);
+        let kwargs = vec![("axis", 1)].into_py_dict_bound(py);
         let args = (series_col_names,);
         let df = pandas_df
-            .call_method("reindex", args, Some(kwargs))
+            .call_method("reindex", args, Some(&kwargs))
             .unwrap();
         df.to_object(py)
     });
@@ -1184,7 +1194,7 @@ fn to_py_sticker_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> Da
                 Variant::Stickers(weapon) => {
                     let mut vv = vec![];
                     for sticker in weapon {
-                        let dict = PyDict::new(py);
+                        let dict = PyDict::new_bound(py);
                         let _ = dict.set_item("id", sticker.id.to_object(py));
                         let _ = dict.set_item("name", sticker.name.to_object(py));
                         let _ = dict.set_item("wear", sticker.wear.to_object(py));
@@ -1264,7 +1274,7 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
 }
 
 #[pymodule]
-fn demoparser2(_py: Python, m: &PyModule) -> PyResult<()> {
+fn demoparser2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<DemoParser>()?;
     Ok(())
 }

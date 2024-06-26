@@ -47,7 +47,7 @@ def gen_event_test(event_name):
 def gen_event_with_props():
     parser = DemoParser("tests/data/test.dem")
     df = parser.parse_event("player_death", player=["X", "Y"], other=["game_time", "total_rounds_played"])
-    df.to_parquet(f"tests/data/event_with_props.parquet")
+    df.to_parquet("tests/data/event_with_props.parquet")
 
 def gen_events_with_props():
     parser = DemoParser("tests/data/test.dem")
