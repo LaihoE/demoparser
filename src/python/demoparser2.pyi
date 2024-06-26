@@ -27,7 +27,7 @@ class DemoParser:
     def parse_ticks(
         self,
         wanted_props: Sequence[str],
-        player: Optional[Sequence[int]] = None,
+        players: Optional[Sequence[int]] = None,
         ticks: Optional[Sequence[int]] = None,
     ) -> pd.DataFrame:
         """Parse the specified props.

@@ -123,13 +123,35 @@ class SignatureTest(TestCase):
         with self.assertRaises(TypeError):
             parser.parse_events(5)
 
-    # def parse_voice(self) -> Dict[str, bytes]: ...
-    # def parse_ticks(
-    #     self,
-    #     wanted_props: Sequence[str],
-    #     player: Optional[Sequence[int]] = None,
-    #     ticks: Optional[Sequence[int]] = None,
-    # ) -> pd.DataFrame:
+    def test_parse_voice_signature(self):
+        parser = DemoParser("tests/data/test.dem")
+        voice = parser.parse_voice()
+        self.assertIsInstance(voice, dict)
+        for key, value in voice.items():
+            self.assertIsInstance(key, str)
+            self.assertIsInstance(value, bytes)
+
+    def test_parse_ticks_signature(self):
+        parser = DemoParser("tests/data/test.dem")
+
+        ticks = parser.parse_ticks(["X", "Y"])
+        self.assertIsInstance(ticks, pd.DataFrame)
+
+        parser.parse_ticks(["X", "Y"], players=[1, 2, 3], ticks=[1, 2, 3])
+        parser.parse_ticks(["X", "Y"], players=None, ticks=None)
+        parser.parse_ticks(["X", "Y"], players=[], ticks=[])
+
+        with self.assertRaises(TypeError):
+            parser.parse_ticks(["X", "Y"], players=5, ticks=None)
+
+        with self.assertRaises(TypeError):
+            parser.parse_ticks(["X", "Y"], players=None, ticks=5)
+
+        with self.assertRaises(TypeError):
+            parser.parse_ticks(["X", "Y"], players="Test")
+
+        with self.assertRaises(TypeError):
+            parser.parse_ticks(5)
 
 
 if __name__ == "__main__":
