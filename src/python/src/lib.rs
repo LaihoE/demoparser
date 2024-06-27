@@ -939,7 +939,7 @@ struct DemoParser {
 }
 
 pub fn series_from_multiple_events(
-    events: &Vec<GameEvent>,
+    events: &[GameEvent],
     py: Python,
 ) -> Result<Py<PyAny>, DemoParserError> {
     let per_ge = events.iter().into_group_map_by(|x| x.name.clone());
@@ -1009,10 +1009,7 @@ pub enum DataFrameColumn {
     Pyany(pyo3::Py<PyAny>),
 }
 
-pub fn series_from_event(
-    events: &Vec<GameEvent>,
-    py: Python,
-) -> Result<Py<PyAny>, DemoParserError> {
+pub fn series_from_event(events: &[GameEvent], py: Python) -> Result<Py<PyAny>, DemoParserError> {
     let pairs: Vec<EventField> = events.iter().flat_map(|x| x.fields.clone()).collect();
     let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
 
@@ -1067,151 +1064,121 @@ pub fn series_from_event(
     });
     Ok(dfp)
 }
-fn to_f32_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_f32_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(f) => match f {
-                Variant::F32(val) => v.push(Some(*val)),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::F32(val)) => v.push(Some(*val)),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_u32_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_u32_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(f) => match f {
-                Variant::U32(val) => v.push(Some(*val)),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::U32(val)) => v.push(Some(*val)),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_i32_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_i32_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::I32(val) => v.push(Some(*val)),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::I32(val)) => v.push(Some(*val)),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_u64_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_u64_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::U64(val) => v.push(Some(*val)),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::U64(val)) => v.push(Some(*val)),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_py_string_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
+fn to_py_string_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::StringVec(val) => v.push(Some(val.clone())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::StringVec(val)) => v.push(Some(val.clone())),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
-fn to_py_u64_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
+fn to_py_u64_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::U64Vec(val) => v.push(Some(val.clone())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::U64Vec(val)) => v.push(Some(val.clone())),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
-fn to_py_u32_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
+fn to_py_u32_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::U32Vec(val) => v.push(Some(val.clone())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::U32Vec(val)) => v.push(Some(val.clone())),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
-fn to_string_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_string_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::String(val) => v.push(Some(val.to_owned())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::String(val)) => v.push(Some(val.to_owned())),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
 
-fn to_bool_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_bool_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::Bool(val) => v.push(Some(val.to_owned())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::Bool(val)) => v.push(Some(val.to_owned())),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_py_sticker_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
+fn to_py_sticker_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
     let mut v: Vec<Vec<_>> = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::Stickers(weapon) => {
-                    let mut vv = vec![];
-                    for sticker in weapon {
-                        let dict = PyDict::new_bound(py);
-                        let _ = dict.set_item("id", sticker.id.to_object(py));
-                        let _ = dict.set_item("name", sticker.name.to_object(py));
-                        let _ = dict.set_item("wear", sticker.wear.to_object(py));
-                        let _ = dict.set_item("x", sticker.x.to_object(py));
-                        let _ = dict.set_item("y", sticker.y.to_object(py));
-                        vv.push(dict);
-                    }
-                    v.push(vv)
+            Some(Variant::Stickers(weapon)) => {
+                let mut vv = vec![];
+                for sticker in weapon {
+                    let dict = PyDict::new_bound(py);
+                    let _ = dict.set_item("id", sticker.id.to_object(py));
+                    let _ = dict.set_item("name", sticker.name.to_object(py));
+                    let _ = dict.set_item("wear", sticker.wear.to_object(py));
+                    let _ = dict.set_item("x", sticker.x.to_object(py));
+                    let _ = dict.set_item("y", sticker.y.to_object(py));
+                    vv.push(dict);
                 }
-                _ => v.push(vec![]),
-            },
-            None => v.push(vec![]),
+                v.push(vv)
+            }
+            _ => v.push(vec![]),
         }
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
 
-fn to_null_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_null_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     // All series are null can pick any type
     let mut v: Vec<Option<i32>> = vec![];
     for _ in pairs {
@@ -1222,7 +1189,7 @@ fn to_null_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
 
 pub fn column_from_pairs(
     pairs: &Vec<&EventField>,
-    name: &String,
+    name: &str,
     py: Python,
 ) -> Result<DataFrameColumn, DemoParserError> {
     let field_type = find_type_of_vals(pairs)?;
