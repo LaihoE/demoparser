@@ -16,7 +16,7 @@ use polars::prelude::ArrayRef;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
-use polars_arrow::array::{Array, BooleanArray, Float32Array, Int32Array, MutableArray, StaticArray, UInt32Array, UInt64Array, Utf8Array};
+use polars_arrow::array::{Array, BooleanArray, Float32Array, Int32Array, UInt32Array, UInt64Array, Utf8Array};
 use polars_arrow::ffi;
 use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
@@ -35,11 +35,11 @@ create_exception!(DemoParser, Exception, pyo3::exceptions::PyException);
 #[pymethods]
 impl DemoParser {
     #[new]
-    pub fn py_new(demo_path: String) -> PyResult<Self> {
+    pub const fn new(demo_path: String) -> Self {
         // let file = File::open(demo_path.clone()).unwrap();
         // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         // let huf = create_huffman_lookup_table();
-        Ok(Self { path: demo_path })
+        Self { path: demo_path }
     }
 
     /// Parses header message (different from the first 16 bytes of the file)
@@ -81,7 +81,7 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
-        Ok(output.header.unwrap_or(AHashMap::default()).to_object(py))
+        Ok(output.header.unwrap_or_else(AHashMap::default).to_object(py))
     }
     /// Returns a dictionary with console vars set. This includes data
     /// like this: "mp_roundtime": "1.92", "mp_buytime": "20" ...
@@ -877,7 +877,7 @@ impl DemoParser {
     }
 }
 
-/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+/// <https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs>
 pub(crate) fn to_py_array(
     py: Python,
     pyarrow: &Bound<PyModule>,
@@ -901,7 +901,7 @@ pub(crate) fn to_py_array(
     Ok(array.to_object(py))
 }
 
-/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+/// <https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs>
 pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
     // ensure we have a single chunk
     let series = series.rechunk();
@@ -921,7 +921,7 @@ pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
     })
 }
 
-/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+/// <https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs>
 pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
     //let series = series.rechunk();
     //let array = series.to_arrow(0);
