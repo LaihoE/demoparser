@@ -16,7 +16,7 @@ use polars::prelude::ArrayRef;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
-use polars_arrow::array::*;
+use polars_arrow::array::{Array, BooleanArray, Float32Array, Int32Array, MutableArray, StaticArray, UInt32Array, UInt64Array, Utf8Array};
 use polars_arrow::ffi;
 use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
@@ -39,7 +39,7 @@ impl DemoParser {
         // let file = File::open(demo_path.clone()).unwrap();
         // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         // let huf = create_huffman_lookup_table();
-        Ok(DemoParser { path: demo_path })
+        Ok(Self { path: demo_path })
     }
 
     /// Parses header message (different from the first 16 bytes of the file)
@@ -79,7 +79,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         Ok(output.header.unwrap_or(AHashMap::default()).to_object(py))
     }
@@ -116,7 +116,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         Ok(output.convars.to_object(py))
     }
@@ -152,7 +152,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let as_vec = output.game_events_counter.iter().collect_vec();
         let ge = pyo3::Python::with_gil(|py| as_vec.to_object(py));
@@ -198,7 +198,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
 
         let entity_id: Vec<Option<i32>> = output.projectiles.iter().map(|s| s.entity_id).collect();
@@ -287,7 +287,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let entids: Vec<Option<i32>> = output.chat_messages.iter().map(|x| x.entity_idx).collect();
         let param1: Vec<Option<String>> = output
@@ -360,7 +360,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let steamids: Vec<Option<u64>> = output.player_md.iter().map(|p| p.steamid).collect();
         let team_numbers: Vec<Option<i32>> =
@@ -416,7 +416,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let def_index: Vec<Option<u32>> = output.item_drops.iter().map(|x| x.def_index).collect();
         let account_id: Vec<Option<u32>> = output.item_drops.iter().map(|x| x.account_id).collect();
@@ -508,7 +508,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
 
         let def_idx_vec: Vec<Option<u32>> = output.skins.iter().map(|s| s.def_index).collect();
@@ -574,11 +574,11 @@ impl DemoParser {
 
         let real_player_props = match real_player_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         let real_other_props = match real_other_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         let mut real_name_to_og_name = AHashMap::default();
         for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
@@ -602,9 +602,9 @@ impl DemoParser {
         let settings = ParserInputs {
             real_name_to_og_name,
             wanted_players: vec![],
-            wanted_player_props: real_player_props.clone(),
+            wanted_player_props: real_player_props,
             wanted_other_props: real_other_props,
-            wanted_events: vec![event_name.clone()],
+            wanted_events: vec![event_name],
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -617,7 +617,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let event_series = match series_from_event(&output.game_events, py) {
             Ok(ser) => ser,
@@ -641,11 +641,11 @@ impl DemoParser {
 
         let real_player_props = match real_player_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         let real_other_props = match real_other_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         let mut real_name_to_og_name = AHashMap::default();
         for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
@@ -669,9 +669,9 @@ impl DemoParser {
         let settings = ParserInputs {
             real_name_to_og_name,
             wanted_players: vec![],
-            wanted_player_props: real_player_props.clone(),
+            wanted_player_props: real_player_props,
             wanted_other_props: real_other_props,
-            wanted_events: event_name.clone(),
+            wanted_events: event_name,
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -684,11 +684,11 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let event_series = match series_from_multiple_events(&output.game_events, py) {
             Ok(ser) => ser,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         Ok(event_series)
     }
@@ -722,7 +722,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         let out = convert_voice_data_to_wav(output.voice_data).unwrap();
         let mut out_hm = AHashMap::default();
@@ -747,7 +747,7 @@ impl DemoParser {
 
         let real_props = match real_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let mmap = match create_mmap(self.path.clone()) {
             Ok(mmap) => mmap,
@@ -769,7 +769,7 @@ impl DemoParser {
         let settings = ParserInputs {
             real_name_to_og_name,
             wanted_players,
-            wanted_player_props: real_props.clone(),
+            wanted_player_props: real_props,
             wanted_other_props: vec![],
             wanted_events: vec![],
             parse_ents: true,
@@ -785,7 +785,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let mut all_series = vec![];
         let mut all_pyobjects = vec![];
@@ -824,16 +824,16 @@ impl DemoParser {
                     }
                     Some(VarVec::StringVec(data)) => {
                         df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.to_object(py))
+                        all_pyobjects.push(data.to_object(py));
                     }
                     Some(VarVec::U64Vec(data)) => {
                         df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.to_object(py))
+                        all_pyobjects.push(data.to_object(py));
                     }
 
                     Some(VarVec::U32Vec(data)) => {
                         df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.to_object(py))
+                        all_pyobjects.push(data.to_object(py));
                     }
 
                     Some(VarVec::Stickers(data)) => {
@@ -852,7 +852,7 @@ impl DemoParser {
                             dicts.push(v);
                         }
                         df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(dicts.to_object(py))
+                        all_pyobjects.push(dicts.to_object(py));
                     }
                     _ => {}
                 }
@@ -957,13 +957,13 @@ pub fn series_from_multiple_events(
                 DataFrameColumn::Pyany(p) => py_columns.push((p, name)),
                 DataFrameColumn::Series(s) => {
                     rows = s.len().max(rows);
-                    series_columns.push((s, name))
+                    series_columns.push((s, name));
                 }
             };
         }
         let mut series_col_names: Vec<String> = series_columns
             .iter()
-            .map(|(_, name)| name.to_string())
+            .map(|(_, name)| (*name).to_string())
             .collect();
         let series_columns: Vec<PyObject> = series_columns
             .iter()
@@ -971,7 +971,7 @@ pub fn series_from_multiple_events(
             .collect();
         let py_col_names: Vec<String> = py_columns
             .iter()
-            .map(|(_, name)| name.to_string())
+            .map(|(_, name)| (*name).to_string())
             .collect();
 
         if rows != 0 {
@@ -1022,13 +1022,13 @@ pub fn series_from_event(events: &[GameEvent], py: Python) -> Result<Py<PyAny>, 
             DataFrameColumn::Pyany(p) => py_columns.push((p, name)),
             DataFrameColumn::Series(s) => {
                 rows = s.len().max(rows);
-                series_columns.push((s, name))
+                series_columns.push((s, name));
             }
         };
     }
     let mut series_col_names: Vec<String> = series_columns
         .iter()
-        .map(|(_, name)| name.to_string())
+        .map(|(_, name)| (*name).to_string())
         .collect();
     let series_columns: Vec<PyObject> = series_columns
         .iter()
@@ -1036,7 +1036,7 @@ pub fn series_from_event(events: &[GameEvent], py: Python) -> Result<Py<PyAny>, 
         .collect();
     let py_col_names: Vec<String> = py_columns
         .iter()
-        .map(|(_, name)| name.to_string())
+        .map(|(_, name)| (*name).to_string())
         .collect();
     if rows == 0 {
         return Err(DemoParserError::NoEvents);
@@ -1170,7 +1170,7 @@ fn to_py_sticker_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataF
                     let _ = dict.set_item("y", sticker.y.to_object(py));
                     vv.push(dict);
                 }
-                v.push(vv)
+                v.push(vv);
             }
             _ => v.push(vec![]),
         }
@@ -1206,7 +1206,7 @@ pub fn column_from_pairs(
         Some(Variant::U64Vec(_)) => to_py_u64_col(pairs, name, py),
         Some(Variant::U32Vec(_)) => to_py_u32_col(pairs, name, py),
         Some(Variant::Stickers(_)) => to_py_sticker_col(pairs, name, py),
-        _ => panic!("unkown ge key: {:?}", field_type),
+        _ => panic!("unkown ge key: {field_type:?}"),
     };
     Ok(s)
 }
