@@ -40,6 +40,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          
+      - name: Print commit hash
+        run: git rev-parse HEAD
+
 
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1
