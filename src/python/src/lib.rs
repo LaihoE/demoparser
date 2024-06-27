@@ -16,7 +16,6 @@ use polars::prelude::ArrayRef;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
-use polars_arrow;
 use polars_arrow::array::*;
 use polars_arrow::ffi;
 use pyo3::exceptions::PyValueError;
@@ -568,8 +567,8 @@ impl DemoParser {
         player: Option<Vec<String>>,
         other: Option<Vec<String>>,
     ) -> PyResult<Py<PyAny>> {
-        let wanted_player_props = player.unwrap_or(vec![]);
-        let wanted_other_props = other.unwrap_or(vec![]);
+        let wanted_player_props = player.unwrap_or_default();
+        let wanted_other_props = other.unwrap_or_default();
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
@@ -601,7 +600,7 @@ impl DemoParser {
         let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
-            real_name_to_og_name: real_name_to_og_name,
+            real_name_to_og_name,
             wanted_players: vec![],
             wanted_player_props: real_player_props.clone(),
             wanted_other_props: real_other_props,
@@ -635,8 +634,8 @@ impl DemoParser {
         player: Option<Vec<String>>,
         other: Option<Vec<String>>,
     ) -> PyResult<Py<PyAny>> {
-        let wanted_player_props = player.unwrap_or(vec![]);
-        let wanted_other_props = other.unwrap_or(vec![]);
+        let wanted_player_props = player.unwrap_or_default();
+        let wanted_other_props = other.unwrap_or_default();
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
@@ -668,7 +667,7 @@ impl DemoParser {
         let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
-            real_name_to_og_name: real_name_to_og_name,
+            real_name_to_og_name,
             wanted_players: vec![],
             wanted_player_props: real_player_props.clone(),
             wanted_other_props: real_other_props,
@@ -742,8 +741,8 @@ impl DemoParser {
         players: Option<Vec<u64>>,
         ticks: Option<Vec<i32>>,
     ) -> PyResult<PyObject> {
-        let wanted_players = players.unwrap_or(vec![]);
-        let wanted_ticks = ticks.unwrap_or(vec![]);
+        let wanted_players = players.unwrap_or_default();
+        let wanted_ticks = ticks.unwrap_or_default();
         let real_props = rm_user_friendly_names(&wanted_props);
 
         let real_props = match real_props {
@@ -768,13 +767,13 @@ impl DemoParser {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
         let settings = ParserInputs {
-            real_name_to_og_name: real_name_to_og_name,
-            wanted_players: wanted_players,
+            real_name_to_og_name,
+            wanted_players,
             wanted_player_props: real_props.clone(),
             wanted_other_props: vec![],
             wanted_events: vec![],
             parse_ents: true,
-            wanted_ticks: wanted_ticks,
+            wanted_ticks,
             parse_projectiles: false,
             only_header: true,
             count_props: false,
@@ -946,7 +945,7 @@ pub fn series_from_multiple_events(
     let per_ge = events.iter().into_group_map_by(|x| x.name.clone());
     let mut vv = vec![];
     for (k, v) in per_ge {
-        let pairs: Vec<EventField> = v.iter().map(|x| x.fields.clone()).flatten().collect();
+        let pairs: Vec<EventField> = v.iter().flat_map(|x| x.fields.clone()).collect();
         let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
 
         let mut series_columns = vec![];
@@ -968,7 +967,7 @@ pub fn series_from_multiple_events(
             .collect();
         let series_columns: Vec<PyObject> = series_columns
             .iter()
-            .map(|(ser, _)| rust_series_to_py_series(&ser).unwrap())
+            .map(|(ser, _)| rust_series_to_py_series(ser).unwrap())
             .collect();
         let py_col_names: Vec<String> = py_columns
             .iter()
@@ -1014,7 +1013,7 @@ pub fn series_from_event(
     events: &Vec<GameEvent>,
     py: Python,
 ) -> Result<Py<PyAny>, DemoParserError> {
-    let pairs: Vec<EventField> = events.iter().map(|x| x.fields.clone()).flatten().collect();
+    let pairs: Vec<EventField> = events.iter().flat_map(|x| x.fields.clone()).collect();
     let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
 
     let mut series_columns = vec![];
@@ -1036,7 +1035,7 @@ pub fn series_from_event(
         .collect();
     let series_columns: Vec<PyObject> = series_columns
         .iter()
-        .map(|(ser, _)| rust_series_to_py_series(&ser).unwrap())
+        .map(|(ser, _)| rust_series_to_py_series(ser).unwrap())
         .collect();
     let py_col_names: Vec<String> = py_columns
         .iter()
@@ -1270,7 +1269,7 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
             return Ok(t.clone());
         }
     }
-    return Ok(None);
+    Ok(None)
 }
 
 #[pymodule]
