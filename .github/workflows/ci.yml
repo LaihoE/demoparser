@@ -51,13 +51,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Build Wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          command: develop
-
       - name: Run signature test
+        working-directory: ./src/python
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
-          python tests/
+          pip install pytest maturin patchelf
+
+          maturin develop
+          pytest
