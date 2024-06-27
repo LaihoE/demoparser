@@ -12,12 +12,12 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ahash = "0.8.3"
-pyo3 = { version = "0.16", features = ["extension-module"] }
-polars = "0.24.3"
-polars-arrow = "0.24.3"
+pyo3 = { version = "0.22", features = ["extension-module"] }
+polars = "0.41.2"
+polars-arrow = { version = "0.41.2"}
 derive_more = "0.99.17"
-itertools = "0.10.5"
-memmap2 = "0.5.10"
+itertools = "0.13.0"
+memmap2 = "0.9.4"
 protobuf-support = "3.3.0"
 
 [dependencies.parser]

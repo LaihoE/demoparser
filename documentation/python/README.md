@@ -1,16 +1,37 @@
 ## Function signatures
 ```Python
+def __init__(self, path: str) -> None: ...
+
+
 # takes no arguments
-def parse_chat_messages(): -> DataFrame
-def parse_grenades(): -> DataFrame
-def parse_player_info(): -> DataFrame
-def parse_header(): -> Dict<str, str>
-def list_game_events(): -> List[str]
+def parse_header(self) -> Dict[str, str]: ...
+def parse_convars(self) -> Dict[str, str]: ...
+def Sequence_game_events(self) -> List[str]: ...
+def parse_grenades(self) -> pd.DataFrame: ...
+def parse_chat_messages(self) -> pd.DataFrame: ...
+def parse_player_info(self) -> pd.DataFrame: ...
+def parse_item_drops(self) -> pd.DataFrame: ...
+def parse_skins(self) -> pd.DataFrame: ...
 
-
-def parse_event(event_name: str, player=[str], other=[str]): -> DataFrame
-def parse_events(event_name: [str], player=[str], other=[str]): -> DataFrame
-def parse_ticks(wanted_props: [str], ticks=[int]): -> DataFrame
+def parse_event(
+   self,
+   event_name: str,
+   player: Optional[Sequence[str]] = None,
+   other: Optional[Sequence[str]] = None,
+) -> pd.DataFrame: ...
+def parse_events(
+   self,
+   event_name: Sequence[str],
+   player: Optional[Sequence[str]] = None,
+   other: Optional[Sequence[str]] = None,
+) -> List[Tuple[str, pd.DataFrame]]: ...
+def parse_voice(self) -> Dict[str, bytes]: ...
+def parse_ticks(
+   self,
+   wanted_props: Sequence[str],
+   player: Optional[Sequence[int]] = None,
+   ticks: Optional[Sequence[int]] = None,
+) -> pd.DataFrame:
 ```
 See below for more in-depth explanations of above functions.
 
@@ -42,7 +63,7 @@ Notice that it is only valid to request "game state" props in the "other" argume
 
 <br/><br/>
 ```Python
-def parse_events(event_name: [str], player_extra=[str]): -> [(str, DataFrame)]
+def parse_events(event_name: Sequence[str], player_extra=Sequence[str]): -> [(str, DataFrame)]
 ```
 Same as parse_event but lets you query multiple events at a time. 
 ```parse_events(["player_death", "weapon_fire"])``` will give you the following output: [("player_death", df), ("weapon_fire", df)]
@@ -51,7 +72,7 @@ Same as parse_event but lets you query multiple events at a time.
 
 <br/><br/>
 ```Python
-def parse_ticks(wanted_props: [str], ticks=[int]): -> DataFrame
+def parse_ticks(wanted_props: Sequence[str], ticks=Sequence[int]): -> DataFrame
 ```
 Returns a DataFrame with wanted properties collected from players each tick.
 
@@ -82,7 +103,7 @@ Notice that this function is rougly as slow as a call to parse_event/parse_event
 
 <br/><br/>
 ```Python
-def parse_header(): -> Dict<str, str>
+def parse_header(): -> Dict[str, str]
 ```
 Header should have the following fields:
 

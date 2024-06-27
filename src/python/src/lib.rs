@@ -1,6 +1,4 @@
-use crate::arrow::array::*;
 use ahash::AHashMap;
-use arrow::ffi;
 use itertools::Itertools;
 use parser::first_pass::parser_settings::create_mmap;
 use parser::first_pass::parser_settings::rm_user_friendly_names;
@@ -14,11 +12,12 @@ use parser::second_pass::variants::VarVec;
 use parser::second_pass::variants::Variant;
 #[cfg(feature = "voice")]
 use parser::second_pass::voice_data::convert_voice_data_to_wav;
+use polars::prelude::ArrayRef;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
-use polars_arrow::export::arrow;
-use polars_arrow::prelude::ArrayRef;
+use polars_arrow::array::{Array, BooleanArray, Float32Array, Int32Array, UInt32Array, UInt64Array, Utf8Array};
+use polars_arrow::ffi;
 use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::prelude::*;
@@ -36,11 +35,11 @@ create_exception!(DemoParser, Exception, pyo3::exceptions::PyException);
 #[pymethods]
 impl DemoParser {
     #[new]
-    pub fn py_new(demo_path: String) -> PyResult<Self> {
+    pub const fn new(demo_path: String) -> Self {
         // let file = File::open(demo_path.clone()).unwrap();
         // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         // let huf = create_huffman_lookup_table();
-        Ok(DemoParser { path: demo_path })
+        Self { path: demo_path }
     }
 
     /// Parses header message (different from the first 16 bytes of the file)
@@ -80,9 +79,9 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
-        Ok(output.header.unwrap_or(AHashMap::default()).to_object(py))
+        Ok(output.header.unwrap_or_else(AHashMap::default).to_object(py))
     }
     /// Returns a dictionary with console vars set. This includes data
     /// like this: "mp_roundtime": "1.92", "mp_buytime": "20" ...
@@ -117,7 +116,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         Ok(output.convars.to_object(py))
     }
@@ -153,7 +152,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let as_vec = output.game_events_counter.iter().collect_vec();
         let ge = pyo3::Python::with_gil(|py| as_vec.to_object(py));
@@ -199,7 +198,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
 
         let entity_id: Vec<Option<i32>> = output.projectiles.iter().map(|s| s.entity_id).collect();
@@ -227,7 +226,7 @@ impl DemoParser {
         let steamids = arr_to_py(Box::new(UInt64Array::from(steamid))).unwrap();
         let entity_ids = arr_to_py(Box::new(Int32Array::from(entity_id))).unwrap();
 
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let all_series_py =
             [xs, ys, zs, ticks, steamids, name, grenade_type, entity_ids].to_object(py);
         Python::with_gil(|py| {
@@ -245,8 +244,8 @@ impl DemoParser {
             ];
             df.setattr("columns", column_names.to_object(py)).unwrap();
             // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs)).unwrap();
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs)).unwrap();
             Ok(pandas_df.to_object(py))
         })
     }
@@ -288,7 +287,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let entids: Vec<Option<i32>> = output.chat_messages.iter().map(|x| x.entity_idx).collect();
         let param1: Vec<Option<String>> = output
@@ -317,7 +316,7 @@ impl DemoParser {
         let param3 = rust_series_to_py_series(&Series::new("param3", param3))?;
         let param4 = rust_series_to_py_series(&Series::new("param4", param4))?;
 
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let all_series_py = [entids, param1, param2, param3, param4].to_object(py);
         Python::with_gil(|py| {
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
@@ -325,8 +324,8 @@ impl DemoParser {
             let column_names = ["entid", "name", "message", "param3", "param4"];
             df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -361,7 +360,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let steamids: Vec<Option<u64>> = output.player_md.iter().map(|p| p.steamid).collect();
         let team_numbers: Vec<Option<i32>> =
@@ -373,7 +372,7 @@ impl DemoParser {
         let team_number = arr_to_py(Box::new(Int32Array::from(team_numbers)))?;
         let name = rust_series_to_py_series(&Series::new("param2", names))?;
 
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let all_series_py = [steamid, name, team_number].to_object(py);
         Python::with_gil(|py| {
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
@@ -381,8 +380,8 @@ impl DemoParser {
             let column_names = ["steamid", "name", "team_number"];
             df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -417,7 +416,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let def_index: Vec<Option<u32>> = output.item_drops.iter().map(|x| x.def_index).collect();
         let account_id: Vec<Option<u32>> = output.item_drops.iter().map(|x| x.account_id).collect();
@@ -444,7 +443,7 @@ impl DemoParser {
         let paint_wear = arr_to_py(Box::new(UInt32Array::from(paint_wear)))?;
         let custom_name = rust_series_to_py_series(&Series::new("custom_name", custom_name))?;
 
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let all_series_py = [
             account_id,
             def_index,
@@ -473,8 +472,8 @@ impl DemoParser {
             ];
             df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
@@ -509,7 +508,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
 
         let def_idx_vec: Vec<Option<u32>> = output.skins.iter().map(|s| s.def_index).collect();
@@ -529,7 +528,7 @@ impl DemoParser {
         let steamid = arr_to_py(Box::new(UInt64Array::from(steamid)))?;
         let custom_name = rust_series_to_py_series(&Series::new("custom_name", custom_name))?;
 
-        let polars = py.import("polars")?;
+        let polars = py.import_bound("polars")?;
         let all_series_py = [
             def_index,
             item_id,
@@ -554,30 +553,32 @@ impl DemoParser {
             ];
             df.setattr("columns", column_names.to_object(py))?;
             // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(kwargs))?;
+            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
+            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
 
-    #[args(py_kwargs = "**")]
+    #[pyo3(signature = (event_name, *, player=None, other=None))]
     pub fn parse_event(
         &self,
         py: Python<'_>,
         event_name: String,
-        py_kwargs: Option<&PyDict>,
+        player: Option<Vec<String>>,
+        other: Option<Vec<String>>,
     ) -> PyResult<Py<PyAny>> {
-        let (wanted_player_props, wanted_other_props) = parse_kwargs_event(py_kwargs);
+        let wanted_player_props = player.unwrap_or_default();
+        let wanted_other_props = other.unwrap_or_default();
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
         let real_player_props = match real_player_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         let real_other_props = match real_other_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         let mut real_name_to_og_name = AHashMap::default();
         for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
@@ -599,11 +600,11 @@ impl DemoParser {
         let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
-            real_name_to_og_name: real_name_to_og_name,
+            real_name_to_og_name,
             wanted_players: vec![],
-            wanted_player_props: real_player_props.clone(),
+            wanted_player_props: real_player_props,
             wanted_other_props: real_other_props,
-            wanted_events: vec![event_name.clone()],
+            wanted_events: vec![event_name],
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -616,32 +617,35 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let event_series = match series_from_event(&output.game_events, py) {
             Ok(ser) => ser,
-            Err(_e) => return Ok(PyList::empty(py).into()),
+            Err(_e) => return Ok(PyList::empty_bound(py).into()),
         };
         Ok(event_series)
     }
-    #[args(py_kwargs = "**")]
+
+    #[pyo3(signature = (event_name, *, player=None, other=None))]
     pub fn parse_events(
         &self,
         py: Python<'_>,
         event_name: Vec<String>,
-        py_kwargs: Option<&PyDict>,
+        player: Option<Vec<String>>,
+        other: Option<Vec<String>>,
     ) -> PyResult<Py<PyAny>> {
-        let (wanted_player_props, wanted_other_props) = parse_kwargs_event(py_kwargs);
+        let wanted_player_props = player.unwrap_or_default();
+        let wanted_other_props = other.unwrap_or_default();
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
         let real_player_props = match real_player_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         let real_other_props = match real_other_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         let mut real_name_to_og_name = AHashMap::default();
         for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
@@ -663,11 +667,11 @@ impl DemoParser {
         let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
-            real_name_to_og_name: real_name_to_og_name,
+            real_name_to_og_name,
             wanted_players: vec![],
-            wanted_player_props: real_player_props.clone(),
+            wanted_player_props: real_player_props,
             wanted_other_props: real_other_props,
-            wanted_events: event_name.clone(),
+            wanted_events: event_name,
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -680,11 +684,11 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let event_series = match series_from_multiple_events(&output.game_events, py) {
             Ok(ser) => ser,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         Ok(event_series)
     }
@@ -718,30 +722,32 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{}", e))),
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
         let out = convert_voice_data_to_wav(output.voice_data).unwrap();
         let mut out_hm = AHashMap::default();
         for (steamid, bytes) in out {
-            let py_bytes = PyBytes::new(py, &bytes);
+            let py_bytes = PyBytes::new_bound(py, &bytes);
             out_hm.insert(steamid, py_bytes);
         }
         Ok(out_hm.to_object(py))
     }
 
-    #[args(py_kwargs = "**")]
+    #[pyo3(signature = (wanted_props, *, players=None, ticks=None))]
     pub fn parse_ticks(
         &self,
         py: Python,
         wanted_props: Vec<String>,
-        py_kwargs: Option<&PyDict>,
+        players: Option<Vec<u64>>,
+        ticks: Option<Vec<i32>>,
     ) -> PyResult<PyObject> {
-        let (wanted_players, wanted_ticks) = parse_kwargs_ticks(py_kwargs);
+        let wanted_players = players.unwrap_or_default();
+        let wanted_ticks = ticks.unwrap_or_default();
         let real_props = rm_user_friendly_names(&wanted_props);
 
         let real_props = match real_props {
             Ok(real_props) => real_props,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let mmap = match create_mmap(self.path.clone()) {
             Ok(mmap) => mmap,
@@ -761,13 +767,13 @@ impl DemoParser {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
         let settings = ParserInputs {
-            real_name_to_og_name: real_name_to_og_name,
-            wanted_players: wanted_players,
-            wanted_player_props: real_props.clone(),
+            real_name_to_og_name,
+            wanted_players,
+            wanted_player_props: real_props,
             wanted_other_props: vec![],
             wanted_events: vec![],
             parse_ents: true,
-            wanted_ticks: wanted_ticks,
+            wanted_ticks,
             parse_projectiles: false,
             only_header: true,
             count_props: false,
@@ -779,7 +785,7 @@ impl DemoParser {
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&mmap) {
             Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{}", e))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         let mut all_series = vec![];
         let mut all_pyobjects = vec![];
@@ -818,16 +824,16 @@ impl DemoParser {
                     }
                     Some(VarVec::StringVec(data)) => {
                         df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.to_object(py))
+                        all_pyobjects.push(data.to_object(py));
                     }
                     Some(VarVec::U64Vec(data)) => {
                         df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.to_object(py))
+                        all_pyobjects.push(data.to_object(py));
                     }
 
                     Some(VarVec::U32Vec(data)) => {
                         df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.to_object(py))
+                        all_pyobjects.push(data.to_object(py));
                     }
 
                     Some(VarVec::Stickers(data)) => {
@@ -835,7 +841,7 @@ impl DemoParser {
                         for weapon in data {
                             let mut v = vec![];
                             for sticker in weapon {
-                                let dict = PyDict::new(py);
+                                let dict = PyDict::new_bound(py);
                                 dict.set_item("id", sticker.id.to_object(py))?;
                                 dict.set_item("name", sticker.name.to_object(py))?;
                                 dict.set_item("wear", sticker.wear.to_object(py))?;
@@ -846,14 +852,14 @@ impl DemoParser {
                             dicts.push(v);
                         }
                         df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(dicts.to_object(py))
+                        all_pyobjects.push(dicts.to_object(py));
                     }
                     _ => {}
                 }
             }
         }
         Python::with_gil(|py| {
-            let polars = py.import("polars")?;
+            let polars = py.import_bound("polars")?;
             let all_series_py = all_series.to_object(py);
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
             df.setattr("columns", df_column_names_arrow.to_object(py))?;
@@ -863,125 +869,83 @@ impl DemoParser {
             }
             df_column_names_arrow.extend(df_column_names_py);
             df_column_names_arrow.sort();
-            let kwargs = vec![("axis", 1)].into_py_dict(py);
+            let kwargs = vec![("axis", 1)].into_py_dict_bound(py);
             let args = (df_column_names_arrow,);
-            pandas_df.call_method("reindex", args, Some(kwargs))?;
+            pandas_df.call_method("reindex", args, Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
 }
 
-/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
-pub(crate) fn to_py_array(py: Python, pyarrow: &PyModule, array: ArrayRef) -> PyResult<PyObject> {
+/// <https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs>
+pub(crate) fn to_py_array(
+    py: Python,
+    pyarrow: &Bound<PyModule>,
+    array: ArrayRef,
+) -> PyResult<PyObject> {
     let schema = Box::new(ffi::export_field_to_c(&ArrowField::new(
         "",
         array.data_type().clone(),
         true,
     )));
     let array = Box::new(ffi::export_array_to_c(array));
+
     let schema_ptr: *const ffi::ArrowSchema = &*schema;
     let array_ptr: *const ffi::ArrowArray = &*array;
+
     let array = pyarrow.getattr("Array")?.call_method1(
         "_import_from_c",
         (array_ptr as Py_uintptr_t, schema_ptr as Py_uintptr_t),
     )?;
+
     Ok(array.to_object(py))
 }
-/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+
+/// <https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs>
 pub fn rust_series_to_py_series(series: &Series) -> PyResult<PyObject> {
+    // ensure we have a single chunk
     let series = series.rechunk();
-    let array = series.to_arrow(0);
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let pyarrow = py.import("pyarrow")?;
-    let pyarrow_array = to_py_array(py, pyarrow, array)?;
-    let polars = py.import("polars")?;
-    let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
-    Ok(out.to_object(py))
+    let array = series.to_arrow(0, false);
+
+    Python::with_gil(|py| {
+        // import pyarrow
+        let pyarrow = py.import_bound("pyarrow")?;
+
+        // pyarrow array
+        let pyarrow_array = to_py_array(py, &pyarrow, array)?;
+
+        // import polars
+        let polars = py.import_bound("polars")?;
+        let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
+        Ok(out.to_object(py))
+    })
 }
-/// https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+
+/// <https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs>
 pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
     //let series = series.rechunk();
     //let array = series.to_arrow(0);
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let pyarrow = py.import("pyarrow")?;
-    let pyarrow_array = to_py_array(py, pyarrow, array)?;
-    let polars = py.import("polars")?;
-    let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
-    Ok(out.to_object(py))
+    Python::with_gil(|py| {
+        let pyarrow = py.import_bound("pyarrow")?;
+        let pyarrow_array = to_py_array(py, &pyarrow, array)?;
+        let polars = py.import_bound("polars")?;
+        let out = polars.call_method1("from_arrow", (pyarrow_array,))?;
+        Ok(out.to_object(py))
+    })
 }
 #[pyclass]
 struct DemoParser {
     path: String,
 }
 
-pub fn parse_kwargs_ticks(kwargs: Option<&PyDict>) -> (Vec<u64>, Vec<i32>) {
-    match kwargs {
-        Some(k) => {
-            let mut players: Vec<u64> = vec![];
-            let mut ticks: Vec<i32> = vec![];
-            match k.get_item("players") {
-                Some(p) => {
-                    players = p.extract().unwrap();
-                }
-                None => {}
-            }
-            match k.get_item("ticks") {
-                Some(t) => {
-                    ticks = t.extract().unwrap();
-                }
-                None => {}
-            }
-            (players, ticks)
-        }
-        None => (vec![], vec![]),
-    }
-}
-pub fn parse_kwargs_event(kwargs: Option<&PyDict>) -> (Vec<String>, Vec<String>) {
-    match kwargs {
-        Some(k) => {
-            let mut player_props: Vec<String> = vec![];
-            let mut other_props: Vec<String> = vec![];
-
-            match k.get_item("player_extra") {
-                Some(t) => {
-                    player_props = t.extract().unwrap();
-                }
-                None => {}
-            }
-            match k.get_item("other_extra") {
-                Some(t) => {
-                    other_props = t.extract().unwrap();
-                }
-                None => {}
-            }
-            match k.get_item("player") {
-                Some(t) => {
-                    player_props = t.extract().unwrap();
-                }
-                None => {}
-            }
-            match k.get_item("other") {
-                Some(t) => {
-                    other_props = t.extract().unwrap();
-                }
-                None => {}
-            }
-            (player_props, other_props)
-        }
-        None => (vec![], vec![]),
-    }
-}
-
 pub fn series_from_multiple_events(
-    events: &Vec<GameEvent>,
+    events: &[GameEvent],
     py: Python,
 ) -> Result<Py<PyAny>, DemoParserError> {
     let per_ge = events.iter().into_group_map_by(|x| x.name.clone());
     let mut vv = vec![];
     for (k, v) in per_ge {
-        let pairs: Vec<EventField> = v.iter().map(|x| x.fields.clone()).flatten().collect();
+        let pairs: Vec<EventField> = v.iter().flat_map(|x| x.fields.clone()).collect();
         let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
 
         let mut series_columns = vec![];
@@ -993,26 +957,26 @@ pub fn series_from_multiple_events(
                 DataFrameColumn::Pyany(p) => py_columns.push((p, name)),
                 DataFrameColumn::Series(s) => {
                     rows = s.len().max(rows);
-                    series_columns.push((s, name))
+                    series_columns.push((s, name));
                 }
             };
         }
         let mut series_col_names: Vec<String> = series_columns
             .iter()
-            .map(|(_, name)| name.to_string())
+            .map(|(_, name)| (*name).to_string())
             .collect();
         let series_columns: Vec<PyObject> = series_columns
             .iter()
-            .map(|(ser, _)| rust_series_to_py_series(&ser).unwrap())
+            .map(|(ser, _)| rust_series_to_py_series(ser).unwrap())
             .collect();
         let py_col_names: Vec<String> = py_columns
             .iter()
-            .map(|(_, name)| name.to_string())
+            .map(|(_, name)| (*name).to_string())
             .collect();
 
         if rows != 0 {
             let dfp = Python::with_gil(|py| {
-                let polars = py.import("polars").unwrap();
+                let polars = py.import_bound("polars").unwrap();
                 let all_series_py = series_columns.to_object(py);
                 let df = polars.call_method1("DataFrame", (all_series_py,)).unwrap();
                 df.setattr("columns", series_col_names.to_object(py))
@@ -1027,10 +991,10 @@ pub fn series_from_multiple_events(
                 series_col_names.extend(py_col_names);
                 series_col_names.sort();
 
-                let kwargs = vec![("axis", 1)].into_py_dict(py);
+                let kwargs = vec![("axis", 1)].into_py_dict_bound(py);
                 let args = (series_col_names,);
                 let df = pandas_df
-                    .call_method("reindex", args, Some(kwargs))
+                    .call_method("reindex", args, Some(&kwargs))
                     .unwrap();
                 df.to_object(py)
             });
@@ -1045,11 +1009,8 @@ pub enum DataFrameColumn {
     Pyany(pyo3::Py<PyAny>),
 }
 
-pub fn series_from_event(
-    events: &Vec<GameEvent>,
-    py: Python,
-) -> Result<Py<PyAny>, DemoParserError> {
-    let pairs: Vec<EventField> = events.iter().map(|x| x.fields.clone()).flatten().collect();
+pub fn series_from_event(events: &[GameEvent], py: Python) -> Result<Py<PyAny>, DemoParserError> {
+    let pairs: Vec<EventField> = events.iter().flat_map(|x| x.fields.clone()).collect();
     let per_key_name = pairs.iter().into_group_map_by(|x| &x.name);
 
     let mut series_columns = vec![];
@@ -1061,27 +1022,27 @@ pub fn series_from_event(
             DataFrameColumn::Pyany(p) => py_columns.push((p, name)),
             DataFrameColumn::Series(s) => {
                 rows = s.len().max(rows);
-                series_columns.push((s, name))
+                series_columns.push((s, name));
             }
         };
     }
     let mut series_col_names: Vec<String> = series_columns
         .iter()
-        .map(|(_, name)| name.to_string())
+        .map(|(_, name)| (*name).to_string())
         .collect();
     let series_columns: Vec<PyObject> = series_columns
         .iter()
-        .map(|(ser, _)| rust_series_to_py_series(&ser).unwrap())
+        .map(|(ser, _)| rust_series_to_py_series(ser).unwrap())
         .collect();
     let py_col_names: Vec<String> = py_columns
         .iter()
-        .map(|(_, name)| name.to_string())
+        .map(|(_, name)| (*name).to_string())
         .collect();
     if rows == 0 {
         return Err(DemoParserError::NoEvents);
     }
     let dfp = Python::with_gil(|py| {
-        let polars = py.import("polars").unwrap();
+        let polars = py.import_bound("polars").unwrap();
         let all_series_py = series_columns.to_object(py);
         let df = polars.call_method1("DataFrame", (all_series_py,)).unwrap();
         df.setattr("columns", series_col_names.to_object(py))
@@ -1094,160 +1055,130 @@ pub fn series_from_event(
         }
         series_col_names.extend(py_col_names);
         series_col_names.sort();
-        let kwargs = vec![("axis", 1)].into_py_dict(py);
+        let kwargs = vec![("axis", 1)].into_py_dict_bound(py);
         let args = (series_col_names,);
         let df = pandas_df
-            .call_method("reindex", args, Some(kwargs))
+            .call_method("reindex", args, Some(&kwargs))
             .unwrap();
         df.to_object(py)
     });
     Ok(dfp)
 }
-fn to_f32_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_f32_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(f) => match f {
-                Variant::F32(val) => v.push(Some(*val)),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::F32(val)) => v.push(Some(*val)),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_u32_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_u32_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(f) => match f {
-                Variant::U32(val) => v.push(Some(*val)),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::U32(val)) => v.push(Some(*val)),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_i32_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_i32_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::I32(val) => v.push(Some(*val)),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::I32(val)) => v.push(Some(*val)),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_u64_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_u64_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::U64(val) => v.push(Some(*val)),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::U64(val)) => v.push(Some(*val)),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_py_string_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
+fn to_py_string_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::StringVec(val) => v.push(Some(val.clone())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::StringVec(val)) => v.push(Some(val.clone())),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
-fn to_py_u64_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
+fn to_py_u64_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::U64Vec(val) => v.push(Some(val.clone())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::U64Vec(val)) => v.push(Some(val.clone())),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
-fn to_py_u32_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
+fn to_py_u32_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::U32Vec(val) => v.push(Some(val.clone())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::U32Vec(val)) => v.push(Some(val.clone())),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
-fn to_string_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_string_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::String(val) => v.push(Some(val.to_owned())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::String(val)) => v.push(Some(val.to_owned())),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
 
-fn to_bool_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_bool_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::Bool(val) => v.push(Some(val.to_owned())),
-                _ => v.push(None),
-            },
-            None => v.push(None),
+            Some(Variant::Bool(val)) => v.push(Some(val.to_owned())),
+            _ => v.push(None),
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
-fn to_py_sticker_col(pairs: &Vec<&EventField>, _name: &String, py: Python) -> DataFrameColumn {
+fn to_py_sticker_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
     let mut v: Vec<Vec<_>> = vec![];
     for pair in pairs {
         match &pair.data {
-            Some(k) => match k {
-                Variant::Stickers(weapon) => {
-                    let mut vv = vec![];
-                    for sticker in weapon {
-                        let dict = PyDict::new(py);
-                        let _ = dict.set_item("id", sticker.id.to_object(py));
-                        let _ = dict.set_item("name", sticker.name.to_object(py));
-                        let _ = dict.set_item("wear", sticker.wear.to_object(py));
-                        let _ = dict.set_item("x", sticker.x.to_object(py));
-                        let _ = dict.set_item("y", sticker.y.to_object(py));
-                        vv.push(dict);
-                    }
-                    v.push(vv)
+            Some(Variant::Stickers(weapon)) => {
+                let mut vv = vec![];
+                for sticker in weapon {
+                    let dict = PyDict::new_bound(py);
+                    let _ = dict.set_item("id", sticker.id.to_object(py));
+                    let _ = dict.set_item("name", sticker.name.to_object(py));
+                    let _ = dict.set_item("wear", sticker.wear.to_object(py));
+                    let _ = dict.set_item("x", sticker.x.to_object(py));
+                    let _ = dict.set_item("y", sticker.y.to_object(py));
+                    vv.push(dict);
                 }
-                _ => v.push(vec![]),
-            },
-            None => v.push(vec![]),
+                v.push(vv);
+            }
+            _ => v.push(vec![]),
         }
     }
     DataFrameColumn::Pyany(v.to_object(py))
 }
 
-fn to_null_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
+fn to_null_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     // All series are null can pick any type
     let mut v: Vec<Option<i32>> = vec![];
     for _ in pairs {
@@ -1258,7 +1189,7 @@ fn to_null_series(pairs: &Vec<&EventField>, name: &String) -> DataFrameColumn {
 
 pub fn column_from_pairs(
     pairs: &Vec<&EventField>,
-    name: &String,
+    name: &str,
     py: Python,
 ) -> Result<DataFrameColumn, DemoParserError> {
     let field_type = find_type_of_vals(pairs)?;
@@ -1275,7 +1206,7 @@ pub fn column_from_pairs(
         Some(Variant::U64Vec(_)) => to_py_u64_col(pairs, name, py),
         Some(Variant::U32Vec(_)) => to_py_u32_col(pairs, name, py),
         Some(Variant::Stickers(_)) => to_py_sticker_col(pairs, name, py),
-        _ => panic!("unkown ge key: {:?}", field_type),
+        _ => panic!("unkown ge key: {field_type:?}"),
     };
     Ok(s)
 }
@@ -1305,11 +1236,11 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
             return Ok(t.clone());
         }
     }
-    return Ok(None);
+    Ok(None)
 }
 
 #[pymodule]
-fn demoparser2(_py: Python, m: &PyModule) -> PyResult<()> {
+fn demoparser2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<DemoParser>()?;
     Ok(())
 }

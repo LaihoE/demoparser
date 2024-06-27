@@ -25,12 +25,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyhow"
-version = "1.0.79"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "080e9890a082662b09c1ad45f567faeeb47f22b5fb23895fbe1e651e718e25ca"
-
-[[package]]
 name = "audiopus_sys"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -42,28 +36,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "autocfg"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
-
-[[package]]
 name = "bit_reverse"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99528ca30abb9495c7e106bf7c3177b257c62040fc0f2909fe470b0f43097296"
 
 [[package]]
-name = "bitflags"
-version = "2.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed570934406eb16438a4e976b1b4500774099c13b8cb96eec99f620f05090ddf"
-
-[[package]]
 name = "bitter"
-version = "0.6.2"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e5958a5c88910651ad16ab92586bce672368e90e4f49ad0dd32518d13b0a73d"
+checksum = "ef3a13b71496a92e8c00ebe576b260655b56935cd5118d5a8949788b651b5e07"
 
 [[package]]
 name = "bytes"
@@ -131,7 +113,6 @@ dependencies = [
  "glob",
  "proc-macro2",
  "protobuf",
- "protobuf-codegen",
 ]
 
 [[package]]
@@ -154,22 +135,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11157ac094ffbdde99aa67b23417ebdd801842852b500e395a45a9c0aac03e4a"
 
 [[package]]
-name = "errno"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a258e46cdc063eb8519c00b9fc845fc47bcfca4130e2f08e88665ceda8474245"
-dependencies = [
- "libc",
- "windows-sys",
-]
-
-[[package]]
-name = "fastrand"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
-
-[[package]]
 name = "getrandom"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -187,35 +152,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
-name = "hashbrown"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
-
-[[package]]
-name = "home"
-version = "0.5.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3d1354bf6b7235cb4a0576c2619fd4ed18183f689b12b006a0ee7329eeff9a5"
-dependencies = [
- "windows-sys",
-]
-
-[[package]]
-name = "indexmap"
-version = "1.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
-dependencies = [
- "autocfg",
- "hashbrown",
-]
-
-[[package]]
 name = "itertools"
-version = "0.10.5"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
 ]
@@ -233,12 +173,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
 
 [[package]]
-name = "linux-raw-sys"
-version = "0.4.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
-
-[[package]]
 name = "log"
 version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -252,9 +186,9 @@ checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 
 [[package]]
 name = "memmap2"
-version = "0.5.10"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83faa42c0a078c393f6b29d5db232d8be22776a891f8f56e5284faee4a20b327"
+checksum = "fe751422e4a8caa417e13c3ea66452215d7d63e19e604f4980461212f3ae1322"
 dependencies = [
  "libc",
 ]
@@ -280,6 +214,7 @@ name = "parser"
 version = "0.1.1"
 dependencies = [
  "ahash",
+ "audiopus_sys",
  "bit_reverse",
  "bitter",
  "bytes",
@@ -374,37 +309,6 @@ dependencies = [
  "once_cell",
  "protobuf-support",
  "thiserror",
-]
-
-[[package]]
-name = "protobuf-codegen"
-version = "3.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e85514a216b1c73111d9032e26cc7a5ecb1bb3d4d9539e91fb72a4395060f78"
-dependencies = [
- "anyhow",
- "once_cell",
- "protobuf",
- "protobuf-parse",
- "regex",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "protobuf-parse"
-version = "3.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77d6fbd6697c9e531873e81cec565a85e226b99a0f10e1acc079be057fe2fcba"
-dependencies = [
- "anyhow",
- "indexmap",
- "log",
- "protobuf",
- "protobuf-support",
- "tempfile",
- "thiserror",
- "which",
 ]
 
 [[package]]
@@ -514,19 +418,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustix"
-version = "0.38.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ea3e1a662af26cd7a3ba09c0297a31af215563ecf42817c98df621387f4e949"
-dependencies = [
- "bitflags",
- "errno",
- "libc",
- "linux-raw-sys",
- "windows-sys",
-]
-
-[[package]]
 name = "semver"
 version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -587,18 +478,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tempfile"
-version = "3.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a365e8cd18e44762ef95d87f284f4b5cd04107fec2ff3052bd6a3e6069669e67"
-dependencies = [
- "cfg-if",
- "fastrand",
- "rustix",
- "windows-sys",
-]
-
-[[package]]
 name = "thiserror"
 version = "1.0.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -635,84 +514,6 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
-
-[[package]]
-name = "which"
-version = "4.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87ba24419a2078cd2b0f2ede2691b6c66d8e47836da3b6db8265ebad47afbfc7"
-dependencies = [
- "either",
- "home",
- "once_cell",
- "rustix",
-]
-
-[[package]]
-name = "windows-sys"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "282be5f36a8ce781fad8c8ae18fa3f9beff57ec1b52cb3de0789201425d9a33d"
-dependencies = [
- "windows-targets",
-]
-
-[[package]]
-name = "windows-targets"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a18201040b24831fbb9e4eb208f8892e1f50a37feb53cc7ff887feb8f50e7cd"
-dependencies = [
- "windows_aarch64_gnullvm",
- "windows_aarch64_msvc",
- "windows_i686_gnu",
- "windows_i686_msvc",
- "windows_x86_64_gnu",
- "windows_x86_64_gnullvm",
- "windows_x86_64_msvc",
-]
-
-[[package]]
-name = "windows_aarch64_gnullvm"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb7764e35d4db8a7921e09562a0304bf2f93e0a51bfccee0bd0bb0b666b015ea"
-
-[[package]]
-name = "windows_aarch64_msvc"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbaa0368d4f1d2aaefc55b6fcfee13f41544ddf36801e793edbbfd7d7df075ef"
-
-[[package]]
-name = "windows_i686_gnu"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a28637cb1fa3560a16915793afb20081aba2c92ee8af57b4d5f28e4b3e7df313"
-
-[[package]]
-name = "windows_i686_msvc"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffe5e8e31046ce6230cc7215707b816e339ff4d4d67c65dffa206fd0f7aa7b9a"
-
-[[package]]
-name = "windows_x86_64_gnu"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d6fa32db2bc4a2f5abeacf2b69f7992cd09dca97498da74a151a3132c26befd"
-
-[[package]]
-name = "windows_x86_64_gnullvm"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a657e1e9d3f514745a572a6846d3c7aa7dbe1658c056ed9c3344c4109a6949e"
-
-[[package]]
-name = "windows_x86_64_msvc"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
 
 [[package]]
 name = "zerocopy"

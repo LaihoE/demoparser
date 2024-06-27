@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use crate::first_pass::parser_settings::ParserInputs;
 use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::*;
@@ -10,6 +12,7 @@ use itertools::Itertools;
 use memmap2::MmapOptions;
 use std::collections::BTreeMap;
 use std::fs::File;
+
 
 pub fn _create_ge_tests() {
     let wanted_props = vec![

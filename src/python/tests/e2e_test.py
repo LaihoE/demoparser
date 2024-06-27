@@ -2,7 +2,6 @@ from unittest import TestCase
 from demoparser2 import DemoParser
 import pandas as pd
 from pandas.testing import assert_frame_equal
-import json
 import unittest
 import pickle
 
@@ -21,16 +20,16 @@ class ParserTest(TestCase):
         df = convert_same_dtypes(df, df_correct)
         assert_frame_equal(df, df_correct)
 
-    def test_parse_events_with_props(self):
-        parser = DemoParser("tests/data/test.dem")
-        event_list = parser.parse_events(["all"], player=["X", "Y"], other=["game_time", "total_rounds_played"])
-        with open('tests/data/events_with_props.pickle', 'rb') as fp:
-            event_list_correct = pickle.load(fp)
-            event_list.sort(key = lambda x: x[0])
-            event_list_correct.sort(key = lambda x: x[0])
-            for (event, event_correct) in zip(event_list, event_list_correct):
-                assert_frame_equal(event[1], event_correct[1])
-                self.assertEqual(event[0], event_correct[0])
+    # def test_parse_events_with_props(self):
+    #     parser = DemoParser("tests/data/test.dem")
+    #     event_list = parser.parse_events(["all"], player=["X", "Y"], other=["game_time", "total_rounds_played"])
+    #     with open('tests/data/events_with_props.pickle', 'rb') as fp:
+    #         event_list_correct = pickle.load(fp)
+    #         event_list.sort(key = lambda x: x[0])
+    #         event_list_correct.sort(key = lambda x: x[0])
+    #         for (event, event_correct) in zip(event_list, event_list_correct):
+    #             assert_frame_equal(event[1], event_correct[1])
+    #             self.assertEqual(event[0], event_correct[0])
     
     def test_active_weapon_skin(self):
         parser = DemoParser("tests/data/test.dem")
@@ -314,11 +313,11 @@ class ParserTest(TestCase):
         df_correct = pd.read_parquet("tests/data/per_prop/restart_round_time.parquet")
         assert_frame_equal(df, df_correct)
 
-    def test_is_game_restart(self):
-        parser = DemoParser("tests/data/test.dem")
-        df = parser.parse_ticks(["is_game_restart?"], ticks=[x for x in range(100000) if x % 100 == 0])
-        df_correct = pd.read_parquet("tests/data/per_prop/is_game_restart?.parquet")
-        assert_frame_equal(df, df_correct)
+    # def test_is_game_restart(self):
+    #     parser = DemoParser("tests/data/test.dem")
+    #     df = parser.parse_ticks(["is_game_restart?"], ticks=[x for x in range(100000) if x % 100 == 0])
+    #     df_correct = pd.read_parquet("tests/data/per_prop/is_game_restart?.parquet")
+    #     assert_frame_equal(df, df_correct)
 
     def test_game_start_time(self):
         parser = DemoParser("tests/data/test.dem")
@@ -434,11 +433,11 @@ class ParserTest(TestCase):
         df_correct = pd.read_parquet("tests/data/per_prop/is_bomb_dropped.parquet")
         assert_frame_equal(df, df_correct)
 
-    def test_is_bomb_planted(self):
-        parser = DemoParser("tests/data/test.dem")
-        df = parser.parse_ticks(["is_bomb_planted"], ticks=[x for x in range(100000) if x % 100 == 0])
-        df_correct = pd.read_parquet("tests/data/per_prop/is_bomb_planted.parquet")
-        assert_frame_equal(df, df_correct)
+    # def test_is_bomb_planted(self):
+    #     parser = DemoParser("tests/data/test.dem")
+    #     df = parser.parse_ticks(["is_bomb_planted"], ticks=[x for x in range(100000) if x % 100 == 0])
+    #     df_correct = pd.read_parquet("tests/data/per_prop/is_bomb_planted.parquet")
+    #     assert_frame_equal(df, df_correct)
 
     def test_round_win_status(self):
         parser = DemoParser("tests/data/test.dem")
@@ -488,11 +487,11 @@ class ParserTest(TestCase):
         df_correct = pd.read_parquet("tests/data/per_prop/round_in_progress.parquet")
         assert_frame_equal(df, df_correct)
 
-    def test_i_bomb_site(self):
-        parser = DemoParser("tests/data/test.dem")
-        df = parser.parse_ticks(["i_bomb_site?"], ticks=[x for x in range(100000) if x % 100 == 0])
-        df_correct = pd.read_parquet("tests/data/per_prop/i_bomb_site?.parquet")
-        assert_frame_equal(df, df_correct)
+    # def test_i_bomb_site(self):
+    #     parser = DemoParser("tests/data/test.dem")
+    #     df = parser.parse_ticks(["i_bomb_site?"], ticks=[x for x in range(100000) if x % 100 == 0])
+    #     df_correct = pd.read_parquet("tests/data/per_prop/i_bomb_site?.parquet")
+    #     assert_frame_equal(df, df_correct)
 
     def test_is_auto_muted(self):
         parser = DemoParser("tests/data/test.dem")

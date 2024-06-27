@@ -10,7 +10,7 @@ use crate::second_pass::parser_settings::*;
 use crate::second_pass::variants::VarVec;
 use crate::second_pass::variants::{PropColumn, Variant};
 use ahash::AHashSet;
-use ahash::{AHashMap, HashSet};
+use ahash::AHashMap;
 use csgoproto::netmessages::CSVCMsg_VoiceData;
 use itertools::Itertools;
 use rayon::iter::IntoParallelRefIterator;
@@ -192,7 +192,7 @@ impl<'a> Parser<'a> {
             prop_controller.wanted_player_props.retain(|x| x != &prop);
             prop_controller.prop_infos.retain(|x| &x.prop_name != &prop);
         }
-        let mut per_players: Vec<AHashMap<u64, AHashMap<u32, PropColumn>>> =
+        let per_players: Vec<AHashMap<u64, AHashMap<u32, PropColumn>>> =
             second_pass_outputs.iter().map(|x| x.df_per_player.clone()).collect();
 
         let mut all_steamids = AHashSet::default();

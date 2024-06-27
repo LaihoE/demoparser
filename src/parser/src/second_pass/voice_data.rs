@@ -37,7 +37,7 @@ pub fn parse_voice_chunk_old_format(bytes: &[u8], decoder: &mut Decoder) -> Resu
 
         // read chunks until chunk_len == 65535
         while ptr < packet.length as usize {
-            let mut output = vec![0; FRAME_SIZE];
+            let output = vec![0; FRAME_SIZE];
             let chunk_len = u16::from_le_bytes(bytes[ptr..ptr + 2].try_into().unwrap());
             if chunk_len == 65535 {
                 break;

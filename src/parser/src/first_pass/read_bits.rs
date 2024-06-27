@@ -51,7 +51,8 @@ impl<'a> Bitreader<'a> {
     }
     #[inline(always)]
     pub fn refill(&mut self) {
-        let refilled = self.reader.refill_lookahead();
+        self.reader.refill_lookahead();
+        let refilled = self.reader.lookahead_bits();
         if refilled > 0 {
             self.bits = self.reader.peek(refilled);
         }
