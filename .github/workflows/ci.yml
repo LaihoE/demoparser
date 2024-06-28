@@ -38,6 +38,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          
+      - name: Print commit hash
+        run: git rev-parse HEAD
+
 
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -49,10 +55,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Build Wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          command: develop
-
       - name: Run signature test
-        run: python tests/
+        working-directory: ./src/python
+        run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install pytest maturin patchelf
+
+          maturin develop
+          pytest
