@@ -63,4 +63,4 @@ jobs:
           pip install pytest maturin patchelf
 
           maturin develop
-          pytest
+          python3 tests/signature_tests.py

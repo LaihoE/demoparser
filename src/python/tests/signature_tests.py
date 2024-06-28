@@ -4,10 +4,11 @@ from unittest import TestCase
 import pandas as pd
 from demoparser2 import DemoParser
 
+demo_path = "../parser/test_demo.dem"
 
 class SignatureTest(TestCase):
     def test_parse_header_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
         header = parser.parse_header()
         self.assertIsInstance(header, dict)
         for key, value in header.items():
@@ -15,7 +16,7 @@ class SignatureTest(TestCase):
             self.assertIsInstance(value, str)
 
     def test_parse_convars_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
         convars = parser.parse_convars()
         self.assertIsInstance(convars, dict)
         for key, value in convars.items():
@@ -23,39 +24,39 @@ class SignatureTest(TestCase):
             self.assertIsInstance(value, str)
 
     def test_list_game_events_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
         game_events = parser.list_game_events()
         self.assertIsInstance(game_events, list)
         for event in game_events:
             self.assertIsInstance(event, str)
 
     def test_parse_grenades_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
         grenades = parser.parse_grenades()
         self.assertIsInstance(grenades, pd.DataFrame)
 
     def test_parse_chat_messages_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
         chat_messages = parser.parse_chat_messages()
         self.assertIsInstance(chat_messages, pd.DataFrame)
 
     def test_parse_player_info_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
         player_info = parser.parse_player_info()
         self.assertIsInstance(player_info, pd.DataFrame)
 
     def test_parse_item_drops_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
         item_drops = parser.parse_item_drops()
         self.assertIsInstance(item_drops, pd.DataFrame)
 
     def test_parse_skins_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
         skins = parser.parse_skins()
         self.assertIsInstance(skins, pd.DataFrame)
 
     def test_parse_event_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
 
         event = parser.parse_event("player_death")
         self.assertIsInstance(event, pd.DataFrame)
@@ -86,7 +87,7 @@ class SignatureTest(TestCase):
             parser.parse_event(5)
 
     def test_parse_events_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
 
         events = parser.parse_events(["player_death"])
         self.assertIsInstance(events, list)
@@ -124,7 +125,7 @@ class SignatureTest(TestCase):
             parser.parse_events(5)
 
     def test_parse_voice_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
         voice = parser.parse_voice()
         self.assertIsInstance(voice, dict)
         for key, value in voice.items():
@@ -132,7 +133,7 @@ class SignatureTest(TestCase):
             self.assertIsInstance(value, bytes)
 
     def test_parse_ticks_signature(self):
-        parser = DemoParser("tests/data/test.dem")
+        parser = DemoParser(demo_path)
 
         ticks = parser.parse_ticks(["X", "Y"])
         self.assertIsInstance(ticks, pd.DataFrame)
