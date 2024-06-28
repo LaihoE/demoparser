@@ -215,13 +215,8 @@ pub fn parseTicks(
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
-    real_names.push("tick".to_owned());
-    real_names.push("steamid".to_owned());
-    real_names.push("name".to_owned());
-
     let mut prop_infos = output.prop_controller.prop_infos.clone();
     prop_infos.sort_by_key(|x| x.prop_name.clone());
-    real_names.sort();
 
     let helper = OutputSerdeHelperStruct {
         prop_infos: prop_infos,
