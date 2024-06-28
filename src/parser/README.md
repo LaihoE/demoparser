@@ -36,6 +36,7 @@ fn main() {
         count_props: false,
         only_convars: false,
         huffman_lookup_table: &huf,
+        order_by_player: false,
     };
     let mut ds = Parser::new(settings, false);
     let file = File::open(path_to_demo).unwrap();
