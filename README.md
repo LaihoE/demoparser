@@ -8,7 +8,7 @@ The parser takes a slightly different approach to exposing the information in th
 
 
 ### Install
-Python: ```pip install demoparser2```
+Python: ```pip install demoparser2``` (python >= 3.8)
 
 NodeJS: ```npm i @laihoe/demoparser2```
 
