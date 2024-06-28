@@ -1,5 +1,6 @@
 use ahash::AHashMap;
 use itertools::Itertools;
+use memmap2::Mmap;
 use parser::first_pass::parser_settings::create_mmap;
 use parser::first_pass::parser_settings::rm_user_friendly_names;
 use parser::first_pass::parser_settings::ParserInputs;
@@ -16,7 +17,9 @@ use polars::prelude::ArrayRef;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
-use polars_arrow::array::{Array, BooleanArray, Float32Array, Int32Array, UInt32Array, UInt64Array, Utf8Array};
+use polars_arrow::array::{
+    Array, BooleanArray, Float32Array, Int32Array, UInt32Array, UInt64Array, Utf8Array,
+};
 use polars_arrow::ffi;
 use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
@@ -35,11 +38,13 @@ create_exception!(DemoParser, Exception, pyo3::exceptions::PyException);
 #[pymethods]
 impl DemoParser {
     #[new]
-    pub const fn new(demo_path: String) -> Self {
-        // let file = File::open(demo_path.clone()).unwrap();
-        // let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-        // let huf = create_huffman_lookup_table();
-        Self { path: demo_path }
+    pub fn py_new(demo_path: String) -> PyResult<Self> {
+        let mmap = match create_mmap(demo_path.clone()) {
+            Ok(mmap) => mmap,
+            Err(e) => return Err(Exception::new_err(format!("{e}. File name: {demo_path}"))),
+        };
+        let huf = create_huffman_lookup_table();
+        Ok(Self { mmap, huf })
     }
 
     /// Parses header message (different from the first 16 bytes of the file)
@@ -50,17 +55,6 @@ impl DemoParser {
     /// "allow_clientside_particles", "demo_version_name", "demo_version_guid",
     /// "client_name", "game_directory"
     pub fn parse_header(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let huf = create_huffman_lookup_table();
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
@@ -73,31 +67,22 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &huf,
+            huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
-        Ok(output.header.unwrap_or_else(AHashMap::default).to_object(py))
+        Ok(output
+            .header
+            .unwrap_or_else(AHashMap::default)
+            .to_object(py))
     }
     /// Returns a dictionary with console vars set. This includes data
     /// like this: "mp_roundtime": "1.92", "mp_buytime": "20" ...
     pub fn parse_convars(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let arc_huf = create_huffman_lookup_table();
-
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
@@ -110,30 +95,18 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &arc_huf,
+            huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
-            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         Ok(output.convars.to_object(py))
     }
     /// Returns the names of game events present in the demo
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let arc_huf = create_huffman_lookup_table();
-
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
@@ -146,11 +119,11 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &arc_huf,
+            huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -168,18 +141,6 @@ impl DemoParser {
     /// 2 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
 
     pub fn parse_grenades(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let arc_huf = create_huffman_lookup_table();
-
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
@@ -192,11 +153,11 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &arc_huf,
+            huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -257,18 +218,6 @@ impl DemoParser {
     /// 0     8        person1       asdfa
     /// 1     8        person2        asdf  TSpawn
     pub fn parse_chat_messages(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let arc_huf = create_huffman_lookup_table();
-
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
@@ -281,11 +230,11 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &arc_huf,
+            huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -330,18 +279,6 @@ impl DemoParser {
         })
     }
     pub fn parse_player_info(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let arc_huf = create_huffman_lookup_table();
-
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
@@ -354,11 +291,11 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &arc_huf,
+            huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -386,18 +323,6 @@ impl DemoParser {
         })
     }
     pub fn parse_item_drops(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let arc_huf = create_huffman_lookup_table();
-
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
@@ -410,11 +335,11 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &arc_huf,
+            huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -478,18 +403,6 @@ impl DemoParser {
         })
     }
     pub fn parse_skins(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let arc_huf = create_huffman_lookup_table();
-
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
@@ -502,11 +415,11 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &arc_huf,
+            huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -587,17 +500,6 @@ impl DemoParser {
         for (real_name, user_friendly_name) in real_other_props.iter().zip(&wanted_other_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name,
@@ -611,11 +513,11 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &arc_huf,
+            huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -654,17 +556,6 @@ impl DemoParser {
         for (real_name, user_friendly_name) in real_other_props.iter().zip(&wanted_other_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
-        let arc_huf = create_huffman_lookup_table();
 
         let settings = ParserInputs {
             real_name_to_og_name,
@@ -678,11 +569,11 @@ impl DemoParser {
             only_header: true,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &arc_huf,
+            huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -694,16 +585,6 @@ impl DemoParser {
     }
     #[cfg(feature = "voice")]
     pub fn parse_voice(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
         let settings = ParserInputs {
             wanted_players: vec![],
             wanted_player_props: vec![],
@@ -720,7 +601,7 @@ impl DemoParser {
             order_by_steamid: false,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
@@ -749,19 +630,8 @@ impl DemoParser {
             Ok(real_props) => real_props,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
-        let mmap = match create_mmap(self.path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => {
-                return Err(Exception::new_err(format!(
-                    "{}. File name: {}",
-                    e,
-                    self.path.clone()
-                )))
-            }
-        };
 
-        let huf = create_huffman_lookup_table();
-        let arc_huf = Arc::new(huf);
+        let arc_huf = Arc::new(&self.huf);
         let mut real_name_to_og_name = AHashMap::default();
         for (real_name, user_friendly_name) in real_props.iter().zip(&wanted_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
@@ -783,7 +653,7 @@ impl DemoParser {
             //huf: huf,
         };
         let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&mmap) {
+        let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -935,7 +805,8 @@ pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<PyObject> {
 }
 #[pyclass]
 struct DemoParser {
-    path: String,
+    mmap: Mmap,
+    huf: Vec<(u8, u8)>,
 }
 
 pub fn series_from_multiple_events(
