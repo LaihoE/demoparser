@@ -177,10 +177,11 @@ impl<'a> Bitreader<'a> {
         Ok(v)
     }
     pub fn decode_qangle_all_3(&mut self) -> Result<[f32; 3], DemoParserError> {
+        // Used by aimpunch props (not exposed atm) maybe wrong format? correct number of bits anyhow.
         let mut v = [0.0; 3];
-        v[0] = self.read_angle(32)?;
-        v[1] = self.read_angle(32)?;
-        v[2] = self.read_angle(32)?;
+        v[0] = self.decode_noscale()?;
+        v[1] = self.decode_noscale()?;
+        v[2] = self.decode_noscale()?;
         Ok(v)
     }
     pub fn decode_qangle_variant(&mut self) -> Result<[f32; 3], DemoParserError> {
