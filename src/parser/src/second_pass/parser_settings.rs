@@ -312,89 +312,11 @@ impl SpecialIDs {
     }
 }
 
-fn msb(mut val: u32) -> u32 {
-    let mut cnt = 0;
-    while val > 0 {
-        cnt = cnt + 1;
-        val = val >> 1;
-    }
-    cnt
-}
-
 pub fn create_huffman_lookup_table() -> Vec<(u8, u8)> {
-    let mut huffman_table = vec![(255, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
-    let mut huffman_rev_table = vec![(255, 255); HUF_LOOKUPTABLE_MAXVALUE as usize];
-
-    huffman_table[0] = (0, 1);
-    huffman_table[2] = (39, 2);
-    huffman_table[24] = (8, 5);
-    huffman_table[50] = (2, 6);
-    huffman_table[51] = (29, 6);
-    huffman_table[100] = (2, 6);
-    huffman_table[101] = (29, 6);
-    huffman_table[26] = (4, 5);
-    huffman_table[432] = (30, 9);
-    huffman_table[866] = (38, 10);
-    huffman_table[55488] = (35, 16);
-    huffman_table[55489] = (34, 16);
-    huffman_table[27745] = (27, 15);
-    huffman_table[55492] = (25, 16);
-    huffman_table[55493] = (24, 16);
-    huffman_table[55494] = (33, 16);
-    huffman_table[55495] = (28, 16);
-    huffman_table[55496] = (13, 16);
-    huffman_table[110994] = (15, 17);
-    huffman_table[110995] = (14, 17);
-    huffman_table[27749] = (6, 15);
-    huffman_table[111000] = (21, 17);
-    huffman_table[111001] = (20, 17);
-    huffman_table[111002] = (23, 17);
-    huffman_table[111003] = (22, 17);
-    huffman_table[111004] = (17, 17);
-    huffman_table[111005] = (16, 17);
-    huffman_table[111006] = (19, 17);
-    huffman_table[111007] = (18, 17);
-    huffman_table[3469] = (5, 12);
-    huffman_table[1735] = (36, 11);
-    huffman_table[217] = (10, 8);
-    huffman_table[218] = (7, 8);
-    huffman_table[438] = (12, 9);
-    huffman_table[439] = (37, 9);
-    huffman_table[220] = (9, 8);
-    huffman_table[442] = (31, 9);
-    huffman_table[443] = (26, 9);
-    huffman_table[222] = (32, 8);
-    huffman_table[223] = (3, 8);
-    huffman_table[14] = (1, 4);
-    huffman_table[15] = (11, 4);
-    huffman_table[0] = (255, 255);
-
-    const RIGHTSHIFT_BITORDER: u32 = 64 - 17;
-    let mut v: Vec<u32> = vec![];
-    for (idx, x) in huffman_table.iter().enumerate() {
-        if x.0 != 255 {
-            v.push(idx as u32);
-        }
+    let buf = include_bytes!("huf.b");
+    let mut huf2 = Vec::with_capacity(HUF_LOOKUPTABLE_MAXVALUE as usize);
+    for chunk in buf.chunks_exact(2) {
+        huf2.push((chunk[0], chunk[1]));
     }
-    let mut idx_msb_map = Vec::with_capacity(HUF_LOOKUPTABLE_MAXVALUE as usize);
-    for i in 0..HUF_LOOKUPTABLE_MAXVALUE {
-        idx_msb_map.push(msb(i));
-    }
-    for x in v {
-        let shifta = msb(x);
-        for (idx, pair) in idx_msb_map.iter().enumerate() {
-            if x == idx as u32 >> pair.wrapping_sub(shifta) {
-                let peekbits = (idx as u64).reverse_bits() >> RIGHTSHIFT_BITORDER;
-                huffman_table[idx as usize] = huffman_table[x as usize];
-                huffman_rev_table[peekbits as usize] = huffman_table[x as usize];
-            }
-        }
-    }
-    for v in 0..HUF_LOOKUPTABLE_MAXVALUE {
-        let p: u64 = (v as u64).reverse_bits() >> RIGHTSHIFT_BITORDER;
-        if p & 1 == 0 {
-            huffman_rev_table[p as usize] = (0, 1);
-        }
-    }
-    huffman_rev_table
+    return huf2;
 }
