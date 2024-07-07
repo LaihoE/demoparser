@@ -80,31 +80,6 @@ impl DemoParser {
             .unwrap_or_else(AHashMap::default)
             .to_object(py))
     }
-    /// Returns a dictionary with console vars set. This includes data
-    /// like this: "mp_roundtime": "1.92", "mp_buytime": "20" ...
-    pub fn parse_convars(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let settings = ParserInputs {
-            real_name_to_og_name: AHashMap::default(),
-            wanted_players: vec![],
-            wanted_player_props: vec![],
-            wanted_other_props: vec![],
-            wanted_events: vec![],
-            parse_ents: false,
-            wanted_ticks: vec![],
-            parse_projectiles: false,
-            only_header: true,
-            count_props: false,
-            only_convars: false,
-            huffman_lookup_table: &self.huf,
-            order_by_steamid: false,
-        };
-        let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&self.mmap) {
-            Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{e}"))),
-        };
-        Ok(output.convars.to_object(py))
-    }
     /// Returns the names of game events present in the demo
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
@@ -207,74 +182,6 @@ impl DemoParser {
             // Call to_pandas with use_pyarrow_extension_array = true
             let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
             let pandas_df = df.call_method("to_pandas", (), Some(&kwargs)).unwrap();
-            Ok(pandas_df.to_object(py))
-        })
-    }
-
-    /// returns a DF with chat messages
-    ///
-    /// Example output:
-    ///   entid           name     message  param3 param4
-    /// 0     8        person1       asdfa
-    /// 1     8        person2        asdf  TSpawn
-    pub fn parse_chat_messages(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let settings = ParserInputs {
-            real_name_to_og_name: AHashMap::default(),
-            wanted_players: vec![],
-            wanted_player_props: vec![],
-            wanted_other_props: vec![],
-            wanted_events: vec![],
-            parse_ents: false,
-            wanted_ticks: vec![],
-            parse_projectiles: false,
-            only_header: true,
-            count_props: false,
-            only_convars: false,
-            huffman_lookup_table: &self.huf,
-            order_by_steamid: false,
-        };
-        let mut parser = Parser::new(settings, false);
-        let output = match parser.parse_demo(&self.mmap) {
-            Ok(output) => output,
-            Err(e) => return Err(Exception::new_err(format!("{e}"))),
-        };
-        let entids: Vec<Option<i32>> = output.chat_messages.iter().map(|x| x.entity_idx).collect();
-        let param1: Vec<Option<String>> = output
-            .chat_messages
-            .iter()
-            .map(|x| x.param1.clone())
-            .collect();
-        let param2: Vec<Option<String>> = output
-            .chat_messages
-            .iter()
-            .map(|x| x.param2.clone())
-            .collect();
-        let param3: Vec<Option<String>> = output
-            .chat_messages
-            .iter()
-            .map(|x| x.param3.clone())
-            .collect();
-        let param4: Vec<Option<String>> = output
-            .chat_messages
-            .iter()
-            .map(|x| x.param4.clone())
-            .collect();
-        let entids = arr_to_py(Box::new(Int32Array::from(entids)))?;
-        let param1 = rust_series_to_py_series(&Series::new("param1", param1))?;
-        let param2 = rust_series_to_py_series(&Series::new("param2", param2))?;
-        let param3 = rust_series_to_py_series(&Series::new("param3", param3))?;
-        let param4 = rust_series_to_py_series(&Series::new("param4", param4))?;
-
-        let polars = py.import_bound("polars")?;
-        let all_series_py = [entids, param1, param2, param3, param4].to_object(py);
-        Python::with_gil(|py| {
-            let df = polars.call_method1("DataFrame", (all_series_py,))?;
-            // Set column names
-            let column_names = ["entid", "name", "message", "param3", "param4"];
-            df.setattr("columns", column_names.to_object(py))?;
-            // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }

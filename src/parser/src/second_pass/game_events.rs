@@ -839,6 +839,40 @@ impl<'a> SecondPassParser<'a> {
         }
         None
     }
+    pub fn create_custom_event_chat_message(&mut self, msg_bytes: &[u8]) -> Result<(), DemoParserError> {
+        use csgoproto::usermessages::CUserMessageSayText2;
+        self.game_events_counter.insert("chat_message".to_string());
+        if !self.wanted_events.contains(&"chat_message".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
+            return Ok(());
+        }
+        let chat_msg: CUserMessageSayText2 = match Message::parse_from_bytes(&msg_bytes) {
+            Ok(msg) => msg,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
+
+        let mut fields = vec![];
+        let controller_id = chat_msg.entityindex();
+        let res = self.find_user_by_controller_id(controller_id);
+        let entity_id = match res {
+            Some(metadata) => metadata.player_entity_id.unwrap_or(i32::MAX),
+            _ => i32::MAX,
+        };
+        fields.push(self.create_player_name_field(entity_id, "user"));
+        fields.push(self.create_player_steamid_field(entity_id, "user"));
+        fields.extend(self.find_extra_props_events(entity_id, "user"));
+        fields.push(EventField {
+            data: Some(Variant::String(chat_msg.param2().to_owned())),
+            name: "chat_message".to_string(),
+        });
+        let ge = GameEvent {
+            name: "chat_message".to_string(),
+            fields: fields,
+            tick: self.tick,
+        };
+        self.game_events.push(ge);
+        Ok(())
+    }
+
     pub fn create_custom_event_round_start(&mut self, _events: &[GameEventInfo]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("round_start".to_string());
         if !self.wanted_events.contains(&"round_start".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
