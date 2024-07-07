@@ -56,17 +56,7 @@ impl<'a> SecondPassParser<'a> {
         Ok(())
     }
     pub fn parse_chat_messages(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let chat_msg: CUserMessageSayText2 = match Message::parse_from_bytes(&bytes) {
-            Ok(msg) => msg,
-            Err(_) => return Err(DemoParserError::MalformedMessage),
-        };
-        self.chat_messages.push(ChatMessageRecord {
-            entity_idx: chat_msg.entityindex,
-            param1: chat_msg.param1,
-            param2: chat_msg.param2,
-            param3: chat_msg.param3,
-            param4: chat_msg.param4,
-        });
+        self.create_custom_event_chat_message(bytes)?;
         Ok(())
     }
     pub fn parse_convars(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {

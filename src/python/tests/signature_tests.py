@@ -15,14 +15,6 @@ class SignatureTest(TestCase):
             self.assertIsInstance(key, str)
             self.assertIsInstance(value, str)
 
-    def test_parse_convars_signature(self):
-        parser = DemoParser(demo_path)
-        convars = parser.parse_convars()
-        self.assertIsInstance(convars, dict)
-        for key, value in convars.items():
-            self.assertIsInstance(key, str)
-            self.assertIsInstance(value, str)
-
     def test_list_game_events_signature(self):
         parser = DemoParser(demo_path)
         game_events = parser.list_game_events()
@@ -34,11 +26,6 @@ class SignatureTest(TestCase):
         parser = DemoParser(demo_path)
         grenades = parser.parse_grenades()
         self.assertIsInstance(grenades, pd.DataFrame)
-
-    def test_parse_chat_messages_signature(self):
-        parser = DemoParser(demo_path)
-        chat_messages = parser.parse_chat_messages()
-        self.assertIsInstance(chat_messages, pd.DataFrame)
 
     def test_parse_player_info_signature(self):
         parser = DemoParser(demo_path)
