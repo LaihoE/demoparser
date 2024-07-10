@@ -13,7 +13,6 @@ use memmap2::MmapOptions;
 use std::collections::BTreeMap;
 use std::fs::File;
 
-
 pub fn _create_ge_tests() {
     let wanted_props = vec![
         "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_flLastTeleportTime".to_string(),
@@ -16693,18 +16692,38 @@ mod tests {
             vec![
                 GameEvent {
                     name: "bomb_pickup".to_string(),
-                    fields: vec![EventField {
-                        name: "tick".to_string(),
-                        data: Some(I32(65)),
-                    }],
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(65)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("Подсосник blick'a".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561197964020430".to_string())),
+                        },
+                    ],
                     tick: 65,
                 },
                 GameEvent {
                     name: "bomb_pickup".to_string(),
-                    fields: vec![EventField {
-                        name: "tick".to_string(),
-                        data: Some(I32(5839)),
-                    }],
+                    fields: vec![
+                        EventField {
+                            name: "tick".to_string(),
+                            data: Some(I32(5839)),
+                        },
+                        EventField {
+                            name: "user_name".to_string(),
+                            data: Some(String("IMI Negev".to_string())),
+                        },
+                        EventField {
+                            name: "user_steamid".to_string(),
+                            data: Some(String("76561198202353993".to_string())),
+                        },
+                    ],
                     tick: 5839,
                 },
             ],
