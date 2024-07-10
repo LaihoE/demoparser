@@ -171,11 +171,22 @@ impl<'a> SecondPassParser<'a> {
                         "user"
                     }
                 }
+                // Another edge case
+                // Only add iff "userid" is missing in the event...
+                "userid_pawn" => {
+                    let field_names: Vec<&String> = fields.iter().map(|x| &x.name).collect();
+                    if !field_names.contains(&&"userid".to_string()) {
+                        "user"
+                    } else {
+                        continue;
+                    }
+                }
                 _ => continue,
             };
             if let Some(Variant::I32(u)) = field.data {
                 let entity_id = match field.name.as_str() {
                     "entityid" => self.grenade_owner_entid_from_grenade(&field.data),
+                    "userid_pawn" => self.entity_id_from_user_pawn(u),
                     _ => self.entity_id_from_userid(u),
                 };
                 let entity_id = match entity_id {
@@ -194,6 +205,9 @@ impl<'a> SecondPassParser<'a> {
         // Values from Teams and Rules entity. Not bound to any player so can be added to any event.
         extra_fields.extend(self.find_non_player_props());
         Ok(extra_fields)
+    }
+    pub fn entity_id_from_user_pawn(&self, pawn_handle: i32) -> Option<i32> {
+        Some(pawn_handle & 0x7FF)
     }
     pub fn grenade_owner_entid_from_grenade(&self, id_field: &Option<Variant>) -> Option<i32> {
         let prop_id = match self.prop_controller.special_ids.grenade_owner_id {
