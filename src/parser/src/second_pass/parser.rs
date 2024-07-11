@@ -67,7 +67,6 @@ impl<'a> SecondPassParser<'a> {
                 self.ptr += size as usize;
                 continue;
             }
-
             let input = &demo_bytes[self.ptr..self.ptr + size as usize];
             self.ptr += size as usize;
             let bytes = match is_compressed {
@@ -80,7 +79,6 @@ impl<'a> SecondPassParser<'a> {
                 }
                 false => input,
             };
-            // println!("{:?} {:?}", tick, demo_cmd);
 
             let ok = match demo_cmd {
                 DEM_SignonPacket => self.parse_packet(&bytes, &mut buf),
