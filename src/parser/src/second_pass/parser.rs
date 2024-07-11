@@ -58,6 +58,7 @@ impl<'a> SecondPassParser<'a> {
             if self.ptr + size as usize >= demo_bytes.len() {
                 break;
             }
+
             let msg_type = cmd & !64;
             let is_compressed = (cmd & 64) == 64;
             let demo_cmd = demo_cmd_type_from_int(msg_type as i32)?;
@@ -79,6 +80,7 @@ impl<'a> SecondPassParser<'a> {
                 }
                 false => input,
             };
+            // println!("{:?} {:?}", tick, demo_cmd);
 
             let ok = match demo_cmd {
                 DEM_SignonPacket => self.parse_packet(&bytes, &mut buf),
@@ -103,7 +105,6 @@ impl<'a> SecondPassParser<'a> {
                 _ => Ok(()),
             };
             ok?;
-            self.collect_entities();
         }
         Ok(())
     }
@@ -158,6 +159,7 @@ impl<'a> SecondPassParser<'a> {
         if !wrong_order_events.is_empty() {
             self.resolve_wrong_order_event(&mut wrong_order_events)?;
         }
+        self.collect_entities();
         Ok(())
     }
     pub fn parse_net_tick(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
