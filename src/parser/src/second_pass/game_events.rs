@@ -156,6 +156,7 @@ impl<'a> SecondPassParser<'a> {
             name: "tick".to_owned(),
             data: Some(Variant::I32(self.tick)),
         });
+
         for field in fields {
             // Fields that refer to players
             let prefix = match field.name.as_str() {
@@ -175,7 +176,7 @@ impl<'a> SecondPassParser<'a> {
                 // Only add iff "userid" is missing in the event...
                 "userid_pawn" => {
                     let field_names: Vec<&String> = fields.iter().map(|x| &x.name).collect();
-                    if !field_names.contains(&&"userid".to_string()) {
+                    if !field_names.contains(&&"userid".to_string()) && !field_names.contains(&&"entityid".to_string()) {
                         "user"
                     } else {
                         continue;
