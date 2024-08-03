@@ -293,6 +293,7 @@ pub fn _create_ge_tests() {
         "is_alive".to_string(),
         "user_id".to_string(),
         "agent_skin".to_string(),
+        "is_airborne".to_string(),
     ];
 
     let wanted_events = vec!["all".to_string()];
@@ -667,6 +668,7 @@ pub fn _create_tests() {
         "is_alive".to_string(),
         "user_id".to_string(),
         "agent_skin".to_string(),
+        "is_airborne".to_string(),
     ];
     let huf = create_huffman_lookup_table();
 
@@ -717,6 +719,7 @@ pub fn _create_tests() {
     custom.insert(STEAMID_ID, "steamid");
     custom.insert(NAME_ID, "name");
     custom.insert(WEAPON_STICKERS_ID, "weapon_stickers");
+    custom.insert(IS_AIRBORNE_ID, "is_airborne");
 
     for (k, v) in d.df {
         if let Some(real_name) = d.prop_controller.id_to_name.get(&k) {
@@ -1032,6 +1035,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         "weapon_stickers".to_string(),
         "weapon_float".to_string(),
         "weapon_paint_seed".to_string(),
+        "is_airborne".to_string(),
     ];
 
     let wanted_events = vec![];
@@ -1309,6 +1313,62 @@ mod tests {
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
+    #[test]
+    fn is_airborne() {
+        let prop = (
+            "is_airborne",
+            PropColumn {
+                data: Some(Bool(
+                    [
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(true),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(true),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                        Some(false),
+                    ]
+                    .to_vec(),
+                )),
+                num_nones: 0,
+            },
+        );
+        assert_eq!(out.0.df[&IS_AIRBORNE_ID], prop.1);
+    }
+
     #[test]
     fn CCSPlayerController_m_nQuestProgressReason() {
         let prop = (

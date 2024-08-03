@@ -33,6 +33,8 @@ pub enum PropType {
 // DONT KNOW IF THESE ARE CORRECT. SEEMS TO GIVE CORRECT VALUES
 const CELL_BITS: i32 = 9;
 const MAX_COORD: f32 = (1 << 14) as f32;
+// https://github.com/markus-wa/demoinfocs-golang/blob/master/pkg/demoinfocs/constants/constants.go#L11
+const IS_AIRBORNE_CONST: u32 = 0xFFFFFF;
 
 #[derive(Debug, Clone)]
 pub struct ProjectileRecord {
@@ -442,6 +444,7 @@ impl<'a> SecondPassParser<'a> {
             "entity_id" => return Ok(Variant::I32(*entity_id)),
             "is_alive" => return self.find_is_alive(entity_id),
             "user_id" => return self.get_userid(player),
+            "is_airborne" => self.find_is_airborne(player),
             "agent_skin" => return self.find_agent_skin(player),
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
@@ -453,6 +456,16 @@ impl<'a> SecondPassParser<'a> {
             }
         }
         Err(PropCollectionError::UseridNotFound)
+    }
+    pub fn find_is_airborne(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        if let Some(player_entity_id) = &player.player_entity_id {
+            if let Some(id) = self.prop_controller.special_ids.is_airborn {
+                if let Ok(Variant::U32(airborn_h)) = self.get_prop_from_ent(&id, &player_entity_id) {
+                    return Ok(Variant::Bool(airborn_h == IS_AIRBORNE_CONST));
+                }
+            }
+        }
+        Ok(Variant::Bool(false))
     }
     pub fn find_skin_float(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         if let Some(player_entity_id) = &player.player_entity_id {
