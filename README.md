@@ -173,6 +173,7 @@ Python/JS are rougly as fast.
 | agent_skin  | - |
 | user_id  | - |
 | entity_id  | - |
+| is_airborne  | m_hGroundEntity |
 
 #### Buttons 
 True/Flase if player is pressing button.
