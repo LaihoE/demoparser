@@ -261,6 +261,8 @@ pub struct SpecialIDs {
     pub weapon_purchase_count: Option<u32>,
     pub in_buy_zone: Option<u32>,
     pub custom_name: Option<u32>,
+
+    pub is_airborn: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -308,6 +310,7 @@ impl SpecialIDs {
             weapon_purchase_count: None,
             in_buy_zone: None,
             custom_name: None,
+            is_airborn: None,
         }
     }
 }

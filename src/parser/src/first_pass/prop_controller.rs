@@ -36,6 +36,7 @@ pub const PLAYER_Y_ID: u32 = 100000017;
 pub const PLAYER_Z_ID: u32 = 100000018;
 pub const WEAPON_STICKERS_ID: u32 = 100000019;
 pub const INVENTORY_AS_IDS_ID: u32 = 100000020;
+pub const IS_AIRBORNE_ID: u32 = 100000021;
 
 pub const WEAPON_SKIN_ID: u32 = 10000000;
 pub const WEAPON_PAINT_SEED: u32 = 10000001;
@@ -337,6 +338,15 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if self.wanted_player_props.contains(&("is_airborne".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: IS_AIRBORNE_ID,
+                prop_type: PropType::Custom,
+                prop_name: "is_airborne".to_string(),
+                prop_friendly_name: "is_airborne".to_string(),
+                is_player_prop: true,
+            });
+        }
         self.prop_infos.push(PropInfo {
             id: TICK_ID,
             prop_type: PropType::Tick,
@@ -518,6 +528,7 @@ impl PropController {
                 "CCSPlayerPawn.m_lifeState" => self.special_ids.life_state = Some(id),
                 "CCSPlayerController.m_nPawnCharacterDefIndex" => self.special_ids.agent_skin_idx = Some(id),
                 "CCSPlayerPawn.m_bInBuyZone" => self.special_ids.in_buy_zone = Some(id),
+                "CCSPlayerPawn.m_hGroundEntity" => self.special_ids.is_airborn = Some(id),
                 _ => {}
             };
         }

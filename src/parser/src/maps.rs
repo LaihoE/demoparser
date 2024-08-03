@@ -2342,7 +2342,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_vHeadConstraintOffset" => PropType::Player,
     "CCSPlayerPawn.m_angEyeAngles" => PropType::Player,
     "CCSPlayerPawn.m_fFlags" => PropType::Player,
-    "CCSPlayerPawn.m_hGroundEntity" => PropType::Player,
     "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_flLastTeleportTime" => PropType::Player,
     "CCSPlayerPawn.m_flCreateTime" => PropType::Player,
     "CCSPlayerPawn.m_bClientSideRagdoll" => PropType::Player,
@@ -2409,6 +2408,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "weapon_paint_seed" => PropType::Custom,
     "weapon_float" => PropType::Custom,
     "weapon_stickers" => PropType::Custom,
+    "is_airborne" => PropType::Custom,
     // Weapon
     "m_flAnimTime" => PropType::Weapon,
     "m_flSimulationTime"=> PropType::Weapon,
@@ -2873,6 +2873,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "next_primary_attack_tick_ratio"=> "m_flNextPrimaryAttackTickRatio",
     "next_secondary_attack_tick" => "m_nNextSecondaryAttackTick",
     "next_secondary_attack_tick_ratio"=> "m_flNextSecondaryAttackTickRatio",
+    "is_airborne" => "is_airborne",
 };
 
 pub static GRENADE_FRIENDLY_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
