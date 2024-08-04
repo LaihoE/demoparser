@@ -16,10 +16,6 @@ pub struct Class {
     pub name: String,
     pub serializer: Serializer,
 }
-pub enum ChatMessageType {
-    Normal,
-    Server,
-}
 
 impl<'a> SecondPassParser<'a> {
     pub fn parse_item_drops(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
