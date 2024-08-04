@@ -20,6 +20,8 @@ use csgoproto::cstrike15_usermessages::CCSUsrMsg_ServerRankUpdate;
 use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
 use csgoproto::networkbasetypes::CNETMsg_SetConVar;
 use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
+use csgoproto::usermessages::CUserMessageSayText;
+use csgoproto::usermessages::CUserMessageSayText2;
 use itertools::Itertools;
 use protobuf::Message;
 use serde::ser::SerializeMap;
@@ -855,7 +857,6 @@ impl<'a> SecondPassParser<'a> {
         None
     }
     pub fn create_custom_event_chat_message(&mut self, msg_bytes: &[u8]) -> Result<(), DemoParserError> {
-        use csgoproto::usermessages::CUserMessageSayText2;
         self.game_events_counter.insert("chat_message".to_string());
         if !self.wanted_events.contains(&"chat_message".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
@@ -864,7 +865,6 @@ impl<'a> SecondPassParser<'a> {
             Ok(msg) => msg,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
-
         let mut fields = vec![];
         let controller_id = chat_msg.entityindex();
         let res = self.find_user_by_controller_id(controller_id);
@@ -887,6 +887,32 @@ impl<'a> SecondPassParser<'a> {
         self.game_events.push(ge);
         Ok(())
     }
+    pub fn create_custom_event_server_message(&mut self, msg_bytes: &[u8]) -> Result<(), DemoParserError> {
+        self.game_events_counter.insert("server_message".to_string());
+        if !self.wanted_events.contains(&"server_message".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
+            return Ok(());
+        }
+        let chat_msg: CUserMessageSayText = match Message::parse_from_bytes(&msg_bytes) {
+            Ok(msg) => msg,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
+        let mut fields = vec![];
+        fields.push(EventField {
+            data: Some(Variant::String(chat_msg.text().to_owned())),
+            name: "server_message".to_string(),
+        });
+        fields.push(EventField {
+            data: Some(Variant::I32(self.tick)),
+            name: "tick".to_string(),
+        });
+        let ge = GameEvent {
+            name: "server_message".to_string(),
+            fields: fields,
+            tick: self.tick,
+        };
+        self.game_events.push(ge);
+        Ok(())
+    }
 
     pub fn create_custom_event_round_start(&mut self, _events: &[GameEventInfo]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("round_start".to_string());
@@ -895,7 +921,6 @@ impl<'a> SecondPassParser<'a> {
         }
         let mut fields = vec![];
         fields.extend(self.find_non_player_props());
-
         fields.push(EventField {
             data: self.find_current_round(),
             name: "round".to_string(),
@@ -910,7 +935,6 @@ impl<'a> SecondPassParser<'a> {
             tick: self.tick,
         };
         self.game_events.push(ge);
-
         Ok(())
     }
 
