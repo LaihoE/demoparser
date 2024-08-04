@@ -2,14 +2,12 @@ use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::sendtables::Serializer;
 use crate::maps::PAINTKITS;
 use crate::maps::WEAPINDICIES;
-use crate::second_pass::parser_settings::ChatMessageRecord;
 use crate::second_pass::parser_settings::EconItem;
 use crate::second_pass::parser_settings::PlayerEndMetaData;
 use crate::second_pass::parser_settings::SecondPassParser;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_EndOfMatchAllPlayersData;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_SendPlayerItemDrops;
 use csgoproto::networkbasetypes::CNETMsg_SetConVar;
-use csgoproto::usermessages::CUserMessageSayText2;
 use protobuf::Message;
 
 #[derive(Debug, Clone)]
@@ -55,10 +53,7 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(())
     }
-    pub fn parse_chat_messages(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        self.create_custom_event_chat_message(bytes)?;
-        Ok(())
-    }
+
     pub fn parse_convars(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let convar: CNETMsg_SetConVar = match Message::parse_from_bytes(&bytes) {
             Ok(msg) => msg,
