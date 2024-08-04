@@ -1,20 +1,11 @@
-use crate::first_pass::prop_controller::PropController;
-use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
-use crate::first_pass::prop_controller::ITEM_PURCHASE_COST;
-use crate::first_pass::prop_controller::ITEM_PURCHASE_COUNT;
-use crate::first_pass::prop_controller::ITEM_PURCHASE_DEF_IDX;
-use crate::first_pass::prop_controller::ITEM_PURCHASE_HANDLE;
-use crate::first_pass::prop_controller::ITEM_PURCHASE_NEW_DEF_IDX;
-use crate::first_pass::prop_controller::MY_WEAPONS_OFFSET;
-use crate::first_pass::prop_controller::PLAYER_ENTITY_HANDLE_MISSING;
-use crate::first_pass::prop_controller::SPECTATOR_TEAM_NUM;
-use crate::first_pass::prop_controller::WEAPON_SKIN_ID;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
+use crate::first_pass::sendtables::find_field;
+use crate::first_pass::sendtables::get_decoder_from_field;
+use crate::first_pass::sendtables::get_propinfo;
 use crate::first_pass::sendtables::Field;
-use crate::first_pass::sendtables::Serializer;
-use crate::second_pass::decoder::Decoder;
-use crate::second_pass::decoder::Decoder::UnsignedDecoder;
+use crate::first_pass::sendtables::FieldInfo;
+use crate::second_pass::game_events::GameEventInfo;
 use crate::second_pass::other_netmessages::Class;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::path_ops::*;
@@ -33,12 +24,6 @@ pub struct Entity {
     pub entity_id: i32,
     pub props: AHashMap<u32, Variant>,
     pub entity_type: EntityType,
-}
-#[derive(Debug, Clone, Copy)]
-pub struct FieldInfo {
-    pub decoder: Decoder,
-    pub should_parse: bool,
-    pub prop_id: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -62,26 +47,6 @@ enum EntityCmd {
     Delete,
     CreateAndUpdate,
     Update,
-}
-#[derive(Debug, Clone)]
-pub struct RoundEnd {
-    pub old_value: Option<Variant>,
-    pub new_value: Option<Variant>,
-}
-#[derive(Debug, Clone)]
-pub struct RoundWinReason {
-    pub reason: i32,
-}
-#[derive(Debug, Clone)]
-pub enum GameEventInfo {
-    RoundEnd(RoundEnd),
-    RoundWinReason(RoundWinReason),
-    FreezePeriodStart(bool),
-    MatchEnd(),
-    WeaponCreateHitem((Variant, i32)),
-    WeaponCreateNCost((Variant, i32)),
-    WeaponCreateDefIdx((Variant, i32, u32)),
-    WeaponPurchaseCount((Variant, i32, u32)),
 }
 
 impl<'a> SecondPassParser<'a> {
@@ -267,9 +232,9 @@ impl<'a> SecondPassParser<'a> {
         };
 
         for path in self.paths.iter().take(n_updates) {
-            let field = SecondPassParser::find_field(&path, &class.serializer)?;
-            let field_info = SecondPassParser::get_propinfo(&field, path);
-            let decoder = SecondPassParser::get_decoder_from_field(field)?;
+            let field = find_field(&path, &class.serializer)?;
+            let field_info = get_propinfo(&field, path);
+            let decoder = get_decoder_from_field(field)?;
             let result = bitreader.decode(&decoder, self.qf_mapper)?;
 
             if !is_fullpacket && !is_baseline {
@@ -318,15 +283,7 @@ impl<'a> SecondPassParser<'a> {
             }
         }
     }
-    fn get_decoder_from_field(field: &Field) -> Result<Decoder, DemoParserError> {
-        let decoder = match field {
-            Field::Value(inner) => inner.decoder,
-            Field::Vector(_) => UnsignedDecoder,
-            Field::Pointer(inner) => inner.decoder,
-            _ => return Err(DemoParserError::FieldNoDecoder),
-        };
-        Ok(decoder)
-    }
+
     pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
         if let Some(fi) = field_info {
             if fi.should_parse {
@@ -334,117 +291,7 @@ impl<'a> SecondPassParser<'a> {
             }
         }
     }
-    pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
-        let info = match field {
-            Field::Value(v) => Some(FieldInfo {
-                decoder: v.decoder,
-                should_parse: v.should_parse,
-                prop_id: v.prop_id,
-            }),
-            Field::Vector(v) => match field.get_inner(0) {
-                Ok(Field::Value(inner)) => Some(FieldInfo {
-                    decoder: v.decoder,
-                    should_parse: inner.should_parse,
-                    prop_id: inner.prop_id,
-                }),
-                _ => None,
-            },
-            _ => None,
-        };
-        // Flatten vector props
-        if let Some(mut fi) = info {
-            if fi.prop_id == MY_WEAPONS_OFFSET {
-                if path.last == 1 {
-                } else {
-                    fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
-                }
-            }
-            if fi.prop_id == WEAPON_SKIN_ID {
-                fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
-            }
-            if path.path[1] != 1 {
-                if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
-                    fi.prop_id = ITEM_PURCHASE_COUNT + path.path[2] as u32;
-                }
-                if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
-                    fi.prop_id = ITEM_PURCHASE_DEF_IDX + path.path[2] as u32;
-                }
-                if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
-                    fi.prop_id = ITEM_PURCHASE_COST + path.path[2] as u32;
-                }
-                if fi.prop_id >= ITEM_PURCHASE_HANDLE && fi.prop_id < ITEM_PURCHASE_HANDLE + FLATTENED_VEC_MAX_LEN {
-                    fi.prop_id = ITEM_PURCHASE_HANDLE + path.path[2] as u32;
-                }
-                if fi.prop_id >= ITEM_PURCHASE_NEW_DEF_IDX && fi.prop_id < ITEM_PURCHASE_NEW_DEF_IDX + FLATTENED_VEC_MAX_LEN {
-                    fi.prop_id = ITEM_PURCHASE_NEW_DEF_IDX + path.path[2] as u32;
-                }
-            }
-            return Some(fi);
-        }
-        return None;
-    }
-    fn listen_for_events(
-        entity: &mut Entity,
-        result: &Variant,
-        _field: &Field,
-        field_info: Option<FieldInfo>,
-        prop_controller: &PropController,
-    ) -> Vec<GameEventInfo> {
-        // Might want to start splitting this function
-        let mut events = vec![];
-        if let Some(fi) = field_info {
-            // round end
-            if let Some(id) = prop_controller.special_ids.round_end_count {
-                if fi.prop_id == id {
-                    events.push(GameEventInfo::RoundEnd(RoundEnd {
-                        old_value: entity.props.get(&id).cloned(),
-                        new_value: Some(result.clone()),
-                    }));
-                }
-            }
-            // Round win reason
-            if let Some(id) = prop_controller.special_ids.round_win_reason {
-                if fi.prop_id == id {
-                    if let Variant::I32(reason) = result {
-                        events.push(GameEventInfo::RoundWinReason(RoundWinReason { reason: *reason }));
-                    }
-                }
-            }
-            // freeze period start
-            if let Some(id) = prop_controller.special_ids.round_start_count {
-                if fi.prop_id == id {
-                    events.push(GameEventInfo::FreezePeriodStart(true));
-                }
-            }
-            if let Some(id) = prop_controller.special_ids.match_end_count {
-                if fi.prop_id == id {
-                    events.push(GameEventInfo::MatchEnd());
-                }
-            }
-            if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
-                events.push(GameEventInfo::WeaponCreateNCost((result.clone(), entity.entity_id)));
-            }
-            if fi.prop_id >= ITEM_PURCHASE_HANDLE && fi.prop_id < ITEM_PURCHASE_HANDLE + FLATTENED_VEC_MAX_LEN {
-                events.push(GameEventInfo::WeaponCreateHitem((result.clone(), entity.entity_id)));
-            }
-            if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
-                events.push(GameEventInfo::WeaponPurchaseCount((
-                    result.clone(),
-                    entity.entity_id,
-                    fi.prop_id,
-                )));
-            }
-            if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
-                events.push(GameEventInfo::WeaponCreateDefIdx((
-                    result.clone(),
-                    entity.entity_id,
-                    fi.prop_id,
-                )));
-            }
-        }
-        events
-    }
-
+    #[inline]
     fn write_fp(&mut self, fp_src: &mut FieldPath, idx: usize) -> Result<(), DemoParserError> {
         match self.paths.get_mut(idx) {
             Some(entry) => *entry = *fp_src,
@@ -459,129 +306,6 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(())
     }
-    #[inline(always)]
-    fn find_field<'b>(fp: &FieldPath, ser: &'b Serializer) -> Result<&'b Field, DemoParserError> {
-        let f = match ser.fields.get(fp.path[0] as usize) {
-            Some(entry) => entry,
-            None => return Err(DemoParserError::IllegalPathOp),
-        };
-        match fp.last {
-            0 => Ok(f),
-            1 => Ok(f.get_inner(fp.path[1] as usize)?),
-            2 => Ok(f.get_inner(fp.path[1] as usize)?.get_inner(fp.path[2] as usize)?),
-            3 => Ok(f
-                .get_inner(fp.path[1] as usize)?
-                .get_inner(fp.path[2] as usize)?
-                .get_inner(fp.path[3] as usize)?),
-            4 => Ok(f
-                .get_inner(fp.path[1] as usize)?
-                .get_inner(fp.path[2] as usize)?
-                .get_inner(fp.path[3] as usize)?
-                .get_inner(fp.path[4] as usize)?),
-            5 => Ok(f
-                .get_inner(fp.path[1] as usize)?
-                .get_inner(fp.path[2] as usize)?
-                .get_inner(fp.path[3] as usize)?
-                .get_inner(fp.path[4] as usize)?
-                .get_inner(fp.path[5] as usize)?),
-            _ => return Err(DemoParserError::IllegalPathOp),
-        }
-    }
-
-    pub fn gather_extra_info(&mut self, entity_id: &i32, is_baseline: bool) -> Result<(), DemoParserError> {
-        // Boring stuff.. function does some bookkeeping
-        let entity = match self.entities.get(*entity_id as usize) {
-            Some(Some(entity)) => entity,
-            _ => return Err(DemoParserError::EntityNotFound),
-        };
-        if !(entity.entity_type == EntityType::PlayerController || entity.entity_type == EntityType::Team) {
-            return Ok(());
-        }
-        if entity.entity_type == EntityType::Team && !is_baseline {
-            if let Some(team_num_id) = self.prop_controller.special_ids.team_team_num {
-                if let Ok(Variant::U32(t)) = self.get_prop_from_ent(&team_num_id, entity_id) {
-                    match t {
-                        1 => self.teams.team1_entid = Some(*entity_id),
-                        2 => self.teams.team2_entid = Some(*entity_id),
-                        3 => self.teams.team3_entid = Some(*entity_id),
-                        _ => {}
-                    }
-                }
-            }
-        }
-
-        let team_num = match self.prop_controller.special_ids.teamnum {
-            Some(team_num_id) => match self.get_prop_from_ent(&team_num_id, entity_id) {
-                Ok(team_num) => match team_num {
-                    Variant::U32(team_num) => Some(team_num),
-                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
-                },
-                Err(_) => None,
-            },
-            _ => None,
-        };
-
-        let name = match self.prop_controller.special_ids.player_name {
-            Some(id) => match self.get_prop_from_ent(&id, entity_id) {
-                Ok(team_num) => match team_num {
-                    Variant::String(team_num) => Some(team_num),
-                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
-                },
-                Err(_) => None,
-            },
-            _ => None,
-        };
-        let steamid = match self.prop_controller.special_ids.steamid {
-            Some(id) => match self.get_prop_from_ent(&id, entity_id) {
-                Ok(team_num) => match team_num {
-                    Variant::U64(team_num) => Some(team_num),
-                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
-                },
-                Err(_) => None,
-            },
-            _ => None,
-        };
-        let player_entid = match self.prop_controller.special_ids.player_pawn {
-            Some(id) => match self.get_prop_from_ent(&id, entity_id) {
-                Ok(player_entid) => match player_entid {
-                    Variant::U32(handle) => Some((handle & 0x7FF) as i32),
-                    _ => return Err(DemoParserError::IncorrectMetaDataProp),
-                },
-                Err(_) => None,
-            },
-            _ => None,
-        };
-        if let Some(e) = player_entid {
-            if e != PLAYER_ENTITY_HANDLE_MISSING && steamid != Some(0) && team_num != Some(SPECTATOR_TEAM_NUM) {
-                match self.should_remove(steamid) {
-                    Some(eid) => {
-                        self.players.remove(&eid);
-                    }
-                    None => {}
-                }
-                self.players.insert(
-                    e,
-                    PlayerMetaData {
-                        name: name,
-                        team_num: team_num,
-                        player_entity_id: player_entid,
-                        steamid: steamid,
-                        controller_entid: Some(*entity_id),
-                    },
-                );
-            }
-        }
-        Ok(())
-    }
-    fn should_remove(&self, steamid: Option<u64>) -> Option<i32> {
-        for (entid, player) in &self.players {
-            if player.steamid == steamid {
-                return Some(*entid);
-            }
-        }
-        None
-    }
-
     fn create_new_entity(
         &mut self,
         bitreader: &mut Bitreader,
@@ -601,7 +325,12 @@ impl<'a> SecondPassParser<'a> {
             EntityType::C4 => self.c4_entity_id = Some(*entity_id),
             _ => {}
         };
-        let entity = SecondPassParser::make_ent(entity_id, cls_id, entity_type);
+        let entity = Entity {
+            entity_id: *entity_id,
+            cls_id: cls_id,
+            props: AHashMap::with_capacity(0),
+            entity_type: entity_type,
+        };
         if self.entities.len() as i32 <= *entity_id {
             // if corrupt, this can cause oom allocations
             if *entity_id > 100000 {
@@ -621,14 +350,7 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(())
     }
-    fn make_ent(entity_id: &i32, cls_id: u32, entity_type: EntityType) -> Entity {
-        Entity {
-            entity_id: *entity_id,
-            cls_id: cls_id,
-            props: AHashMap::with_capacity(0),
-            entity_type: entity_type,
-        }
-    }
+
     pub fn check_entity_type(&self, cls_id: &u32) -> Result<EntityType, DemoParserError> {
         let class = match self.cls_by_id.get(*cls_id as usize) {
             Some(cls) => cls,
@@ -647,12 +369,5 @@ impl<'a> SecondPassParser<'a> {
             return Ok(EntityType::Projectile);
         }
         return Ok(EntityType::Normal);
-    }
-}
-#[inline(always)]
-fn generate_fp() -> FieldPath {
-    FieldPath {
-        path: [-1, 0, 0, 0, 0, 0, 0],
-        last: 0,
     }
 }

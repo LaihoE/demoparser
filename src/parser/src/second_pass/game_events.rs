@@ -1,4 +1,5 @@
-use super::entities::RoundEnd;
+//use super::entities::RoundEnd;
+use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::PropInfo;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COST;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COUNT;
@@ -7,12 +8,15 @@ use crate::first_pass::prop_controller::ITEM_PURCHASE_NEW_DEF_IDX;
 use crate::first_pass::prop_controller::WEAPON_FLOAT;
 use crate::first_pass::prop_controller::WEAPON_PAINT_SEED;
 use crate::first_pass::read_bits::DemoParserError;
+use crate::first_pass::sendtables::Field;
+use crate::first_pass::sendtables::FieldInfo;
 use crate::first_pass::stringtables::UserInfo;
 use crate::maps::ROUND_WIN_REASON;
 use crate::maps::ROUND_WIN_REASON_TO_WINNER;
 use crate::maps::WEAPINDICIES;
 use crate::second_pass::collect_data::PropType;
-use crate::second_pass::entities::GameEventInfo;
+use crate::second_pass::entities::Entity;
+//use crate::second_pass::entities::GameEventInfo;
 use crate::second_pass::entities::PlayerMetaData;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::*;
@@ -35,6 +39,26 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
     "attacker_pawn",
     "assister_pawn",
 ];
+#[derive(Debug, Clone)]
+pub struct RoundEnd {
+    pub old_value: Option<Variant>,
+    pub new_value: Option<Variant>,
+}
+#[derive(Debug, Clone)]
+pub struct RoundWinReason {
+    pub reason: i32,
+}
+#[derive(Debug, Clone)]
+pub enum GameEventInfo {
+    RoundEnd(RoundEnd),
+    RoundWinReason(RoundWinReason),
+    FreezePeriodStart(bool),
+    MatchEnd(),
+    WeaponCreateHitem((Variant, i32)),
+    WeaponCreateNCost((Variant, i32)),
+    WeaponCreateDefIdx((Variant, i32, u32)),
+    WeaponPurchaseCount((Variant, i32, u32)),
+}
 
 static ENTITIES_FIRST_EVENTS: &'static [&str] = &["inferno_startburn", "decoy_started", "inferno_expire"];
 static REMOVEDEVENTS: &'static [&str] = &["server_cvar"];
@@ -988,6 +1012,69 @@ impl<'a> SecondPassParser<'a> {
             self.game_events.push(ge);
         }
         Ok(())
+    }
+    pub fn listen_for_events(
+        entity: &mut Entity,
+        result: &Variant,
+        _field: &Field,
+        field_info: Option<FieldInfo>,
+        prop_controller: &PropController,
+    ) -> Vec<GameEventInfo> {
+        // Might want to start splitting this function
+        let mut events = vec![];
+        if let Some(fi) = field_info {
+            // round end
+            if let Some(id) = prop_controller.special_ids.round_end_count {
+                if fi.prop_id == id {
+                    events.push(GameEventInfo::RoundEnd(RoundEnd {
+                        old_value: entity.props.get(&id).cloned(),
+                        new_value: Some(result.clone()),
+                    }));
+                }
+            }
+            // Round win reason
+            if let Some(id) = prop_controller.special_ids.round_win_reason {
+                if fi.prop_id == id {
+                    if let Variant::I32(reason) = result {
+                        events.push(GameEventInfo::RoundWinReason(RoundWinReason { reason: *reason }));
+                    }
+                }
+            }
+            // freeze period start
+            if let Some(id) = prop_controller.special_ids.round_start_count {
+                if fi.prop_id == id {
+                    events.push(GameEventInfo::FreezePeriodStart(true));
+                }
+            }
+            if let Some(id) = prop_controller.special_ids.match_end_count {
+                if fi.prop_id == id {
+                    events.push(GameEventInfo::MatchEnd());
+                }
+            }
+            use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
+            use crate::first_pass::prop_controller::ITEM_PURCHASE_HANDLE;
+            if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
+                events.push(GameEventInfo::WeaponCreateNCost((result.clone(), entity.entity_id)));
+            }
+            if fi.prop_id >= ITEM_PURCHASE_HANDLE && fi.prop_id < ITEM_PURCHASE_HANDLE + FLATTENED_VEC_MAX_LEN {
+                events.push(GameEventInfo::WeaponCreateHitem((result.clone(), entity.entity_id)));
+            }
+            if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
+                events.push(GameEventInfo::WeaponPurchaseCount((
+                    result.clone(),
+                    entity.entity_id,
+                    fi.prop_id,
+                )));
+            }
+            if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
+                events.push(GameEventInfo::WeaponCreateDefIdx((
+                    result.clone(),
+                    entity.entity_id,
+                    fi.prop_id,
+                )));
+            }
+        }
+        events
     }
 }
 // what is this shit

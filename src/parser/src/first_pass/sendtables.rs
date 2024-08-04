@@ -3,11 +3,20 @@ use super::read_bits::DemoParserError;
 use crate::first_pass::parser_settings::needs_velocity;
 use crate::first_pass::parser_settings::FirstPassParser;
 use crate::first_pass::prop_controller::PropController;
+use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_COST;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_COUNT;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_DEF_IDX;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_HANDLE;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_NEW_DEF_IDX;
+use crate::first_pass::prop_controller::MY_WEAPONS_OFFSET;
+use crate::first_pass::prop_controller::WEAPON_SKIN_ID;
 use crate::maps::BASETYPE_DECODERS;
 use crate::second_pass::decoder::Decoder;
 use crate::second_pass::decoder::Decoder::*;
 use crate::second_pass::decoder::QfMapper;
 use crate::second_pass::decoder::QuantalizedFloat;
+use crate::second_pass::path_ops::FieldPath;
 use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use csgoproto::netmessages::ProtoFlattenedSerializer_t;
@@ -28,6 +37,13 @@ pub struct Serializer {
     pub name: String,
     pub fields: Vec<Field>,
 }
+#[derive(Debug, Clone, Copy)]
+pub struct FieldInfo {
+    pub decoder: Decoder,
+    pub should_parse: bool,
+    pub prop_id: u32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum FieldCategory {
     Pointer,
@@ -401,6 +417,93 @@ pub fn field_from_msg(
         category: FieldCategory::Value,
     };
     Ok(f)
+}
+#[inline(always)]
+pub fn find_field<'b>(fp: &FieldPath, ser: &'b Serializer) -> Result<&'b Field, DemoParserError> {
+    let f = match ser.fields.get(fp.path[0] as usize) {
+        Some(entry) => entry,
+        None => return Err(DemoParserError::IllegalPathOp),
+    };
+    match fp.last {
+        0 => Ok(f),
+        1 => Ok(f.get_inner(fp.path[1] as usize)?),
+        2 => Ok(f.get_inner(fp.path[1] as usize)?.get_inner(fp.path[2] as usize)?),
+        3 => Ok(f
+            .get_inner(fp.path[1] as usize)?
+            .get_inner(fp.path[2] as usize)?
+            .get_inner(fp.path[3] as usize)?),
+        4 => Ok(f
+            .get_inner(fp.path[1] as usize)?
+            .get_inner(fp.path[2] as usize)?
+            .get_inner(fp.path[3] as usize)?
+            .get_inner(fp.path[4] as usize)?),
+        5 => Ok(f
+            .get_inner(fp.path[1] as usize)?
+            .get_inner(fp.path[2] as usize)?
+            .get_inner(fp.path[3] as usize)?
+            .get_inner(fp.path[4] as usize)?
+            .get_inner(fp.path[5] as usize)?),
+        _ => return Err(DemoParserError::IllegalPathOp),
+    }
+}
+pub fn get_decoder_from_field(field: &Field) -> Result<Decoder, DemoParserError> {
+    let decoder = match field {
+        Field::Value(inner) => inner.decoder,
+        Field::Vector(_) => UnsignedDecoder,
+        Field::Pointer(inner) => inner.decoder,
+        _ => return Err(DemoParserError::FieldNoDecoder),
+    };
+    Ok(decoder)
+}
+
+pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
+    let info = match field {
+        Field::Value(v) => Some(FieldInfo {
+            decoder: v.decoder,
+            should_parse: v.should_parse,
+            prop_id: v.prop_id,
+        }),
+        Field::Vector(v) => match field.get_inner(0) {
+            Ok(Field::Value(inner)) => Some(FieldInfo {
+                decoder: v.decoder,
+                should_parse: inner.should_parse,
+                prop_id: inner.prop_id,
+            }),
+            _ => None,
+        },
+        _ => None,
+    };
+    // Flatten vector props
+    if let Some(mut fi) = info {
+        if fi.prop_id == MY_WEAPONS_OFFSET {
+            if path.last == 1 {
+            } else {
+                fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
+            }
+        }
+        if fi.prop_id == WEAPON_SKIN_ID {
+            fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
+        }
+        if path.path[1] != 1 {
+            if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
+                fi.prop_id = ITEM_PURCHASE_COUNT + path.path[2] as u32;
+            }
+            if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
+                fi.prop_id = ITEM_PURCHASE_DEF_IDX + path.path[2] as u32;
+            }
+            if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
+                fi.prop_id = ITEM_PURCHASE_COST + path.path[2] as u32;
+            }
+            if fi.prop_id >= ITEM_PURCHASE_HANDLE && fi.prop_id < ITEM_PURCHASE_HANDLE + FLATTENED_VEC_MAX_LEN {
+                fi.prop_id = ITEM_PURCHASE_HANDLE + path.path[2] as u32;
+            }
+            if fi.prop_id >= ITEM_PURCHASE_NEW_DEF_IDX && fi.prop_id < ITEM_PURCHASE_NEW_DEF_IDX + FLATTENED_VEC_MAX_LEN {
+                fi.prop_id = ITEM_PURCHASE_NEW_DEF_IDX + path.path[2] as u32;
+            }
+        }
+        return Some(fi);
+    }
+    return None;
 }
 
 fn create_field(

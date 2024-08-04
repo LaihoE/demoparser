@@ -1,3 +1,4 @@
+use crate::first_pass::parser::Frame;
 use crate::first_pass::parser::HEADER_ENDS_AT_BYTE;
 use crate::first_pass::parser_settings::FirstPassParser;
 use crate::first_pass::prop_controller::PropController;
@@ -44,66 +45,107 @@ pub struct SecondPassOutput {
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
 }
 impl<'a> SecondPassParser<'a> {
-    pub fn start(&mut self, demo_bytes: &[u8]) -> Result<(), DemoParserError> {
+    pub fn start(&mut self, demo_bytes: &'a [u8]) -> Result<(), DemoParserError> {
         let started_at = self.ptr;
         // re-use these to avoid allocation
         let mut buf = vec![0_u8; INNER_BUF_DEFAULT_LEN];
         let mut buf2 = vec![0_u8; OUTER_BUF_DEFAULT_LEN];
         loop {
-            let cmd = read_varint(demo_bytes, &mut self.ptr)?;
-            let tick = read_varint(demo_bytes, &mut self.ptr)?;
-            let size = read_varint(demo_bytes, &mut self.ptr)?;
-            self.tick = tick as i32;
-            // Safety check
-            if self.ptr + size as usize >= demo_bytes.len() {
-                break;
-            }
-
-            let msg_type = cmd & !64;
-            let is_compressed = (cmd & 64) == 64;
-            let demo_cmd = demo_cmd_type_from_int(msg_type as i32)?;
-
-            if demo_cmd == DEM_AnimationData || demo_cmd == DEM_SendTables || demo_cmd == DEM_StringTables {
-                self.ptr += size as usize;
+            let frame = self.read_frame(demo_bytes)?;
+            if frame.demo_cmd == DEM_AnimationData || frame.demo_cmd == DEM_SendTables || frame.demo_cmd == DEM_StringTables {
+                self.ptr += frame.size as usize;
                 continue;
             }
-            let input = &demo_bytes[self.ptr..self.ptr + size as usize];
-            self.ptr += size as usize;
-            let bytes = match is_compressed {
-                true => {
-                    FirstPassParser::resize_if_needed(&mut buf2, decompress_len(input))?;
-                    match SnapDecoder::new().decompress(input, &mut buf2) {
-                        Ok(idx) => &buf2[..idx],
-                        Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
-                    }
-                }
-                false => input,
-            };
-
-            let ok = match demo_cmd {
-                DEM_SignonPacket => self.parse_packet(&bytes, &mut buf),
-                DEM_Packet => self.parse_packet(&bytes, &mut buf),
+            let bytes = self.slice_packet_bytes(demo_bytes, frame.size)?;
+            let bytes = self.decompress_if_needed(&mut buf, bytes, &frame)?;
+            self.ptr += frame.size;
+            let ok = match frame.demo_cmd {
+                DEM_SignonPacket => self.parse_packet(&bytes, &mut buf2),
+                DEM_Packet => self.parse_packet(&bytes, &mut buf2),
+                DEM_Stop => break,
                 DEM_FullPacket => {
-                    match self.parse_all_packets {
-                        true => {
-                            self.parse_full_packet(&bytes, false)?;
-                        }
-                        false => {
-                            if self.fullpackets_parsed == 0 && started_at != HEADER_ENDS_AT_BYTE {
-                                self.parse_full_packet(&bytes, true)?;
-                                self.fullpackets_parsed += 1;
-                            } else {
-                                break;
-                            }
-                        }
+                    if self.parse_full_packet_and_break_if_needed(&bytes, &mut buf2, started_at)? {
+                        break;
                     }
                     Ok(())
                 }
-                DEM_Stop => break,
                 _ => Ok(()),
             };
             ok?;
         }
+        Ok(())
+    }
+    fn parse_full_packet_and_break_if_needed(
+        &mut self,
+        bytes: &[u8],
+        buf: &mut Vec<u8>,
+        started_at: usize,
+    ) -> Result<bool, DemoParserError> {
+        match self.parse_all_packets {
+            true => {
+                self.parse_full_packet(&bytes, false, buf)?;
+            }
+            false => {
+                if self.fullpackets_parsed == 0 && started_at != HEADER_ENDS_AT_BYTE {
+                    self.parse_full_packet(&bytes, true, buf)?;
+                    self.fullpackets_parsed += 1;
+                } else {
+                    return Ok(true);
+                }
+            }
+        }
+        return Ok(false);
+    }
+    fn read_frame(&mut self, demo_bytes: &[u8]) -> Result<Frame, DemoParserError> {
+        let frame_starts_at = self.ptr;
+        let cmd = read_varint(demo_bytes, &mut self.ptr)?;
+        let tick = read_varint(demo_bytes, &mut self.ptr)?;
+        let size = read_varint(demo_bytes, &mut self.ptr)?;
+        self.tick = tick as i32;
+
+        let msg_type = cmd & !64;
+        let is_compressed = (cmd & 64) == 64;
+        let demo_cmd = demo_cmd_type_from_int(msg_type as i32)?;
+
+        Ok(Frame {
+            size: size as usize,
+            frame_starts_at: frame_starts_at,
+            is_compressed: is_compressed,
+            demo_cmd: demo_cmd,
+        })
+    }
+    fn slice_packet_bytes(&mut self, demo_bytes: &'a [u8], frame_size: usize) -> Result<&'a [u8], DemoParserError> {
+        if self.ptr + frame_size as usize >= demo_bytes.len() {
+            return Err(DemoParserError::MalformedMessage);
+        }
+        Ok(&demo_bytes[self.ptr..self.ptr + frame_size])
+    }
+    fn decompress_if_needed<'b>(
+        &mut self,
+        buf: &'b mut Vec<u8>,
+        possibly_uncompressed_bytes: &'b [u8],
+        frame: &Frame,
+    ) -> Result<&'b [u8], DemoParserError> {
+        match frame.is_compressed {
+            true => {
+                FirstPassParser::resize_if_needed(buf, decompress_len(possibly_uncompressed_bytes))?;
+                match SnapDecoder::new().decompress(possibly_uncompressed_bytes, buf) {
+                    Ok(idx) => Ok(&buf[..idx]),
+                    Err(e) => return Err(DemoParserError::DecompressionFailure(format!("{}", e))),
+                }
+            }
+            false => Ok(possibly_uncompressed_bytes),
+        }
+    }
+    pub fn resize_if_needed(buf: &mut Vec<u8>, needed_len: Result<usize, snap::Error>) -> Result<(), DemoParserError> {
+        match needed_len {
+            Ok(len) => {
+                if buf.len() < len {
+                    buf.resize(len, 0)
+                }
+            }
+            Err(e) => return Err(DemoParserError::DecompressionFailure(e.to_string())),
+        };
         Ok(())
     }
 
@@ -113,6 +155,17 @@ impl<'a> SecondPassParser<'a> {
             Ok(msg) => msg,
         };
         let mut bitreader = Bitreader::new(msg.data());
+        self.parse_packet_from_bitreader(&mut bitreader, buf, true, false)?;
+        Ok(())
+    }
+
+    pub fn parse_packet_from_bitreader(
+        &mut self,
+        bitreader: &mut Bitreader,
+        buf: &mut Vec<u8>,
+        should_parse_entities: bool,
+        is_fullpacket: bool,
+    ) -> Result<(), DemoParserError> {
         let mut wrong_order_events = vec![];
 
         while bitreader.bits_remaining().unwrap_or(0) > 8 {
@@ -124,7 +177,12 @@ impl<'a> SecondPassParser<'a> {
             bitreader.read_n_bytes_mut(size as usize, buf)?;
             let msg_bytes = &buf[..size as usize];
             let ok = match netmessage_type_from_int(msg_type as i32) {
-                svc_PacketEntities => self.parse_packet_ents(msg_bytes, false),
+                svc_PacketEntities => {
+                    if should_parse_entities {
+                        self.parse_packet_ents(&msg_bytes, is_fullpacket)?;
+                    }
+                    Ok(())
+                }
                 svc_CreateStringTable => self.parse_create_stringtable(msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(msg_bytes),
                 svc_ServerInfo => self.parse_server_info(msg_bytes),
@@ -137,20 +195,8 @@ impl<'a> SecondPassParser<'a> {
                 CS_UM_ServerRankUpdate => self.create_custom_event_rank_update(msg_bytes),
                 net_Tick => self.parse_net_tick(msg_bytes),
                 svc_ClearAllStringTables => self.clear_stringtables(),
-                svc_VoiceData => {
-                    if let Ok(m) = Message::parse_from_bytes(msg_bytes) {
-                        self.voice_data.push(m);
-                    }
-                    Ok(())
-                }
-                GE_Source1LegacyGameEvent => match self.parse_event(msg_bytes) {
-                    Ok(Some(event)) => {
-                        wrong_order_events.push(event);
-                        Ok(())
-                    }
-                    Ok(None) => Ok(()),
-                    Err(e) => return Err(e),
-                },
+                svc_VoiceData => self.parse_voice_data(msg_bytes),
+                GE_Source1LegacyGameEvent => self.parse_game_event(msg_bytes, &mut wrong_order_events),
                 _ => Ok(()),
             };
             ok?
@@ -161,6 +207,23 @@ impl<'a> SecondPassParser<'a> {
         self.collect_entities();
         Ok(())
     }
+    pub fn parse_voice_data(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        if let Ok(m) = Message::parse_from_bytes(bytes) {
+            self.voice_data.push(m);
+        }
+        Ok(())
+    }
+    pub fn parse_game_event(&mut self, bytes: &[u8], wrong_order_events: &mut Vec<GameEvent>) -> Result<(), DemoParserError> {
+        match self.parse_event(bytes) {
+            Ok(Some(event)) => {
+                wrong_order_events.push(event);
+                Ok(())
+            }
+            Ok(None) => Ok(()),
+            Err(e) => return Err(e),
+        }
+    }
+
     pub fn parse_net_tick(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let message: CNETMsg_Tick = match Message::parse_from_bytes(&bytes) {
             Ok(message) => message,
@@ -169,14 +232,24 @@ impl<'a> SecondPassParser<'a> {
         self.net_tick = message.tick();
         Ok(())
     }
-    pub fn parse_full_packet(&mut self, bytes: &[u8], should_parse_entities: bool) -> Result<(), DemoParserError> {
-        self.string_tables = vec![];
 
+    pub fn parse_full_packet(
+        &mut self,
+        bytes: &[u8],
+        should_parse_entities: bool,
+        buf: &mut Vec<u8>,
+    ) -> Result<(), DemoParserError> {
+        self.string_tables = vec![];
         let full_packet: CDemoFullPacket = match Message::parse_from_bytes(bytes) {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
             Ok(p) => p,
         };
+        self.parse_full_packet_stringtables(&full_packet);
+        let mut bitreader = Bitreader::new(full_packet.packet.data());
+        self.parse_packet_from_bitreader(&mut bitreader, buf, should_parse_entities, true)
+    }
 
+    pub fn parse_full_packet_stringtables(&mut self, full_packet: &CDemoFullPacket) {
         for item in &full_packet.string_table.tables {
             if item.table_name == Some("instancebaseline".to_string()) {
                 for i in &item.items {
@@ -194,44 +267,6 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
         }
-        let packet = match full_packet.packet.0 {
-            Some(packet) => packet,
-            None => return Err(DemoParserError::MalformedMessage),
-        };
-        let mut bitreader = Bitreader::new(packet.data());
-        let mut buf = vec![0; 5_00_000];
-        // Inner loop
-        while bitreader.bits_remaining().unwrap_or(0) > 8 {
-            let msg_type = bitreader.read_u_bit_var()?;
-            let size = bitreader.read_varint()?;
-            if buf.len() < size as usize {
-                buf.resize(size as usize, 0)
-            }
-            bitreader.read_n_bytes_mut(size as usize, &mut buf)?;
-            let msg_bytes = &buf[..size as usize];
-            let ok = match netmessage_type_from_int(msg_type as i32) {
-                svc_PacketEntities => {
-                    if should_parse_entities {
-                        self.parse_packet_ents(&msg_bytes, true)?;
-                    }
-                    Ok(())
-                }
-                svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
-                svc_UpdateStringTable => self.update_string_table(&msg_bytes),
-                CS_UM_SendPlayerItemDrops => self.parse_item_drops(&msg_bytes),
-                CS_UM_EndOfMatchAllPlayersData => self.parse_player_end_msg(&msg_bytes),
-                UM_SayText2 => self.create_custom_event_chat_message(&msg_bytes),
-                UM_SayText => self.create_custom_event_server_message(bytes),
-                net_SetConVar => self.create_custom_event_parse_convars(&msg_bytes),
-                CS_UM_PlayerStatsUpdate => self.parse_player_stats_update(&msg_bytes),
-                svc_ServerInfo => self.parse_server_info(&msg_bytes),
-                net_Tick => self.parse_net_tick(&msg_bytes),
-                svc_ClearAllStringTables => self.clear_stringtables(),
-                _ => Ok(()),
-            };
-            ok?
-        }
-        Ok(())
     }
     fn clear_stringtables(&mut self) -> Result<(), DemoParserError> {
         self.string_tables = vec![];
