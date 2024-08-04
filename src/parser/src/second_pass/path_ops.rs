@@ -1,6 +1,14 @@
 use crate::first_pass::read_bits::{Bitreader, DemoParserError};
 
 #[inline(always)]
+pub fn generate_fp() -> FieldPath {
+    FieldPath {
+        path: [-1, 0, 0, 0, 0, 0, 0],
+        last: 0,
+    }
+}
+
+#[inline(always)]
 pub fn do_op(opcode: u8, bitreader: &mut Bitreader, field_path: &mut FieldPath) -> Result<(), DemoParserError> {
     // taken directly from here: https://github.com/dotabuff/manta/blob/master/field_path.go
     // Not going to act like I know why exactly these ops are selected, I supposed they provide
