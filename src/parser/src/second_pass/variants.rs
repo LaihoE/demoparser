@@ -66,7 +66,8 @@ impl VarVec {
             Variant::VecXY(_) => VarVec::XYVec(vec![]),
             Variant::VecXYZ(_) => VarVec::XYZVec(vec![]),
             Variant::Stickers(_) => VarVec::Stickers(vec![]),
-            _ => panic!("Tried to create propcolumns from: {:?}", item),
+            Variant::I16(_) => VarVec::I32(vec![]),
+            Variant::U8(_) => VarVec::I32(vec![]),
         }
     }
 }
@@ -138,9 +139,7 @@ impl PropColumn {
                         v.push(None);
                     }
                 }
-                _ => {
-                    panic!("illegal bool != bool {:?}", other);
-                }
+                _ => {}
             },
             Some(VarVec::I32(v)) => match &other.data {
                 Some(VarVec::I32(v_other)) => {
@@ -151,9 +150,7 @@ impl PropColumn {
                         v.push(None);
                     }
                 }
-                _ => {
-                    panic!("illegal 2 {:?}", other);
-                }
+                _ => {}
             },
             Some(VarVec::F32(v)) => match &other.data {
                 Some(VarVec::F32(v_other)) => {
@@ -164,9 +161,7 @@ impl PropColumn {
                         v.push(None);
                     }
                 }
-                _ => {
-                    panic!("illegal 3");
-                }
+                _ => {}
             },
             Some(VarVec::String(v)) => match &other.data {
                 Some(VarVec::String(v_other)) => {
@@ -177,9 +172,7 @@ impl PropColumn {
                         v.push(None);
                     }
                 }
-                _ => {
-                    panic!("illegal 4");
-                }
+                _ => {}
             },
             Some(VarVec::U32(v)) => match &other.data {
                 Some(VarVec::U32(v_other)) => {
@@ -190,9 +183,7 @@ impl PropColumn {
                         v.push(None);
                     }
                 }
-                _ => {
-                    panic!("illegal 5");
-                }
+                _ => {}
             },
             Some(VarVec::U64(v)) => match &other.data {
                 Some(VarVec::U64(v_other)) => {
@@ -203,9 +194,7 @@ impl PropColumn {
                         v.push(None);
                     }
                 }
-                _ => {
-                    panic!("illegal 6");
-                }
+                _ => {}
             },
             Some(VarVec::StringVec(v)) => match &other.data {
                 Some(VarVec::StringVec(v_other)) => {
@@ -216,9 +205,7 @@ impl PropColumn {
                         v.push(vec![]);
                     }
                 }
-                _ => {
-                    panic!("illegal 7");
-                }
+                _ => {}
             },
             Some(VarVec::U64Vec(v)) => match &other.data {
                 Some(VarVec::U64Vec(v_other)) => {
@@ -229,9 +216,7 @@ impl PropColumn {
                         v.push(vec![]);
                     }
                 }
-                _ => {
-                    panic!("illegal 8");
-                }
+                _ => {}
             },
             Some(VarVec::XYVec(v)) => match &other.data {
                 Some(VarVec::XYVec(v_other)) => {
@@ -242,9 +227,7 @@ impl PropColumn {
                         v.push(None);
                     }
                 }
-                _ => {
-                    panic!("illegal 8");
-                }
+                _ => {}
             },
             Some(VarVec::XYZVec(v)) => match &other.data {
                 Some(VarVec::XYZVec(v_other)) => {
@@ -255,9 +238,7 @@ impl PropColumn {
                         v.push(None);
                     }
                 }
-                _ => {
-                    panic!("illegal 8");
-                }
+                _ => {}
             },
             Some(VarVec::Stickers(v)) => match &other.data {
                 Some(VarVec::Stickers(v_other)) => {
@@ -268,9 +249,7 @@ impl PropColumn {
                         v.push(vec![]);
                     }
                 }
-                _ => {
-                    panic!("illegal 8");
-                }
+                _ => {}
             },
             Some(VarVec::U32Vec(v)) => match &other.data {
                 Some(VarVec::U32Vec(v_other)) => {
@@ -281,9 +260,7 @@ impl PropColumn {
                         v.push(vec![]);
                     }
                 }
-                _ => {
-                    panic!("illegal 8");
-                }
+                _ => {}
             },
             None => match &other.data {
                 Some(VarVec::Bool(_inner)) => {
@@ -372,7 +349,7 @@ impl PropColumn {
             Some(6) => self.data = Some(VarVec::StringVec(vec![])),
             Some(7) => self.data = Some(VarVec::U64Vec(vec![])),
             Some(11) => self.data = Some(VarVec::U32Vec(vec![])),
-            _ => panic!("NONE OR > 5 TYPE FOR VEC RESOLUTION : {:?}", v_type),
+            _ => {}
         }
         for _ in 0..self.num_nones {
             self.push(None);
@@ -406,39 +383,27 @@ impl VarVec {
         match item {
             Some(Variant::F32(p)) => match self {
                 VarVec::F32(f) => f.push(Some(p)),
-                _ => {
-                    panic!("Tried to push a {:?} into a {:?} column", item, self);
-                }
+                _ => {}
             },
             Some(Variant::I32(p)) => match self {
                 VarVec::I32(f) => f.push(Some(p)),
-                _ => {
-                    panic!("Tried to push a {:?} into a {:?} column", item, self);
-                }
+                _ => {}
             },
             Some(Variant::String(p)) => match self {
                 VarVec::String(f) => f.push(Some(p)),
-                _ => {
-                    panic!("Tried to push a ? into a {:?} column", self);
-                }
+                _ => {}
             },
             Some(Variant::U32(p)) => match self {
                 VarVec::U32(f) => f.push(Some(p)),
-                _ => {
-                    panic!("Tried to push a {:?} into a {:?} column", item, self);
-                }
+                _ => {}
             },
             Some(Variant::U64(p)) => match self {
                 VarVec::U64(f) => f.push(Some(p)),
-                _ => {
-                    panic!("Tried to push a {:?} into a {:?} column", item, self);
-                }
+                _ => {}
             },
             Some(Variant::Bool(p)) => match self {
                 VarVec::Bool(f) => f.push(Some(p)),
-                _ => {
-                    panic!("Tried to push a {:?} into a {:?} column", item, self);
-                }
+                _ => {}
             },
             Some(Variant::StringVec(p)) => match self {
                 VarVec::StringVec(f) => f.push(p),
@@ -465,7 +430,7 @@ impl VarVec {
                 _ => {}
             },
             None => self.push_none(),
-            _ => panic!("bad type for prop: {:?}", item),
+            _ => {}
         }
     }
     pub fn push_none(&mut self) {
@@ -488,18 +453,6 @@ impl VarVec {
 #[allow(dead_code)]
 pub fn filter_to_vec<Wanted>(v: impl IntoIterator<Item = impl TryInto<Wanted>>) -> Vec<Wanted> {
     v.into_iter().filter_map(|x| x.try_into().ok()).collect()
-}
-
-pub fn eventdata_type_from_variant(value: &Option<Variant>) -> i32 {
-    match value {
-        Some(Variant::String(_)) => 1,
-        Some(Variant::F32(_)) => 2,
-        Some(Variant::U32(_)) => 7,
-        Some(Variant::I32(_)) => 4,
-        Some(Variant::Bool(_)) => 6,
-        None => 99,
-        _ => panic!("Could not convert: {:?} into type", value),
-    }
 }
 
 impl Serialize for Variant {
@@ -557,7 +510,7 @@ impl Serialize for Variant {
                     s.serialize_element(&item)?;
                 }
                 s.end()
-            } //_ => panic!("cant ser: {:?}", self),
+            }
         }
     }
 }
@@ -740,7 +693,7 @@ impl Serialize for OutputSerdeHelperStruct {
         for prop_info in &self.prop_infos {
             if self.inner.contains_key(&prop_info.id) {
                 match &self.inner[&prop_info.id].data {
-                    None => panic!("failed to serialize data"),
+                    None => {}
                     Some(VarVec::F32(val)) => {
                         map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
