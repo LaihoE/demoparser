@@ -86,7 +86,6 @@ Python/JS are rougly as fast.
 | is_controlling_bot | m_bControllingBot |
 | has_controlled_bot_this_round | m_bHasControlledBotThisRound |
 | can_control_bot | m_bCanControlObservedBot |
-| armor | m_iPawnArmor |
 | has_defuser | m_bPawnHasDefuser |
 | has_helmet | m_bPawnHasHelmet |
 | spawn_time | m_iPawnLifetimeStart |
@@ -174,6 +173,8 @@ Python/JS are rougly as fast.
 | user_id  | - |
 | entity_id  | - |
 | is_airborne  | m_hGroundEntity |
+| aim_punch_angle  | CCSPlayerPawn.m_aimPunchAngle |
+| aim_punch_angle_vel  | CCSPlayerPawn.m_aimPunchAngleVel |
 
 #### Buttons 
 True/Flase if player is pressing button.
