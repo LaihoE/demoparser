@@ -52,7 +52,7 @@ impl<'a> SecondPassParser<'a> {
         let mut buf2 = vec![0_u8; OUTER_BUF_DEFAULT_LEN];
         loop {
             let frame = self.read_frame(demo_bytes)?;
-            if frame.demo_cmd == DEM_AnimationData || frame.demo_cmd == DEM_SendTables || frame.demo_cmd == DEM_StringTables {
+            if frame.demo_cmd == DEM_AnimationData || frame.demo_cmd == DEM_SendTables {
                 self.ptr += frame.size as usize;
                 continue;
             }
@@ -261,7 +261,7 @@ impl<'a> SecondPassParser<'a> {
                 for i in &item.items {
                     if let Ok(player) = parse_userinfo(&i.data()) {
                         if player.steamid != 0 {
-                            self.stringtable_players.insert(player.steamid, player);
+                            self.stringtable_players.insert(player.userid, player);
                         }
                     }
                 }

@@ -30,7 +30,7 @@ pub struct SecondPassParser<'a> {
     pub qf_mapper: &'a QfMapper,
     pub prop_controller: &'a PropController,
     pub cls_by_id: &'a Vec<Class>,
-    pub stringtable_players: BTreeMap<u64, UserInfo>,
+    pub stringtable_players: BTreeMap<i32, UserInfo>,
     pub net_tick: u32,
     pub parse_inventory: bool,
     pub paths: Vec<FieldPath>,

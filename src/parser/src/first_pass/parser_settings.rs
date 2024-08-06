@@ -55,7 +55,7 @@ pub struct FirstPassParser<'a> {
     pub prop_controller: PropController,
     pub ge_list: AHashMap<i32, Descriptor_t>,
     pub qf_mapper: QfMapper,
-    pub stringtable_players: BTreeMap<u64, UserInfo>,
+    pub stringtable_players: BTreeMap<i32, UserInfo>,
     pub qf_map_set: bool,
     pub ge_list_set: bool,
     pub cls_by_id_set: bool,

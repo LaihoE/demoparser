@@ -16,7 +16,6 @@ use crate::maps::ROUND_WIN_REASON_TO_WINNER;
 use crate::maps::WEAPINDICIES;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::entities::Entity;
-//use crate::second_pass::entities::GameEventInfo;
 use crate::second_pass::entities::PlayerMetaData;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::*;
@@ -211,6 +210,7 @@ impl<'a> SecondPassParser<'a> {
                 _ => continue,
             };
             if let Some(Variant::I32(u)) = field.data {
+                // println!("A {:?}", field.name);
                 let entity_id = match field.name.as_str() {
                     "entityid" => self.grenade_owner_entid_from_grenade(&field.data),
                     "userid_pawn" => self.entity_id_from_user_pawn(u),
@@ -219,6 +219,9 @@ impl<'a> SecondPassParser<'a> {
                 let entity_id = match entity_id {
                     Some(eid) => eid,
                     None => {
+                        // println!("NOT FOUND: {:?}", field);
+                        // println!("{:#?}", self.stringtable_players);
+                        // panic!("HUH");
                         // player could not be found --> add None to output
                         extra_fields.extend(self.generate_empty_fields(prefix));
                         continue;
@@ -385,6 +388,7 @@ impl<'a> SecondPassParser<'a> {
                 data: None,
             };
         }
+        // println!("PLAYER {:?}", self.players.get(&entity_id));
         let data = match self.players.get(&entity_id) {
             Some(player_md) => match &player_md.name {
                 Some(name) => Some(Variant::String(name.clone())),
