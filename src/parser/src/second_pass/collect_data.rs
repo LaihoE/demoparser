@@ -126,7 +126,6 @@ impl<'a> SecondPassParser<'a> {
         entity_id: &i32,
         player: &PlayerMetaData,
     ) -> Result<Variant, PropCollectionError> {
-        println!("X {:?}", prop_info);
         match prop_info.prop_type {
             PropType::Tick => return self.create_tick(),
             PropType::Name => return self.create_name(player),
