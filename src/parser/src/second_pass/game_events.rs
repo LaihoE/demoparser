@@ -452,6 +452,7 @@ impl<'a> SecondPassParser<'a> {
                     name: "tick".to_string(),
                 });
             }
+            fields.extend(self.find_non_player_props());
             let ge = GameEvent {
                 name: "server_cvar".to_string(),
                 fields: fields,
@@ -851,7 +852,6 @@ impl<'a> SecondPassParser<'a> {
 
         let mut fields = vec![];
         fields.extend(self.find_non_player_props());
-
         fields.push(EventField {
             data: Some(Variant::I32(self.tick)),
             name: "tick".to_string(),
@@ -901,6 +901,11 @@ impl<'a> SecondPassParser<'a> {
             data: Some(Variant::String(chat_msg.param2().to_owned())),
             name: "chat_message".to_string(),
         });
+        fields.push(EventField {
+            data: Some(Variant::I32(self.tick)),
+            name: "tick".to_string(),
+        });
+        fields.extend(self.find_non_player_props());
         let ge = GameEvent {
             name: "chat_message".to_string(),
             fields: fields,
@@ -927,6 +932,7 @@ impl<'a> SecondPassParser<'a> {
             data: Some(Variant::I32(self.tick)),
             name: "tick".to_string(),
         });
+        fields.extend(self.find_non_player_props());
         let ge = GameEvent {
             name: "server_message".to_string(),
             fields: fields,
@@ -951,6 +957,7 @@ impl<'a> SecondPassParser<'a> {
             data: Some(Variant::I32(self.tick)),
             name: "tick".to_string(),
         });
+        fields.extend(self.find_non_player_props());
         let ge = GameEvent {
             name: "round_start".to_string(),
             fields: fields,
@@ -1002,6 +1009,11 @@ impl<'a> SecondPassParser<'a> {
                 data: Some(Variant::I32(update.rank_type_id())),
                 name: "rank_type_id".to_string(),
             });
+            fields.push(EventField {
+                data: Some(Variant::I32(self.tick)),
+                name: "tick".to_string(),
+            });
+            fields.extend(self.find_non_player_props());
             let ge = GameEvent {
                 name: "rank_update".to_string(),
                 fields: fields,
