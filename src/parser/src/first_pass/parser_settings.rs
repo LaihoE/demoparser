@@ -92,7 +92,7 @@ impl<'a> FirstPassParser<'a> {
         FirstPassParser {
             order_by_steamid: inputs.order_by_steamid,
             sendtable_message: None,
-            needs_velocity: false,
+            needs_velocity: needs_velocity(&inputs.wanted_player_props),
             added_temp_props: vec![],
             is_multithreadable: check_multithreadability(&inputs.wanted_player_props),
             stringtable_players: BTreeMap::default(),
@@ -106,6 +106,7 @@ impl<'a> FirstPassParser<'a> {
                 inputs.wanted_other_props.clone(),
                 inputs.real_name_to_og_name.clone(),
                 false,
+                &vec!["None".to_string()],
             ),
             cls_by_id: None,
             player_md: vec![],

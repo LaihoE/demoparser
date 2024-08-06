@@ -86,6 +86,7 @@ impl PropController {
         wanted_other_props: Vec<String>,
         real_name_to_og_name: AHashMap<String, String>,
         needs_velocty: bool,
+        wanted_events: &[String],
     ) -> Self {
         PropController {
             id: NORMAL_PROP_BASEID,
@@ -98,11 +99,12 @@ impl PropController {
             name_to_special_id: AHashMap::default(),
             wanted_other_props: wanted_other_props,
             real_name_to_og_name: real_name_to_og_name,
-            event_with_velocity: false,
+            event_with_velocity: !wanted_events.is_empty() && needs_velocty,
             path_to_name: AHashMap::default(),
             needs_velocity: needs_velocty,
         }
     }
+
     pub fn set_custom_propinfos(&mut self) {
         let button_names = BUTTONMAP.keys();
         let mut someid = BUTTONS_BASEID;

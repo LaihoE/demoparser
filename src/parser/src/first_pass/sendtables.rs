@@ -100,6 +100,7 @@ impl<'a> FirstPassParser<'a> {
             self.wanted_other_props.clone(),
             self.real_name_to_og_name.clone(),
             needs_velocity(&self.wanted_player_props),
+            &self.wanted_events,
         );
         // Quantalized floats have their own helper struct
         let mut qf_mapper = QfMapper {

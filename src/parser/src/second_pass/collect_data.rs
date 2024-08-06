@@ -563,7 +563,7 @@ impl<'a> SecondPassParser<'a> {
             let y = self.velocity_from_indicies(&indicies, CoordinateAxis::Y)?;
 
             if let (Variant::F32(x), Variant::F32(y)) = (x, y) {
-                return Ok(Variant::F32((f32::powi(x, 2) + f32::powi(y, 2)).sqrt() * 64.0));
+                return Ok(Variant::F32((f32::powi(x, 2) + f32::powi(y, 2)).sqrt()));
             }
         }
         return Err(PropCollectionError::PlayerNotFound);
@@ -618,7 +618,7 @@ impl<'a> SecondPassParser<'a> {
         };
         if let Some(c) = col {
             if let Some((Some(v1), Some(v2))) = self.index_coordinates_from_propcol(c, indicies) {
-                return Ok(Variant::F32(v1 - v2));
+                return Ok(Variant::F32((v1 * 64.0) - (v2 * 64.0)));
             }
         }
         return Err(PropCollectionError::VelocityNotFound);
