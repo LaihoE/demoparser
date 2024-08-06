@@ -10,6 +10,7 @@ use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::sendtables::Field;
 use crate::first_pass::sendtables::FieldInfo;
 use crate::first_pass::stringtables::UserInfo;
+use crate::maps::HIT_GROUP;
 use crate::maps::ROUND_WIN_REASON;
 use crate::maps::ROUND_WIN_REASON_TO_WINNER;
 use crate::maps::WEAPINDICIES;
@@ -115,14 +116,29 @@ impl<'a> SecondPassParser<'a> {
             event_fields.extend(self.find_extra(&event_fields)?);
             // Remove fields that user does nothing with like userid and user_pawn
             event_fields.retain(|ref x| !INTERNALEVENTFIELDS.contains(&x.name.as_str()));
-            let event = GameEvent {
+            let mut event = GameEvent {
                 fields: event_fields,
                 name: event_desc.name().to_string(),
                 tick: self.tick,
             };
+            self.cleanups(&mut event);
             self.game_events.push(event);
         }
         Ok(None)
+    }
+    fn cleanups(&self, event: &mut GameEvent) {
+        // Contains some fixed like renaming weapons to be consitent.
+        for field in &mut event.fields {
+            if field.name == "hitgroup" {
+                if let Some(Variant::I32(i)) = field.data {
+                    if let Some(str) = HIT_GROUP.get(&i) {
+                        field.data = Some(Variant::String(str.to_string()))
+                    } else {
+                        field.data = Some(Variant::String(i.to_string()))
+                    }
+                }
+            }
+        }
     }
     pub fn resolve_wrong_order_event(&mut self, events: &mut Vec<GameEvent>) -> Result<(), DemoParserError> {
         for event in events {
