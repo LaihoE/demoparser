@@ -7,6 +7,7 @@ use crate::maps::AGENTSMAP;
 use crate::maps::BUTTONMAP;
 use crate::maps::GRENADE_FRIENDLY_NAMES;
 use crate::maps::PAINTKITS;
+use crate::maps::PLAYER_COLOR;
 use crate::maps::STICKER_ID_TO_NAME;
 use crate::maps::WEAPINDICIES;
 use crate::second_pass::entities::EntityType;
@@ -125,6 +126,7 @@ impl<'a> SecondPassParser<'a> {
         entity_id: &i32,
         player: &PlayerMetaData,
     ) -> Result<Variant, PropCollectionError> {
+        println!("X {:?}", prop_info);
         match prop_info.prop_type {
             PropType::Tick => return self.create_tick(),
             PropType::Name => return self.create_name(player),
@@ -422,6 +424,7 @@ impl<'a> SecondPassParser<'a> {
         prop_info: &PropInfo,
         player: &PlayerMetaData,
     ) -> Result<Variant, PropCollectionError> {
+        println!("CUSTOM {:?}", prop_name);
         match prop_name {
             "X" => self.collect_cell_coordinate_player(CoordinateAxis::X, entity_id),
             "Y" => self.collect_cell_coordinate_player(CoordinateAxis::Y, entity_id),
@@ -447,6 +450,7 @@ impl<'a> SecondPassParser<'a> {
             "user_id" => return self.get_userid(player),
             "is_airborne" => self.find_is_airborne(player),
             "agent_skin" => return self.find_agent_skin(player),
+            "CCSPlayerController.m_iCompTeammateColor" => return self.find_player_color(player, prop_info),
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
     }
@@ -455,6 +459,17 @@ impl<'a> SecondPassParser<'a> {
             if player.steamid == Some(st_player.steamid) {
                 return Ok(Variant::I32(st_player.userid));
             }
+        }
+        Err(PropCollectionError::UseridNotFound)
+    }
+    pub fn find_player_color(&self, player: &PlayerMetaData, prop_info: &PropInfo) -> Result<Variant, PropCollectionError> {
+        if let Ok(Variant::I32(v)) = self.get_controller_prop(&prop_info.id, player) {
+            let color = if let Some(col) = PLAYER_COLOR.get(&v) {
+                col.to_string()
+            } else {
+                v.to_string()
+            };
+            return Ok(Variant::String(color));
         }
         Err(PropCollectionError::UseridNotFound)
     }

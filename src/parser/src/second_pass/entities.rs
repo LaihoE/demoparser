@@ -278,7 +278,7 @@ impl<'a> SecondPassParser<'a> {
         _entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
-            if _v.full_name.contains("Custom") {
+            if _v.full_name.contains("Punch") {
                 println!("{:?} {:?} {:?}", field_info, _v.full_name, _result);
             }
         }
