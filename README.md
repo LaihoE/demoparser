@@ -248,8 +248,6 @@ True/Flase if player is pressing button.
 | round_win_reason | m_eRoundWinReason  |
 | terrorist_cant_buy | m_bTCantBuy  |
 | ct_cant_buy | m_bCTCantBuy  |
-| num_player_alive_ct | m_iMatchStats_PlayersAlive_CT  |
-| num_player_alive_t | m_iMatchStats_PlayersAlive_T  |
 | ct_losing_streak | m_iNumConsecutiveCTLoses  |
 | t_losing_streak | m_iNumConsecutiveTerroristLoses  |
 | survival_start_time | m_flSurvivalStartTime  |
