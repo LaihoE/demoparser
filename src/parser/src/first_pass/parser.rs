@@ -17,7 +17,6 @@ use ahash::AHashMap;
 use ahash::AHashSet;
 use csgoproto::demo::CDemoFullPacket;
 use csgoproto::demo::CDemoPacket;
-use csgoproto::demo::CDemoStringTables;
 use csgoproto::demo::EDemoCommands;
 use csgoproto::demo::EDemoCommands::*;
 use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader};
