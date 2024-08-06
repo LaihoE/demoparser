@@ -353,7 +353,6 @@ impl<'a> SecondPassParser<'a> {
     pub fn find_extra_props_events(&self, entity_id: i32, prefix: &str) -> Vec<EventField> {
         let mut extra_pairs = vec![];
         for prop_info in &self.prop_controller.prop_infos {
-            println!("{:?}", prop_info);
             // These props are collected in find_non_player_props()
             if !prop_info.is_player_prop {
                 continue;
