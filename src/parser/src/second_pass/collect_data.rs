@@ -534,9 +534,11 @@ impl<'a> SecondPassParser<'a> {
     }
     pub fn find_skin_paint_seed(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         if let Some(player_entity_id) = &player.player_entity_id {
-            return self.find_weapon_prop(&WEAPON_PAINT_SEED, &player_entity_id);
+            if let Ok(Variant::F32(f)) = self.find_weapon_prop(&WEAPON_PAINT_SEED, &player_entity_id) {
+                return Ok(Variant::U32(f as u32));
+            }
         }
-        Err(PropCollectionError::PlayerNotFound)
+        return Ok(Variant::U32(0));
     }
     pub fn find_agent_skin(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         let id = match self.prop_controller.special_ids.agent_skin_idx {
