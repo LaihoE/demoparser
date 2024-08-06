@@ -60,7 +60,7 @@ pub struct FirstPassOutput<'a> {
     pub ge_list: &'a AHashMap<i32, Descriptor_t>,
     pub wanted_ticks: AHashSet<i32>,
     pub string_tables: Vec<StringTable>,
-    pub stringtable_players: BTreeMap<u64, UserInfo>,
+    pub stringtable_players: BTreeMap<i32, UserInfo>,
     pub added_temp_props: Vec<String>,
     pub wanted_players: AHashSet<u64>,
     pub header: AHashMap<String, String>,
@@ -237,7 +237,7 @@ impl<'a> FirstPassParser<'a> {
                 for i in &item.items {
                     if let Ok(player) = parse_userinfo(&i.data()) {
                         if player.steamid != 0 {
-                            self.stringtable_players.insert(player.steamid, player);
+                            self.stringtable_players.insert(player.userid, player);
                         }
                     }
                 }

@@ -164,7 +164,7 @@ impl<'a> FirstPassParser<'a> {
                 if name == "userinfo" {
                     if let Ok(player) = parse_userinfo(&value) {
                         if player.steamid != 0 {
-                            self.stringtable_players.insert(player.steamid, player);
+                            self.stringtable_players.insert(player.userid, player);
                         }
                     }
                 }
@@ -334,7 +334,7 @@ impl<'a> SecondPassParser<'a> {
                 if name == "userinfo" {
                     if let Ok(player) = parse_userinfo(&value) {
                         if player.steamid != 0 {
-                            self.stringtable_players.insert(player.steamid, player);
+                            self.stringtable_players.insert(player.userid, player);
                         }
                     }
                 }

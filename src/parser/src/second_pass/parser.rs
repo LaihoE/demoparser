@@ -261,7 +261,7 @@ impl<'a> SecondPassParser<'a> {
                 for i in &item.items {
                     if let Ok(player) = parse_userinfo(&i.data()) {
                         if player.steamid != 0 {
-                            self.stringtable_players.insert(player.steamid, player);
+                            self.stringtable_players.insert(player.userid, player);
                         }
                     }
                 }

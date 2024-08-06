@@ -1,4 +1,3 @@
-//use super::entities::RoundEnd;
 use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::PropInfo;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COST;
@@ -16,7 +15,6 @@ use crate::maps::ROUND_WIN_REASON_TO_WINNER;
 use crate::maps::WEAPINDICIES;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::entities::Entity;
-//use crate::second_pass::entities::GameEventInfo;
 use crate::second_pass::entities::PlayerMetaData;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::*;
