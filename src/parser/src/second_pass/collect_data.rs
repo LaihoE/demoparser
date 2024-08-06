@@ -423,7 +423,6 @@ impl<'a> SecondPassParser<'a> {
         prop_info: &PropInfo,
         player: &PlayerMetaData,
     ) -> Result<Variant, PropCollectionError> {
-        println!("CUSTOM {:?}", prop_name);
         match prop_name {
             "X" => self.collect_cell_coordinate_player(CoordinateAxis::X, entity_id),
             "Y" => self.collect_cell_coordinate_player(CoordinateAxis::Y, entity_id),
