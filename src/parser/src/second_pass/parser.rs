@@ -52,7 +52,7 @@ impl<'a> SecondPassParser<'a> {
         let mut buf2 = vec![0_u8; OUTER_BUF_DEFAULT_LEN];
         loop {
             let frame = self.read_frame(demo_bytes)?;
-            if frame.demo_cmd == DEM_AnimationData || frame.demo_cmd == DEM_SendTables {
+            if frame.demo_cmd == DEM_AnimationData || frame.demo_cmd == DEM_SendTables || frame.demo_cmd == DEM_StringTables {
                 self.ptr += frame.size as usize;
                 continue;
             }
