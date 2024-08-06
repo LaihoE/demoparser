@@ -2614,7 +2614,8 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "game_time" => "game_time",
     "inventory" => "inventory",
     "inventory_as_ids" => "inventory_as_ids",
-
+    "aim_punch_angle" => "CCSPlayerPawn.m_aimPunchAngle",
+    "aim_punch_angle_vel" => "CCSPlayerPawn.m_aimPunchAngleVel",
     "entity_id" => "entity_id",
     "is_alive"=>"is_alive",
     "agent_skin" => "agent_skin",

@@ -557,7 +557,6 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
             order_by_steamid: false,
-            //huf: huf,
         };
         let mut parser = Parser::new(settings, false);
         let output = match parser.parse_demo(&self.mmap) {
@@ -607,7 +606,10 @@ impl DemoParser {
                         df_column_names_py.push(prop_info.prop_friendly_name);
                         all_pyobjects.push(data.to_object(py));
                     }
-
+                    Some(VarVec::XYZVec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.to_object(py));
+                    }
                     Some(VarVec::U32Vec(data)) => {
                         df_column_names_py.push(prop_info.prop_friendly_name);
                         all_pyobjects.push(data.to_object(py));
