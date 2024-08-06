@@ -37,6 +37,8 @@ static INTERNALEVENTFIELDS: &'static [&str] = &[
     "userid_pawn",
     "attacker_pawn",
     "assister_pawn",
+    "victim",
+    "victim_pawn",
 ];
 #[derive(Debug, Clone)]
 pub struct RoundEnd {
@@ -203,6 +205,7 @@ impl<'a> SecondPassParser<'a> {
                 "attacker" => "attacker",
                 "userid" => "user",
                 "assister" => "assister",
+                "victim" => "victim",
                 // edge case in some events
                 "entityid" => {
                     let field_names: Vec<&String> = fields.iter().map(|x| &x.name).collect();
