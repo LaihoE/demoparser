@@ -393,7 +393,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     wanted_player_props: vec![],
     wanted_other_props: vec![],
     wanted_events: vec![],
-    parse_ents: true,
+    parse_ents: false,
     wanted_ticks: vec![],
     parse_projectiles: false,
     only_header: true,
