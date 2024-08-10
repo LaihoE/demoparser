@@ -17,6 +17,10 @@ pub static FACTORIES_MAP: phf::Set<&'static str> = phf_set! {
     "Vector4D",
     "Quaternion",
 };
+pub static WEAPON_OR_GRENADE: phf::Set<&'static str> = phf_set! {
+    "CWeaponMP7", "CWeaponMAC10", "CWeaponMP5SD", "CWeaponXM1014", "CWeaponUMP45", "CWeaponTaser", "CWeaponMP9", "CCSWeaponBaseGun", "CC4", "CWeaponRevolver", "CWeaponFamas", "CWeaponShield", "CWeaponG3SG1", "CWeaponNegev", "CWeaponZoneRepulsor", "CWeaponUSPSilencer", "CMolotovGrenade", "CWeaponP90", "CDEagle", "CWeaponHKP2000", "CKnife", "CWeaponSawedoff", "CWeaponM4A1Silencer", "CWeaponNOVA", "WeaponPurchaseCount_t", "CWeaponP250", "CWeaponM249", "CWeaponAug", "CWeaponElite", "CWeaponMag7", "CWeaponM4A1", "CWeaponCZ75a", "CMolotovProjectile", "CWeaponSSG08", "CPlantedC4", "CInferno", "CWeaponGlock", "CWeaponSG556", "CWeaponSCAR20", "CWeaponBizon", "ServerAuthoritativeWeaponSlot_t", "CIncendiaryGrenade", "CWeaponAWP", "CWeaponFiveSeven", "CWeaponGalilAR", "CAK47", "CWeaponTec9"
+};
+
 // https://github.com/markus-wa/demoinfocs-golang/blob/205b0bb25e9f3e96e1d306d154199b4a6292940e/pkg/demoinfocs/events/events.go#L53
 pub static ROUND_WIN_REASON: phf::Map<i32, &'static str> = phf_map! {
     0_i32 => "still_in_progress",

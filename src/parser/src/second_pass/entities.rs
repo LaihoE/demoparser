@@ -201,7 +201,10 @@ impl<'a> SecondPassParser<'a> {
             }
 
             let peeked_bits = bitreader.peek(HUFFMAN_CODE_MAXLEN);
-            let (symbol, code_len) = self.huffman_lookup_table[peeked_bits as usize];
+            let (symbol, code_len) = (
+                self.huffman_lookup_table[(peeked_bits * 2) as usize],
+                self.huffman_lookup_table[(peeked_bits * 2 + 1) as usize],
+            );
             bitreader.consume(code_len as u32);
             if symbol == STOP_READING_SYMBOL {
                 break;
@@ -237,7 +240,7 @@ impl<'a> SecondPassParser<'a> {
             let decoder = get_decoder_from_field(field)?;
             let result = bitreader.decode(&decoder, self.qf_mapper)?;
 
-            if !is_fullpacket && !is_baseline {
+            if self.needs_decode_listening && !is_fullpacket && !is_baseline {
                 events_to_emit.extend(SecondPassParser::listen_for_events(
                     entity,
                     &result,
@@ -261,6 +264,17 @@ impl<'a> SecondPassParser<'a> {
                     &entity_id,
                 );
             }
+
+            /*
+            self.total += 1;
+            if let Some(fi) = field_info {
+                if fi.should_parse {
+                    self.hits += 1;
+                    // entity.props.insert(fi.prop_id, result);
+                }
+            }
+            */
+
             SecondPassParser::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
@@ -278,9 +292,9 @@ impl<'a> SecondPassParser<'a> {
         _entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
-            if _v.full_name.contains("Punch") {
-                println!("{:?} {:?} {:?}", field_info, _v.full_name, _result);
-            }
+            //if _v.full_name.contains("Punch") {
+            println!("{:?} {:?} {:?}", field_info, _v.full_name, _result);
+            //}
         }
     }
 

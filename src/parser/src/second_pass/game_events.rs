@@ -1,8 +1,10 @@
 use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::PropInfo;
+use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COST;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COUNT;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_DEF_IDX;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_HANDLE;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_NEW_DEF_IDX;
 use crate::first_pass::prop_controller::WEAPON_FLOAT;
 use crate::first_pass::prop_controller::WEAPON_PAINT_SEED;
@@ -49,8 +51,10 @@ pub struct RoundEnd {
 pub struct RoundWinReason {
     pub reason: i32,
 }
+
 #[derive(Debug, Clone)]
 pub enum GameEventInfo {
+    // MAKE SURE TO ADD THE EVENT INTO BELOW "CUSTOM_GAME_EVENTS_THAT_REQUIRE_DECODE_LISTENING"
     RoundEnd(RoundEnd),
     RoundWinReason(RoundWinReason),
     FreezePeriodStart(bool),
@@ -61,6 +65,13 @@ pub enum GameEventInfo {
     WeaponPurchaseCount((Variant, i32, u32)),
 }
 
+pub static CUSTOM_GAME_EVENTS_THAT_REQUIRE_DECODE_LISTENING: &'static [&str] = &[
+    "weapon_purchase",
+    "match_end",
+    "round_start",
+    "round_officially_ended",
+    "round_end",
+];
 static ENTITIES_FIRST_EVENTS: &'static [&str] = &["inferno_startburn", "decoy_started", "inferno_expire"];
 static REMOVEDEVENTS: &'static [&str] = &["server_cvar"];
 
@@ -506,6 +517,7 @@ impl<'a> SecondPassParser<'a> {
             _ => false,
         })
     }
+
     pub fn emit_events(&mut self, events: Vec<GameEventInfo>) -> Result<(), DemoParserError> {
         if SecondPassParser::contains_round_end_event(&events) {
             self.create_custom_event_round_end(&events)?;
@@ -1049,6 +1061,8 @@ impl<'a> SecondPassParser<'a> {
         field_info: Option<FieldInfo>,
         prop_controller: &PropController,
     ) -> Vec<GameEventInfo> {
+        // MAKE SURE TO ADD THE EVENT INTO "CUSTOM_GAME_EVENTS_THAT_REQUIRE_DECODE_LISTENING"
+
         // Might want to start splitting this function
         let mut events = vec![];
         if let Some(fi) = field_info {
@@ -1080,8 +1094,6 @@ impl<'a> SecondPassParser<'a> {
                     events.push(GameEventInfo::MatchEnd());
                 }
             }
-            use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
-            use crate::first_pass::prop_controller::ITEM_PURCHASE_HANDLE;
             if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
                 events.push(GameEventInfo::WeaponCreateNCost((result.clone(), entity.entity_id)));
             }

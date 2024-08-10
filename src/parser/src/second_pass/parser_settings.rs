@@ -22,6 +22,9 @@ use csgoproto::netmessages::CSVCMsg_VoiceData;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::env;
+use std::time::Instant;
+
+use super::game_events::CUSTOM_GAME_EVENTS_THAT_REQUIRE_DECODE_LISTENING;
 
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 const DEFAULT_MAX_ENTITY_ID: usize = 1024;
@@ -43,7 +46,7 @@ pub struct SecondPassParser<'a> {
     pub tick: i32,
     pub players: BTreeMap<i32, PlayerMetaData>,
     pub teams: Teams,
-    pub huffman_lookup_table: &'a [(u8, u8)],
+    pub huffman_lookup_table: &'a [u8],
     pub game_events: Vec<GameEvent>,
     pub string_tables: Vec<StringTable>,
     pub rules_entity_id: Option<i32>,
@@ -71,6 +74,9 @@ pub struct SecondPassParser<'a> {
     pub is_debug_mode: bool,
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
     pub order_by_steamid: bool,
+    pub needs_decode_listening: bool,
+    pub hits: u64,
+    pub total: u64,
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -150,6 +156,9 @@ impl<'a> SecondPassParser<'a> {
         let args: Vec<String> = env::args().collect();
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
         Ok(SecondPassParser {
+            hits: 0,
+            total: 0,
+            needs_decode_listening: needs_decode_listening(&first_pass_output.settings.wanted_events),
             order_by_steamid: first_pass_output.order_by_steamid,
             df_per_player: AHashMap::default(),
             voice_data: vec![],
@@ -315,11 +324,12 @@ impl SpecialIDs {
     }
 }
 
-pub fn create_huffman_lookup_table() -> Vec<(u8, u8)> {
-    let buf = include_bytes!("huf.b");
-    let mut huf2 = Vec::with_capacity(HUF_LOOKUPTABLE_MAXVALUE as usize);
-    for chunk in buf.chunks_exact(2) {
-        huf2.push((chunk[0], chunk[1]));
-    }
-    return huf2;
+pub fn create_huffman_lookup_table() -> &'static [u8; (HUF_LOOKUPTABLE_MAXVALUE * 2) as usize] {
+    return include_bytes!("huf.b");
+}
+
+fn needs_decode_listening(events: &[String]) -> bool {
+    events
+        .iter()
+        .any(|x| CUSTOM_GAME_EVENTS_THAT_REQUIRE_DECODE_LISTENING.contains(&x.as_str()))
 }

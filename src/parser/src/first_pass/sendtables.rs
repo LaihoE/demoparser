@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use super::read_bits::Bitreader;
 use super::read_bits::DemoParserError;
 use crate::first_pass::parser_settings::needs_velocity;
@@ -121,39 +123,46 @@ impl<'a> FirstPassParser<'a> {
         let mut serializers: AHashMap<String, Serializer> = AHashMap::default();
 
         // Creates fields
+        let bef = Instant::now();
         for (idx, field) in fields.iter_mut().enumerate() {
             if let Some(f) = &serializer_msg.fields.get(idx) {
                 *field = Some(self.generate_field_data(f, &serializer_msg, &mut field_type_map, qf_mapper)?);
             }
         }
+        println!("AFTEER {:?}", bef.elapsed());
+        let bef = Instant::now();
         // Creates serializers
-        for serializer in &serializer_msg.serializers {
-            let mut ser = self.generate_serializer(&serializer, &mut fields, serializer_msg, &mut serializers)?;
-            if ser.name.contains("Player")
-                || ser.name.contains("Controller")
-                || ser.name.contains("Team")
-                || ser.name.contains("Weapon")
-                || ser.name.contains("AK")
-                || ser.name.contains("cell")
-                || ser.name.contains("vec")
-                || ser.name.contains("Projectile")
-                || ser.name.contains("Knife")
-                || ser.name.contains("CDEagle")
-                || ser.name.contains("Rules")
-                || ser.name.contains("C4")
-                || ser.name.contains("Grenade")
-                || ser.name.contains("Flash")
-                || ser.name.contains("Molo")
-                || ser.name.contains("Inc")
-                || ser.name.contains("Infer")
-            {
-                // Assign id to each prop and other metadata things.
-                // When collecting values we use the id as key.
-                prop_controller.find_prop_name_paths(&mut ser);
-            }
 
+        for serializer in &serializer_msg.serializers {
+            let ser = self.generate_serializer(&serializer, &mut fields, serializer_msg, &mut serializers)?;
             serializers.insert(ser.name.clone(), ser);
         }
+
+        for (k, ser) in serializers.iter_mut() {
+            if k.contains("Player")
+                || k.contains("Controller")
+                || k.contains("Team")
+                || k.contains("Weapon")
+                || k.contains("AK")
+                || k.contains("cell")
+                || k.contains("vec")
+                || k.contains("Projectile")
+                || k.contains("Knife")
+                || k.contains("CDEagle")
+                || k.contains("Rules")
+                || k.contains("C4")
+                || k.contains("Grenade")
+                || k.contains("Flash")
+                || k.contains("Molo")
+                || k.contains("Inc")
+                || k.contains("Infer")
+            {
+                // prop_controller.find_prop_name_paths(ser);
+            }
+            prop_controller.find_prop_name_paths(ser);
+        }
+        println!("{:?}", prop_controller.c);
+        println!("SENDTABLES TOOK {:?}", bef.elapsed());
         // Related to prop collection
         prop_controller.set_custom_propinfos();
         prop_controller.path_to_name = AHashMap::default();
@@ -206,7 +215,7 @@ impl<'a> FirstPassParser<'a> {
         };
         let ft = find_field_type(name, field_type_map)?;
         let mut field = field_from_msg(&msg, &big, ft.clone())?;
-
+        /*
         field.category = find_category(&mut field);
         let f = field.find_decoder(qf_mapper);
         field.decoder = f;
@@ -225,6 +234,7 @@ impl<'a> FirstPassParser<'a> {
             field.decoder = QanglePresDecoder;
         }
         field.field_type = ft;
+        */
         Ok(field)
     }
 }

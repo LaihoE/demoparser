@@ -73,6 +73,7 @@ impl<'a> SecondPassParser<'a> {
             };
             ok?;
         }
+        println!("{} {} {:?}", self.hits, self.total, self.hits as f32 / self.total as f32);
         Ok(())
     }
     fn parse_full_packet_and_break_if_needed(
@@ -176,6 +177,7 @@ impl<'a> SecondPassParser<'a> {
             }
             bitreader.read_n_bytes_mut(size as usize, buf)?;
             let msg_bytes = &buf[..size as usize];
+            // println!("{:?} {}", netmessage_type_from_int(msg_type as i32), msg_bytes.len());
             let ok = match netmessage_type_from_int(msg_type as i32) {
                 svc_PacketEntities => {
                     if should_parse_entities {

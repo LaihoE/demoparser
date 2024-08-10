@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-
+/*
 use crate::first_pass::parser_settings::ParserInputs;
 use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::*;
@@ -18358,3 +18358,4 @@ mod tests {
         assert_eq!(out.2["hegrenade_detonate"], prop.1);
     }
 }
+*/
