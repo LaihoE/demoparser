@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-/*
+
 use crate::first_pass::parser_settings::ParserInputs;
 use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::*;
@@ -311,7 +311,7 @@ pub fn _create_ge_tests() {
         only_header: false,
         count_props: false,
         only_convars: false,
-        huffman_lookup_table: &huf,
+        huffman_lookup_table: huf,
         order_by_steamid: false,
     };
 
@@ -684,7 +684,7 @@ pub fn _create_tests() {
         only_header: false,
         count_props: false,
         only_convars: false,
-        huffman_lookup_table: &huf,
+        huffman_lookup_table: huf,
         order_by_steamid: false,
     };
 
@@ -1053,7 +1053,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         only_header: false,
         count_props: false,
         only_convars: false,
-        huffman_lookup_table: &huf,
+        huffman_lookup_table: huf,
         order_by_steamid: false,
     };
 
@@ -1077,7 +1077,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         only_header: false,
         count_props: false,
         only_convars: false,
-        huffman_lookup_table: &huf,
+        huffman_lookup_table: huf,
         order_by_steamid: false,
     };
     let mut ds = Parser::new(settings, true);
@@ -1191,7 +1191,7 @@ mod tests {
             only_header: false,
             count_props: false,
             only_convars: false,
-            huffman_lookup_table: &huf,
+            huffman_lookup_table: huf,
             order_by_steamid: false,
         };
         let mut ds = Parser::new(settings, true);
@@ -18358,4 +18358,3 @@ mod tests {
         assert_eq!(out.2["hegrenade_detonate"], prop.1);
     }
 }
-*/

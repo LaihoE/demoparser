@@ -79,6 +79,9 @@ impl<'a> FirstPassParser<'a> {
         let mut reuseable_buffer = vec![0_u8; 100_000];
         // Loop that goes trough the entire file
         loop {
+            if !self.ge_list.is_empty() && self.cls_by_id.is_some() {
+                break;
+            }
             let frame = self.read_frame(demo_bytes)?;
             if self.is_packet_we_skip_on_first_pass(frame.demo_cmd) {
                 self.ptr += frame.size;
@@ -92,7 +95,6 @@ impl<'a> FirstPassParser<'a> {
                 DEM_FileHeader => self.parse_header(&bytes)?,
                 DEM_ClassInfo => {
                     self.parse_class_info(&bytes)?;
-                    break;
                 }
                 DEM_SignonPacket => self.parse_packet(&bytes)?,
                 DEM_FullPacket => self.parse_full_packet(&bytes, &frame)?,

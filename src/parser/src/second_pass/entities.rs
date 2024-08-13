@@ -233,7 +233,6 @@ impl<'a> SecondPassParser<'a> {
             Some(cls) => cls,
             None => return Err(DemoParserError::ClassNotFound),
         };
-
         for path in self.paths.iter().take(n_updates) {
             let field = find_field(&path, &class.serializer)?;
             let field_info = get_propinfo(&field, path);
@@ -249,7 +248,7 @@ impl<'a> SecondPassParser<'a> {
                     &self.prop_controller,
                 ));
             }
-
+            /*
             if self.is_debug_mode {
                 SecondPassParser::debug_inspect(
                     &result,
@@ -265,7 +264,7 @@ impl<'a> SecondPassParser<'a> {
                 );
             }
 
-            /*
+
             self.total += 1;
             if let Some(fi) = field_info {
                 if fi.should_parse {
@@ -293,7 +292,7 @@ impl<'a> SecondPassParser<'a> {
     ) {
         if let Field::Value(_v) = field {
             //if _v.full_name.contains("Punch") {
-            println!("{:?} {:?} {:?}", field_info, _v.full_name, _result);
+            println!("{:?} {:?} {:?}", field_info, _v.name, _result);
             //}
         }
     }

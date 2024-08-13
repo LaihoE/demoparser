@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::first_pass::parser::Frame;
 use crate::first_pass::parser::HEADER_ENDS_AT_BYTE;
 use crate::first_pass::parser_settings::FirstPassParser;
@@ -47,23 +49,29 @@ pub struct SecondPassOutput {
 impl<'a> SecondPassParser<'a> {
     pub fn start(&mut self, demo_bytes: &'a [u8]) -> Result<(), DemoParserError> {
         let started_at = self.ptr;
+        let mut bef = Instant::now();
         // re-use these to avoid allocation
         let mut buf = vec![0_u8; INNER_BUF_DEFAULT_LEN];
         let mut buf2 = vec![0_u8; OUTER_BUF_DEFAULT_LEN];
+        let mut ticks_parsed = 0;
         loop {
             let frame = self.read_frame(demo_bytes)?;
             if frame.demo_cmd == DEM_AnimationData || frame.demo_cmd == DEM_SendTables || frame.demo_cmd == DEM_StringTables {
                 self.ptr += frame.size as usize;
                 continue;
             }
+            ticks_parsed += 1;
             let bytes = self.slice_packet_bytes(demo_bytes, frame.size)?;
             let bytes = self.decompress_if_needed(&mut buf, bytes, &frame)?;
             self.ptr += frame.size;
+
+            // println!("{}", self.tick);
             let ok = match frame.demo_cmd {
                 DEM_SignonPacket => self.parse_packet(&bytes, &mut buf2),
                 DEM_Packet => self.parse_packet(&bytes, &mut buf2),
                 DEM_Stop => break,
                 DEM_FullPacket => {
+                    // println!("T {} {}", self.tick, self.ptr);
                     if self.parse_full_packet_and_break_if_needed(&bytes, &mut buf2, started_at)? {
                         break;
                     }
@@ -73,7 +81,8 @@ impl<'a> SecondPassParser<'a> {
             };
             ok?;
         }
-        println!("{} {} {:?}", self.hits, self.total, self.hits as f32 / self.total as f32);
+
+        // println!("{} {} {:?}", self.hits, self.total, self.hits as f32 / self.total as f32);
         Ok(())
     }
     fn parse_full_packet_and_break_if_needed(
@@ -82,6 +91,15 @@ impl<'a> SecondPassParser<'a> {
         buf: &mut Vec<u8>,
         started_at: usize,
     ) -> Result<bool, DemoParserError> {
+        if let Some(start_end_offset) = self.start_end_offset {
+            if self.ptr > start_end_offset.end {
+                return Ok(true);
+            } else {
+                self.parse_full_packet(&bytes, true, buf)?;
+                return Ok(false);
+            }
+        }
+
         match self.parse_all_packets {
             true => {
                 self.parse_full_packet(&bytes, false, buf)?;

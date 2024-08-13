@@ -1,3 +1,4 @@
+use crate::first_pass::frameparser::StartEndOffset;
 use crate::first_pass::parser::FirstPassOutput;
 use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::read_bits::DemoParserError;
@@ -22,7 +23,6 @@ use csgoproto::netmessages::CSVCMsg_VoiceData;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::env;
-use std::time::Instant;
 
 use super::game_events::CUSTOM_GAME_EVENTS_THAT_REQUIRE_DECODE_LISTENING;
 
@@ -30,6 +30,7 @@ const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 const DEFAULT_MAX_ENTITY_ID: usize = 1024;
 
 pub struct SecondPassParser<'a> {
+    pub start_end_offset: Option<StartEndOffset>,
     pub qf_mapper: &'a QfMapper,
     pub prop_controller: &'a PropController,
     pub cls_by_id: &'a Vec<Class>,
@@ -147,7 +148,12 @@ impl<'a> SecondPassParser<'a> {
             df_per_player: self.df_per_player,
         }
     }
-    pub fn new(first_pass_output: FirstPassOutput<'a>, offset: usize, parse_all_packets: bool) -> Result<Self, DemoParserError> {
+    pub fn new(
+        first_pass_output: FirstPassOutput<'a>,
+        offset: usize,
+        parse_all_packets: bool,
+        start_end_offset: Option<StartEndOffset>,
+    ) -> Result<Self, DemoParserError> {
         first_pass_output.settings.wanted_player_props.clone().extend(vec![
             "tick".to_owned(),
             "steamid".to_owned(),
@@ -156,6 +162,7 @@ impl<'a> SecondPassParser<'a> {
         let args: Vec<String> = env::args().collect();
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
         Ok(SecondPassParser {
+            start_end_offset: start_end_offset,
             hits: 0,
             total: 0,
             needs_decode_listening: needs_decode_listening(&first_pass_output.settings.wanted_events),

@@ -129,7 +129,6 @@ impl<'a> FirstPassParser<'a> {
                 *field = Some(self.generate_field_data(f, &serializer_msg, &mut field_type_map, qf_mapper)?);
             }
         }
-        println!("AFTEER {:?}", bef.elapsed());
         let bef = Instant::now();
         // Creates serializers
 
@@ -157,12 +156,10 @@ impl<'a> FirstPassParser<'a> {
                 || k.contains("Inc")
                 || k.contains("Infer")
             {
-                // prop_controller.find_prop_name_paths(ser);
+                prop_controller.find_prop_name_paths(ser);
             }
             prop_controller.find_prop_name_paths(ser);
         }
-        println!("{:?}", prop_controller.c);
-        println!("SENDTABLES TOOK {:?}", bef.elapsed());
         // Related to prop collection
         prop_controller.set_custom_propinfos();
         prop_controller.path_to_name = AHashMap::default();
@@ -215,7 +212,7 @@ impl<'a> FirstPassParser<'a> {
         };
         let ft = find_field_type(name, field_type_map)?;
         let mut field = field_from_msg(&msg, &big, ft.clone())?;
-        /*
+
         field.category = find_category(&mut field);
         let f = field.find_decoder(qf_mapper);
         field.decoder = f;
@@ -234,7 +231,7 @@ impl<'a> FirstPassParser<'a> {
             field.decoder = QanglePresDecoder;
         }
         field.field_type = ft;
-        */
+
         Ok(field)
     }
 }
@@ -311,7 +308,7 @@ pub struct VectorField {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValueField {
     pub decoder: Decoder,
-    pub value: Variant,
+    // pub value: Variant,
     pub name: String,
     pub should_parse: bool,
     pub prop_id: u32,
@@ -360,7 +357,7 @@ impl ValueField {
     pub fn new(decoder: Decoder, name: &str) -> ValueField {
         ValueField {
             decoder: decoder,
-            value: Variant::String("NOTSET".to_string()),
+            //value: Variant::String("NOTSET".to_string()),
             name: name.to_string(),
             prop_id: 0,
             should_parse: false,

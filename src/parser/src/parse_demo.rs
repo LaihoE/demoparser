@@ -1,3 +1,6 @@
+use std::time::Instant;
+
+use crate::first_pass::frameparser::{FrameParser, StartEndOffset};
 use crate::first_pass::parser::FirstPassOutput;
 use crate::first_pass::parser_settings::check_multithreadability;
 use crate::first_pass::parser_settings::{FirstPassParser, ParserInputs};
@@ -9,12 +12,13 @@ use crate::second_pass::parser::SecondPassOutput;
 use crate::second_pass::parser_settings::*;
 use crate::second_pass::variants::VarVec;
 use crate::second_pass::variants::{PropColumn, Variant};
-use ahash::AHashSet;
 use ahash::AHashMap;
+use ahash::AHashSet;
 use csgoproto::netmessages::CSVCMsg_VoiceData;
 use itertools::Itertools;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::ParallelIterator;
+use std::thread;
 
 pub const HEADER_ENDS_AT_BYTE: usize = 16;
 
@@ -50,6 +54,23 @@ impl<'a> Parser<'a> {
     pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
         let mut first_pass_parser = FirstPassParser::new(&self.input);
         let first_pass_output = first_pass_parser.parse_demo(&demo_bytes)?;
+        return self.second_pass_single_threaded(demo_bytes, first_pass_output);
+
+        let mut fp = FrameParser::new();
+        let s = thread::scope(|s| {
+            let before = Instant::now();
+            let h = s.spawn(|| fp.par_start(demo_bytes).unwrap());
+            let mut first_pass_parser = FirstPassParser::new(&self.input);
+            let first_pass_output = first_pass_parser.parse_demo(&demo_bytes).unwrap();
+            let frames = h.join().unwrap();
+            // println!("FIRST PASS {:?}", before.elapsed());
+            self.second_pass_super_threaded(demo_bytes, first_pass_output, frames)
+        });
+        return s;
+        panic!("done");
+
+        let mut first_pass_parser = FirstPassParser::new(&self.input);
+        let first_pass_output = first_pass_parser.parse_demo(&demo_bytes)?;
 
         if check_multithreadability(&self.input.wanted_player_props) && !self.force_singlethread {
             self.second_pass_multi_threaded(demo_bytes, first_pass_output)
@@ -63,10 +84,45 @@ impl<'a> Parser<'a> {
         outer_bytes: &[u8],
         first_pass_output: FirstPassOutput,
     ) -> Result<DemoOutput, DemoParserError> {
-        let mut parser = SecondPassParser::new(first_pass_output.clone(), 16, true)?;
+        let mut parser = SecondPassParser::new(first_pass_output.clone(), 16, true, None)?;
         parser.start(outer_bytes)?;
         let second_pass_output = parser.create_output();
         let mut outputs = self.combine_outputs(&mut vec![second_pass_output], first_pass_output);
+        if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
+            outputs.df = new_df;
+        }
+        Parser::add_item_purchase_sell_column(&mut outputs.game_events);
+        Parser::remove_item_sold_events(&mut outputs.game_events);
+        Ok(outputs)
+    }
+    fn second_pass_super_threaded(
+        &self,
+        outer_bytes: &[u8],
+        first_pass_output: FirstPassOutput,
+        frames: Vec<StartEndOffset>,
+    ) -> Result<DemoOutput, DemoParserError> {
+        let second_pass_outputs: Vec<Result<SecondPassOutput, DemoParserError>> = frames
+            .par_iter()
+            .map(|start_end_offset| {
+                let mut parser = SecondPassParser::new(
+                    first_pass_output.clone(),
+                    start_end_offset.start,
+                    false,
+                    Some(*start_end_offset),
+                )?;
+                parser.start(outer_bytes)?;
+                Ok(parser.create_output())
+            })
+            .collect();
+        // check for errors
+        let mut ok = vec![];
+        for result in second_pass_outputs {
+            match result {
+                Err(e) => return Err(e),
+                Ok(r) => ok.push(r),
+            };
+        }
+        let mut outputs = self.combine_outputs(&mut ok, first_pass_output);
         if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
             outputs.df = new_df;
         }
@@ -84,7 +140,7 @@ impl<'a> Parser<'a> {
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
-                let mut parser = SecondPassParser::new(first_pass_output.clone(), *offset, false)?;
+                let mut parser = SecondPassParser::new(first_pass_output.clone(), *offset, false, None)?;
                 parser.start(outer_bytes)?;
                 Ok(parser.create_output())
             })
