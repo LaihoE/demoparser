@@ -90,7 +90,10 @@ impl<'a> FirstPassParser<'a> {
             match frame.demo_cmd {
                 DEM_SendTables => self.parse_sendtable_bytes(bytes)?,
                 DEM_FileHeader => self.parse_header(&bytes)?,
-                DEM_ClassInfo => self.parse_class_info(&bytes)?,
+                DEM_ClassInfo => {
+                    self.parse_class_info(&bytes)?;
+                    break;
+                }
                 DEM_SignonPacket => self.parse_packet(&bytes)?,
                 DEM_FullPacket => self.parse_full_packet(&bytes, &frame)?,
                 DEM_Stop => break,

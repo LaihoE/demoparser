@@ -54,19 +54,6 @@ impl<'a> SecondPassParser<'a> {
         Ok(())
     }
 
-    pub fn parse_convars(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let convar: CNETMsg_SetConVar = match Message::parse_from_bytes(&bytes) {
-            Ok(msg) => msg,
-            Err(_) => return Err(DemoParserError::MalformedMessage),
-        };
-        for cv in &convar.convars {
-            for var in &cv.cvars {
-                self.convars.insert(var.name().to_owned(), var.value().to_owned());
-            }
-        }
-        Ok(())
-    }
-
     pub fn parse_player_end_msg(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let end_data: CCSUsrMsg_EndOfMatchAllPlayersData = match Message::parse_from_bytes(&bytes) {
             Ok(msg) => msg,

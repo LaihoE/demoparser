@@ -236,7 +236,7 @@ impl<'a> SecondPassParser<'a> {
             let field_info = get_propinfo(&field, path);
             let decoder = get_decoder_from_field(field)?;
             let result = bitreader.decode(&decoder, self.qf_mapper)?;
-
+            /*
             if !is_fullpacket && !is_baseline {
                 events_to_emit.extend(SecondPassParser::listen_for_events(
                     entity,
@@ -261,6 +261,7 @@ impl<'a> SecondPassParser<'a> {
                     &entity_id,
                 );
             }
+            */
             SecondPassParser::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
