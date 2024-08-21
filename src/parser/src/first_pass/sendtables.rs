@@ -97,6 +97,7 @@ impl<'a> FirstPassParser<'a> {
         let mut prop_controller = PropController::new(
             self.wanted_player_props.clone(),
             self.wanted_other_props.clone(),
+            self.wanted_prop_states.clone(),
             self.real_name_to_og_name.clone(),
             needs_velocity(&self.wanted_player_props),
             &self.wanted_events,

@@ -5,6 +5,7 @@ use crate::maps::BUTTONMAP;
 use crate::maps::TYPEHM;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::parser_settings::SpecialIDs;
+use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 
 pub const PLAYER_ENTITY_HANDLE_MISSING: i32 = 2047;
@@ -63,6 +64,8 @@ pub struct PropController {
     pub event_with_velocity: bool,
     pub needs_velocity: bool,
     pub path_to_name: AHashMap<[i32; 7], String>,
+    pub wanted_prop_states: AHashMap<String, Variant>,
+    pub wanted_prop_state_infos: Vec<WantedPropStateInfo>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -72,6 +75,12 @@ pub struct PropInfo {
     pub prop_name: String,
     pub prop_friendly_name: String,
     pub is_player_prop: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WantedPropStateInfo {
+    pub base: PropInfo,
+    pub wanted_prop_state: Variant,
 }
 
 pub enum PropCollectionType {
@@ -84,6 +93,7 @@ impl PropController {
     pub fn new(
         wanted_player_props: Vec<String>,
         wanted_other_props: Vec<String>,
+        wanted_prop_states: AHashMap<String, Variant>,
         real_name_to_og_name: AHashMap<String, String>,
         needs_velocty: bool,
         wanted_events: &[String],
@@ -102,6 +112,8 @@ impl PropController {
             event_with_velocity: !wanted_events.is_empty() && needs_velocty,
             path_to_name: AHashMap::default(),
             needs_velocity: needs_velocty,
+            wanted_prop_states: wanted_prop_states,
+            wanted_prop_state_infos: vec![],
         }
     }
 

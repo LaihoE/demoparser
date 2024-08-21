@@ -10,6 +10,7 @@ use crate::second_pass::decoder::QfMapper;
 use crate::second_pass::other_netmessages::Class;
 use crate::second_pass::parser_settings::PlayerEndMetaData;
 use crate::second_pass::parser_settings::SpecialIDs;
+use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
@@ -27,6 +28,7 @@ pub struct ParserInputs<'a> {
     pub wanted_players: Vec<u64>,
     pub wanted_player_props: Vec<String>,
     pub wanted_other_props: Vec<String>,
+    pub wanted_prop_states: AHashMap<String, Variant>,
     pub wanted_ticks: Vec<i32>,
     pub wanted_events: Vec<String>,
     pub parse_ents: bool,
@@ -63,6 +65,7 @@ pub struct FirstPassParser<'a> {
     pub wanted_players: AHashSet<u64, RandomState>,
     pub wanted_ticks: AHashSet<i32, RandomState>,
     pub wanted_other_props: Vec<String>,
+    pub wanted_prop_states: AHashMap<String, Variant>,
     pub wanted_events: Vec<String>,
     pub parse_entities: bool,
     pub parse_projectiles: bool,
@@ -104,6 +107,7 @@ impl<'a> FirstPassParser<'a> {
             prop_controller: PropController::new(
                 inputs.wanted_player_props.clone(),
                 inputs.wanted_other_props.clone(),
+                inputs.wanted_prop_states.clone(),
                 inputs.real_name_to_og_name.clone(),
                 false,
                 &vec!["None".to_string()],
@@ -131,6 +135,7 @@ impl<'a> FirstPassParser<'a> {
             wanted_players: AHashSet::from_iter(inputs.wanted_players.iter().cloned()),
             wanted_ticks: AHashSet::from_iter(inputs.wanted_ticks.iter().cloned()),
             wanted_other_props: inputs.wanted_other_props.clone(),
+            wanted_prop_states: inputs.wanted_prop_states.clone(),
             settings: &inputs,
             controller_ids: SpecialIDs::new(),
             id: 0,
