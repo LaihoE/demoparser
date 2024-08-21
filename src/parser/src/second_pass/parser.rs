@@ -23,10 +23,7 @@ use csgoproto::networkbasetypes::CNETMsg_Tick;
 use protobuf::Message;
 use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
-use std::time::Instant;
 use EDemoCommands::*;
-
-use super::collect_data::LastTickProps;
 
 const OUTER_BUF_DEFAULT_LEN: usize = 400_000;
 const INNER_BUF_DEFAULT_LEN: usize = 8192 * 15;
@@ -49,7 +46,6 @@ pub struct SecondPassOutput {
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
     pub entities: Vec<Option<Entity>>,
     pub last_tick: i32,
-    pub last_props: Vec<LastTickProps>,
 }
 impl<'a> SecondPassParser<'a> {
     pub fn start(&mut self, demo_bytes: &'a [u8]) -> Result<(), DemoParserError> {

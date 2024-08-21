@@ -127,7 +127,6 @@ pub struct PlayerEndMetaData {
 
 impl<'a> SecondPassParser<'a> {
     pub fn create_output(self) -> SecondPassOutput {
-        let last_tick_props = self.collect_last_tick();
         SecondPassOutput {
             voice_data: self.voice_data,
             chat_messages: self.chat_messages,
@@ -145,7 +144,6 @@ impl<'a> SecondPassParser<'a> {
             df_per_player: self.df_per_player,
             entities: self.entities,
             last_tick: self.tick,
-            last_props: last_tick_props,
         }
     }
     pub fn new(

@@ -18,7 +18,7 @@ use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::ParallelIterator;
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 pub const HEADER_ENDS_AT_BYTE: usize = 16;
 
