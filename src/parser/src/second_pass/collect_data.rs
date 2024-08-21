@@ -10,7 +10,6 @@ use crate::maps::PAINTKITS;
 use crate::maps::PLAYER_COLOR;
 use crate::maps::STICKER_ID_TO_NAME;
 use crate::maps::WEAPINDICIES;
-use crate::second_pass::entities::Entity;
 use crate::second_pass::entities::EntityType;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::PropColumn;

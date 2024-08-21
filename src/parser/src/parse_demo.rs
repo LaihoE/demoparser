@@ -41,34 +41,43 @@ pub struct DemoOutput {
 
 pub struct Parser<'a> {
     input: ParserInputs<'a>,
-    pub force_singlethread: bool,
+    pub parsing_mode: ParsingMode,
+}
+#[derive(PartialEq)]
+pub enum ParsingMode {
+    ForceSingleThreaded,
+    ForceMultiThreaded,
+    Normal,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(input: ParserInputs<'a>, force_singlethread: bool) -> Self {
+    pub fn new(input: ParserInputs<'a>, parsing_mode: ParsingMode) -> Self {
         Parser {
             input: input,
-            force_singlethread: force_singlethread,
+            parsing_mode: parsing_mode,
         }
     }
 
     pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
-        // Single threaded second pass
-        if !check_multithreadability(&self.input.wanted_player_props) || self.force_singlethread {
-            let mut first_pass_parser = FirstPassParser::new(&self.input);
-            let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, false)?;
-            return self.second_pass_single_threaded(demo_bytes, first_pass_output);
-        }
         // Multi threaded second pass
-        let (sender, receiver) = channel();
-        let mut fp = FrameParser::new();
-        return thread::scope(|s| {
-            let _handle = s.spawn(|| fp.par_start(demo_bytes, sender));
-            let mut first_pass_parser = FirstPassParser::new(&self.input);
-            let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, true).unwrap();
-            let out = self.second_pass_threaded_with_channels(demo_bytes, first_pass_output, receiver);
-            out
-        });
+        if self.parsing_mode == ParsingMode::ForceMultiThreaded
+            || check_multithreadability(&self.input.wanted_player_props)
+                && !(self.parsing_mode == ParsingMode::ForceSingleThreaded)
+        {
+            let (sender, receiver) = channel();
+            let mut fp = FrameParser::new();
+            return thread::scope(|s| {
+                let _handle = s.spawn(|| fp.par_start(demo_bytes, sender));
+                let mut first_pass_parser = FirstPassParser::new(&self.input);
+                let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, true).unwrap();
+                let out = self.second_pass_threaded_with_channels(demo_bytes, first_pass_output, receiver);
+                out
+            });
+        }
+        // Single threaded second pass
+        let mut first_pass_parser = FirstPassParser::new(&self.input);
+        let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, false)?;
+        return self.second_pass_single_threaded(demo_bytes, first_pass_output);
     }
 
     fn second_pass_single_threaded(

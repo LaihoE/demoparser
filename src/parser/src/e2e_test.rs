@@ -315,7 +315,7 @@ pub fn _create_ge_tests() {
         order_by_steamid: false,
     };
 
-    let mut ds = Parser::new(settings, true);
+    let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceMultiThreaded);
     // ds.is_multithreadable = false;
     let file = File::open("test_demo.dem".to_string()).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
@@ -688,7 +688,7 @@ pub fn _create_tests() {
         order_by_steamid: false,
     };
 
-    let mut ds = Parser::new(settings, true);
+    let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceMultiThreaded);
     let file = File::open("test_demo.dem".to_string()).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let d = ds.parse_demo(&mmap).unwrap();
@@ -1060,7 +1060,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         order_by_steamid: false,
     };
 
-    let mut ds = Parser::new(settings, false);
+    let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceMultiThreaded);
     let file = File::open("test_demo.dem".to_string()).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let out1 = ds.parse_demo(&mmap).unwrap();
@@ -1083,7 +1083,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         huffman_lookup_table: &huf,
         order_by_steamid: false,
     };
-    let mut ds = Parser::new(settings, false);
+    let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceMultiThreaded);
     let file = File::open("test_demo.dem".to_string()).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let out2 = ds.parse_demo(&mmap).unwrap();
@@ -1198,7 +1198,8 @@ mod tests {
             huffman_lookup_table: &huf,
             order_by_steamid: false,
         };
-        let mut ds = Parser::new(settings, true);
+
+        let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceMultiThreaded);
         let file = File::open("test_demo.dem").unwrap();
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         let output = ds.parse_demo(&mmap).unwrap();
