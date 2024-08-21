@@ -1,3 +1,4 @@
+use crate::first_pass::frameparser::{FrameParser, StartEndOffset, StartEndType};
 use crate::first_pass::parser::FirstPassOutput;
 use crate::first_pass::parser_settings::check_multithreadability;
 use crate::first_pass::parser_settings::{FirstPassParser, ParserInputs};
@@ -9,12 +10,15 @@ use crate::second_pass::parser::SecondPassOutput;
 use crate::second_pass::parser_settings::*;
 use crate::second_pass::variants::VarVec;
 use crate::second_pass::variants::{PropColumn, Variant};
-use ahash::AHashSet;
 use ahash::AHashMap;
+use ahash::AHashSet;
 use csgoproto::netmessages::CSVCMsg_VoiceData;
 use itertools::Itertools;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::ParallelIterator;
+use std::sync::mpsc::{channel, Receiver};
+use std::thread;
+use std::time::Duration;
 
 pub const HEADER_ENDS_AT_BYTE: usize = 16;
 
@@ -37,25 +41,43 @@ pub struct DemoOutput {
 
 pub struct Parser<'a> {
     input: ParserInputs<'a>,
-    pub force_singlethread: bool,
+    pub parsing_mode: ParsingMode,
+}
+#[derive(PartialEq)]
+pub enum ParsingMode {
+    ForceSingleThreaded,
+    ForceMultiThreaded,
+    Normal,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(input: ParserInputs<'a>, force_singlethread: bool) -> Self {
+    pub fn new(input: ParserInputs<'a>, parsing_mode: ParsingMode) -> Self {
         Parser {
             input: input,
-            force_singlethread: force_singlethread,
+            parsing_mode: parsing_mode,
         }
     }
-    pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
-        let mut first_pass_parser = FirstPassParser::new(&self.input);
-        let first_pass_output = first_pass_parser.parse_demo(&demo_bytes)?;
 
-        if check_multithreadability(&self.input.wanted_player_props) && !self.force_singlethread {
-            self.second_pass_multi_threaded(demo_bytes, first_pass_output)
-        } else {
-            self.second_pass_single_threaded(demo_bytes, first_pass_output)
+    pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
+        // Multi threaded second pass
+        if self.parsing_mode == ParsingMode::ForceMultiThreaded
+            || check_multithreadability(&self.input.wanted_player_props)
+                && !(self.parsing_mode == ParsingMode::ForceSingleThreaded)
+        {
+            let (sender, receiver) = channel();
+            let mut fp = FrameParser::new();
+            return thread::scope(|s| {
+                let _handle = s.spawn(|| fp.par_start(demo_bytes, sender));
+                let mut first_pass_parser = FirstPassParser::new(&self.input);
+                let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, true).unwrap();
+                let out = self.second_pass_threaded_with_channels(demo_bytes, first_pass_output, receiver);
+                out
+            });
         }
+        // Single threaded second pass
+        let mut first_pass_parser = FirstPassParser::new(&self.input);
+        let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, false)?;
+        return self.second_pass_single_threaded(demo_bytes, first_pass_output);
     }
 
     fn second_pass_single_threaded(
@@ -63,7 +85,7 @@ impl<'a> Parser<'a> {
         outer_bytes: &[u8],
         first_pass_output: FirstPassOutput,
     ) -> Result<DemoOutput, DemoParserError> {
-        let mut parser = SecondPassParser::new(first_pass_output.clone(), 16, true)?;
+        let mut parser = SecondPassParser::new(first_pass_output.clone(), 16, true, None)?;
         parser.start(outer_bytes)?;
         let second_pass_output = parser.create_output();
         let mut outputs = self.combine_outputs(&mut vec![second_pass_output], first_pass_output);
@@ -74,8 +96,61 @@ impl<'a> Parser<'a> {
         Parser::remove_item_sold_events(&mut outputs.game_events);
         Ok(outputs)
     }
-
-    fn second_pass_multi_threaded(
+    fn second_pass_threaded_with_channels(
+        &self,
+        outer_bytes: &[u8],
+        first_pass_output: FirstPassOutput,
+        reciever: Receiver<StartEndOffset>,
+    ) -> Result<DemoOutput, DemoParserError> {
+        thread::scope(|s| {
+            let mut handles = vec![];
+            let mut channel_threading_was_ok = true;
+            loop {
+                if let Ok(start_end_offset) = reciever.recv_timeout(Duration::from_secs(3)) {
+                    match start_end_offset.msg_type {
+                        StartEndType::EndOfMessages => break,
+                        StartEndType::OK => {}
+                        StartEndType::MultithreadingWasNotOk => {
+                            channel_threading_was_ok = false;
+                            break;
+                        }
+                    }
+                    let my_first_out = first_pass_output.clone();
+                    handles.push(s.spawn(move || {
+                        let mut parser =
+                            SecondPassParser::new(my_first_out, start_end_offset.start, false, Some(start_end_offset))?;
+                        parser.start(outer_bytes)?;
+                        Ok(parser.create_output())
+                    }));
+                } else {
+                    channel_threading_was_ok = false;
+                    break;
+                }
+            }
+            // Fallback if channels failed to find all fullpackets. Should be rare.
+            if !channel_threading_was_ok {
+                return self.second_pass_multi_threaded_no_channels(outer_bytes, first_pass_output);
+            }
+            // check for errors
+            let mut ok = vec![];
+            for result in handles {
+                match result.join() {
+                    Err(_e) => return Err(DemoParserError::MalformedMessage),
+                    Ok(r) => {
+                        ok.push(r?);
+                    }
+                };
+            }
+            let mut outputs = self.combine_outputs(&mut ok, first_pass_output);
+            if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
+                outputs.df = new_df;
+            }
+            Parser::add_item_purchase_sell_column(&mut outputs.game_events);
+            Parser::remove_item_sold_events(&mut outputs.game_events);
+            return Ok(outputs);
+        })
+    }
+    fn second_pass_multi_threaded_no_channels(
         &self,
         outer_bytes: &[u8],
         first_pass_output: FirstPassOutput,
@@ -84,7 +159,7 @@ impl<'a> Parser<'a> {
             .fullpacket_offsets
             .par_iter()
             .map(|offset| {
-                let mut parser = SecondPassParser::new(first_pass_output.clone(), *offset, false)?;
+                let mut parser = SecondPassParser::new(first_pass_output.clone(), *offset, false, None)?;
                 parser.start(outer_bytes)?;
                 Ok(parser.create_output())
             })
@@ -179,9 +254,11 @@ impl<'a> Parser<'a> {
         }
         Some(new_df)
     }
+
     fn combine_outputs(&self, second_pass_outputs: &mut Vec<SecondPassOutput>, first_pass_output: FirstPassOutput) -> DemoOutput {
         // Combines all inner DemoOutputs into one big output
         second_pass_outputs.sort_by_key(|x| x.ptr);
+
         let mut dfs = second_pass_outputs.iter().map(|x| x.df.clone()).collect();
         let all_dfs_combined = self.combine_dfs(&mut dfs, false);
         let all_game_events: AHashSet<String> =
@@ -194,18 +271,12 @@ impl<'a> Parser<'a> {
         }
         let per_players: Vec<AHashMap<u64, AHashMap<u32, PropColumn>>> =
             second_pass_outputs.iter().map(|x| x.df_per_player.clone()).collect();
-
         let mut all_steamids = AHashSet::default();
-
         for entry in &per_players {
             for (k, _) in entry {
                 all_steamids.insert(k);
             }
         }
-
-        // Vec<HM<steamid, <propid, propcol>>>
-        // all_steamids.insert(76561198073049527);
-
         let mut pp = AHashMap::default();
         for steamid in all_steamids {
             let mut v = vec![];
@@ -234,6 +305,7 @@ impl<'a> Parser<'a> {
             df_per_player: pp,
         }
     }
+
     fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>, remove_name_and_steamid: bool) -> AHashMap<u32, PropColumn> {
         let mut big: AHashMap<u32, PropColumn> = AHashMap::default();
         if v.len() == 1 {

@@ -120,6 +120,7 @@ impl<'a> SecondPassParser<'a> {
             }
         }
     }
+
     pub fn find_prop(
         &self,
         prop_info: &PropInfo,

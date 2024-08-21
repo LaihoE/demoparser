@@ -1,6 +1,7 @@
 use parser::first_pass::parser_settings::rm_user_friendly_names;
 use parser::first_pass::parser_settings::ParserInputs;
 use parser::parse_demo::Parser;
+use parser::parse_demo::ParsingMode::ForceSingleThreaded;
 use parser::second_pass::parser_settings::create_huffman_lookup_table;
 use parser::second_pass::variants::soa_to_aos;
 use parser::second_pass::variants::OutputSerdeHelperStruct;
@@ -57,7 +58,7 @@ pub fn parseEvent(
         huffman_lookup_table: &arc_huf,
         order_by_steamid: false,
     };
-    let mut parser = Parser::new(settings, false);
+    let mut parser = Parser::new(settings, ForceSingleThreaded);
 
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
@@ -119,7 +120,7 @@ pub fn parseEvents(
         huffman_lookup_table: &arc_huf,
         order_by_steamid: false,
     };
-    let mut parser = Parser::new(settings, false);
+    let mut parser = Parser::new(settings, ForceSingleThreaded);
 
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
@@ -149,7 +150,7 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
     };
-    let mut parser = Parser::new(settings, false);
+    let mut parser = Parser::new(settings, ForceSingleThreaded);
 
     let output = match parser.parse_demo(&fileBytes) {
         Ok(output) => output,
@@ -209,7 +210,7 @@ pub fn parseTicks(
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
     };
-    let mut parser = Parser::new(settings, false);
+    let mut parser = Parser::new(settings, ForceSingleThreaded);
 
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
@@ -263,7 +264,7 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
     };
-    let mut parser = Parser::new(settings, false);
+    let mut parser = Parser::new(settings, ForceSingleThreaded);
 
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
@@ -295,7 +296,7 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
     };
-    let mut parser = Parser::new(settings, false);
+    let mut parser = Parser::new(settings, ForceSingleThreaded);
     let output = match parser.parse_demo(&file) {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),

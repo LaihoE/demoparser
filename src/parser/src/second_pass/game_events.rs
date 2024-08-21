@@ -73,6 +73,7 @@ impl<'a> SecondPassParser<'a> {
         if self.wanted_events.len() == 0 && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(None);
         }
+
         let event: CSVCMsg_GameEvent = match Message::parse_from_bytes(&bytes) {
             Ok(event) => event,
             Err(_) => return Err(DemoParserError::MalformedMessage),
@@ -96,6 +97,7 @@ impl<'a> SecondPassParser<'a> {
             return Ok(None);
         }
         let mut event_fields: Vec<EventField> = vec![];
+
         // Parsing game events is this easy, the complexity comes from adding "extra" fields into events.
         for i in 0..event.keys.len() {
             let ge = &event.keys[i];

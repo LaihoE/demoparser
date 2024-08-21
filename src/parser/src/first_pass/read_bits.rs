@@ -74,10 +74,10 @@ impl<'a> Bitreader<'a> {
     #[inline(always)]
     pub fn read_u_bit_var(&mut self) -> Result<u32, DemoParserError> {
         let bits = self.read_nbits(6)?;
-        match bits & 48 {
-            16 => return Ok((bits & 15) | (self.read_nbits(4)? << 4)),
-            32 => return Ok((bits & 15) | (self.read_nbits(8)? << 4)),
-            48 => return Ok((bits & 15) | (self.read_nbits(28)? << 4)),
+        match bits & 0b110000 {
+            0b10000 => return Ok((bits & 0b1111) | (self.read_nbits(4)? << 4)),
+            0b100000 => return Ok((bits & 0b1111) | (self.read_nbits(8)? << 4)),
+            0b110000 => return Ok((bits & 0b1111) | (self.read_nbits(28)? << 4)),
             _ => return Ok(bits),
         }
     }

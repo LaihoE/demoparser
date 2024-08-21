@@ -20,7 +20,6 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::hash::RandomState;
 use std::result::Result;
-use std::time::Instant;
 
 fn parse_demo(bytes: BytesVariant, parser: &mut Parser) -> Result<DemoOutput, Error> {
   match bytes {
@@ -52,7 +51,7 @@ pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<HashMap<
     huffman_lookup_table: &vec![],
     order_by_steamid: false,
   };
-  let mut parser = Parser::new(settings, false);
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
   let out = match convert_voice_data_to_wav(output.voice_data) {
     Ok(out) => out,
@@ -85,7 +84,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     huffman_lookup_table: &huf,
     order_by_steamid: false,
   };
-  let mut parser = Parser::new(settings, false);
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
 
   let v = Vec::from_iter(output.game_events_counter.iter());
@@ -116,7 +115,7 @@ pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value
     huffman_lookup_table: &huf,
     order_by_steamid: false,
   };
-  let mut parser = Parser::new(settings, false);
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
 
   let s = match serde_json::to_value(&output.projectiles) {
@@ -145,7 +144,7 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     huffman_lookup_table: &huf,
     order_by_steamid: false,
   };
-  let mut parser = Parser::new(settings, false);
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
   let mut hm: HashMap<String, String> = HashMap::default();
 
@@ -209,7 +208,7 @@ pub fn parse_event(
     huffman_lookup_table: &huf,
     order_by_steamid: false,
   };
-  let mut parser = Parser::new(settings, false);
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.game_events) {
     Ok(s) => s,
@@ -271,7 +270,7 @@ pub fn parse_events(
     huffman_lookup_table: &huf,
     order_by_steamid: false,
   };
-  let mut parser = Parser::new(settings, false);
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.game_events) {
     Ok(s) => s,
@@ -331,7 +330,7 @@ pub fn parse_ticks(
     order_by_steamid: order_by_steamid,
   };
 
-  let mut parser = Parser::new(settings, false);
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
   real_names.push("tick".to_owned());
   real_names.push("steamid".to_owned());
@@ -402,7 +401,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     huffman_lookup_table: &huf,
     order_by_steamid: false,
   };
-  let mut parser = Parser::new(settings, false);
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.player_md) {
     Ok(s) => s,
@@ -431,7 +430,7 @@ pub fn parse_player_skins(path_or_buf: Either<String, Buffer>) -> napi::Result<V
     huffman_lookup_table: &huf,
     order_by_steamid: false,
   };
-  let mut parser = Parser::new(settings, false);
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.skins) {
     Ok(s) => s,

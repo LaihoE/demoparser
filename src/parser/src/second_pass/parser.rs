@@ -10,6 +10,7 @@ use crate::maps::demo_cmd_type_from_int;
 use crate::maps::netmessage_type_from_int;
 use crate::maps::NetmessageType::*;
 use crate::second_pass::collect_data::ProjectileRecord;
+use crate::second_pass::entities::Entity;
 use crate::second_pass::game_events::GameEvent;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::parser_settings::*;
@@ -43,6 +44,8 @@ pub struct SecondPassOutput {
     pub ptr: usize,
     pub voice_data: Vec<CSVCMsg_VoiceData>,
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
+    pub entities: Vec<Option<Entity>>,
+    pub last_tick: i32,
 }
 impl<'a> SecondPassParser<'a> {
     pub fn start(&mut self, demo_bytes: &'a [u8]) -> Result<(), DemoParserError> {
@@ -56,9 +59,11 @@ impl<'a> SecondPassParser<'a> {
                 self.ptr += frame.size as usize;
                 continue;
             }
+
             let bytes = self.slice_packet_bytes(demo_bytes, frame.size)?;
             let bytes = self.decompress_if_needed(&mut buf, bytes, &frame)?;
             self.ptr += frame.size;
+
             let ok = match frame.demo_cmd {
                 DEM_SignonPacket => self.parse_packet(&bytes, &mut buf2),
                 DEM_Packet => self.parse_packet(&bytes, &mut buf2),
@@ -81,6 +86,14 @@ impl<'a> SecondPassParser<'a> {
         buf: &mut Vec<u8>,
         started_at: usize,
     ) -> Result<bool, DemoParserError> {
+        if let Some(start_end_offset) = self.start_end_offset {
+            if self.ptr > start_end_offset.end {
+                return Ok(true);
+            } else {
+                self.parse_full_packet(&bytes, true, buf)?;
+                return Ok(false);
+            }
+        }
         match self.parse_all_packets {
             true => {
                 self.parse_full_packet(&bytes, false, buf)?;
@@ -112,6 +125,7 @@ impl<'a> SecondPassParser<'a> {
             frame_starts_at: frame_starts_at,
             is_compressed: is_compressed,
             demo_cmd: demo_cmd,
+            tick: self.tick,
         })
     }
     fn slice_packet_bytes(&mut self, demo_bytes: &'a [u8], frame_size: usize) -> Result<&'a [u8], DemoParserError> {
@@ -180,6 +194,9 @@ impl<'a> SecondPassParser<'a> {
                 svc_PacketEntities => {
                     if should_parse_entities {
                         self.parse_packet_ents(&msg_bytes, is_fullpacket)?;
+                        if !is_fullpacket {
+                            self.collect_entities();
+                        }
                     }
                     Ok(())
                 }
@@ -204,7 +221,6 @@ impl<'a> SecondPassParser<'a> {
         if !wrong_order_events.is_empty() {
             self.resolve_wrong_order_event(&mut wrong_order_events)?;
         }
-        self.collect_entities();
         Ok(())
     }
     pub fn parse_voice_data(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {

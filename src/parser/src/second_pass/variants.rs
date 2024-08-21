@@ -25,7 +25,6 @@ pub enum Variant {
     U64Vec(Vec<u64>),
     Stickers(Vec<Sticker>),
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Sticker {
     pub name: String,

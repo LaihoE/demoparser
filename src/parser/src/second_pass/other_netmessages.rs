@@ -7,7 +7,6 @@ use crate::second_pass::parser_settings::PlayerEndMetaData;
 use crate::second_pass::parser_settings::SecondPassParser;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_EndOfMatchAllPlayersData;
 use csgoproto::cstrike15_usermessages::CCSUsrMsg_SendPlayerItemDrops;
-use csgoproto::networkbasetypes::CNETMsg_SetConVar;
 use protobuf::Message;
 
 #[derive(Debug, Clone)]
@@ -32,37 +31,7 @@ impl<'a> SecondPassParser<'a> {
                 Some(name) => Some(name.to_string()),
                 None => None,
             };
-            self.item_drops.push(EconItem {
-                account_id: item.accountid,
-                item_id: item.itemid,
-                def_index: item.defindex,
-                paint_index: item.paintindex,
-                rarity: item.rarity,
-                quality: item.quality,
-                paint_seed: item.paintseed,
-                paint_wear: item.paintwear,
-                quest_id: item.questid,
-                dropreason: item.dropreason,
-                custom_name: item.customname.clone(),
-                inventory: item.inventory,
-                ent_idx: item.entindex,
-                steamid: None,
-                item_name: item_name,
-                skin_name: skin_name,
-            });
-        }
-        Ok(())
-    }
-
-    pub fn parse_convars(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let convar: CNETMsg_SetConVar = match Message::parse_from_bytes(&bytes) {
-            Ok(msg) => msg,
-            Err(_) => return Err(DemoParserError::MalformedMessage),
-        };
-        for cv in &convar.convars {
-            for var in &cv.cvars {
-                self.convars.insert(var.name().to_owned(), var.value().to_owned());
-            }
+            self.item_drops.push(EconItem { account_id: item.accountid, item_id: item.itemid, def_index: item.defindex, paint_index: item.paintindex, rarity: item.rarity, quality: item.quality, paint_seed: item.paintseed, paint_wear: item.paintwear, quest_id: item.questid, dropreason: item.dropreason, custom_name: item.customname.clone(), inventory: item.inventory, ent_idx: item.entindex, steamid: None, item_name: item_name, skin_name: skin_name });
         }
         Ok(())
     }
@@ -90,11 +59,7 @@ impl<'a> SecondPassParser<'a> {
         }
         */
         for player in &end_data.allplayerdata {
-            self.player_end_data.push(PlayerEndMetaData {
-                name: player.name.clone(),
-                steamid: player.xuid,
-                team_number: player.teamnumber,
-            });
+            self.player_end_data.push(PlayerEndMetaData { name: player.name.clone(), steamid: player.xuid, team_number: player.teamnumber });
             for item in &player.items {
                 if item.itemid() != 0 {
                     let item_name = match WEAPINDICIES.get(&item.defindex.unwrap_or(u32::MAX)) {
@@ -105,24 +70,7 @@ impl<'a> SecondPassParser<'a> {
                         Some(name) => Some(name.to_string()),
                         None => None,
                     };
-                    self.skins.push(EconItem {
-                        account_id: item.accountid,
-                        item_id: item.itemid,
-                        def_index: item.defindex,
-                        paint_index: item.paintindex,
-                        rarity: item.rarity,
-                        quality: item.quality,
-                        paint_seed: item.paintseed,
-                        paint_wear: item.paintwear,
-                        quest_id: item.questid,
-                        dropreason: item.dropreason,
-                        custom_name: item.customname.clone(),
-                        inventory: item.inventory,
-                        ent_idx: item.entindex,
-                        steamid: player.xuid,
-                        item_name: item_name,
-                        skin_name: skin_name,
-                    });
+                    self.skins.push(EconItem { account_id: item.accountid, item_id: item.itemid, def_index: item.defindex, paint_index: item.paintindex, rarity: item.rarity, quality: item.quality, paint_seed: item.paintseed, paint_wear: item.paintwear, quest_id: item.questid, dropreason: item.dropreason, custom_name: item.customname.clone(), inventory: item.inventory, ent_idx: item.entindex, steamid: player.xuid, item_name: item_name, skin_name: skin_name });
                 }
             }
         }

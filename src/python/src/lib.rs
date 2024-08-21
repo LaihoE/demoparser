@@ -70,7 +70,7 @@ impl DemoParser {
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
-        let mut parser = Parser::new(settings, false);
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
@@ -97,7 +97,7 @@ impl DemoParser {
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
-        let mut parser = Parser::new(settings, false);
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
@@ -131,7 +131,7 @@ impl DemoParser {
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
-        let mut parser = Parser::new(settings, false);
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
@@ -201,7 +201,7 @@ impl DemoParser {
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
-        let mut parser = Parser::new(settings, false);
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
@@ -245,7 +245,7 @@ impl DemoParser {
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
-        let mut parser = Parser::new(settings, false);
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
@@ -325,7 +325,7 @@ impl DemoParser {
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
-        let mut parser = Parser::new(settings, false);
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
@@ -423,7 +423,7 @@ impl DemoParser {
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
-        let mut parser = Parser::new(settings, false);
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
@@ -479,7 +479,7 @@ impl DemoParser {
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
-        let mut parser = Parser::new(settings, false);
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
@@ -507,7 +507,7 @@ impl DemoParser {
             huffman_lookup_table: &vec![],
             order_by_steamid: false,
         };
-        let mut parser = Parser::new(settings, false);
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
@@ -558,7 +558,7 @@ impl DemoParser {
             huffman_lookup_table: &arc_huf,
             order_by_steamid: false,
         };
-        let mut parser = Parser::new(settings, false);
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),

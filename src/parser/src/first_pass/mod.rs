@@ -1,4 +1,5 @@
 pub mod fallbackbytes;
+pub mod frameparser;
 pub mod parser;
 pub mod parser_settings;
 pub mod prop_controller;
