@@ -72,7 +72,6 @@ pub struct SecondPassParser<'a> {
     pub is_debug_mode: bool,
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
     pub order_by_steamid: bool,
-    pub entity_state_before_fp: Vec<Option<Entity>>,
     pub last_tick: i32,
 }
 #[derive(Debug, Clone)]
@@ -192,7 +191,6 @@ impl<'a> SecondPassParser<'a> {
             ge_list: first_pass_output.ge_list,
             cls_by_id: &first_pass_output.cls_by_id,
             entities: vec![None; DEFAULT_MAX_ENTITY_ID],
-            entity_state_before_fp: vec![None; DEFAULT_MAX_ENTITY_ID],
             cls_bits: None,
             tick: -99999,
             players: BTreeMap::default(),
