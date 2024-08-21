@@ -17,7 +17,6 @@ use crate::second_pass::decoder::Decoder::*;
 use crate::second_pass::decoder::QfMapper;
 use crate::second_pass::decoder::QuantalizedFloat;
 use crate::second_pass::path_ops::FieldPath;
-use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use csgoproto::netmessages::ProtoFlattenedSerializer_t;
 use csgoproto::netmessages::{CSVCMsg_FlattenedSerializer, ProtoFlattenedSerializerField_t};
@@ -151,7 +150,6 @@ impl<'a> FirstPassParser<'a> {
                 // When collecting values we use the id as key.
                 prop_controller.find_prop_name_paths(&mut ser);
             }
-
             serializers.insert(ser.name.clone(), ser);
         }
         // Related to prop collection
@@ -301,13 +299,12 @@ pub struct VectorField {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValueField {
     pub decoder: Decoder,
-    pub value: Variant,
     pub name: String,
     pub should_parse: bool,
     pub prop_id: u32,
     pub full_name: String,
-    // pub path: Vec<i32>,
 }
+
 #[derive(Debug, Clone)]
 pub struct SerializerField {
     pub serializer: Serializer,
@@ -350,7 +347,6 @@ impl ValueField {
     pub fn new(decoder: Decoder, name: &str) -> ValueField {
         ValueField {
             decoder: decoder,
-            value: Variant::String("NOTSET".to_string()),
             name: name.to_string(),
             prop_id: 0,
             should_parse: false,
@@ -474,6 +470,7 @@ pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
         },
         _ => None,
     };
+
     // Flatten vector props
     if let Some(mut fi) = info {
         if fi.prop_id == MY_WEAPONS_OFFSET {

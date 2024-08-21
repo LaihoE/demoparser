@@ -10,6 +10,7 @@ use crate::maps::PAINTKITS;
 use crate::maps::PLAYER_COLOR;
 use crate::maps::STICKER_ID_TO_NAME;
 use crate::maps::WEAPINDICIES;
+use crate::second_pass::entities::Entity;
 use crate::second_pass::entities::EntityType;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::PropColumn;
@@ -53,6 +54,13 @@ pub enum CoordinateAxis {
     X,
     Y,
     Z,
+}
+#[derive(Debug)]
+pub struct LastTickProps {
+    pub tick: i32,
+    pub prop_info: PropInfo,
+    pub data: Option<Variant>,
+    pub player: PlayerMetaData,
 }
 
 // This file collects the data that is converted into a dataframe in the end in parser.parse_ticks()
@@ -120,6 +128,21 @@ impl<'a> SecondPassParser<'a> {
             }
         }
     }
+    pub fn collect_last_tick(&self) -> Vec<LastTickProps> {
+        let mut fields = vec![];
+        for (entity_id, player) in &self.players {
+            for prop_info in &self.prop_controller.prop_infos {
+                fields.push(LastTickProps {
+                    tick: self.tick,
+                    prop_info: prop_info.clone(),
+                    data: self.find_prop(prop_info, entity_id, player).ok(),
+                    player: player.clone(),
+                });
+            }
+        }
+        fields
+    }
+
     pub fn find_prop(
         &self,
         prop_info: &PropInfo,
@@ -1047,6 +1070,19 @@ impl<'a> SecondPassParser<'a> {
             }
         }
         None
+    }
+}
+pub fn get_prop_from_ent_non_self(
+    entities: &[Option<Entity>],
+    prop_id: &u32,
+    entity_id: &i32,
+) -> Result<Variant, PropCollectionError> {
+    match entities.get(*entity_id as usize) {
+        Some(Some(e)) => match e.props.get(&prop_id) {
+            None => return Err(PropCollectionError::GetPropFromEntPropNotFound),
+            Some(prop) => return Ok(prop.clone()),
+        },
+        _ => return Err(PropCollectionError::GetPropFromEntEntityNotFound),
     }
 }
 

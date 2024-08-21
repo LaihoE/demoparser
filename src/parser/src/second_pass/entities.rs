@@ -62,7 +62,6 @@ impl<'a> SecondPassParser<'a> {
         let mut bitreader = Bitreader::new(msg.entity_data());
         let mut entity_id: i32 = -1;
         let mut events_to_emit = vec![];
-
         for _ in 0..msg.updated_entries() {
             entity_id += 1 + (bitreader.read_u_bit_var()? as i32);
             // Read 2 bits to know which operation should be done to the entity.
@@ -236,7 +235,7 @@ impl<'a> SecondPassParser<'a> {
             let field_info = get_propinfo(&field, path);
             let decoder = get_decoder_from_field(field)?;
             let result = bitreader.decode(&decoder, self.qf_mapper)?;
-            /*
+
             if !is_fullpacket && !is_baseline {
                 events_to_emit.extend(SecondPassParser::listen_for_events(
                     entity,
@@ -246,7 +245,6 @@ impl<'a> SecondPassParser<'a> {
                     &self.prop_controller,
                 ));
             }
-
             if self.is_debug_mode {
                 SecondPassParser::debug_inspect(
                     &result,
@@ -261,7 +259,7 @@ impl<'a> SecondPassParser<'a> {
                     &entity_id,
                 );
             }
-            */
+
             SecondPassParser::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
@@ -279,8 +277,8 @@ impl<'a> SecondPassParser<'a> {
         _entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
-            if _v.full_name.contains("Punch") {
-                println!("{:?} {:?} {:?}", field_info, _v.full_name, _result);
+            if _v.full_name.contains("Services")  {
+                println!("{:?} {:?} {:?} {:?}", _path, field_info, _v.full_name, _result);
             }
         }
     }
@@ -292,6 +290,7 @@ impl<'a> SecondPassParser<'a> {
             }
         }
     }
+
     #[inline]
     fn write_fp(&mut self, fp_src: &mut FieldPath, idx: usize) -> Result<(), DemoParserError> {
         match self.paths.get_mut(idx) {

@@ -25,7 +25,63 @@ pub enum Variant {
     U64Vec(Vec<u64>),
     Stickers(Vec<Sticker>),
 }
-
+/*
+impl From<bool> for Variant {
+    fn from(value: bool) -> Self {
+        Variant::Bool(value)
+    }
+}
+impl From<u32> for Variant {
+    fn from(value: u32) -> Self {
+        Variant::U32(value)
+    }
+}
+impl From<i32> for Variant {
+    fn from(value: i32) -> Self {
+        Variant::I32(value)
+    }
+}
+impl From<i16> for Variant {
+    fn from(value: i16) -> Self {
+        Variant::I16(value)
+    }
+}
+impl From<u8> for Variant {
+    fn from(value: u8) -> Self {
+        Variant::U8(value)
+    }
+}
+impl From<bool> for Variant {
+    fn from(value: bool) -> Self {
+        Variant::Bool(value)
+    }
+}
+impl From<bool> for Variant {
+    fn from(value: bool) -> Self {
+        Variant::Bool(value)
+    }
+}
+impl From<bool> for Variant {
+    fn from(value: bool) -> Self {
+        Variant::Bool(value)
+    }
+}
+impl From<bool> for Variant {
+    fn from(value: bool) -> Self {
+        Variant::Bool(value)
+    }
+}
+impl From<bool> for Variant {
+    fn from(value: bool) -> Self {
+        Variant::Bool(value)
+    }
+}
+impl From<bool> for Variant {
+    fn from(value: bool) -> Self {
+        Variant::Bool(value)
+    }
+}
+*/
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Sticker {
     pub name: String,

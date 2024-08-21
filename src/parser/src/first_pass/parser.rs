@@ -66,7 +66,9 @@ pub struct FirstPassOutput<'a> {
     pub header: AHashMap<String, String>,
     pub order_by_steamid: bool,
 }
+#[derive(Debug)]
 pub struct Frame {
+    pub tick: i32,
     pub size: usize,
     pub frame_starts_at: usize,
     pub is_compressed: bool,
@@ -74,11 +76,14 @@ pub struct Frame {
 }
 
 impl<'a> FirstPassParser<'a> {
-    pub fn parse_demo(&mut self, demo_bytes: &'a [u8]) -> Result<FirstPassOutput, DemoParserError> {
+    pub fn parse_demo(&mut self, demo_bytes: &'a [u8], exit_early: bool) -> Result<FirstPassOutput, DemoParserError> {
         self.handle_short_header(demo_bytes.len(), &demo_bytes[..HEADER_ENDS_AT_BYTE])?;
         let mut reuseable_buffer = vec![0_u8; 100_000];
         // Loop that goes trough the entire file
         loop {
+            if exit_early && self.cls_by_id.is_some() && !self.ge_list.is_empty() {
+                break;
+            }
             let frame = self.read_frame(demo_bytes)?;
             if self.is_packet_we_skip_on_first_pass(frame.demo_cmd) {
                 self.ptr += frame.size;
@@ -90,10 +95,7 @@ impl<'a> FirstPassParser<'a> {
             match frame.demo_cmd {
                 DEM_SendTables => self.parse_sendtable_bytes(bytes)?,
                 DEM_FileHeader => self.parse_header(&bytes)?,
-                DEM_ClassInfo => {
-                    self.parse_class_info(&bytes)?;
-                    break;
-                }
+                DEM_ClassInfo => self.parse_class_info(&bytes)?,
                 DEM_SignonPacket => self.parse_packet(&bytes)?,
                 DEM_FullPacket => self.parse_full_packet(&bytes, &frame)?,
                 DEM_Stop => break,
@@ -127,6 +129,7 @@ impl<'a> FirstPassParser<'a> {
             frame_starts_at: frame_starts_at,
             is_compressed: is_compressed,
             demo_cmd: demo_cmd,
+            tick: self.tick,
         })
     }
     fn is_packet_we_skip_on_first_pass(&self, demo_cmd: EDemoCommands) -> bool {

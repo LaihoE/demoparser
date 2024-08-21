@@ -72,6 +72,8 @@ pub struct SecondPassParser<'a> {
     pub is_debug_mode: bool,
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
     pub order_by_steamid: bool,
+    pub entity_state_before_fp: Vec<Option<Entity>>,
+    pub last_tick: i32,
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -125,6 +127,7 @@ pub struct PlayerEndMetaData {
 
 impl<'a> SecondPassParser<'a> {
     pub fn create_output(self) -> SecondPassOutput {
+        let last_tick_props = self.collect_last_tick();
         SecondPassOutput {
             voice_data: self.voice_data,
             chat_messages: self.chat_messages,
@@ -140,6 +143,9 @@ impl<'a> SecondPassParser<'a> {
             projectiles: self.projectile_records,
             ptr: self.ptr,
             df_per_player: self.df_per_player,
+            entities: self.entities,
+            last_tick: self.tick,
+            last_props: last_tick_props,
         }
     }
     pub fn new(
@@ -156,6 +162,7 @@ impl<'a> SecondPassParser<'a> {
         let args: Vec<String> = env::args().collect();
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
         Ok(SecondPassParser {
+            last_tick: 0,
             start_end_offset: start_end_offset,
             order_by_steamid: first_pass_output.order_by_steamid,
             df_per_player: AHashMap::default(),
@@ -187,6 +194,7 @@ impl<'a> SecondPassParser<'a> {
             ge_list: first_pass_output.ge_list,
             cls_by_id: &first_pass_output.cls_by_id,
             entities: vec![None; DEFAULT_MAX_ENTITY_ID],
+            entity_state_before_fp: vec![None; DEFAULT_MAX_ENTITY_ID],
             cls_bits: None,
             tick: -99999,
             players: BTreeMap::default(),
