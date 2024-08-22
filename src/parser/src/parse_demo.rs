@@ -69,9 +69,10 @@ impl<'a> Parser<'a> {
             return thread::scope(|s| {
                 let _handle = s.spawn(|| fp.par_start(demo_bytes, sender));
                 let mut first_pass_parser = FirstPassParser::new(&self.input);
-                let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, true).unwrap();
-                let out = self.second_pass_threaded_with_channels(demo_bytes, first_pass_output, receiver);
-                out
+                match first_pass_parser.parse_demo(&demo_bytes, true) {
+                    Ok(first_pass_output) => self.second_pass_threaded_with_channels(demo_bytes, first_pass_output, receiver),
+                    Err(e) => Err(e),
+                }
             });
         }
         // Single threaded second pass
@@ -129,6 +130,8 @@ impl<'a> Parser<'a> {
             }
             // Fallback if channels failed to find all fullpackets. Should be rare.
             if !channel_threading_was_ok {
+                let mut first_pass_parser = FirstPassParser::new(&self.input);
+                let first_pass_output = first_pass_parser.parse_demo(outer_bytes, false)?;
                 return self.second_pass_multi_threaded_no_channels(outer_bytes, first_pass_output);
             }
             // check for errors
