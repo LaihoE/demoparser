@@ -129,6 +129,8 @@ impl<'a> Parser<'a> {
             }
             // Fallback if channels failed to find all fullpackets. Should be rare.
             if !channel_threading_was_ok {
+                let mut first_pass_parser = FirstPassParser::new(&self.input);
+                let first_pass_output = first_pass_parser.parse_demo(outer_bytes, false).unwrap();
                 return self.second_pass_multi_threaded_no_channels(outer_bytes, first_pass_output);
             }
             // check for errors
