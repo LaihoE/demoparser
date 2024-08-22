@@ -120,6 +120,7 @@ impl PropController {
     pub fn set_custom_propinfos(&mut self) {
         let button_names = BUTTONMAP.keys();
         let mut someid = BUTTONS_BASEID;
+        let mut someid2 = BUTTONS_BASEID;
         for bn in button_names {
             if self.wanted_player_props.contains(&(bn.to_string())) {
                 self.prop_infos.push(PropInfo {
@@ -130,6 +131,19 @@ impl PropController {
                     is_player_prop: true,
                 });
                 someid += 1;
+            }
+            if let Some(wanted_state) = self.wanted_prop_states.get(&(bn.to_string())) {
+                self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                    base: PropInfo {
+                        id: someid2,
+                        prop_type: PropType::Button,
+                        prop_name: bn.to_string(),
+                        prop_friendly_name: bn.to_string(),
+                        is_player_prop: true,
+                    },
+                    wanted_prop_state: wanted_state.clone(),
+                });
+                someid2 += 1;
             }
         }
         if self
@@ -144,6 +158,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("active_weapon_original_owner".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: WEAPON_ORIGINGAL_OWNER_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "active_weapon_original_owner".to_string(),
+                    prop_friendly_name: "active_weapon_original_owner".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("inventory".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: INVENTORY_ID,
@@ -151,6 +177,18 @@ impl PropController {
                 prop_name: "inventory".to_string(),
                 prop_friendly_name: "inventory".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("inventory".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: INVENTORY_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "inventory".to_string(),
+                    prop_friendly_name: "inventory".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         if self.wanted_player_props.contains(&("inventory_as_ids".to_string())) {
@@ -162,6 +200,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("inventory_as_ids".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: INVENTORY_AS_IDS_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "inventory_as_ids".to_string(),
+                    prop_friendly_name: "inventory_as_ids".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("user_id".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: USERID_ID,
@@ -169,6 +219,18 @@ impl PropController {
                 prop_name: "user_id".to_string(),
                 prop_friendly_name: "user_id".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("user_id".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: USERID_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "user_id".to_string(),
+                    prop_friendly_name: "user_id".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         if self.wanted_player_props.contains(&("velocity_X".to_string())) {
@@ -180,6 +242,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("velocity_X".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: VELOCITY_X_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "velocity_X".to_string(),
+                    prop_friendly_name: "velocity_X".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("velocity_Y".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: VELOCITY_Y_ID,
@@ -187,6 +261,18 @@ impl PropController {
                 prop_name: "velocity_Y".to_string(),
                 prop_friendly_name: "velocity_Y".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("velocity_Y".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: VELOCITY_Y_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "velocity_Y".to_string(),
+                    prop_friendly_name: "velocity_Y".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         if self.wanted_player_props.contains(&("velocity_Z".to_string())) {
@@ -198,6 +284,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("velocity_Z".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: VELOCITY_Z_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "velocity_Z".to_string(),
+                    prop_friendly_name: "velocity_Z".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("velocity".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: VELOCITY_ID,
@@ -205,6 +303,18 @@ impl PropController {
                 prop_name: "velocity".to_string(),
                 prop_friendly_name: "velocity".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("velocity".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: VELOCITY_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "velocity".to_string(),
+                    prop_friendly_name: "velocity".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         if self.wanted_player_props.contains(&("is_alive".to_string())) {
@@ -216,6 +326,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("is_alive".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: IS_ALIVE_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "is_alive".to_string(),
+                    prop_friendly_name: "is_alive".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("entity_id".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: ENTITY_ID_ID,
@@ -225,6 +347,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("entity_id".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: ENTITY_ID_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "entity_id".to_string(),
+                    prop_friendly_name: "entity_id".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("game_time".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: GAME_TIME_ID,
@@ -232,6 +366,18 @@ impl PropController {
                 prop_name: "game_time".to_string(),
                 prop_friendly_name: "game_time".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("game_time".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: GAME_TIME_ID,
+                    prop_type: PropType::GameTime,
+                    prop_name: "game_time".to_string(),
+                    prop_friendly_name: "game_time".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         // Can also be non-player prop
@@ -244,6 +390,18 @@ impl PropController {
                 is_player_prop: false,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("game_time".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: GAME_TIME_ID,
+                    prop_type: PropType::GameTime,
+                    prop_name: "game_time".to_string(),
+                    prop_friendly_name: "game_time".to_string(),
+                    is_player_prop: false,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("weapon_skin".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: WEAPON_SKIN_NAME,
@@ -251,6 +409,18 @@ impl PropController {
                 prop_name: "weapon_skin".to_string(),
                 prop_friendly_name: "active_weapon_skin".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("weapon_skin".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: WEAPON_SKIN_NAME,
+                    prop_type: PropType::Custom,
+                    prop_name: "weapon_skin".to_string(),
+                    prop_friendly_name: "active_weapon_skin".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         if self.wanted_player_props.contains(&("weapon_skin_id".to_string())) {
@@ -262,6 +432,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("weapon_skin_id".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: WEAPON_SKIN_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "weapon_skin_id".to_string(),
+                    prop_friendly_name: "weapon_skin_id".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("weapon_paint_seed".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: WEAPON_PAINT_SEED,
@@ -269,6 +451,18 @@ impl PropController {
                 prop_name: "weapon_paint_seed".to_string(),
                 prop_friendly_name: "weapon_paint_seed".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("weapon_paint_seed".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: WEAPON_PAINT_SEED,
+                    prop_type: PropType::Custom,
+                    prop_name: "weapon_paint_seed".to_string(),
+                    prop_friendly_name: "weapon_paint_seed".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         if self.wanted_player_props.contains(&("weapon_float".to_string())) {
@@ -280,6 +474,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("weapon_float".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: WEAPON_FLOAT,
+                    prop_type: PropType::Custom,
+                    prop_name: "weapon_float".to_string(),
+                    prop_friendly_name: "weapon_float".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("weapon_stickers".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: WEAPON_STICKERS_ID,
@@ -287,6 +493,18 @@ impl PropController {
                 prop_name: "weapon_stickers".to_string(),
                 prop_friendly_name: "weapon_stickers".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("weapon_stickers".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: WEAPON_STICKERS_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "weapon_stickers".to_string(),
+                    prop_friendly_name: "weapon_stickers".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         if self.wanted_player_props.contains(&("weapon_name".to_string())) {
@@ -298,6 +516,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("weapon_name".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: WEAPON_NAME_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "weapon_name".to_string(),
+                    prop_friendly_name: "active_weapon_name".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("pitch".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: PITCH_ID,
@@ -305,6 +535,18 @@ impl PropController {
                 prop_name: "pitch".to_string(),
                 prop_friendly_name: "pitch".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("pitch".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: PITCH_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "pitch".to_string(),
+                    prop_friendly_name: "pitch".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         if self.wanted_player_props.contains(&("yaw".to_string())) {
@@ -316,6 +558,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("yaw".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: YAW_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "yaw".to_string(),
+                    prop_friendly_name: "yaw".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("agent_skin".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: AGENT_SKIN_ID,
@@ -323,6 +577,18 @@ impl PropController {
                 prop_name: "agent_skin".to_string(),
                 prop_friendly_name: "agent_skin".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("agent_skin".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: AGENT_SKIN_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "agent_skin".to_string(),
+                    prop_friendly_name: "active_agent_skin".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         if self.wanted_player_props.contains(&("X".to_string())) {
@@ -334,6 +600,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("X".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: PLAYER_X_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "X".to_string(),
+                    prop_friendly_name: "active_X".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("Y".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: PLAYER_Y_ID,
@@ -341,6 +619,18 @@ impl PropController {
                 prop_name: "Y".to_string(),
                 prop_friendly_name: "Y".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("Y".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: PLAYER_Y_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "Y".to_string(),
+                    prop_friendly_name: "active_Y".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         if self.wanted_player_props.contains(&("Z".to_string())) {
@@ -352,6 +642,18 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("Z".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: PLAYER_Z_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "Z".to_string(),
+                    prop_friendly_name: "active_Z".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
         if self.wanted_player_props.contains(&("is_airborne".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: IS_AIRBORNE_ID,
@@ -361,6 +663,19 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("is_airborne".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: IS_AIRBORNE_ID,
+                    prop_type: PropType::Custom,
+                    prop_name: "is_airborne".to_string(),
+                    prop_friendly_name: "active_is_airborne".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
+            });
+        }
+
         self.prop_infos.push(PropInfo {
             id: TICK_ID,
             prop_type: PropType::Tick,
@@ -368,7 +683,6 @@ impl PropController {
             prop_friendly_name: "tick".to_string(),
             is_player_prop: true,
         });
-
         self.prop_infos.push(PropInfo {
             id: STEAMID_ID,
             prop_type: PropType::Steamid,
@@ -434,6 +748,22 @@ impl PropController {
                         .to_string(),
                     is_player_prop: false,
                 })
+            }
+            if let Some(wanted_state) = self.wanted_prop_states.get(&prop_name.to_string()) {
+                self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                    base: PropInfo {
+                        id: f.prop_id as u32,
+                        prop_type: *prop_type,
+                        prop_name: prop_name.to_string(),
+                        prop_friendly_name: self
+                            .real_name_to_og_name
+                            .get(&prop_name.to_string())
+                            .unwrap_or(&(prop_name.to_string()))
+                            .to_string(),
+                        is_player_prop: false, // does this actually affect anything?
+                    },
+                    wanted_prop_state: wanted_state.clone(),
+                });
             }
         }
     }
