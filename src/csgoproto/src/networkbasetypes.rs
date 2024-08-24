@@ -2419,150 +2419,6 @@ impl ::protobuf::reflect::ProtobufValue for CNETMsg_SplitScreenUser {
     type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
 }
 
-// @@protoc_insertion_point(message:CNETMsg_Disconnect_Legacy)
-#[derive(PartialEq,Clone,Default,Debug)]
-pub struct CNETMsg_Disconnect_Legacy {
-    // message fields
-    // @@protoc_insertion_point(field:CNETMsg_Disconnect_Legacy.reason)
-    pub reason: ::std::option::Option<::protobuf::EnumOrUnknown<super::network_connection::ENetworkDisconnectionReason>>,
-    // special fields
-    // @@protoc_insertion_point(special_field:CNETMsg_Disconnect_Legacy.special_fields)
-    pub special_fields: ::protobuf::SpecialFields,
-}
-
-impl<'a> ::std::default::Default for &'a CNETMsg_Disconnect_Legacy {
-    fn default() -> &'a CNETMsg_Disconnect_Legacy {
-        <CNETMsg_Disconnect_Legacy as ::protobuf::Message>::default_instance()
-    }
-}
-
-impl CNETMsg_Disconnect_Legacy {
-    pub fn new() -> CNETMsg_Disconnect_Legacy {
-        ::std::default::Default::default()
-    }
-
-    // optional .ENetworkDisconnectionReason reason = 2;
-
-    pub fn reason(&self) -> super::network_connection::ENetworkDisconnectionReason {
-        match self.reason {
-            Some(e) => e.enum_value_or(super::network_connection::ENetworkDisconnectionReason::NETWORK_DISCONNECT_INVALID),
-            None => super::network_connection::ENetworkDisconnectionReason::NETWORK_DISCONNECT_INVALID,
-        }
-    }
-
-    pub fn clear_reason(&mut self) {
-        self.reason = ::std::option::Option::None;
-    }
-
-    pub fn has_reason(&self) -> bool {
-        self.reason.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_reason(&mut self, v: super::network_connection::ENetworkDisconnectionReason) {
-        self.reason = ::std::option::Option::Some(::protobuf::EnumOrUnknown::new(v));
-    }
-
-    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(1);
-        let mut oneofs = ::std::vec::Vec::with_capacity(0);
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
-            "reason",
-            |m: &CNETMsg_Disconnect_Legacy| { &m.reason },
-            |m: &mut CNETMsg_Disconnect_Legacy| { &mut m.reason },
-        ));
-        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<CNETMsg_Disconnect_Legacy>(
-            "CNETMsg_Disconnect_Legacy",
-            fields,
-            oneofs,
-        )
-    }
-}
-
-impl ::protobuf::Message for CNETMsg_Disconnect_Legacy {
-    const NAME: &'static str = "CNETMsg_Disconnect_Legacy";
-
-    fn is_initialized(&self) -> bool {
-        true
-    }
-
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
-        while let Some(tag) = is.read_raw_tag_or_eof()? {
-            match tag {
-                16 => {
-                    self.reason = ::std::option::Option::Some(is.read_enum_or_unknown()?);
-                },
-                tag => {
-                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
-                },
-            };
-        }
-        ::std::result::Result::Ok(())
-    }
-
-    // Compute sizes of nested messages
-    #[allow(unused_variables)]
-    fn compute_size(&self) -> u64 {
-        let mut my_size = 0;
-        if let Some(v) = self.reason {
-            my_size += ::protobuf::rt::int32_size(2, v.value());
-        }
-        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
-        self.special_fields.cached_size().set(my_size as u32);
-        my_size
-    }
-
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if let Some(v) = self.reason {
-            os.write_enum(2, ::protobuf::EnumOrUnknown::value(&v))?;
-        }
-        os.write_unknown_fields(self.special_fields.unknown_fields())?;
-        ::std::result::Result::Ok(())
-    }
-
-    fn special_fields(&self) -> &::protobuf::SpecialFields {
-        &self.special_fields
-    }
-
-    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
-        &mut self.special_fields
-    }
-
-    fn new() -> CNETMsg_Disconnect_Legacy {
-        CNETMsg_Disconnect_Legacy::new()
-    }
-
-    fn clear(&mut self) {
-        self.reason = ::std::option::Option::None;
-        self.special_fields.clear();
-    }
-
-    fn default_instance() -> &'static CNETMsg_Disconnect_Legacy {
-        static instance: CNETMsg_Disconnect_Legacy = CNETMsg_Disconnect_Legacy {
-            reason: ::std::option::Option::None,
-            special_fields: ::protobuf::SpecialFields::new(),
-        };
-        &instance
-    }
-}
-
-impl ::protobuf::MessageFull for CNETMsg_Disconnect_Legacy {
-    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
-        descriptor.get(|| file_descriptor().message_by_package_relative_name("CNETMsg_Disconnect_Legacy").unwrap()).clone()
-    }
-}
-
-impl ::std::fmt::Display for CNETMsg_Disconnect_Legacy {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        ::protobuf::text_format::fmt(self, f)
-    }
-}
-
-impl ::protobuf::reflect::ProtobufValue for CNETMsg_Disconnect_Legacy {
-    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
-}
-
 // @@protoc_insertion_point(message:CNETMsg_Tick)
 #[derive(PartialEq,Clone,Default,Debug)]
 pub struct CNETMsg_Tick {
@@ -7989,20 +7845,18 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x20\x03(\x0b2\x10.CMsg_CVars.CVarR\x05cvars\x1a0\n\x04CVar\x12\x12\n\
     \x04name\x18\x01\x20\x01(\tR\x04name\x12\x14\n\x05value\x18\x02\x20\x01(\
     \tR\x05value\"\r\n\x0bCNETMsg_NOP\"-\n\x17CNETMsg_SplitScreenUser\x12\
-    \x12\n\x04slot\x18\x01\x20\x01(\x05R\x04slot\"m\n\x19CNETMsg_Disconnect_\
-    Legacy\x12P\n\x06reason\x18\x02\x20\x01(\x0e2\x1c.ENetworkDisconnectionR\
-    eason:\x1aNETWORK_DISCONNECT_INVALIDR\x06reason\"\xc3\x04\n\x0cCNETMsg_T\
-    ick\x12\x12\n\x04tick\x18\x01\x20\x01(\rR\x04tick\x12%\n\x0ehost_frameti\
-    me\x18\x02\x20\x01(\rR\rhostFrametime\x12?\n\x1chost_frametime_std_devia\
-    tion\x18\x03\x20\x01(\rR\x19hostFrametimeStdDeviation\x121\n\x14host_com\
-    putationtime\x18\x04\x20\x01(\rR\x13hostComputationtime\x12K\n\"host_com\
-    putationtime_std_deviation\x18\x05\x20\x01(\rR\x1fhostComputationtimeStd\
-    Deviation\x12I\n!host_framestarttime_std_deviation\x18\x06\x20\x01(\rR\
-    \x1ehostFramestarttimeStdDeviation\x12\x1b\n\thost_loss\x18\x07\x20\x01(\
-    \rR\x08hostLoss\x12:\n\x19host_unfiltered_frametime\x18\x08\x20\x01(\rR\
-    \x17hostUnfilteredFrametime\x12*\n\x11hltv_replay_flags\x18\t\x20\x01(\r\
-    R\x0fhltvReplayFlags\x12,\n\x12expected_long_tick\x18\n\x20\x01(\rR\x10e\
-    xpectedLongTick\x129\n\x19expected_long_tick_reason\x18\x0b\x20\x01(\tR\
+    \x12\n\x04slot\x18\x01\x20\x01(\x05R\x04slot\"\xc3\x04\n\x0cCNETMsg_Tick\
+    \x12\x12\n\x04tick\x18\x01\x20\x01(\rR\x04tick\x12%\n\x0ehost_frametime\
+    \x18\x02\x20\x01(\rR\rhostFrametime\x12?\n\x1chost_frametime_std_deviati\
+    on\x18\x03\x20\x01(\rR\x19hostFrametimeStdDeviation\x121\n\x14host_compu\
+    tationtime\x18\x04\x20\x01(\rR\x13hostComputationtime\x12K\n\"host_compu\
+    tationtime_std_deviation\x18\x05\x20\x01(\rR\x1fhostComputationtimeStdDe\
+    viation\x12I\n!host_framestarttime_std_deviation\x18\x06\x20\x01(\rR\x1e\
+    hostFramestarttimeStdDeviation\x12\x1b\n\thost_loss\x18\x07\x20\x01(\rR\
+    \x08hostLoss\x12:\n\x19host_unfiltered_frametime\x18\x08\x20\x01(\rR\x17\
+    hostUnfilteredFrametime\x12*\n\x11hltv_replay_flags\x18\t\x20\x01(\rR\
+    \x0fhltvReplayFlags\x12,\n\x12expected_long_tick\x18\n\x20\x01(\rR\x10ex\
+    pectedLongTick\x129\n\x19expected_long_tick_reason\x18\x0b\x20\x01(\tR\
     \x16expectedLongTickReason\"V\n\x11CNETMsg_StringCmd\x12\x18\n\x07comman\
     d\x18\x01\x20\x01(\tR\x07command\x12'\n\x0fprediction_sync\x18\x02\x20\
     \x01(\rR\x0epredictionSync\":\n\x11CNETMsg_SetConVar\x12%\n\x07convars\
@@ -8117,7 +7971,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(1);
             deps.push(super::network_connection::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(28);
+            let mut messages = ::std::vec::Vec::with_capacity(27);
             messages.push(CMsgVector::generated_message_descriptor_data());
             messages.push(CMsgVector2D::generated_message_descriptor_data());
             messages.push(CMsgQAngle::generated_message_descriptor_data());
@@ -8129,7 +7983,6 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             messages.push(CMsg_CVars::generated_message_descriptor_data());
             messages.push(CNETMsg_NOP::generated_message_descriptor_data());
             messages.push(CNETMsg_SplitScreenUser::generated_message_descriptor_data());
-            messages.push(CNETMsg_Disconnect_Legacy::generated_message_descriptor_data());
             messages.push(CNETMsg_Tick::generated_message_descriptor_data());
             messages.push(CNETMsg_StringCmd::generated_message_descriptor_data());
             messages.push(CNETMsg_SetConVar::generated_message_descriptor_data());

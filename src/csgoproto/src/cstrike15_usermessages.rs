@@ -18130,6 +18130,184 @@ impl ::protobuf::reflect::ProtobufValue for CCSUsrMsgPreMatchSayText {
     type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
 }
 
+// @@protoc_insertion_point(message:CCSUsrMsg_CounterStrafe)
+#[derive(PartialEq,Clone,Default,Debug)]
+pub struct CCSUsrMsg_CounterStrafe {
+    // message fields
+    // @@protoc_insertion_point(field:CCSUsrMsg_CounterStrafe.press_to_release_ns)
+    pub press_to_release_ns: ::std::option::Option<i32>,
+    // @@protoc_insertion_point(field:CCSUsrMsg_CounterStrafe.total_keys_down)
+    pub total_keys_down: ::std::option::Option<i32>,
+    // special fields
+    // @@protoc_insertion_point(special_field:CCSUsrMsg_CounterStrafe.special_fields)
+    pub special_fields: ::protobuf::SpecialFields,
+}
+
+impl<'a> ::std::default::Default for &'a CCSUsrMsg_CounterStrafe {
+    fn default() -> &'a CCSUsrMsg_CounterStrafe {
+        <CCSUsrMsg_CounterStrafe as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl CCSUsrMsg_CounterStrafe {
+    pub fn new() -> CCSUsrMsg_CounterStrafe {
+        ::std::default::Default::default()
+    }
+
+    // optional int32 press_to_release_ns = 1;
+
+    pub fn press_to_release_ns(&self) -> i32 {
+        self.press_to_release_ns.unwrap_or(0)
+    }
+
+    pub fn clear_press_to_release_ns(&mut self) {
+        self.press_to_release_ns = ::std::option::Option::None;
+    }
+
+    pub fn has_press_to_release_ns(&self) -> bool {
+        self.press_to_release_ns.is_some()
+    }
+
+    // Param is passed by value, moved
+    pub fn set_press_to_release_ns(&mut self, v: i32) {
+        self.press_to_release_ns = ::std::option::Option::Some(v);
+    }
+
+    // optional int32 total_keys_down = 2;
+
+    pub fn total_keys_down(&self) -> i32 {
+        self.total_keys_down.unwrap_or(0)
+    }
+
+    pub fn clear_total_keys_down(&mut self) {
+        self.total_keys_down = ::std::option::Option::None;
+    }
+
+    pub fn has_total_keys_down(&self) -> bool {
+        self.total_keys_down.is_some()
+    }
+
+    // Param is passed by value, moved
+    pub fn set_total_keys_down(&mut self, v: i32) {
+        self.total_keys_down = ::std::option::Option::Some(v);
+    }
+
+    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+        let mut fields = ::std::vec::Vec::with_capacity(2);
+        let mut oneofs = ::std::vec::Vec::with_capacity(0);
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "press_to_release_ns",
+            |m: &CCSUsrMsg_CounterStrafe| { &m.press_to_release_ns },
+            |m: &mut CCSUsrMsg_CounterStrafe| { &mut m.press_to_release_ns },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "total_keys_down",
+            |m: &CCSUsrMsg_CounterStrafe| { &m.total_keys_down },
+            |m: &mut CCSUsrMsg_CounterStrafe| { &mut m.total_keys_down },
+        ));
+        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<CCSUsrMsg_CounterStrafe>(
+            "CCSUsrMsg_CounterStrafe",
+            fields,
+            oneofs,
+        )
+    }
+}
+
+impl ::protobuf::Message for CCSUsrMsg_CounterStrafe {
+    const NAME: &'static str = "CCSUsrMsg_CounterStrafe";
+
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+        while let Some(tag) = is.read_raw_tag_or_eof()? {
+            match tag {
+                8 => {
+                    self.press_to_release_ns = ::std::option::Option::Some(is.read_int32()?);
+                },
+                16 => {
+                    self.total_keys_down = ::std::option::Option::Some(is.read_int32()?);
+                },
+                tag => {
+                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u64 {
+        let mut my_size = 0;
+        if let Some(v) = self.press_to_release_ns {
+            my_size += ::protobuf::rt::int32_size(1, v);
+        }
+        if let Some(v) = self.total_keys_down {
+            my_size += ::protobuf::rt::int32_size(2, v);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+        self.special_fields.cached_size().set(my_size as u32);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+        if let Some(v) = self.press_to_release_ns {
+            os.write_int32(1, v)?;
+        }
+        if let Some(v) = self.total_keys_down {
+            os.write_int32(2, v)?;
+        }
+        os.write_unknown_fields(self.special_fields.unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn special_fields(&self) -> &::protobuf::SpecialFields {
+        &self.special_fields
+    }
+
+    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+        &mut self.special_fields
+    }
+
+    fn new() -> CCSUsrMsg_CounterStrafe {
+        CCSUsrMsg_CounterStrafe::new()
+    }
+
+    fn clear(&mut self) {
+        self.press_to_release_ns = ::std::option::Option::None;
+        self.total_keys_down = ::std::option::Option::None;
+        self.special_fields.clear();
+    }
+
+    fn default_instance() -> &'static CCSUsrMsg_CounterStrafe {
+        static instance: CCSUsrMsg_CounterStrafe = CCSUsrMsg_CounterStrafe {
+            press_to_release_ns: ::std::option::Option::None,
+            total_keys_down: ::std::option::Option::None,
+            special_fields: ::protobuf::SpecialFields::new(),
+        };
+        &instance
+    }
+}
+
+impl ::protobuf::MessageFull for CCSUsrMsg_CounterStrafe {
+    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+        descriptor.get(|| file_descriptor().message_by_package_relative_name("CCSUsrMsg_CounterStrafe").unwrap()).clone()
+    }
+}
+
+impl ::std::fmt::Display for CCSUsrMsg_CounterStrafe {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for CCSUsrMsg_CounterStrafe {
+    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+}
+
 #[derive(Clone,Copy,PartialEq,Eq,Debug,Hash)]
 // @@protoc_insertion_point(enum:ECstrike15UserMessages)
 pub enum ECstrike15UserMessages {
@@ -18283,6 +18461,8 @@ pub enum ECstrike15UserMessages {
     CS_UM_DeepStats = 381,
     // @@protoc_insertion_point(enum_value:ECstrike15UserMessages.CS_UM_ShootInfo)
     CS_UM_ShootInfo = 383,
+    // @@protoc_insertion_point(enum_value:ECstrike15UserMessages.CS_UM_CounterStrafe)
+    CS_UM_CounterStrafe = 385,
 }
 
 impl ::protobuf::Enum for ECstrike15UserMessages {
@@ -18369,6 +18549,7 @@ impl ::protobuf::Enum for ECstrike15UserMessages {
             380 => ::std::option::Option::Some(ECstrike15UserMessages::CS_UM_CurrentRoundOdds),
             381 => ::std::option::Option::Some(ECstrike15UserMessages::CS_UM_DeepStats),
             383 => ::std::option::Option::Some(ECstrike15UserMessages::CS_UM_ShootInfo),
+            385 => ::std::option::Option::Some(ECstrike15UserMessages::CS_UM_CounterStrafe),
             _ => ::std::option::Option::None
         }
     }
@@ -18450,6 +18631,7 @@ impl ::protobuf::Enum for ECstrike15UserMessages {
             "CS_UM_CurrentRoundOdds" => ::std::option::Option::Some(ECstrike15UserMessages::CS_UM_CurrentRoundOdds),
             "CS_UM_DeepStats" => ::std::option::Option::Some(ECstrike15UserMessages::CS_UM_DeepStats),
             "CS_UM_ShootInfo" => ::std::option::Option::Some(ECstrike15UserMessages::CS_UM_ShootInfo),
+            "CS_UM_CounterStrafe" => ::std::option::Option::Some(ECstrike15UserMessages::CS_UM_CounterStrafe),
             _ => ::std::option::Option::None
         }
     }
@@ -18530,6 +18712,7 @@ impl ::protobuf::Enum for ECstrike15UserMessages {
         ECstrike15UserMessages::CS_UM_CurrentRoundOdds,
         ECstrike15UserMessages::CS_UM_DeepStats,
         ECstrike15UserMessages::CS_UM_ShootInfo,
+        ECstrike15UserMessages::CS_UM_CounterStrafe,
     ];
 }
 
@@ -18616,6 +18799,7 @@ impl ::protobuf::EnumFull for ECstrike15UserMessages {
             ECstrike15UserMessages::CS_UM_CurrentRoundOdds => 72,
             ECstrike15UserMessages::CS_UM_DeepStats => 73,
             ECstrike15UserMessages::CS_UM_ShootInfo => 74,
+            ECstrike15UserMessages::CS_UM_CounterStrafe => 75,
         };
         Self::enum_descriptor().value_by_index(index)
     }
@@ -18949,54 +19133,57 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     trike15_v2_MatchmakingGC2ServerReserveR\x0breservation\"h\n\x18CCSUsrMsg\
     PreMatchSayText\x12\x1d\n\naccount_id\x18\x01\x20\x01(\rR\taccountId\x12\
     \x12\n\x04text\x18\x02\x20\x01(\tR\x04text\x12\x19\n\x08all_chat\x18\x03\
-    \x20\x01(\x08R\x07allChat*\x92\x0f\n\x16ECstrike15UserMessages\x12\x13\n\
-    \x0eCS_UM_VGUIMenu\x10\xad\x02\x12\x11\n\x0cCS_UM_Geiger\x10\xae\x02\x12\
-    \x10\n\x0bCS_UM_Train\x10\xaf\x02\x12\x12\n\rCS_UM_HudText\x10\xb0\x02\
-    \x12\x12\n\rCS_UM_SayText\x10\xb1\x02\x12\x13\n\x0eCS_UM_SayText2\x10\
-    \xb2\x02\x12\x12\n\rCS_UM_TextMsg\x10\xb3\x02\x12\x11\n\x0cCS_UM_HudMsg\
-    \x10\xb4\x02\x12\x13\n\x0eCS_UM_ResetHud\x10\xb5\x02\x12\x14\n\x0fCS_UM_\
-    GameTitle\x10\xb6\x02\x12\x10\n\x0bCS_UM_Shake\x10\xb8\x02\x12\x0f\n\nCS\
-    _UM_Fade\x10\xb9\x02\x12\x11\n\x0cCS_UM_Rumble\x10\xba\x02\x12\x17\n\x12\
-    CS_UM_CloseCaption\x10\xbb\x02\x12\x1d\n\x18CS_UM_CloseCaptionDirect\x10\
-    \xbc\x02\x12\x14\n\x0fCS_UM_SendAudio\x10\xbd\x02\x12\x13\n\x0eCS_UM_Raw\
-    Audio\x10\xbe\x02\x12\x14\n\x0fCS_UM_VoiceMask\x10\xbf\x02\x12\x17\n\x12\
-    CS_UM_RequestState\x10\xc0\x02\x12\x11\n\x0cCS_UM_Damage\x10\xc1\x02\x12\
-    \x14\n\x0fCS_UM_RadioText\x10\xc2\x02\x12\x13\n\x0eCS_UM_HintText\x10\
-    \xc3\x02\x12\x16\n\x11CS_UM_KeyHintText\x10\xc4\x02\x12%\n\x20CS_UM_Proc\
-    essSpottedEntityUpdate\x10\xc5\x02\x12\x17\n\x12CS_UM_ReloadEffect\x10\
-    \xc6\x02\x12\x16\n\x11CS_UM_AdjustMoney\x10\xc7\x02\x12\x1a\n\x15CS_UM_U\
-    pdateTeamMoney\x10\xc8\x02\x12\x1c\n\x17CS_UM_StopSpectatorMode\x10\xc9\
-    \x02\x12\x12\n\rCS_UM_KillCam\x10\xca\x02\x12\x1b\n\x16CS_UM_DesiredTime\
-    scale\x10\xcb\x02\x12\x1b\n\x16CS_UM_CurrentTimescale\x10\xcc\x02\x12\
-    \x1b\n\x16CS_UM_AchievementEvent\x10\xcd\x02\x12\x1d\n\x18CS_UM_MatchEnd\
-    Conditions\x10\xce\x02\x12\x1c\n\x17CS_UM_DisconnectToLobby\x10\xcf\x02\
-    \x12\x1c\n\x17CS_UM_PlayerStatsUpdate\x10\xd0\x02\x12\x19\n\x14CS_UM_War\
-    mupHasEnded\x10\xd2\x02\x12\x15\n\x10CS_UM_ClientInfo\x10\xd3\x02\x12\
-    \x13\n\x0eCS_UM_XRankGet\x10\xd4\x02\x12\x13\n\x0eCS_UM_XRankUpd\x10\xd5\
-    \x02\x12\x19\n\x14CS_UM_CallVoteFailed\x10\xd9\x02\x12\x14\n\x0fCS_UM_Vo\
-    teStart\x10\xda\x02\x12\x13\n\x0eCS_UM_VotePass\x10\xdb\x02\x12\x15\n\
-    \x10CS_UM_VoteFailed\x10\xdc\x02\x12\x14\n\x0fCS_UM_VoteSetup\x10\xdd\
-    \x02\x12\x1e\n\x19CS_UM_ServerRankRevealAll\x10\xde\x02\x12'\n\"CS_UM_Se\
-    ndLastKillerDamageToClient\x10\xdf\x02\x12\x1b\n\x16CS_UM_ServerRankUpda\
-    te\x10\xe0\x02\x12\x15\n\x10CS_UM_ItemPickup\x10\xe1\x02\x12\x13\n\x0eCS\
-    _UM_ShowMenu\x10\xe2\x02\x12\x12\n\rCS_UM_BarTime\x10\xe3\x02\x12\x15\n\
-    \x10CS_UM_AmmoDenied\x10\xe4\x02\x12\x1a\n\x15CS_UM_MarkAchievement\x10\
-    \xe5\x02\x12\x1b\n\x16CS_UM_MatchStatsUpdate\x10\xe6\x02\x12\x13\n\x0eCS\
-    _UM_ItemDrop\x10\xe7\x02\x12\x1a\n\x15CS_UM_GlowPropTurnOff\x10\xe8\x02\
-    \x12\x1e\n\x19CS_UM_SendPlayerItemDrops\x10\xe9\x02\x12\x1f\n\x1aCS_UM_R\
-    oundBackupFilenames\x10\xea\x02\x12\x1e\n\x19CS_UM_SendPlayerItemFound\
-    \x10\xeb\x02\x12\x14\n\x0fCS_UM_ReportHit\x10\xec\x02\x12\x13\n\x0eCS_UM\
-    _XpUpdate\x10\xed\x02\x12\x18\n\x13CS_UM_QuestProgress\x10\xee\x02\x12\
-    \x1f\n\x1aCS_UM_ScoreLeaderboardData\x10\xef\x02\x12&\n!CS_UM_PlayerDeca\
-    lDigitalSignature\x10\xf0\x02\x12\x16\n\x11CS_UM_WeaponSound\x10\xf1\x02\
-    \x12\x20\n\x1bCS_UM_UpdateScreenHealthBar\x10\xf2\x02\x12!\n\x1cCS_UM_En\
-    tityOutlineHighlight\x10\xf3\x02\x12\x0f\n\nCS_UM_SSUI\x10\xf4\x02\x12\
-    \x18\n\x13CS_UM_SurvivalStats\x10\xf5\x02\x12\x1d\n\x18CS_UM_DisconnectT\
-    oLobby2\x10\xf6\x02\x12#\n\x1eCS_UM_EndOfMatchAllPlayersData\x10\xf7\x02\
-    \x12\x20\n\x1bCS_UM_PostRoundDamageReport\x10\xf8\x02\x12\x1d\n\x18CS_UM\
-    _RoundEndReportData\x10\xfb\x02\x12\x1b\n\x16CS_UM_CurrentRoundOdds\x10\
-    \xfc\x02\x12\x14\n\x0fCS_UM_DeepStats\x10\xfd\x02\x12\x14\n\x0fCS_UM_Sho\
-    otInfo\x10\xff\x02*\x88\x01\n\"ECSUsrMsg_DisconnectToLobby_Action\x120\n\
+    \x20\x01(\x08R\x07allChat\"p\n\x17CCSUsrMsg_CounterStrafe\x12-\n\x13pres\
+    s_to_release_ns\x18\x01\x20\x01(\x05R\x10pressToReleaseNs\x12&\n\x0ftota\
+    l_keys_down\x18\x02\x20\x01(\x05R\rtotalKeysDown*\xac\x0f\n\x16ECstrike1\
+    5UserMessages\x12\x13\n\x0eCS_UM_VGUIMenu\x10\xad\x02\x12\x11\n\x0cCS_UM\
+    _Geiger\x10\xae\x02\x12\x10\n\x0bCS_UM_Train\x10\xaf\x02\x12\x12\n\rCS_U\
+    M_HudText\x10\xb0\x02\x12\x12\n\rCS_UM_SayText\x10\xb1\x02\x12\x13\n\x0e\
+    CS_UM_SayText2\x10\xb2\x02\x12\x12\n\rCS_UM_TextMsg\x10\xb3\x02\x12\x11\
+    \n\x0cCS_UM_HudMsg\x10\xb4\x02\x12\x13\n\x0eCS_UM_ResetHud\x10\xb5\x02\
+    \x12\x14\n\x0fCS_UM_GameTitle\x10\xb6\x02\x12\x10\n\x0bCS_UM_Shake\x10\
+    \xb8\x02\x12\x0f\n\nCS_UM_Fade\x10\xb9\x02\x12\x11\n\x0cCS_UM_Rumble\x10\
+    \xba\x02\x12\x17\n\x12CS_UM_CloseCaption\x10\xbb\x02\x12\x1d\n\x18CS_UM_\
+    CloseCaptionDirect\x10\xbc\x02\x12\x14\n\x0fCS_UM_SendAudio\x10\xbd\x02\
+    \x12\x13\n\x0eCS_UM_RawAudio\x10\xbe\x02\x12\x14\n\x0fCS_UM_VoiceMask\
+    \x10\xbf\x02\x12\x17\n\x12CS_UM_RequestState\x10\xc0\x02\x12\x11\n\x0cCS\
+    _UM_Damage\x10\xc1\x02\x12\x14\n\x0fCS_UM_RadioText\x10\xc2\x02\x12\x13\
+    \n\x0eCS_UM_HintText\x10\xc3\x02\x12\x16\n\x11CS_UM_KeyHintText\x10\xc4\
+    \x02\x12%\n\x20CS_UM_ProcessSpottedEntityUpdate\x10\xc5\x02\x12\x17\n\
+    \x12CS_UM_ReloadEffect\x10\xc6\x02\x12\x16\n\x11CS_UM_AdjustMoney\x10\
+    \xc7\x02\x12\x1a\n\x15CS_UM_UpdateTeamMoney\x10\xc8\x02\x12\x1c\n\x17CS_\
+    UM_StopSpectatorMode\x10\xc9\x02\x12\x12\n\rCS_UM_KillCam\x10\xca\x02\
+    \x12\x1b\n\x16CS_UM_DesiredTimescale\x10\xcb\x02\x12\x1b\n\x16CS_UM_Curr\
+    entTimescale\x10\xcc\x02\x12\x1b\n\x16CS_UM_AchievementEvent\x10\xcd\x02\
+    \x12\x1d\n\x18CS_UM_MatchEndConditions\x10\xce\x02\x12\x1c\n\x17CS_UM_Di\
+    sconnectToLobby\x10\xcf\x02\x12\x1c\n\x17CS_UM_PlayerStatsUpdate\x10\xd0\
+    \x02\x12\x19\n\x14CS_UM_WarmupHasEnded\x10\xd2\x02\x12\x15\n\x10CS_UM_Cl\
+    ientInfo\x10\xd3\x02\x12\x13\n\x0eCS_UM_XRankGet\x10\xd4\x02\x12\x13\n\
+    \x0eCS_UM_XRankUpd\x10\xd5\x02\x12\x19\n\x14CS_UM_CallVoteFailed\x10\xd9\
+    \x02\x12\x14\n\x0fCS_UM_VoteStart\x10\xda\x02\x12\x13\n\x0eCS_UM_VotePas\
+    s\x10\xdb\x02\x12\x15\n\x10CS_UM_VoteFailed\x10\xdc\x02\x12\x14\n\x0fCS_\
+    UM_VoteSetup\x10\xdd\x02\x12\x1e\n\x19CS_UM_ServerRankRevealAll\x10\xde\
+    \x02\x12'\n\"CS_UM_SendLastKillerDamageToClient\x10\xdf\x02\x12\x1b\n\
+    \x16CS_UM_ServerRankUpdate\x10\xe0\x02\x12\x15\n\x10CS_UM_ItemPickup\x10\
+    \xe1\x02\x12\x13\n\x0eCS_UM_ShowMenu\x10\xe2\x02\x12\x12\n\rCS_UM_BarTim\
+    e\x10\xe3\x02\x12\x15\n\x10CS_UM_AmmoDenied\x10\xe4\x02\x12\x1a\n\x15CS_\
+    UM_MarkAchievement\x10\xe5\x02\x12\x1b\n\x16CS_UM_MatchStatsUpdate\x10\
+    \xe6\x02\x12\x13\n\x0eCS_UM_ItemDrop\x10\xe7\x02\x12\x1a\n\x15CS_UM_Glow\
+    PropTurnOff\x10\xe8\x02\x12\x1e\n\x19CS_UM_SendPlayerItemDrops\x10\xe9\
+    \x02\x12\x1f\n\x1aCS_UM_RoundBackupFilenames\x10\xea\x02\x12\x1e\n\x19CS\
+    _UM_SendPlayerItemFound\x10\xeb\x02\x12\x14\n\x0fCS_UM_ReportHit\x10\xec\
+    \x02\x12\x13\n\x0eCS_UM_XpUpdate\x10\xed\x02\x12\x18\n\x13CS_UM_QuestPro\
+    gress\x10\xee\x02\x12\x1f\n\x1aCS_UM_ScoreLeaderboardData\x10\xef\x02\
+    \x12&\n!CS_UM_PlayerDecalDigitalSignature\x10\xf0\x02\x12\x16\n\x11CS_UM\
+    _WeaponSound\x10\xf1\x02\x12\x20\n\x1bCS_UM_UpdateScreenHealthBar\x10\
+    \xf2\x02\x12!\n\x1cCS_UM_EntityOutlineHighlight\x10\xf3\x02\x12\x0f\n\nC\
+    S_UM_SSUI\x10\xf4\x02\x12\x18\n\x13CS_UM_SurvivalStats\x10\xf5\x02\x12\
+    \x1d\n\x18CS_UM_DisconnectToLobby2\x10\xf6\x02\x12#\n\x1eCS_UM_EndOfMatc\
+    hAllPlayersData\x10\xf7\x02\x12\x20\n\x1bCS_UM_PostRoundDamageReport\x10\
+    \xf8\x02\x12\x1d\n\x18CS_UM_RoundEndReportData\x10\xfb\x02\x12\x1b\n\x16\
+    CS_UM_CurrentRoundOdds\x10\xfc\x02\x12\x14\n\x0fCS_UM_DeepStats\x10\xfd\
+    \x02\x12\x14\n\x0fCS_UM_ShootInfo\x10\xff\x02\x12\x18\n\x13CS_UM_Counter\
+    Strafe\x10\x81\x03*\x88\x01\n\"ECSUsrMsg_DisconnectToLobby_Action\x120\n\
     ,k_ECSUsrMsg_DisconnectToLobby_Action_Default\x10\0\x120\n,k_ECSUsrMsg_D\
     isconnectToLobby_Action_GoQueue\x10\x01\
 ";
@@ -19018,7 +19205,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             let mut deps = ::std::vec::Vec::with_capacity(2);
             deps.push(super::networkbasetypes::file_descriptor().clone());
             deps.push(super::cstrike15_gcmessages::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(86);
+            let mut messages = ::std::vec::Vec::with_capacity(87);
             messages.push(CCSUsrMsg_VGUIMenu::generated_message_descriptor_data());
             messages.push(CCSUsrMsg_Geiger::generated_message_descriptor_data());
             messages.push(CCSUsrMsg_Train::generated_message_descriptor_data());
@@ -19090,6 +19277,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             messages.push(CCSUsrMsg_ClientInfo::generated_message_descriptor_data());
             messages.push(CCSUsrMsg_ServerRankRevealAll::generated_message_descriptor_data());
             messages.push(CCSUsrMsgPreMatchSayText::generated_message_descriptor_data());
+            messages.push(CCSUsrMsg_CounterStrafe::generated_message_descriptor_data());
             messages.push(ccsusr_msg_vguimenu::Keys::generated_message_descriptor_data());
             messages.push(ccsusr_msg_voice_mask::PlayerMask::generated_message_descriptor_data());
             messages.push(ccsusr_msg_process_spotted_entity_update::SpottedEntityUpdate::generated_message_descriptor_data());

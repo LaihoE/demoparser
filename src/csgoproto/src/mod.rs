@@ -1,3 +1,5 @@
+// @generated
+
 pub mod cs_usercmd;
 pub mod cstrike15_gcmessages;
 pub mod cstrike15_usermessages;

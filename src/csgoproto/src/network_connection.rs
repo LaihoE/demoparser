@@ -264,6 +264,8 @@ pub enum ENetworkDisconnectionReason {
     NETWORK_DISCONNECT_KICKED_NOSTEAMLOGIN = 160,
     // @@protoc_insertion_point(enum_value:ENetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED_NOSTEAMTICKET)
     NETWORK_DISCONNECT_KICKED_NOSTEAMTICKET = 161,
+    // @@protoc_insertion_point(enum_value:ENetworkDisconnectionReason.NETWORK_DISCONNECT_KICKED_INPUTAUTOMATION)
+    NETWORK_DISCONNECT_KICKED_INPUTAUTOMATION = 162,
 }
 
 impl ::protobuf::Enum for ENetworkDisconnectionReason {
@@ -393,6 +395,7 @@ impl ::protobuf::Enum for ENetworkDisconnectionReason {
             159 => ::std::option::Option::Some(ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_SUICIDE),
             160 => ::std::option::Option::Some(ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_NOSTEAMLOGIN),
             161 => ::std::option::Option::Some(ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_NOSTEAMTICKET),
+            162 => ::std::option::Option::Some(ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_INPUTAUTOMATION),
             _ => ::std::option::Option::None
         }
     }
@@ -517,6 +520,7 @@ impl ::protobuf::Enum for ENetworkDisconnectionReason {
             "NETWORK_DISCONNECT_KICKED_SUICIDE" => ::std::option::Option::Some(ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_SUICIDE),
             "NETWORK_DISCONNECT_KICKED_NOSTEAMLOGIN" => ::std::option::Option::Some(ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_NOSTEAMLOGIN),
             "NETWORK_DISCONNECT_KICKED_NOSTEAMTICKET" => ::std::option::Option::Some(ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_NOSTEAMTICKET),
+            "NETWORK_DISCONNECT_KICKED_INPUTAUTOMATION" => ::std::option::Option::Some(ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_INPUTAUTOMATION),
             _ => ::std::option::Option::None
         }
     }
@@ -640,6 +644,7 @@ impl ::protobuf::Enum for ENetworkDisconnectionReason {
         ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_SUICIDE,
         ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_NOSTEAMLOGIN,
         ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_NOSTEAMTICKET,
+        ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_INPUTAUTOMATION,
     ];
 }
 
@@ -769,6 +774,7 @@ impl ::protobuf::EnumFull for ENetworkDisconnectionReason {
             ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_SUICIDE => 115,
             ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_NOSTEAMLOGIN => 116,
             ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_NOSTEAMTICKET => 117,
+            ENetworkDisconnectionReason::NETWORK_DISCONNECT_KICKED_INPUTAUTOMATION => 118,
         };
         Self::enum_descriptor().value_by_index(index)
     }
@@ -790,11 +796,13 @@ impl ENetworkDisconnectionReason {
 pub mod exts {
 
     pub const network_connection_token: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::EnumValueOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(50500, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
+
+    pub const network_connection_detail_token: ::protobuf::ext::ExtFieldOptional<::protobuf::descriptor::EnumValueOptions, ::std::string::String> = ::protobuf::ext::ExtFieldOptional::new(50501, ::protobuf::descriptor::field_descriptor_proto::Type::TYPE_STRING);
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x18network_connection.proto\x1a\x20google/protobuf/descriptor.proto*\
-    \xceJ\n\x1bENetworkDisconnectionReason\x12\x1e\n\x1aNETWORK_DISCONNECT_I\
+    \xe0K\n\x1bENetworkDisconnectionReason\x12\x1e\n\x1aNETWORK_DISCONNECT_I\
     NVALID\x10\0\x12\x1f\n\x1bNETWORK_DISCONNECT_SHUTDOWN\x10\x01\x12F\n%NET\
     WORK_DISCONNECT_DISCONNECT_BY_USER\x10\x02\x1a\x1b\xa2\xd4\x18\x17#GameU\
     I_Disconnect_User\x12J\n'NETWORK_DISCONNECT_DISCONNECT_BY_SERVER\x10\x03\
@@ -967,8 +975,13 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     ide\x12V\n&NETWORK_DISCONNECT_KICKED_NOSTEAMLOGIN\x10\xa0\x01\x1a)\xa2\
     \xd4\x18%#Player_DisconnectReason_NoSteamLogin\x12X\n'NETWORK_DISCONNECT\
     _KICKED_NOSTEAMTICKET\x10\xa1\x01\x1a*\xa2\xd4\x18&#Player_DisconnectRea\
-    son_NoSteamTicket:]\n\x18network_connection_token\x18\xc4\x8a\x03\x20\
-    \x01(\t\x12!.google.protobuf.EnumValueOptionsR\x16networkConnectionToken\
+    son_NoSteamTicket\x12\x8f\x01\n)NETWORK_DISCONNECT_KICKED_INPUTAUTOMATIO\
+    N\x10\xa2\x01\x1a_\xa2\xd4\x18(#Player_DisconnectReason_InputAutomation\
+    \xaa\xd4\x18/#Player_DisconnectReason_InputAutomation_Detail:]\n\x18netw\
+    ork_connection_token\x18\xc4\x8a\x03\x20\x01(\t\x12!.google.protobuf.Enu\
+    mValueOptionsR\x16networkConnectionToken:j\n\x1fnetwork_connection_detai\
+    l_token\x18\xc5\x8a\x03\x20\x01(\t\x12!.google.protobuf.EnumValueOptions\
+    R\x1cnetworkConnectionDetailToken\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
