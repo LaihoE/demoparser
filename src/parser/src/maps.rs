@@ -272,6 +272,7 @@ pub fn netmessage_type_from_int(msg_type: i32) -> NetmessageType {
         72 => svc_UserMessage,
         73 => svc_HltvReplay,
         74 => svc_Broadcast_Command,
+        76 => svc_UserCmds,
         101 => UM_AchievementEvent,
         102 => UM_CloseCaption,
         103 => UM_CloseCaptionDirect,
@@ -589,6 +590,7 @@ pub enum NetmessageType {
     UM_DllStatusResponse,
     UM_RequestInventory,
     UM_InventoryResponse,
+    svc_UserCmds,
 }
 pub fn demo_cmd_type_from_int(value: i32) -> Result<EDemoCommands, DemoParserError> {
     match value {

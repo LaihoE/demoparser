@@ -11,12 +11,14 @@ use crate::maps::netmessage_type_from_int;
 use crate::maps::NetmessageType::*;
 use crate::second_pass::collect_data::ProjectileRecord;
 use crate::second_pass::entities::Entity;
+use crate::second_pass::game_events::EventField;
 use crate::second_pass::game_events::GameEvent;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::parser_settings::*;
 use crate::second_pass::variants::PropColumn;
 use ahash::AHashMap;
 use ahash::AHashSet;
+use csgoproto::cs_usercmd::CSGOUserCmdPB;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
 use csgoproto::networkbasetypes::CNETMsg_Tick;
@@ -214,6 +216,7 @@ impl<'a> SecondPassParser<'a> {
                 svc_ClearAllStringTables => self.clear_stringtables(),
                 svc_VoiceData => self.parse_voice_data(msg_bytes),
                 GE_Source1LegacyGameEvent => self.parse_game_event(msg_bytes, &mut wrong_order_events),
+                svc_UserCmds => self.parse_user_cmd(msg_bytes),
                 _ => Ok(()),
             };
             ok?
@@ -223,6 +226,69 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(())
     }
+    pub fn parse_user_cmd(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+        let m: CSVCMsg_UserCommands = Message::parse_from_bytes(bytes).unwrap();
+
+        for cmd in m.commands {
+            let user_cmd = CSGOUserCmdPB::parse_from_bytes(cmd.data()).unwrap();
+            let mut fields = vec![];
+            fields.push(EventField {
+                data: Some(crate::second_pass::variants::Variant::F32(user_cmd.base.viewangles.x())),
+                name: "X".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(crate::second_pass::variants::Variant::F32(user_cmd.base.viewangles.y())),
+                name: "Y".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(crate::second_pass::variants::Variant::F32(user_cmd.base.viewangles.z())),
+                name: "Z".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(crate::second_pass::variants::Variant::F32(user_cmd.base.forwardmove())),
+                name: "forward_move".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(crate::second_pass::variants::Variant::I32(user_cmd.base.impulse())),
+                name: "impulse".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(crate::second_pass::variants::Variant::I32(user_cmd.base.mousedx())),
+                name: "mouse_x".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(crate::second_pass::variants::Variant::I32(user_cmd.base.mousedy())),
+                name: "mouse_y".to_string(),
+            });
+
+            fields.push(EventField {
+                data: Some(crate::second_pass::variants::Variant::U64(
+                    user_cmd.base.buttons_pb.buttonstate1(),
+                )),
+                name: "button_state_1".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(crate::second_pass::variants::Variant::U64(
+                    user_cmd.base.buttons_pb.buttonstate2(),
+                )),
+                name: "button_state_2".to_string(),
+            });
+            fields.push(EventField {
+                data: Some(crate::second_pass::variants::Variant::U64(
+                    user_cmd.base.buttons_pb.buttonstate3(),
+                )),
+                name: "button_state_3".to_string(),
+            });
+
+            self.game_events.push(GameEvent {
+                name: "user_cmd".to_string(),
+                fields: fields,
+                tick: self.tick,
+            })
+        }
+        Ok(())
+    }
+
     pub fn parse_voice_data(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if let Ok(m) = Message::parse_from_bytes(bytes) {
             self.voice_data.push(m);
