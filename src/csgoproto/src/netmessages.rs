@@ -2369,201 +2369,6 @@ impl ::protobuf::reflect::ProtobufValue for CCLCMsg_SplitPlayerConnect {
     type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
 }
 
-// @@protoc_insertion_point(message:CCLCMsg_ClientMessage)
-#[derive(PartialEq,Clone,Default,Debug)]
-pub struct CCLCMsg_ClientMessage {
-    // message fields
-    // @@protoc_insertion_point(field:CCLCMsg_ClientMessage.msg_type)
-    pub msg_type: ::std::option::Option<i32>,
-    // @@protoc_insertion_point(field:CCLCMsg_ClientMessage.data)
-    pub data: ::std::option::Option<::bytes::Bytes>,
-    // special fields
-    // @@protoc_insertion_point(special_field:CCLCMsg_ClientMessage.special_fields)
-    pub special_fields: ::protobuf::SpecialFields,
-}
-
-impl<'a> ::std::default::Default for &'a CCLCMsg_ClientMessage {
-    fn default() -> &'a CCLCMsg_ClientMessage {
-        <CCLCMsg_ClientMessage as ::protobuf::Message>::default_instance()
-    }
-}
-
-impl CCLCMsg_ClientMessage {
-    pub fn new() -> CCLCMsg_ClientMessage {
-        ::std::default::Default::default()
-    }
-
-    // optional int32 msg_type = 1;
-
-    pub fn msg_type(&self) -> i32 {
-        self.msg_type.unwrap_or(0)
-    }
-
-    pub fn clear_msg_type(&mut self) {
-        self.msg_type = ::std::option::Option::None;
-    }
-
-    pub fn has_msg_type(&self) -> bool {
-        self.msg_type.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_msg_type(&mut self, v: i32) {
-        self.msg_type = ::std::option::Option::Some(v);
-    }
-
-    // optional bytes data = 2;
-
-    pub fn data(&self) -> &[u8] {
-        match self.data.as_ref() {
-            Some(v) => v,
-            None => &[],
-        }
-    }
-
-    pub fn clear_data(&mut self) {
-        self.data = ::std::option::Option::None;
-    }
-
-    pub fn has_data(&self) -> bool {
-        self.data.is_some()
-    }
-
-    // Param is passed by value, moved
-    pub fn set_data(&mut self, v: ::bytes::Bytes) {
-        self.data = ::std::option::Option::Some(v);
-    }
-
-    // Mutable pointer to the field.
-    // If field is not initialized, it is initialized with default value first.
-    pub fn mut_data(&mut self) -> &mut ::bytes::Bytes {
-        if self.data.is_none() {
-            self.data = ::std::option::Option::Some(::bytes::Bytes::new());
-        }
-        self.data.as_mut().unwrap()
-    }
-
-    // Take field
-    pub fn take_data(&mut self) -> ::bytes::Bytes {
-        self.data.take().unwrap_or_else(|| ::bytes::Bytes::new())
-    }
-
-    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(2);
-        let mut oneofs = ::std::vec::Vec::with_capacity(0);
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
-            "msg_type",
-            |m: &CCLCMsg_ClientMessage| { &m.msg_type },
-            |m: &mut CCLCMsg_ClientMessage| { &mut m.msg_type },
-        ));
-        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
-            "data",
-            |m: &CCLCMsg_ClientMessage| { &m.data },
-            |m: &mut CCLCMsg_ClientMessage| { &mut m.data },
-        ));
-        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<CCLCMsg_ClientMessage>(
-            "CCLCMsg_ClientMessage",
-            fields,
-            oneofs,
-        )
-    }
-}
-
-impl ::protobuf::Message for CCLCMsg_ClientMessage {
-    const NAME: &'static str = "CCLCMsg_ClientMessage";
-
-    fn is_initialized(&self) -> bool {
-        true
-    }
-
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
-        while let Some(tag) = is.read_raw_tag_or_eof()? {
-            match tag {
-                8 => {
-                    self.msg_type = ::std::option::Option::Some(is.read_int32()?);
-                },
-                18 => {
-                    self.data = ::std::option::Option::Some(is.read_tokio_bytes()?);
-                },
-                tag => {
-                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
-                },
-            };
-        }
-        ::std::result::Result::Ok(())
-    }
-
-    // Compute sizes of nested messages
-    #[allow(unused_variables)]
-    fn compute_size(&self) -> u64 {
-        let mut my_size = 0;
-        if let Some(v) = self.msg_type {
-            my_size += ::protobuf::rt::int32_size(1, v);
-        }
-        if let Some(v) = self.data.as_ref() {
-            my_size += ::protobuf::rt::bytes_size(2, &v);
-        }
-        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
-        self.special_fields.cached_size().set(my_size as u32);
-        my_size
-    }
-
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if let Some(v) = self.msg_type {
-            os.write_int32(1, v)?;
-        }
-        if let Some(v) = self.data.as_ref() {
-            os.write_bytes(2, v)?;
-        }
-        os.write_unknown_fields(self.special_fields.unknown_fields())?;
-        ::std::result::Result::Ok(())
-    }
-
-    fn special_fields(&self) -> &::protobuf::SpecialFields {
-        &self.special_fields
-    }
-
-    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
-        &mut self.special_fields
-    }
-
-    fn new() -> CCLCMsg_ClientMessage {
-        CCLCMsg_ClientMessage::new()
-    }
-
-    fn clear(&mut self) {
-        self.msg_type = ::std::option::Option::None;
-        self.data = ::std::option::Option::None;
-        self.special_fields.clear();
-    }
-
-    fn default_instance() -> &'static CCLCMsg_ClientMessage {
-        static instance: CCLCMsg_ClientMessage = CCLCMsg_ClientMessage {
-            msg_type: ::std::option::Option::None,
-            data: ::std::option::Option::None,
-            special_fields: ::protobuf::SpecialFields::new(),
-        };
-        &instance
-    }
-}
-
-impl ::protobuf::MessageFull for CCLCMsg_ClientMessage {
-    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
-        descriptor.get(|| file_descriptor().message_by_package_relative_name("CCLCMsg_ClientMessage").unwrap()).clone()
-    }
-}
-
-impl ::std::fmt::Display for CCLCMsg_ClientMessage {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        ::protobuf::text_format::fmt(self, f)
-    }
-}
-
-impl ::protobuf::reflect::ProtobufValue for CCLCMsg_ClientMessage {
-    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
-}
-
 // @@protoc_insertion_point(message:CCLCMsg_SplitPlayerDisconnect)
 #[derive(PartialEq,Clone,Default,Debug)]
 pub struct CCLCMsg_SplitPlayerDisconnect {
@@ -20195,6 +20000,8 @@ pub struct CMsgServerUserCmd {
     pub player_slot: ::std::option::Option<i32>,
     // @@protoc_insertion_point(field:CMsgServerUserCmd.server_tick_executed)
     pub server_tick_executed: ::std::option::Option<i32>,
+    // @@protoc_insertion_point(field:CMsgServerUserCmd.client_tick)
+    pub client_tick: ::std::option::Option<i32>,
     // special fields
     // @@protoc_insertion_point(special_field:CMsgServerUserCmd.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -20304,8 +20111,27 @@ impl CMsgServerUserCmd {
         self.server_tick_executed = ::std::option::Option::Some(v);
     }
 
+    // optional int32 client_tick = 5;
+
+    pub fn client_tick(&self) -> i32 {
+        self.client_tick.unwrap_or(0)
+    }
+
+    pub fn clear_client_tick(&mut self) {
+        self.client_tick = ::std::option::Option::None;
+    }
+
+    pub fn has_client_tick(&self) -> bool {
+        self.client_tick.is_some()
+    }
+
+    // Param is passed by value, moved
+    pub fn set_client_tick(&mut self, v: i32) {
+        self.client_tick = ::std::option::Option::Some(v);
+    }
+
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(4);
+        let mut fields = ::std::vec::Vec::with_capacity(5);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "data",
@@ -20326,6 +20152,11 @@ impl CMsgServerUserCmd {
             "server_tick_executed",
             |m: &CMsgServerUserCmd| { &m.server_tick_executed },
             |m: &mut CMsgServerUserCmd| { &mut m.server_tick_executed },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "client_tick",
+            |m: &CMsgServerUserCmd| { &m.client_tick },
+            |m: &mut CMsgServerUserCmd| { &mut m.client_tick },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<CMsgServerUserCmd>(
             "CMsgServerUserCmd",
@@ -20357,6 +20188,9 @@ impl ::protobuf::Message for CMsgServerUserCmd {
                 32 => {
                     self.server_tick_executed = ::std::option::Option::Some(is.read_int32()?);
                 },
+                40 => {
+                    self.client_tick = ::std::option::Option::Some(is.read_int32()?);
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -20381,6 +20215,9 @@ impl ::protobuf::Message for CMsgServerUserCmd {
         if let Some(v) = self.server_tick_executed {
             my_size += ::protobuf::rt::int32_size(4, v);
         }
+        if let Some(v) = self.client_tick {
+            my_size += ::protobuf::rt::int32_size(5, v);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -20398,6 +20235,9 @@ impl ::protobuf::Message for CMsgServerUserCmd {
         }
         if let Some(v) = self.server_tick_executed {
             os.write_int32(4, v)?;
+        }
+        if let Some(v) = self.client_tick {
+            os.write_int32(5, v)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -20420,6 +20260,7 @@ impl ::protobuf::Message for CMsgServerUserCmd {
         self.cmd_number = ::std::option::Option::None;
         self.player_slot = ::std::option::Option::None;
         self.server_tick_executed = ::std::option::Option::None;
+        self.client_tick = ::std::option::Option::None;
         self.special_fields.clear();
     }
 
@@ -20429,6 +20270,7 @@ impl ::protobuf::Message for CMsgServerUserCmd {
             cmd_number: ::std::option::Option::None,
             player_slot: ::std::option::Option::None,
             server_tick_executed: ::std::option::Option::None,
+            client_tick: ::std::option::Option::None,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -20586,8 +20428,6 @@ pub enum CLC_Messages {
     clc_VoiceData = 22,
     // @@protoc_insertion_point(enum_value:CLC_Messages.clc_BaselineAck)
     clc_BaselineAck = 23,
-    // @@protoc_insertion_point(enum_value:CLC_Messages.clc_ListenEvents)
-    clc_ListenEvents = 24,
     // @@protoc_insertion_point(enum_value:CLC_Messages.clc_RespondCvarValue)
     clc_RespondCvarValue = 25,
     // @@protoc_insertion_point(enum_value:CLC_Messages.clc_FileCRCCheck)
@@ -20596,14 +20436,10 @@ pub enum CLC_Messages {
     clc_LoadingProgress = 27,
     // @@protoc_insertion_point(enum_value:CLC_Messages.clc_SplitPlayerConnect)
     clc_SplitPlayerConnect = 28,
-    // @@protoc_insertion_point(enum_value:CLC_Messages.clc_ClientMessage)
-    clc_ClientMessage = 29,
     // @@protoc_insertion_point(enum_value:CLC_Messages.clc_SplitPlayerDisconnect)
     clc_SplitPlayerDisconnect = 30,
     // @@protoc_insertion_point(enum_value:CLC_Messages.clc_ServerStatus)
     clc_ServerStatus = 31,
-    // @@protoc_insertion_point(enum_value:CLC_Messages.clc_ServerPing)
-    clc_ServerPing = 32,
     // @@protoc_insertion_point(enum_value:CLC_Messages.clc_RequestPause)
     clc_RequestPause = 33,
     // @@protoc_insertion_point(enum_value:CLC_Messages.clc_CmdKeyValues)
@@ -20629,15 +20465,12 @@ impl ::protobuf::Enum for CLC_Messages {
             21 => ::std::option::Option::Some(CLC_Messages::clc_Move),
             22 => ::std::option::Option::Some(CLC_Messages::clc_VoiceData),
             23 => ::std::option::Option::Some(CLC_Messages::clc_BaselineAck),
-            24 => ::std::option::Option::Some(CLC_Messages::clc_ListenEvents),
             25 => ::std::option::Option::Some(CLC_Messages::clc_RespondCvarValue),
             26 => ::std::option::Option::Some(CLC_Messages::clc_FileCRCCheck),
             27 => ::std::option::Option::Some(CLC_Messages::clc_LoadingProgress),
             28 => ::std::option::Option::Some(CLC_Messages::clc_SplitPlayerConnect),
-            29 => ::std::option::Option::Some(CLC_Messages::clc_ClientMessage),
             30 => ::std::option::Option::Some(CLC_Messages::clc_SplitPlayerDisconnect),
             31 => ::std::option::Option::Some(CLC_Messages::clc_ServerStatus),
-            32 => ::std::option::Option::Some(CLC_Messages::clc_ServerPing),
             33 => ::std::option::Option::Some(CLC_Messages::clc_RequestPause),
             34 => ::std::option::Option::Some(CLC_Messages::clc_CmdKeyValues),
             35 => ::std::option::Option::Some(CLC_Messages::clc_RconServerDetails),
@@ -20653,15 +20486,12 @@ impl ::protobuf::Enum for CLC_Messages {
             "clc_Move" => ::std::option::Option::Some(CLC_Messages::clc_Move),
             "clc_VoiceData" => ::std::option::Option::Some(CLC_Messages::clc_VoiceData),
             "clc_BaselineAck" => ::std::option::Option::Some(CLC_Messages::clc_BaselineAck),
-            "clc_ListenEvents" => ::std::option::Option::Some(CLC_Messages::clc_ListenEvents),
             "clc_RespondCvarValue" => ::std::option::Option::Some(CLC_Messages::clc_RespondCvarValue),
             "clc_FileCRCCheck" => ::std::option::Option::Some(CLC_Messages::clc_FileCRCCheck),
             "clc_LoadingProgress" => ::std::option::Option::Some(CLC_Messages::clc_LoadingProgress),
             "clc_SplitPlayerConnect" => ::std::option::Option::Some(CLC_Messages::clc_SplitPlayerConnect),
-            "clc_ClientMessage" => ::std::option::Option::Some(CLC_Messages::clc_ClientMessage),
             "clc_SplitPlayerDisconnect" => ::std::option::Option::Some(CLC_Messages::clc_SplitPlayerDisconnect),
             "clc_ServerStatus" => ::std::option::Option::Some(CLC_Messages::clc_ServerStatus),
-            "clc_ServerPing" => ::std::option::Option::Some(CLC_Messages::clc_ServerPing),
             "clc_RequestPause" => ::std::option::Option::Some(CLC_Messages::clc_RequestPause),
             "clc_CmdKeyValues" => ::std::option::Option::Some(CLC_Messages::clc_CmdKeyValues),
             "clc_RconServerDetails" => ::std::option::Option::Some(CLC_Messages::clc_RconServerDetails),
@@ -20676,15 +20506,12 @@ impl ::protobuf::Enum for CLC_Messages {
         CLC_Messages::clc_Move,
         CLC_Messages::clc_VoiceData,
         CLC_Messages::clc_BaselineAck,
-        CLC_Messages::clc_ListenEvents,
         CLC_Messages::clc_RespondCvarValue,
         CLC_Messages::clc_FileCRCCheck,
         CLC_Messages::clc_LoadingProgress,
         CLC_Messages::clc_SplitPlayerConnect,
-        CLC_Messages::clc_ClientMessage,
         CLC_Messages::clc_SplitPlayerDisconnect,
         CLC_Messages::clc_ServerStatus,
-        CLC_Messages::clc_ServerPing,
         CLC_Messages::clc_RequestPause,
         CLC_Messages::clc_CmdKeyValues,
         CLC_Messages::clc_RconServerDetails,
@@ -20705,20 +20532,17 @@ impl ::protobuf::EnumFull for CLC_Messages {
             CLC_Messages::clc_Move => 1,
             CLC_Messages::clc_VoiceData => 2,
             CLC_Messages::clc_BaselineAck => 3,
-            CLC_Messages::clc_ListenEvents => 4,
-            CLC_Messages::clc_RespondCvarValue => 5,
-            CLC_Messages::clc_FileCRCCheck => 6,
-            CLC_Messages::clc_LoadingProgress => 7,
-            CLC_Messages::clc_SplitPlayerConnect => 8,
-            CLC_Messages::clc_ClientMessage => 9,
-            CLC_Messages::clc_SplitPlayerDisconnect => 10,
-            CLC_Messages::clc_ServerStatus => 11,
-            CLC_Messages::clc_ServerPing => 12,
-            CLC_Messages::clc_RequestPause => 13,
-            CLC_Messages::clc_CmdKeyValues => 14,
-            CLC_Messages::clc_RconServerDetails => 15,
-            CLC_Messages::clc_HltvReplay => 16,
-            CLC_Messages::clc_Diagnostic => 17,
+            CLC_Messages::clc_RespondCvarValue => 4,
+            CLC_Messages::clc_FileCRCCheck => 5,
+            CLC_Messages::clc_LoadingProgress => 6,
+            CLC_Messages::clc_SplitPlayerConnect => 7,
+            CLC_Messages::clc_SplitPlayerDisconnect => 8,
+            CLC_Messages::clc_ServerStatus => 9,
+            CLC_Messages::clc_RequestPause => 10,
+            CLC_Messages::clc_CmdKeyValues => 11,
+            CLC_Messages::clc_RconServerDetails => 12,
+            CLC_Messages::clc_HltvReplay => 13,
+            CLC_Messages::clc_Diagnostic => 14,
         };
         Self::enum_descriptor().value_by_index(index)
     }
@@ -20794,8 +20618,6 @@ pub enum SVC_Messages {
     svc_RconServerDetails = 71,
     // @@protoc_insertion_point(enum_value:SVC_Messages.svc_UserMessage)
     svc_UserMessage = 72,
-    // @@protoc_insertion_point(enum_value:SVC_Messages.svc_HltvReplay)
-    svc_HltvReplay = 73,
     // @@protoc_insertion_point(enum_value:SVC_Messages.svc_Broadcast_Command)
     svc_Broadcast_Command = 74,
     // @@protoc_insertion_point(enum_value:SVC_Messages.svc_HltvFixupOperatorStatus)
@@ -20840,7 +20662,6 @@ impl ::protobuf::Enum for SVC_Messages {
             70 => ::std::option::Option::Some(SVC_Messages::svc_FullFrameSplit),
             71 => ::std::option::Option::Some(SVC_Messages::svc_RconServerDetails),
             72 => ::std::option::Option::Some(SVC_Messages::svc_UserMessage),
-            73 => ::std::option::Option::Some(SVC_Messages::svc_HltvReplay),
             74 => ::std::option::Option::Some(SVC_Messages::svc_Broadcast_Command),
             75 => ::std::option::Option::Some(SVC_Messages::svc_HltvFixupOperatorStatus),
             76 => ::std::option::Option::Some(SVC_Messages::svc_UserCmds),
@@ -20877,7 +20698,6 @@ impl ::protobuf::Enum for SVC_Messages {
             "svc_FullFrameSplit" => ::std::option::Option::Some(SVC_Messages::svc_FullFrameSplit),
             "svc_RconServerDetails" => ::std::option::Option::Some(SVC_Messages::svc_RconServerDetails),
             "svc_UserMessage" => ::std::option::Option::Some(SVC_Messages::svc_UserMessage),
-            "svc_HltvReplay" => ::std::option::Option::Some(SVC_Messages::svc_HltvReplay),
             "svc_Broadcast_Command" => ::std::option::Option::Some(SVC_Messages::svc_Broadcast_Command),
             "svc_HltvFixupOperatorStatus" => ::std::option::Option::Some(SVC_Messages::svc_HltvFixupOperatorStatus),
             "svc_UserCmds" => ::std::option::Option::Some(SVC_Messages::svc_UserCmds),
@@ -20913,7 +20733,6 @@ impl ::protobuf::Enum for SVC_Messages {
         SVC_Messages::svc_FullFrameSplit,
         SVC_Messages::svc_RconServerDetails,
         SVC_Messages::svc_UserMessage,
-        SVC_Messages::svc_HltvReplay,
         SVC_Messages::svc_Broadcast_Command,
         SVC_Messages::svc_HltvFixupOperatorStatus,
         SVC_Messages::svc_UserCmds,
@@ -20955,10 +20774,9 @@ impl ::protobuf::EnumFull for SVC_Messages {
             SVC_Messages::svc_FullFrameSplit => 24,
             SVC_Messages::svc_RconServerDetails => 25,
             SVC_Messages::svc_UserMessage => 26,
-            SVC_Messages::svc_HltvReplay => 27,
-            SVC_Messages::svc_Broadcast_Command => 28,
-            SVC_Messages::svc_HltvFixupOperatorStatus => 29,
-            SVC_Messages::svc_UserCmds => 30,
+            SVC_Messages::svc_Broadcast_Command => 27,
+            SVC_Messages::svc_HltvFixupOperatorStatus => 28,
+            SVC_Messages::svc_UserCmds => 29,
         };
         Self::enum_descriptor().value_by_index(index)
     }
@@ -21686,342 +21504,339 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     Filename\x12\x1a\n\x08filename\x18\x04\x20\x01(\tR\x08filename\x12\x10\n\
     \x03crc\x18\x05\x20\x01(\x07R\x03crc\"5\n\x17CCLCMsg_LoadingProgress\x12\
     \x1a\n\x08progress\x18\x01\x20\x01(\x05R\x08progress\"<\n\x1aCCLCMsg_Spl\
-    itPlayerConnect\x12\x1e\n\nplayername\x18\x01\x20\x01(\tR\nplayername\"F\
-    \n\x15CCLCMsg_ClientMessage\x12\x19\n\x08msg_type\x18\x01\x20\x01(\x05R\
-    \x07msgType\x12\x12\n\x04data\x18\x02\x20\x01(\x0cR\x04data\"3\n\x1dCCLC\
-    Msg_SplitPlayerDisconnect\x12\x12\n\x04slot\x18\x01\x20\x01(\x05R\x04slo\
-    t\"6\n\x14CCLCMsg_ServerStatus\x12\x1e\n\nsimplified\x18\x01\x20\x01(\
-    \x08R\nsimplified\"q\n\x14CCLCMsg_RequestPause\x128\n\npause_type\x18\
-    \x01\x20\x01(\x0e2\x0f.RequestPause_t:\x08RP_PAUSER\tpauseType\x12\x1f\n\
-    \x0bpause_group\x18\x02\x20\x01(\x05R\npauseGroup\"*\n\x14CCLCMsg_CmdKey\
-    Values\x12\x12\n\x04data\x18\x01\x20\x01(\x0cR\x04data\"1\n\x19CCLCMsg_R\
-    conServerDetails\x12\x14\n\x05token\x18\x01\x20\x01(\x0cR\x05token\"\xa6\
-    \x04\n\x16CMsgSource2SystemSpecs\x12\x15\n\x06cpu_id\x18\x01\x20\x01(\tR\
-    \x05cpuId\x12\x1b\n\tcpu_brand\x18\x02\x20\x01(\tR\x08cpuBrand\x12\x1b\n\
-    \tcpu_model\x18\x03\x20\x01(\rR\x08cpuModel\x12(\n\x10cpu_num_physical\
-    \x18\x04\x20\x01(\rR\x0ecpuNumPhysical\x121\n\x15ram_physical_total_mb\
-    \x18\x15\x20\x01(\rR\x12ramPhysicalTotalMb\x129\n\x19gpu_rendersystem_dl\
-    l_name\x18)\x20\x01(\tR\x16gpuRendersystemDllName\x12\"\n\rgpu_vendor_id\
-    \x18*\x20\x01(\rR\x0bgpuVendorId\x12&\n\x0fgpu_driver_name\x18+\x20\x01(\
-    \tR\rgpuDriverName\x125\n\x17gpu_driver_version_high\x18,\x20\x01(\rR\
-    \x14gpuDriverVersionHigh\x123\n\x16gpu_driver_version_low\x18-\x20\x01(\
-    \rR\x13gpuDriverVersionLow\x12/\n\x14gpu_dx_support_level\x18.\x20\x01(\
-    \rR\x11gpuDxSupportLevel\x12:\n\x1agpu_texture_memory_size_mb\x18/\x20\
-    \x01(\rR\x16gpuTextureMemorySizeMb\"\xd4\x02\n\x1eCMsgSource2VProfLiteRe\
-    portItem\x12\x12\n\x04name\x18\x01\x20\x01(\tR\x04name\x12%\n\x0eactive_\
-    samples\x18\x02\x20\x01(\rR\ractiveSamples\x12\x19\n\x08usec_max\x18\x03\
-    \x20\x01(\rR\x07usecMax\x12&\n\x0fusec_avg_active\x18\x0b\x20\x01(\rR\ru\
-    secAvgActive\x12&\n\x0fusec_p50_active\x18\x0c\x20\x01(\rR\rusecP50Activ\
-    e\x12&\n\x0fusec_p99_active\x18\r\x20\x01(\rR\rusecP99Active\x12\x20\n\
-    \x0cusec_avg_all\x18\x15\x20\x01(\rR\nusecAvgAll\x12\x20\n\x0cusec_p50_a\
-    ll\x18\x16\x20\x01(\rR\nusecP50All\x12\x20\n\x0cusec_p99_all\x18\x17\x20\
-    \x01(\rR\nusecP99All\"\xb5\x01\n\x1aCMsgSource2VProfLiteReport\x125\n\
-    \x05total\x18\x01\x20\x01(\x0b2\x1f.CMsgSource2VProfLiteReportItemR\x05t\
-    otal\x125\n\x05items\x18\x02\x20\x03(\x0b2\x1f.CMsgSource2VProfLiteRepor\
-    tItemR\x05items\x12)\n\x10discarded_frames\x18\x03\x20\x01(\rR\x0fdiscar\
-    dedFrames\"\x90\x01\n\x12CCLCMsg_Diagnostic\x12:\n\x0csystem_specs\x18\
-    \x01\x20\x01(\x0b2\x17.CMsgSource2SystemSpecsR\x0bsystemSpecs\x12>\n\x0c\
-    vprof_report\x18\x02\x20\x01(\x0b2\x1b.CMsgSource2VProfLiteReportR\x0bvp\
-    rofReport\"\xe4\x03\n-CSource2Metrics_MatchPerfSummary_Notification\x12\
-    \x14\n\x05appid\x18\x01\x20\x01(\rR\x05appid\x12\x1b\n\tgame_mode\x18\
-    \x02\x20\x01(\tR\x08gameMode\x12&\n\x0fserver_build_id\x18\x03\x20\x01(\
-    \rR\rserverBuildId\x12B\n\x0eserver_profile\x18\n\x20\x01(\x0b2\x1b.CMsg\
-    Source2VProfLiteReportR\rserverProfile\x12O\n\x07clients\x18\x0b\x20\x03\
-    (\x0b25.CSource2Metrics_MatchPerfSummary_Notification.ClientR\x07clients\
-    \x12\x10\n\x03map\x18\x14\x20\x01(\tR\x03map\x1a\xb0\x01\n\x06Client\x12\
-    :\n\x0csystem_specs\x18\x01\x20\x01(\x0b2\x17.CMsgSource2SystemSpecsR\
-    \x0bsystemSpecs\x125\n\x07profile\x18\x02\x20\x01(\x0b2\x1b.CMsgSource2V\
-    ProfLiteReportR\x07profile\x12\x19\n\x08build_id\x18\x03\x20\x01(\rR\x07\
-    buildId\x12\x18\n\x07steamid\x18\n\x20\x01(\x06R\x07steamid\"\xc2\x04\n\
-    \x12CSVCMsg_ServerInfo\x12\x1a\n\x08protocol\x18\x01\x20\x01(\x05R\x08pr\
-    otocol\x12!\n\x0cserver_count\x18\x02\x20\x01(\x05R\x0bserverCount\x12!\
-    \n\x0cis_dedicated\x18\x03\x20\x01(\x08R\x0bisDedicated\x12\x17\n\x07is_\
-    hltv\x18\x04\x20\x01(\x08R\x06isHltv\x12\x11\n\x04c_os\x18\x06\x20\x01(\
-    \x05R\x03cOs\x12\x1f\n\x0bmax_clients\x18\n\x20\x01(\x05R\nmaxClients\
-    \x12\x1f\n\x0bmax_classes\x18\x0b\x20\x01(\x05R\nmaxClasses\x12#\n\x0bpl\
-    ayer_slot\x18\x0c\x20\x01(\x05:\x02-1R\nplayerSlot\x12#\n\rtick_interval\
-    \x18\r\x20\x01(\x02R\x0ctickInterval\x12\x19\n\x08game_dir\x18\x0e\x20\
-    \x01(\tR\x07gameDir\x12\x19\n\x08map_name\x18\x0f\x20\x01(\tR\x07mapName\
-    \x12\x19\n\x08sky_name\x18\x10\x20\x01(\tR\x07skyName\x12\x1b\n\thost_na\
-    me\x18\x11\x20\x01(\tR\x08hostName\x12\x1d\n\naddon_name\x18\x12\x20\x01\
-    (\tR\taddonName\x12Q\n\x13game_session_config\x18\x13\x20\x01(\x0b2!.CSV\
-    CMsg_GameSessionConfigurationR\x11gameSessionConfig\x122\n\x15game_sessi\
-    on_manifest\x18\x14\x20\x01(\x0cR\x13gameSessionManifest\"\xb8\x01\n\x11\
-    CSVCMsg_ClassInfo\x12(\n\x10create_on_client\x18\x01\x20\x01(\x08R\x0ecr\
-    eateOnClient\x124\n\x07classes\x18\x02\x20\x03(\x0b2\x1a.CSVCMsg_ClassIn\
-    fo.class_tR\x07classes\x1aC\n\x07class_t\x12\x19\n\x08class_id\x18\x01\
-    \x20\x01(\x05R\x07classId\x12\x1d\n\nclass_name\x18\x03\x20\x01(\tR\tcla\
-    ssName\"*\n\x10CSVCMsg_SetPause\x12\x16\n\x06paused\x18\x01\x20\x01(\x08\
-    R\x06paused\"`\n\x11CSVCMsg_VoiceInit\x12\x18\n\x07quality\x18\x01\x20\
-    \x01(\x05R\x07quality\x12\x14\n\x05codec\x18\x02\x20\x01(\tR\x05codec\
-    \x12\x1b\n\x07version\x18\x03\x20\x01(\x05:\x010R\x07version\"#\n\rCSVCM\
-    sg_Print\x12\x12\n\x04text\x18\x01\x20\x01(\tR\x04text\"\xcc\x05\n\x0eCS\
-    VCMsg_Sounds\x12%\n\x0ereliable_sound\x18\x01\x20\x01(\x08R\rreliableSou\
-    nd\x123\n\x06sounds\x18\x02\x20\x03(\x0b2\x1b.CSVCMsg_Sounds.sounddata_t\
-    R\x06sounds\x1a\xdd\x04\n\x0bsounddata_t\x12\x19\n\x08origin_x\x18\x01\
-    \x20\x01(\x11R\x07originX\x12\x19\n\x08origin_y\x18\x02\x20\x01(\x11R\
-    \x07originY\x12\x19\n\x08origin_z\x18\x03\x20\x01(\x11R\x07originZ\x12\
-    \x16\n\x06volume\x18\x04\x20\x01(\rR\x06volume\x12\x1f\n\x0bdelay_value\
-    \x18\x05\x20\x01(\x02R\ndelayValue\x12'\n\x0fsequence_number\x18\x06\x20\
-    \x01(\x05R\x0esequenceNumber\x12%\n\x0centity_index\x18\x07\x20\x01(\x05\
-    :\x02-1R\x0bentityIndex\x12\x18\n\x07channel\x18\x08\x20\x01(\x05R\x07ch\
-    annel\x12\x14\n\x05pitch\x18\t\x20\x01(\x05R\x05pitch\x12\x14\n\x05flags\
-    \x18\n\x20\x01(\x05R\x05flags\x12\x1b\n\tsound_num\x18\x0b\x20\x01(\rR\
-    \x08soundNum\x12(\n\x10sound_num_handle\x18\x0c\x20\x01(\x07R\x0esoundNu\
-    mHandle\x12%\n\x0espeaker_entity\x18\r\x20\x01(\x05R\rspeakerEntity\x12\
-    \x1f\n\x0brandom_seed\x18\x0e\x20\x01(\x05R\nrandomSeed\x12\x1f\n\x0bsou\
-    nd_level\x18\x0f\x20\x01(\x05R\nsoundLevel\x12\x1f\n\x0bis_sentence\x18\
-    \x10\x20\x01(\x08R\nisSentence\x12\x1d\n\nis_ambient\x18\x11\x20\x01(\
-    \x08R\tisAmbient\x12\x12\n\x04guid\x18\x12\x20\x01(\rR\x04guid\x12*\n\
-    \x11sound_resource_id\x18\x13\x20\x01(\x06R\x0fsoundResourceId\"r\n\x10C\
-    SVCMsg_Prefetch\x12\x1f\n\x0bsound_index\x18\x01\x20\x01(\x05R\nsoundInd\
-    ex\x12=\n\rresource_type\x18\x02\x20\x01(\x0e2\r.PrefetchType:\tPFT_SOUN\
-    DR\x0cresourceType\"P\n\x0fCSVCMsg_SetView\x12%\n\x0centity_index\x18\
-    \x01\x20\x01(\x05:\x02-1R\x0bentityIndex\x12\x16\n\x04slot\x18\x02\x20\
-    \x01(\x05:\x02-1R\x04slot\"Q\n\x10CSVCMsg_FixAngle\x12\x1a\n\x08relative\
-    \x18\x01\x20\x01(\x08R\x08relative\x12!\n\x05angle\x18\x02\x20\x01(\x0b2\
-    \x0b.CMsgQAngleR\x05angle\";\n\x16CSVCMsg_CrosshairAngle\x12!\n\x05angle\
-    \x18\x01\x20\x01(\x0b2\x0b.CMsgQAngleR\x05angle\"\xcc\x01\n\x10CSVCMsg_B\
-    SPDecal\x12\x1d\n\x03pos\x18\x01\x20\x01(\x0b2\x0b.CMsgVectorR\x03pos\
-    \x12.\n\x13decal_texture_index\x18\x02\x20\x01(\x05R\x11decalTextureInde\
-    x\x12%\n\x0centity_index\x18\x03\x20\x01(\x05:\x02-1R\x0bentityIndex\x12\
-    \x1f\n\x0bmodel_index\x18\x04\x20\x01(\x05R\nmodelIndex\x12!\n\x0clow_pr\
-    iority\x18\x05\x20\x01(\x08R\x0blowPriority\"\x97\x01\n\x13CSVCMsg_Split\
-    Screen\x12E\n\x04type\x18\x01\x20\x01(\x0e2\x18.ESplitScreenMessageType:\
-    \x17MSG_SPLITSCREEN_ADDUSERR\x04type\x12\x12\n\x04slot\x18\x02\x20\x01(\
-    \x05R\x04slot\x12%\n\x0cplayer_index\x18\x03\x20\x01(\x05:\x02-1R\x0bpla\
-    yerIndex\"K\n\x14CSVCMsg_GetCvarValue\x12\x16\n\x06cookie\x18\x01\x20\
-    \x01(\x05R\x06cookie\x12\x1b\n\tcvar_name\x18\x02\x20\x01(\tR\x08cvarNam\
-    e\"W\n\x0cCSVCMsg_Menu\x12\x1f\n\x0bdialog_type\x18\x01\x20\x01(\x05R\nd\
-    ialogType\x12&\n\x0fmenu_key_values\x18\x02\x20\x01(\x0cR\rmenuKeyValues\
-    \"m\n\x13CSVCMsg_UserMessage\x12\x19\n\x08msg_type\x18\x01\x20\x01(\x05R\
-    \x07msgType\x12\x19\n\x08msg_data\x18\x02\x20\x01(\x0cR\x07msgData\x12\
-    \x20\n\x0bpassthrough\x18\x03\x20\x01(\x05R\x0bpassthrough\"\xad\x03\n\
-    \x11CSVCMsg_SendTable\x12\x15\n\x06is_end\x18\x01\x20\x01(\x08R\x05isEnd\
-    \x12$\n\x0enet_table_name\x18\x02\x20\x01(\tR\x0cnetTableName\x12#\n\rne\
-    eds_decoder\x18\x03\x20\x01(\x08R\x0cneedsDecoder\x123\n\x05props\x18\
-    \x04\x20\x03(\x0b2\x1d.CSVCMsg_SendTable.sendprop_tR\x05props\x1a\x80\
-    \x02\n\nsendprop_t\x12\x12\n\x04type\x18\x01\x20\x01(\x05R\x04type\x12\
-    \x19\n\x08var_name\x18\x02\x20\x01(\tR\x07varName\x12\x14\n\x05flags\x18\
-    \x03\x20\x01(\x05R\x05flags\x12\x1a\n\x08priority\x18\x04\x20\x01(\x05R\
-    \x08priority\x12\x17\n\x07dt_name\x18\x05\x20\x01(\tR\x06dtName\x12!\n\
-    \x0cnum_elements\x18\x06\x20\x01(\x05R\x0bnumElements\x12\x1b\n\tlow_val\
-    ue\x18\x07\x20\x01(\x02R\x08lowValue\x12\x1d\n\nhigh_value\x18\x08\x20\
-    \x01(\x02R\thighValue\x12\x19\n\x08num_bits\x18\t\x20\x01(\x05R\x07numBi\
-    ts\"\xff\x01\n\x15CSVCMsg_GameEventList\x12E\n\x0bdescriptors\x18\x01\
-    \x20\x03(\x0b2#.CSVCMsg_GameEventList.descriptor_tR\x0bdescriptors\x1a/\
-    \n\x05key_t\x12\x12\n\x04type\x18\x01\x20\x01(\x05R\x04type\x12\x12\n\
-    \x04name\x18\x02\x20\x01(\tR\x04name\x1an\n\x0cdescriptor_t\x12\x18\n\
-    \x07eventid\x18\x01\x20\x01(\x05R\x07eventid\x12\x12\n\x04name\x18\x02\
-    \x20\x01(\tR\x04name\x120\n\x04keys\x18\x03\x20\x03(\x0b2\x1c.CSVCMsg_Ga\
-    meEventList.key_tR\x04keys\"\xf7\t\n\x16CSVCMsg_PacketEntities\x12\x1f\n\
-    \x0bmax_entries\x18\x01\x20\x01(\x05R\nmaxEntries\x12'\n\x0fupdated_entr\
-    ies\x18\x02\x20\x01(\x05R\x0eupdatedEntries\x12&\n\x0flegacy_is_delta\
-    \x18\x03\x20\x01(\x08R\rlegacyIsDelta\x12'\n\x0fupdate_baseline\x18\x04\
-    \x20\x01(\x08R\x0eupdateBaseline\x12\x1a\n\x08baseline\x18\x05\x20\x01(\
-    \x05R\x08baseline\x12\x1d\n\ndelta_from\x18\x06\x20\x01(\x05R\tdeltaFrom\
-    \x12\x1f\n\x0bentity_data\x18\x07\x20\x01(\x0cR\nentityData\x12,\n\x12pe\
-    nding_full_frame\x18\x08\x20\x01(\x08R\x10pendingFullFrame\x128\n\x18act\
-    ive_spawngroup_handle\x18\t\x20\x01(\rR\x16activeSpawngroupHandle\x12F\n\
-    \x1fmax_spawngroup_creationsequence\x18\n\x20\x01(\rR\x1dmaxSpawngroupCr\
-    eationsequence\x127\n\x18last_cmd_number_executed\x18\x0b\x20\x01(\rR\
-    \x15lastCmdNumberExecuted\x12:\n\x1alast_cmd_number_recv_delta\x18\x11\
-    \x20\x01(\x11R\x16lastCmdNumberRecvDelta\x12\x1f\n\x0bserver_tick\x18\
-    \x0c\x20\x01(\rR\nserverTick\x12/\n\x13serialized_entities\x18\r\x20\x01\
-    (\x0cR\x12serializedEntities\x12]\n\x13alternate_baselines\x18\x0f\x20\
-    \x03(\x0b2,.CSVCMsg_PacketEntities.alternate_baseline_tR\x12alternateBas\
-    elines\x12'\n\x10has_pvs_vis_bits\x18\x10\x20\x01(\rR\rhasPvsVisBits\x12\
-    *\n\x0fcmd_recv_status\x18\x16\x20\x03(\x11R\rcmdRecvStatusB\x02\x10\x01\
-    \x12l\n\x18non_transmitted_entities\x18\x13\x20\x01(\x0b22.CSVCMsg_Packe\
-    tEntities.non_transmitted_entities_tR\x16nonTransmittedEntities\x127\n\
-    \x18cq_starved_command_ticks\x18\x14\x20\x01(\rR\x15cqStarvedCommandTick\
-    s\x12;\n\x1acq_discarded_command_ticks\x18\x15\x20\x01(\rR\x17cqDiscarde\
-    dCommandTicks\x12\x20\n\x0bdev_padding\x18\xe7\x07\x20\x01(\x0cR\ndevPad\
-    ding\x1a`\n\x14alternate_baseline_t\x12!\n\x0centity_index\x18\x01\x20\
-    \x01(\x05R\x0bentityIndex\x12%\n\x0ebaseline_index\x18\x02\x20\x01(\x05R\
-    \rbaselineIndex\x1aS\n\x1anon_transmitted_entities_t\x12!\n\x0cheader_co\
-    unt\x18\x01\x20\x01(\x05R\x0bheaderCount\x12\x12\n\x04data\x18\x02\x20\
-    \x01(\x0cR\x04data\"t\n\x14CSVCMsg_TempEntities\x12\x1a\n\x08reliable\
-    \x18\x01\x20\x01(\x08R\x08reliable\x12\x1f\n\x0bnum_entries\x18\x02\x20\
-    \x01(\x05R\nnumEntries\x12\x1f\n\x0bentity_data\x18\x03\x20\x01(\x0cR\ne\
-    ntityData\"\x99\x03\n\x19CSVCMsg_CreateStringTable\x12\x12\n\x04name\x18\
-    \x01\x20\x01(\tR\x04name\x12\x1f\n\x0bnum_entries\x18\x02\x20\x01(\x05R\
-    \nnumEntries\x12/\n\x14user_data_fixed_size\x18\x03\x20\x01(\x08R\x11use\
-    rDataFixedSize\x12$\n\x0euser_data_size\x18\x04\x20\x01(\x05R\x0cuserDat\
-    aSize\x12-\n\x13user_data_size_bits\x18\x05\x20\x01(\x05R\x10userDataSiz\
-    eBits\x12\x14\n\x05flags\x18\x06\x20\x01(\x05R\x05flags\x12\x1f\n\x0bstr\
-    ing_data\x18\x07\x20\x01(\x0cR\nstringData\x12+\n\x11uncompressed_size\
-    \x18\x08\x20\x01(\x05R\x10uncompressedSize\x12'\n\x0fdata_compressed\x18\
-    \t\x20\x01(\x08R\x0edataCompressed\x124\n\x16using_varint_bitcounts\x18\
-    \n\x20\x01(\x08R\x14usingVarintBitcounts\"\x87\x01\n\x19CSVCMsg_UpdateSt\
-    ringTable\x12\x19\n\x08table_id\x18\x01\x20\x01(\x05R\x07tableId\x12.\n\
-    \x13num_changed_entries\x18\x02\x20\x01(\x05R\x11numChangedEntries\x12\
-    \x1f\n\x0bstring_data\x18\x03\x20\x01(\x0cR\nstringData\"\xe1\x01\n\x11C\
-    SVCMsg_VoiceData\x12%\n\x05audio\x18\x01\x20\x01(\x0b2\x0f.CMsgVoiceAudi\
-    oR\x05audio\x12\x1a\n\x06client\x18\x02\x20\x01(\x05:\x02-1R\x06client\
-    \x12\x1c\n\tproximity\x18\x03\x20\x01(\x08R\tproximity\x12\x12\n\x04xuid\
-    \x18\x04\x20\x01(\x06R\x04xuid\x12!\n\x0caudible_mask\x18\x05\x20\x01(\
-    \x05R\x0baudibleMask\x12\x12\n\x04tick\x18\x06\x20\x01(\rR\x04tick\x12\
-    \x20\n\x0bpassthrough\x18\x07\x20\x01(\x05R\x0bpassthrough\"f\n\x16CSVCM\
-    sg_PacketReliable\x12\x12\n\x04tick\x18\x01\x20\x01(\x05R\x04tick\x12\"\
-    \n\x0cmessagessize\x18\x02\x20\x01(\x05R\x0cmessagessize\x12\x14\n\x05st\
-    ate\x18\x03\x20\x01(\x08R\x05state\"p\n\x16CSVCMsg_FullFrameSplit\x12\
-    \x12\n\x04tick\x18\x01\x20\x01(\x05R\x04tick\x12\x18\n\x07section\x18\
-    \x02\x20\x01(\x05R\x07section\x12\x14\n\x05total\x18\x03\x20\x01(\x05R\
-    \x05total\x12\x12\n\x04data\x18\x04\x20\x01(\x0cR\x04data\"v\n\x12CSVCMs\
-    g_HLTVStatus\x12\x16\n\x06master\x18\x01\x20\x01(\tR\x06master\x12\x18\n\
-    \x07clients\x18\x02\x20\x01(\x05R\x07clients\x12\x14\n\x05slots\x18\x03\
-    \x20\x01(\x05R\x05slots\x12\x18\n\x07proxies\x18\x04\x20\x01(\x05R\x07pr\
-    oxies\"2\n\x15CSVCMsg_ServerSteamID\x12\x19\n\x08steam_id\x18\x01\x20\
-    \x01(\x04R\x07steamId\"*\n\x14CSVCMsg_CmdKeyValues\x12\x12\n\x04data\x18\
-    \x01\x20\x01(\x0cR\x04data\"K\n\x19CSVCMsg_RconServerDetails\x12\x14\n\
-    \x05token\x18\x01\x20\x01(\x0cR\x05token\x12\x18\n\x07details\x18\x02\
-    \x20\x01(\tR\x07details\"T\n\x0eCMsgIPCAddress\x12#\n\rcomputer_guid\x18\
-    \x01\x20\x01(\x06R\x0ccomputerGuid\x12\x1d\n\nprocess_id\x18\x02\x20\x01\
-    (\rR\tprocessId\"\xec\x01\n\x0eCMsgServerPeer\x12#\n\x0bplayer_slot\x18\
-    \x01\x20\x01(\x05:\x02-1R\nplayerSlot\x12\x18\n\x07steamid\x18\x02\x20\
-    \x01(\x06R\x07steamid\x12!\n\x03ipc\x18\x03\x20\x01(\x0b2\x0f.CMsgIPCAdd\
-    ressR\x03ipc\x12\"\n\rthey_hear_you\x18\x04\x20\x01(\x08R\x0btheyHearYou\
-    \x12\"\n\ryou_hear_them\x18\x05\x20\x01(\x08R\x0byouHearThem\x120\n\x14i\
-    s_listenserver_host\x18\x06\x20\x01(\x08R\x12isListenserverHost\"7\n\x10\
-    CSVCMsg_PeerList\x12#\n\x04peer\x18\x01\x20\x03(\x0b2\x0f.CMsgServerPeer\
-    R\x04peer\"l\n\x1cCSVCMsg_ClearAllStringTables\x12\x18\n\x07mapname\x18\
-    \x01\x20\x01(\tR\x07mapname\x122\n\x15create_tables_skipped\x18\x03\x20\
-    \x01(\x08R\x13createTablesSkipped\"\xee\x05\n\x1fProtoFlattenedSerialize\
-    rField_t\x12\x20\n\x0cvar_type_sym\x18\x01\x20\x01(\x05R\nvarTypeSym\x12\
-    \x20\n\x0cvar_name_sym\x18\x02\x20\x01(\x05R\nvarNameSym\x12\x1b\n\tbit_\
-    count\x18\x03\x20\x01(\x05R\x08bitCount\x12\x1b\n\tlow_value\x18\x04\x20\
-    \x01(\x02R\x08lowValue\x12\x1d\n\nhigh_value\x18\x05\x20\x01(\x02R\thigh\
-    Value\x12!\n\x0cencode_flags\x18\x06\x20\x01(\x05R\x0bencodeFlags\x129\n\
-    \x19field_serializer_name_sym\x18\x07\x20\x01(\x05R\x16fieldSerializerNa\
-    meSym\x128\n\x18field_serializer_version\x18\x08\x20\x01(\x05R\x16fieldS\
-    erializerVersion\x12\"\n\rsend_node_sym\x18\t\x20\x01(\x05R\x0bsendNodeS\
-    ym\x12&\n\x0fvar_encoder_sym\x18\n\x20\x01(\x05R\rvarEncoderSym\x12a\n\
-    \x11polymorphic_types\x18\x0b\x20\x03(\x0b24.ProtoFlattenedSerializerFie\
-    ld_t.polymorphic_field_tR\x10polymorphicTypes\x12,\n\x12var_serializer_s\
-    ym\x18\x0c\x20\x01(\x05R\x10varSerializerSym\x1a\xb8\x01\n\x13polymorphi\
-    c_field_t\x12P\n%polymorphic_field_serializer_name_sym\x18\x01\x20\x01(\
-    \x05R!polymorphicFieldSerializerNameSym\x12O\n$polymorphic_field_seriali\
-    zer_version\x18\x02\x20\x01(\x05R!polymorphicFieldSerializerVersion\"\
-    \x9e\x01\n\x1aProtoFlattenedSerializer_t\x12.\n\x13serializer_name_sym\
-    \x18\x01\x20\x01(\x05R\x11serializerNameSym\x12-\n\x12serializer_version\
-    \x18\x02\x20\x01(\x05R\x11serializerVersion\x12!\n\x0cfields_index\x18\
-    \x03\x20\x03(\x05R\x0bfieldsIndex\"\xb0\x01\n\x1bCSVCMsg_FlattenedSerial\
-    izer\x12=\n\x0bserializers\x18\x01\x20\x03(\x0b2\x1b.ProtoFlattenedSeria\
-    lizer_tR\x0bserializers\x12\x18\n\x07symbols\x18\x02\x20\x03(\tR\x07symb\
-    ols\x128\n\x06fields\x18\x03\x20\x03(\x0b2\x20.ProtoFlattenedSerializerF\
-    ield_tR\x06fields\"'\n\x11CSVCMsg_StopSound\x12\x12\n\x04guid\x18\x01\
-    \x20\x01(\x07R\x04guid\"\xb2\x01\n\x1eCBidirMsg_RebroadcastGameEvent\x12\
-    \"\n\x0cposttoserver\x18\x01\x20\x01(\x08R\x0cposttoserver\x12\x18\n\x07\
-    buftype\x18\x02\x20\x01(\x05R\x07buftype\x12&\n\x0eclientbitcount\x18\
-    \x03\x20\x01(\rR\x0eclientbitcount\x12*\n\x10receivingclients\x18\x04\
-    \x20\x01(\x04R\x10receivingclients\"?\n\x1bCBidirMsg_RebroadcastSource\
-    \x12\x20\n\x0beventsource\x18\x01\x20\x01(\x05R\x0beventsource\"\xdb\t\n\
-    \x16CMsgServerNetworkStats\x12\x1c\n\tdedicated\x18\x01\x20\x01(\x08R\td\
-    edicated\x12\x1b\n\tcpu_usage\x18\x02\x20\x01(\x05R\x08cpuUsage\x12$\n\
-    \x0ememory_used_mb\x18\x03\x20\x01(\x05R\x0cmemoryUsedMb\x12$\n\x0ememor\
-    y_free_mb\x18\x04\x20\x01(\x05R\x0cmemoryFreeMb\x12\x16\n\x06uptime\x18\
-    \x05\x20\x01(\x05R\x06uptime\x12\x1f\n\x0bspawn_count\x18\x06\x20\x01(\
-    \x05R\nspawnCount\x12\x1f\n\x0bnum_clients\x18\x08\x20\x01(\x05R\nnumCli\
-    ents\x12\x19\n\x08num_bots\x18\t\x20\x01(\x05R\x07numBots\x12%\n\x0enum_\
-    spectators\x18\n\x20\x01(\x05R\rnumSpectators\x12\"\n\rnum_tv_relays\x18\
-    \x0b\x20\x01(\x05R\x0bnumTvRelays\x12\x10\n\x03fps\x18\x0c\x20\x01(\x02R\
-    \x03fps\x122\n\x05ports\x18\x11\x20\x03(\x0b2\x1c.CMsgServerNetworkStats\
-    .PortR\x05ports\x12\x1e\n\x0bavg_ping_ms\x18\x12\x20\x01(\x02R\tavgPingM\
-    s\x123\n\x16avg_engine_latency_out\x18\x13\x20\x01(\x02R\x13avgEngineLat\
-    encyOut\x12&\n\x0favg_packets_out\x18\x14\x20\x01(\x02R\ravgPacketsOut\
-    \x12$\n\x0eavg_packets_in\x18\x15\x20\x01(\x02R\x0cavgPacketsIn\x12\x20\
-    \n\x0cavg_loss_out\x18\x16\x20\x01(\x02R\navgLossOut\x12\x1e\n\x0bavg_lo\
-    ss_in\x18\x17\x20\x01(\x02R\tavgLossIn\x12\x20\n\x0cavg_data_out\x18\x18\
-    \x20\x01(\x02R\navgDataOut\x12\x1e\n\x0bavg_data_in\x18\x19\x20\x01(\x02\
-    R\tavgDataIn\x12\"\n\rtotal_data_in\x18\x1a\x20\x01(\x04R\x0btotalDataIn\
-    \x12(\n\x10total_packets_in\x18\x1b\x20\x01(\x04R\x0etotalPacketsIn\x12$\
-    \n\x0etotal_data_out\x18\x1c\x20\x01(\x04R\x0ctotalDataOut\x12*\n\x11tot\
-    al_packets_out\x18\x1d\x20\x01(\x04R\x0ftotalPacketsOut\x128\n\x07player\
-    s\x18\x1e\x20\x03(\x0b2\x1e.CMsgServerNetworkStats.PlayerR\x07players\
-    \x1a.\n\x04Port\x12\x12\n\x04port\x18\x01\x20\x01(\x05R\x04port\x12\x12\
-    \n\x04name\x18\x02\x20\x01(\tR\x04name\x1a\x82\x02\n\x06Player\x12\x18\n\
-    \x07steamid\x18\x01\x20\x01(\x04R\x07steamid\x12\x1f\n\x0bremote_addr\
-    \x18\x02\x20\x01(\tR\nremoteAddr\x12\x1e\n\x0bping_avg_ms\x18\x04\x20\
-    \x01(\x05R\tpingAvgMs\x12&\n\x0fpacket_loss_pct\x18\x05\x20\x01(\x02R\rp\
-    acketLossPct\x12\x15\n\x06is_bot\x18\x06\x20\x01(\x08R\x05isBot\x12\x17\
-    \n\x07loss_in\x18\x07\x20\x01(\x02R\x06lossIn\x12\x19\n\x08loss_out\x18\
-    \x08\x20\x01(\x02R\x07lossOut\x12*\n\x11engine_latency_ms\x18\t\x20\x01(\
-    \x05R\x0fengineLatencyMs\"\xd1\x02\n\x12CSVCMsg_HltvReplay\x12\x14\n\x05\
-    delay\x18\x01\x20\x01(\x05R\x05delay\x12)\n\x0eprimary_target\x18\x02\
-    \x20\x01(\x05:\x02-1R\rprimaryTarget\x12$\n\x0ereplay_stop_at\x18\x03\
-    \x20\x01(\x05R\x0creplayStopAt\x12&\n\x0freplay_start_at\x18\x04\x20\x01\
-    (\x05R\rreplayStartAt\x122\n\x15replay_slowdown_begin\x18\x05\x20\x01(\
-    \x05R\x13replaySlowdownBegin\x12.\n\x13replay_slowdown_end\x18\x06\x20\
-    \x01(\x05R\x11replaySlowdownEnd\x120\n\x14replay_slowdown_rate\x18\x07\
-    \x20\x01(\x02R\x12replaySlowdownRate\x12\x16\n\x06reason\x18\x08\x20\x01\
-    (\x05R\x06reason\"\xc6\x01\n\x12CCLCMsg_HltvReplay\x12\x18\n\x07request\
-    \x18\x01\x20\x01(\x05R\x07request\x12'\n\x0fslowdown_length\x18\x02\x20\
-    \x01(\x02R\x0eslowdownLength\x12#\n\rslowdown_rate\x18\x03\x20\x01(\x02R\
-    \x0cslowdownRate\x12)\n\x0eprimary_target\x18\x04\x20\x01(\x05:\x02-1R\r\
-    primaryTarget\x12\x1d\n\nevent_time\x18\x05\x20\x01(\x02R\teventTime\"-\
-    \n\x19CSVCMsg_Broadcast_Command\x12\x10\n\x03cmd\x18\x01\x20\x01(\tR\x03\
-    cmd\"\xd2\x02\n\x1dCCLCMsg_HltvFixupOperatorTick\x12\x12\n\x04tick\x18\
-    \x01\x20\x01(\x05R\x04tick\x12\x1d\n\nprops_data\x18\x02\x20\x01(\x0cR\t\
-    propsData\x12#\n\x06origin\x18\x03\x20\x01(\x0b2\x0b.CMsgVectorR\x06orig\
-    in\x12*\n\neye_angles\x18\x04\x20\x01(\x0b2\x0b.CMsgQAngleR\teyeAngles\
-    \x12#\n\robserver_mode\x18\x05\x20\x01(\x05R\x0cobserverMode\x121\n\x14c\
-    ameraman_scoreboard\x18\x06\x20\x01(\x08R\x13cameramanScoreboard\x12'\n\
-    \x0fobserver_target\x18\x07\x20\x01(\x05R\x0eobserverTarget\x12,\n\x0bvi\
-    ew_offset\x18\x08\x20\x01(\x0b2\x0b.CMsgVectorR\nviewOffset\"k\n\x1fCSVC\
-    Msg_HltvFixupOperatorStatus\x12\x12\n\x04mode\x18\x01\x20\x01(\rR\x04mod\
-    e\x124\n\x16override_operator_name\x18\x02\x20\x01(\tR\x14overrideOperat\
-    orName\"\x9d\x01\n\x11CMsgServerUserCmd\x12\x12\n\x04data\x18\x01\x20\
-    \x01(\x0cR\x04data\x12\x1d\n\ncmd_number\x18\x02\x20\x01(\x05R\tcmdNumbe\
-    r\x12#\n\x0bplayer_slot\x18\x03\x20\x01(\x05:\x02-1R\nplayerSlot\x120\n\
-    \x14server_tick_executed\x18\x04\x20\x01(\x05R\x12serverTickExecuted\"F\
-    \n\x14CSVCMsg_UserCommands\x12.\n\x08commands\x18\x01\x20\x03(\x0b2\x12.\
-    CMsgServerUserCmdR\x08commands*\xa2\x03\n\x0cCLC_Messages\x12\x12\n\x0ec\
-    lc_ClientInfo\x10\x14\x12\x0c\n\x08clc_Move\x10\x15\x12\x11\n\rclc_Voice\
-    Data\x10\x16\x12\x13\n\x0fclc_BaselineAck\x10\x17\x12\x14\n\x10clc_Liste\
-    nEvents\x10\x18\x12\x18\n\x14clc_RespondCvarValue\x10\x19\x12\x14\n\x10c\
-    lc_FileCRCCheck\x10\x1a\x12\x17\n\x13clc_LoadingProgress\x10\x1b\x12\x1a\
-    \n\x16clc_SplitPlayerConnect\x10\x1c\x12\x15\n\x11clc_ClientMessage\x10\
-    \x1d\x12\x1d\n\x19clc_SplitPlayerDisconnect\x10\x1e\x12\x14\n\x10clc_Ser\
-    verStatus\x10\x1f\x12\x12\n\x0eclc_ServerPing\x10\x20\x12\x14\n\x10clc_R\
-    equestPause\x10!\x12\x14\n\x10clc_CmdKeyValues\x10\"\x12\x19\n\x15clc_Rc\
-    onServerDetails\x10#\x12\x12\n\x0eclc_HltvReplay\x10$\x12\x12\n\x0eclc_D\
-    iagnostic\x10%*\xab\x05\n\x0cSVC_Messages\x12\x12\n\x0esvc_ServerInfo\
-    \x10(\x12\x1b\n\x17svc_FlattenedSerializer\x10)\x12\x11\n\rsvc_ClassInfo\
-    \x10*\x12\x10\n\x0csvc_SetPause\x10+\x12\x19\n\x15svc_CreateStringTable\
-    \x10,\x12\x19\n\x15svc_UpdateStringTable\x10-\x12\x11\n\rsvc_VoiceInit\
-    \x10.\x12\x11\n\rsvc_VoiceData\x10/\x12\r\n\tsvc_Print\x100\x12\x0e\n\ns\
-    vc_Sounds\x101\x12\x0f\n\x0bsvc_SetView\x102\x12\x1c\n\x18svc_ClearAllSt\
-    ringTables\x103\x12\x14\n\x10svc_CmdKeyValues\x104\x12\x10\n\x0csvc_BSPD\
-    ecal\x105\x12\x13\n\x0fsvc_SplitScreen\x106\x12\x16\n\x12svc_PacketEntit\
-    ies\x107\x12\x10\n\x0csvc_Prefetch\x108\x12\x0c\n\x08svc_Menu\x109\x12\
-    \x14\n\x10svc_GetCvarValue\x10:\x12\x11\n\rsvc_StopSound\x10;\x12\x10\n\
-    \x0csvc_PeerList\x10<\x12\x16\n\x12svc_PacketReliable\x10=\x12\x12\n\x0e\
-    svc_HLTVStatus\x10>\x12\x15\n\x11svc_ServerSteamID\x10?\x12\x16\n\x12svc\
-    _FullFrameSplit\x10F\x12\x19\n\x15svc_RconServerDetails\x10G\x12\x13\n\
-    \x0fsvc_UserMessage\x10H\x12\x12\n\x0esvc_HltvReplay\x10I\x12\x19\n\x15s\
-    vc_Broadcast_Command\x10J\x12\x1f\n\x1bsvc_HltvFixupOperatorStatus\x10K\
-    \x12\x10\n\x0csvc_UserCmds\x10L*g\n\x11VoiceDataFormat_t\x12\x1a\n\x16VO\
-    ICEDATA_FORMAT_STEAM\x10\0\x12\x1b\n\x17VOICEDATA_FORMAT_ENGINE\x10\x01\
-    \x12\x19\n\x15VOICEDATA_FORMAT_OPUS\x10\x02*B\n\x0eRequestPause_t\x12\
-    \x0c\n\x08RP_PAUSE\x10\0\x12\x0e\n\nRP_UNPAUSE\x10\x01\x12\x12\n\x0eRP_T\
-    OGGLEPAUSE\x10\x02*\x1d\n\x0cPrefetchType\x12\r\n\tPFT_SOUND\x10\0*V\n\
-    \x17ESplitScreenMessageType\x12\x1b\n\x17MSG_SPLITSCREEN_ADDUSER\x10\0\
-    \x12\x1e\n\x1aMSG_SPLITSCREEN_REMOVEUSER\x10\x01*\xb3\x01\n\x15EQueryCva\
-    rValueStatus\x12%\n!eQueryCvarValueStatus_ValueIntact\x10\0\x12&\n\"eQue\
-    ryCvarValueStatus_CvarNotFound\x10\x01\x12\"\n\x1eeQueryCvarValueStatus_\
-    NotACvar\x10\x02\x12'\n#eQueryCvarValueStatus_CvarProtected\x10\x03*h\n\
-    \x0bDIALOG_TYPE\x12\x0e\n\nDIALOG_MSG\x10\0\x12\x0f\n\x0bDIALOG_MENU\x10\
-    \x01\x12\x0f\n\x0bDIALOG_TEXT\x10\x02\x12\x10\n\x0cDIALOG_ENTRY\x10\x03\
-    \x12\x15\n\x11DIALOG_ASKCONNECT\x10\x04*+\n\x19SVC_Messages_LowFrequency\
-    \x12\x0e\n\tsvc_dummy\x10\xd8\x04*a\n\x16Bidirectional_Messages\x12\x1b\
-    \n\x17bi_RebroadcastGameEvent\x10\x10\x12\x18\n\x14bi_RebroadcastSource\
-    \x10\x11\x12\x10\n\x0cbi_GameEvent\x10\x12*M\n#Bidirectional_Messages_Lo\
-    wFrequency\x12\x11\n\x0cbi_RelayInfo\x10\xbc\x05\x12\x13\n\x0ebi_RelayPa\
-    cket\x10\xbd\x05*\xa1\x01\n\x11ReplayEventType_t\x12\x17\n\x13REPLAY_EVE\
-    NT_CANCEL\x10\0\x12\x16\n\x12REPLAY_EVENT_DEATH\x10\x01\x12\x18\n\x14REP\
-    LAY_EVENT_GENERIC\x10\x02\x12'\n#REPLAY_EVENT_STUCK_NEED_FULL_UPDATE\x10\
-    \x03\x12\x18\n\x14REPLAY_EVENT_VICTORY\x10\x04\
+    itPlayerConnect\x12\x1e\n\nplayername\x18\x01\x20\x01(\tR\nplayername\"3\
+    \n\x1dCCLCMsg_SplitPlayerDisconnect\x12\x12\n\x04slot\x18\x01\x20\x01(\
+    \x05R\x04slot\"6\n\x14CCLCMsg_ServerStatus\x12\x1e\n\nsimplified\x18\x01\
+    \x20\x01(\x08R\nsimplified\"q\n\x14CCLCMsg_RequestPause\x128\n\npause_ty\
+    pe\x18\x01\x20\x01(\x0e2\x0f.RequestPause_t:\x08RP_PAUSER\tpauseType\x12\
+    \x1f\n\x0bpause_group\x18\x02\x20\x01(\x05R\npauseGroup\"*\n\x14CCLCMsg_\
+    CmdKeyValues\x12\x12\n\x04data\x18\x01\x20\x01(\x0cR\x04data\"1\n\x19CCL\
+    CMsg_RconServerDetails\x12\x14\n\x05token\x18\x01\x20\x01(\x0cR\x05token\
+    \"\xa6\x04\n\x16CMsgSource2SystemSpecs\x12\x15\n\x06cpu_id\x18\x01\x20\
+    \x01(\tR\x05cpuId\x12\x1b\n\tcpu_brand\x18\x02\x20\x01(\tR\x08cpuBrand\
+    \x12\x1b\n\tcpu_model\x18\x03\x20\x01(\rR\x08cpuModel\x12(\n\x10cpu_num_\
+    physical\x18\x04\x20\x01(\rR\x0ecpuNumPhysical\x121\n\x15ram_physical_to\
+    tal_mb\x18\x15\x20\x01(\rR\x12ramPhysicalTotalMb\x129\n\x19gpu_rendersys\
+    tem_dll_name\x18)\x20\x01(\tR\x16gpuRendersystemDllName\x12\"\n\rgpu_ven\
+    dor_id\x18*\x20\x01(\rR\x0bgpuVendorId\x12&\n\x0fgpu_driver_name\x18+\
+    \x20\x01(\tR\rgpuDriverName\x125\n\x17gpu_driver_version_high\x18,\x20\
+    \x01(\rR\x14gpuDriverVersionHigh\x123\n\x16gpu_driver_version_low\x18-\
+    \x20\x01(\rR\x13gpuDriverVersionLow\x12/\n\x14gpu_dx_support_level\x18.\
+    \x20\x01(\rR\x11gpuDxSupportLevel\x12:\n\x1agpu_texture_memory_size_mb\
+    \x18/\x20\x01(\rR\x16gpuTextureMemorySizeMb\"\xd4\x02\n\x1eCMsgSource2VP\
+    rofLiteReportItem\x12\x12\n\x04name\x18\x01\x20\x01(\tR\x04name\x12%\n\
+    \x0eactive_samples\x18\x02\x20\x01(\rR\ractiveSamples\x12\x19\n\x08usec_\
+    max\x18\x03\x20\x01(\rR\x07usecMax\x12&\n\x0fusec_avg_active\x18\x0b\x20\
+    \x01(\rR\rusecAvgActive\x12&\n\x0fusec_p50_active\x18\x0c\x20\x01(\rR\ru\
+    secP50Active\x12&\n\x0fusec_p99_active\x18\r\x20\x01(\rR\rusecP99Active\
+    \x12\x20\n\x0cusec_avg_all\x18\x15\x20\x01(\rR\nusecAvgAll\x12\x20\n\x0c\
+    usec_p50_all\x18\x16\x20\x01(\rR\nusecP50All\x12\x20\n\x0cusec_p99_all\
+    \x18\x17\x20\x01(\rR\nusecP99All\"\xb5\x01\n\x1aCMsgSource2VProfLiteRepo\
+    rt\x125\n\x05total\x18\x01\x20\x01(\x0b2\x1f.CMsgSource2VProfLiteReportI\
+    temR\x05total\x125\n\x05items\x18\x02\x20\x03(\x0b2\x1f.CMsgSource2VProf\
+    LiteReportItemR\x05items\x12)\n\x10discarded_frames\x18\x03\x20\x01(\rR\
+    \x0fdiscardedFrames\"\x90\x01\n\x12CCLCMsg_Diagnostic\x12:\n\x0csystem_s\
+    pecs\x18\x01\x20\x01(\x0b2\x17.CMsgSource2SystemSpecsR\x0bsystemSpecs\
+    \x12>\n\x0cvprof_report\x18\x02\x20\x01(\x0b2\x1b.CMsgSource2VProfLiteRe\
+    portR\x0bvprofReport\"\xe4\x03\n-CSource2Metrics_MatchPerfSummary_Notifi\
+    cation\x12\x14\n\x05appid\x18\x01\x20\x01(\rR\x05appid\x12\x1b\n\tgame_m\
+    ode\x18\x02\x20\x01(\tR\x08gameMode\x12&\n\x0fserver_build_id\x18\x03\
+    \x20\x01(\rR\rserverBuildId\x12B\n\x0eserver_profile\x18\n\x20\x01(\x0b2\
+    \x1b.CMsgSource2VProfLiteReportR\rserverProfile\x12O\n\x07clients\x18\
+    \x0b\x20\x03(\x0b25.CSource2Metrics_MatchPerfSummary_Notification.Client\
+    R\x07clients\x12\x10\n\x03map\x18\x14\x20\x01(\tR\x03map\x1a\xb0\x01\n\
+    \x06Client\x12:\n\x0csystem_specs\x18\x01\x20\x01(\x0b2\x17.CMsgSource2S\
+    ystemSpecsR\x0bsystemSpecs\x125\n\x07profile\x18\x02\x20\x01(\x0b2\x1b.C\
+    MsgSource2VProfLiteReportR\x07profile\x12\x19\n\x08build_id\x18\x03\x20\
+    \x01(\rR\x07buildId\x12\x18\n\x07steamid\x18\n\x20\x01(\x06R\x07steamid\
+    \"\xc2\x04\n\x12CSVCMsg_ServerInfo\x12\x1a\n\x08protocol\x18\x01\x20\x01\
+    (\x05R\x08protocol\x12!\n\x0cserver_count\x18\x02\x20\x01(\x05R\x0bserve\
+    rCount\x12!\n\x0cis_dedicated\x18\x03\x20\x01(\x08R\x0bisDedicated\x12\
+    \x17\n\x07is_hltv\x18\x04\x20\x01(\x08R\x06isHltv\x12\x11\n\x04c_os\x18\
+    \x06\x20\x01(\x05R\x03cOs\x12\x1f\n\x0bmax_clients\x18\n\x20\x01(\x05R\n\
+    maxClients\x12\x1f\n\x0bmax_classes\x18\x0b\x20\x01(\x05R\nmaxClasses\
+    \x12#\n\x0bplayer_slot\x18\x0c\x20\x01(\x05:\x02-1R\nplayerSlot\x12#\n\r\
+    tick_interval\x18\r\x20\x01(\x02R\x0ctickInterval\x12\x19\n\x08game_dir\
+    \x18\x0e\x20\x01(\tR\x07gameDir\x12\x19\n\x08map_name\x18\x0f\x20\x01(\t\
+    R\x07mapName\x12\x19\n\x08sky_name\x18\x10\x20\x01(\tR\x07skyName\x12\
+    \x1b\n\thost_name\x18\x11\x20\x01(\tR\x08hostName\x12\x1d\n\naddon_name\
+    \x18\x12\x20\x01(\tR\taddonName\x12Q\n\x13game_session_config\x18\x13\
+    \x20\x01(\x0b2!.CSVCMsg_GameSessionConfigurationR\x11gameSessionConfig\
+    \x122\n\x15game_session_manifest\x18\x14\x20\x01(\x0cR\x13gameSessionMan\
+    ifest\"\xb8\x01\n\x11CSVCMsg_ClassInfo\x12(\n\x10create_on_client\x18\
+    \x01\x20\x01(\x08R\x0ecreateOnClient\x124\n\x07classes\x18\x02\x20\x03(\
+    \x0b2\x1a.CSVCMsg_ClassInfo.class_tR\x07classes\x1aC\n\x07class_t\x12\
+    \x19\n\x08class_id\x18\x01\x20\x01(\x05R\x07classId\x12\x1d\n\nclass_nam\
+    e\x18\x03\x20\x01(\tR\tclassName\"*\n\x10CSVCMsg_SetPause\x12\x16\n\x06p\
+    aused\x18\x01\x20\x01(\x08R\x06paused\"`\n\x11CSVCMsg_VoiceInit\x12\x18\
+    \n\x07quality\x18\x01\x20\x01(\x05R\x07quality\x12\x14\n\x05codec\x18\
+    \x02\x20\x01(\tR\x05codec\x12\x1b\n\x07version\x18\x03\x20\x01(\x05:\x01\
+    0R\x07version\"#\n\rCSVCMsg_Print\x12\x12\n\x04text\x18\x01\x20\x01(\tR\
+    \x04text\"\xcc\x05\n\x0eCSVCMsg_Sounds\x12%\n\x0ereliable_sound\x18\x01\
+    \x20\x01(\x08R\rreliableSound\x123\n\x06sounds\x18\x02\x20\x03(\x0b2\x1b\
+    .CSVCMsg_Sounds.sounddata_tR\x06sounds\x1a\xdd\x04\n\x0bsounddata_t\x12\
+    \x19\n\x08origin_x\x18\x01\x20\x01(\x11R\x07originX\x12\x19\n\x08origin_\
+    y\x18\x02\x20\x01(\x11R\x07originY\x12\x19\n\x08origin_z\x18\x03\x20\x01\
+    (\x11R\x07originZ\x12\x16\n\x06volume\x18\x04\x20\x01(\rR\x06volume\x12\
+    \x1f\n\x0bdelay_value\x18\x05\x20\x01(\x02R\ndelayValue\x12'\n\x0fsequen\
+    ce_number\x18\x06\x20\x01(\x05R\x0esequenceNumber\x12%\n\x0centity_index\
+    \x18\x07\x20\x01(\x05:\x02-1R\x0bentityIndex\x12\x18\n\x07channel\x18\
+    \x08\x20\x01(\x05R\x07channel\x12\x14\n\x05pitch\x18\t\x20\x01(\x05R\x05\
+    pitch\x12\x14\n\x05flags\x18\n\x20\x01(\x05R\x05flags\x12\x1b\n\tsound_n\
+    um\x18\x0b\x20\x01(\rR\x08soundNum\x12(\n\x10sound_num_handle\x18\x0c\
+    \x20\x01(\x07R\x0esoundNumHandle\x12%\n\x0espeaker_entity\x18\r\x20\x01(\
+    \x05R\rspeakerEntity\x12\x1f\n\x0brandom_seed\x18\x0e\x20\x01(\x05R\nran\
+    domSeed\x12\x1f\n\x0bsound_level\x18\x0f\x20\x01(\x05R\nsoundLevel\x12\
+    \x1f\n\x0bis_sentence\x18\x10\x20\x01(\x08R\nisSentence\x12\x1d\n\nis_am\
+    bient\x18\x11\x20\x01(\x08R\tisAmbient\x12\x12\n\x04guid\x18\x12\x20\x01\
+    (\rR\x04guid\x12*\n\x11sound_resource_id\x18\x13\x20\x01(\x06R\x0fsoundR\
+    esourceId\"r\n\x10CSVCMsg_Prefetch\x12\x1f\n\x0bsound_index\x18\x01\x20\
+    \x01(\x05R\nsoundIndex\x12=\n\rresource_type\x18\x02\x20\x01(\x0e2\r.Pre\
+    fetchType:\tPFT_SOUNDR\x0cresourceType\"P\n\x0fCSVCMsg_SetView\x12%\n\
+    \x0centity_index\x18\x01\x20\x01(\x05:\x02-1R\x0bentityIndex\x12\x16\n\
+    \x04slot\x18\x02\x20\x01(\x05:\x02-1R\x04slot\"Q\n\x10CSVCMsg_FixAngle\
+    \x12\x1a\n\x08relative\x18\x01\x20\x01(\x08R\x08relative\x12!\n\x05angle\
+    \x18\x02\x20\x01(\x0b2\x0b.CMsgQAngleR\x05angle\";\n\x16CSVCMsg_Crosshai\
+    rAngle\x12!\n\x05angle\x18\x01\x20\x01(\x0b2\x0b.CMsgQAngleR\x05angle\"\
+    \xcc\x01\n\x10CSVCMsg_BSPDecal\x12\x1d\n\x03pos\x18\x01\x20\x01(\x0b2\
+    \x0b.CMsgVectorR\x03pos\x12.\n\x13decal_texture_index\x18\x02\x20\x01(\
+    \x05R\x11decalTextureIndex\x12%\n\x0centity_index\x18\x03\x20\x01(\x05:\
+    \x02-1R\x0bentityIndex\x12\x1f\n\x0bmodel_index\x18\x04\x20\x01(\x05R\nm\
+    odelIndex\x12!\n\x0clow_priority\x18\x05\x20\x01(\x08R\x0blowPriority\"\
+    \x97\x01\n\x13CSVCMsg_SplitScreen\x12E\n\x04type\x18\x01\x20\x01(\x0e2\
+    \x18.ESplitScreenMessageType:\x17MSG_SPLITSCREEN_ADDUSERR\x04type\x12\
+    \x12\n\x04slot\x18\x02\x20\x01(\x05R\x04slot\x12%\n\x0cplayer_index\x18\
+    \x03\x20\x01(\x05:\x02-1R\x0bplayerIndex\"K\n\x14CSVCMsg_GetCvarValue\
+    \x12\x16\n\x06cookie\x18\x01\x20\x01(\x05R\x06cookie\x12\x1b\n\tcvar_nam\
+    e\x18\x02\x20\x01(\tR\x08cvarName\"W\n\x0cCSVCMsg_Menu\x12\x1f\n\x0bdial\
+    og_type\x18\x01\x20\x01(\x05R\ndialogType\x12&\n\x0fmenu_key_values\x18\
+    \x02\x20\x01(\x0cR\rmenuKeyValues\"m\n\x13CSVCMsg_UserMessage\x12\x19\n\
+    \x08msg_type\x18\x01\x20\x01(\x05R\x07msgType\x12\x19\n\x08msg_data\x18\
+    \x02\x20\x01(\x0cR\x07msgData\x12\x20\n\x0bpassthrough\x18\x03\x20\x01(\
+    \x05R\x0bpassthrough\"\xad\x03\n\x11CSVCMsg_SendTable\x12\x15\n\x06is_en\
+    d\x18\x01\x20\x01(\x08R\x05isEnd\x12$\n\x0enet_table_name\x18\x02\x20\
+    \x01(\tR\x0cnetTableName\x12#\n\rneeds_decoder\x18\x03\x20\x01(\x08R\x0c\
+    needsDecoder\x123\n\x05props\x18\x04\x20\x03(\x0b2\x1d.CSVCMsg_SendTable\
+    .sendprop_tR\x05props\x1a\x80\x02\n\nsendprop_t\x12\x12\n\x04type\x18\
+    \x01\x20\x01(\x05R\x04type\x12\x19\n\x08var_name\x18\x02\x20\x01(\tR\x07\
+    varName\x12\x14\n\x05flags\x18\x03\x20\x01(\x05R\x05flags\x12\x1a\n\x08p\
+    riority\x18\x04\x20\x01(\x05R\x08priority\x12\x17\n\x07dt_name\x18\x05\
+    \x20\x01(\tR\x06dtName\x12!\n\x0cnum_elements\x18\x06\x20\x01(\x05R\x0bn\
+    umElements\x12\x1b\n\tlow_value\x18\x07\x20\x01(\x02R\x08lowValue\x12\
+    \x1d\n\nhigh_value\x18\x08\x20\x01(\x02R\thighValue\x12\x19\n\x08num_bit\
+    s\x18\t\x20\x01(\x05R\x07numBits\"\xff\x01\n\x15CSVCMsg_GameEventList\
+    \x12E\n\x0bdescriptors\x18\x01\x20\x03(\x0b2#.CSVCMsg_GameEventList.desc\
+    riptor_tR\x0bdescriptors\x1a/\n\x05key_t\x12\x12\n\x04type\x18\x01\x20\
+    \x01(\x05R\x04type\x12\x12\n\x04name\x18\x02\x20\x01(\tR\x04name\x1an\n\
+    \x0cdescriptor_t\x12\x18\n\x07eventid\x18\x01\x20\x01(\x05R\x07eventid\
+    \x12\x12\n\x04name\x18\x02\x20\x01(\tR\x04name\x120\n\x04keys\x18\x03\
+    \x20\x03(\x0b2\x1c.CSVCMsg_GameEventList.key_tR\x04keys\"\xf7\t\n\x16CSV\
+    CMsg_PacketEntities\x12\x1f\n\x0bmax_entries\x18\x01\x20\x01(\x05R\nmaxE\
+    ntries\x12'\n\x0fupdated_entries\x18\x02\x20\x01(\x05R\x0eupdatedEntries\
+    \x12&\n\x0flegacy_is_delta\x18\x03\x20\x01(\x08R\rlegacyIsDelta\x12'\n\
+    \x0fupdate_baseline\x18\x04\x20\x01(\x08R\x0eupdateBaseline\x12\x1a\n\
+    \x08baseline\x18\x05\x20\x01(\x05R\x08baseline\x12\x1d\n\ndelta_from\x18\
+    \x06\x20\x01(\x05R\tdeltaFrom\x12\x1f\n\x0bentity_data\x18\x07\x20\x01(\
+    \x0cR\nentityData\x12,\n\x12pending_full_frame\x18\x08\x20\x01(\x08R\x10\
+    pendingFullFrame\x128\n\x18active_spawngroup_handle\x18\t\x20\x01(\rR\
+    \x16activeSpawngroupHandle\x12F\n\x1fmax_spawngroup_creationsequence\x18\
+    \n\x20\x01(\rR\x1dmaxSpawngroupCreationsequence\x127\n\x18last_cmd_numbe\
+    r_executed\x18\x0b\x20\x01(\rR\x15lastCmdNumberExecuted\x12:\n\x1alast_c\
+    md_number_recv_delta\x18\x11\x20\x01(\x11R\x16lastCmdNumberRecvDelta\x12\
+    \x1f\n\x0bserver_tick\x18\x0c\x20\x01(\rR\nserverTick\x12/\n\x13serializ\
+    ed_entities\x18\r\x20\x01(\x0cR\x12serializedEntities\x12]\n\x13alternat\
+    e_baselines\x18\x0f\x20\x03(\x0b2,.CSVCMsg_PacketEntities.alternate_base\
+    line_tR\x12alternateBaselines\x12'\n\x10has_pvs_vis_bits\x18\x10\x20\x01\
+    (\rR\rhasPvsVisBits\x12*\n\x0fcmd_recv_status\x18\x16\x20\x03(\x11R\rcmd\
+    RecvStatusB\x02\x10\x01\x12l\n\x18non_transmitted_entities\x18\x13\x20\
+    \x01(\x0b22.CSVCMsg_PacketEntities.non_transmitted_entities_tR\x16nonTra\
+    nsmittedEntities\x127\n\x18cq_starved_command_ticks\x18\x14\x20\x01(\rR\
+    \x15cqStarvedCommandTicks\x12;\n\x1acq_discarded_command_ticks\x18\x15\
+    \x20\x01(\rR\x17cqDiscardedCommandTicks\x12\x20\n\x0bdev_padding\x18\xe7\
+    \x07\x20\x01(\x0cR\ndevPadding\x1a`\n\x14alternate_baseline_t\x12!\n\x0c\
+    entity_index\x18\x01\x20\x01(\x05R\x0bentityIndex\x12%\n\x0ebaseline_ind\
+    ex\x18\x02\x20\x01(\x05R\rbaselineIndex\x1aS\n\x1anon_transmitted_entiti\
+    es_t\x12!\n\x0cheader_count\x18\x01\x20\x01(\x05R\x0bheaderCount\x12\x12\
+    \n\x04data\x18\x02\x20\x01(\x0cR\x04data\"t\n\x14CSVCMsg_TempEntities\
+    \x12\x1a\n\x08reliable\x18\x01\x20\x01(\x08R\x08reliable\x12\x1f\n\x0bnu\
+    m_entries\x18\x02\x20\x01(\x05R\nnumEntries\x12\x1f\n\x0bentity_data\x18\
+    \x03\x20\x01(\x0cR\nentityData\"\x99\x03\n\x19CSVCMsg_CreateStringTable\
+    \x12\x12\n\x04name\x18\x01\x20\x01(\tR\x04name\x12\x1f\n\x0bnum_entries\
+    \x18\x02\x20\x01(\x05R\nnumEntries\x12/\n\x14user_data_fixed_size\x18\
+    \x03\x20\x01(\x08R\x11userDataFixedSize\x12$\n\x0euser_data_size\x18\x04\
+    \x20\x01(\x05R\x0cuserDataSize\x12-\n\x13user_data_size_bits\x18\x05\x20\
+    \x01(\x05R\x10userDataSizeBits\x12\x14\n\x05flags\x18\x06\x20\x01(\x05R\
+    \x05flags\x12\x1f\n\x0bstring_data\x18\x07\x20\x01(\x0cR\nstringData\x12\
+    +\n\x11uncompressed_size\x18\x08\x20\x01(\x05R\x10uncompressedSize\x12'\
+    \n\x0fdata_compressed\x18\t\x20\x01(\x08R\x0edataCompressed\x124\n\x16us\
+    ing_varint_bitcounts\x18\n\x20\x01(\x08R\x14usingVarintBitcounts\"\x87\
+    \x01\n\x19CSVCMsg_UpdateStringTable\x12\x19\n\x08table_id\x18\x01\x20\
+    \x01(\x05R\x07tableId\x12.\n\x13num_changed_entries\x18\x02\x20\x01(\x05\
+    R\x11numChangedEntries\x12\x1f\n\x0bstring_data\x18\x03\x20\x01(\x0cR\ns\
+    tringData\"\xe1\x01\n\x11CSVCMsg_VoiceData\x12%\n\x05audio\x18\x01\x20\
+    \x01(\x0b2\x0f.CMsgVoiceAudioR\x05audio\x12\x1a\n\x06client\x18\x02\x20\
+    \x01(\x05:\x02-1R\x06client\x12\x1c\n\tproximity\x18\x03\x20\x01(\x08R\t\
+    proximity\x12\x12\n\x04xuid\x18\x04\x20\x01(\x06R\x04xuid\x12!\n\x0caudi\
+    ble_mask\x18\x05\x20\x01(\x05R\x0baudibleMask\x12\x12\n\x04tick\x18\x06\
+    \x20\x01(\rR\x04tick\x12\x20\n\x0bpassthrough\x18\x07\x20\x01(\x05R\x0bp\
+    assthrough\"f\n\x16CSVCMsg_PacketReliable\x12\x12\n\x04tick\x18\x01\x20\
+    \x01(\x05R\x04tick\x12\"\n\x0cmessagessize\x18\x02\x20\x01(\x05R\x0cmess\
+    agessize\x12\x14\n\x05state\x18\x03\x20\x01(\x08R\x05state\"p\n\x16CSVCM\
+    sg_FullFrameSplit\x12\x12\n\x04tick\x18\x01\x20\x01(\x05R\x04tick\x12\
+    \x18\n\x07section\x18\x02\x20\x01(\x05R\x07section\x12\x14\n\x05total\
+    \x18\x03\x20\x01(\x05R\x05total\x12\x12\n\x04data\x18\x04\x20\x01(\x0cR\
+    \x04data\"v\n\x12CSVCMsg_HLTVStatus\x12\x16\n\x06master\x18\x01\x20\x01(\
+    \tR\x06master\x12\x18\n\x07clients\x18\x02\x20\x01(\x05R\x07clients\x12\
+    \x14\n\x05slots\x18\x03\x20\x01(\x05R\x05slots\x12\x18\n\x07proxies\x18\
+    \x04\x20\x01(\x05R\x07proxies\"2\n\x15CSVCMsg_ServerSteamID\x12\x19\n\
+    \x08steam_id\x18\x01\x20\x01(\x04R\x07steamId\"*\n\x14CSVCMsg_CmdKeyValu\
+    es\x12\x12\n\x04data\x18\x01\x20\x01(\x0cR\x04data\"K\n\x19CSVCMsg_RconS\
+    erverDetails\x12\x14\n\x05token\x18\x01\x20\x01(\x0cR\x05token\x12\x18\n\
+    \x07details\x18\x02\x20\x01(\tR\x07details\"T\n\x0eCMsgIPCAddress\x12#\n\
+    \rcomputer_guid\x18\x01\x20\x01(\x06R\x0ccomputerGuid\x12\x1d\n\nprocess\
+    _id\x18\x02\x20\x01(\rR\tprocessId\"\xec\x01\n\x0eCMsgServerPeer\x12#\n\
+    \x0bplayer_slot\x18\x01\x20\x01(\x05:\x02-1R\nplayerSlot\x12\x18\n\x07st\
+    eamid\x18\x02\x20\x01(\x06R\x07steamid\x12!\n\x03ipc\x18\x03\x20\x01(\
+    \x0b2\x0f.CMsgIPCAddressR\x03ipc\x12\"\n\rthey_hear_you\x18\x04\x20\x01(\
+    \x08R\x0btheyHearYou\x12\"\n\ryou_hear_them\x18\x05\x20\x01(\x08R\x0byou\
+    HearThem\x120\n\x14is_listenserver_host\x18\x06\x20\x01(\x08R\x12isListe\
+    nserverHost\"7\n\x10CSVCMsg_PeerList\x12#\n\x04peer\x18\x01\x20\x03(\x0b\
+    2\x0f.CMsgServerPeerR\x04peer\"l\n\x1cCSVCMsg_ClearAllStringTables\x12\
+    \x18\n\x07mapname\x18\x01\x20\x01(\tR\x07mapname\x122\n\x15create_tables\
+    _skipped\x18\x03\x20\x01(\x08R\x13createTablesSkipped\"\xee\x05\n\x1fPro\
+    toFlattenedSerializerField_t\x12\x20\n\x0cvar_type_sym\x18\x01\x20\x01(\
+    \x05R\nvarTypeSym\x12\x20\n\x0cvar_name_sym\x18\x02\x20\x01(\x05R\nvarNa\
+    meSym\x12\x1b\n\tbit_count\x18\x03\x20\x01(\x05R\x08bitCount\x12\x1b\n\t\
+    low_value\x18\x04\x20\x01(\x02R\x08lowValue\x12\x1d\n\nhigh_value\x18\
+    \x05\x20\x01(\x02R\thighValue\x12!\n\x0cencode_flags\x18\x06\x20\x01(\
+    \x05R\x0bencodeFlags\x129\n\x19field_serializer_name_sym\x18\x07\x20\x01\
+    (\x05R\x16fieldSerializerNameSym\x128\n\x18field_serializer_version\x18\
+    \x08\x20\x01(\x05R\x16fieldSerializerVersion\x12\"\n\rsend_node_sym\x18\
+    \t\x20\x01(\x05R\x0bsendNodeSym\x12&\n\x0fvar_encoder_sym\x18\n\x20\x01(\
+    \x05R\rvarEncoderSym\x12a\n\x11polymorphic_types\x18\x0b\x20\x03(\x0b24.\
+    ProtoFlattenedSerializerField_t.polymorphic_field_tR\x10polymorphicTypes\
+    \x12,\n\x12var_serializer_sym\x18\x0c\x20\x01(\x05R\x10varSerializerSym\
+    \x1a\xb8\x01\n\x13polymorphic_field_t\x12P\n%polymorphic_field_serialize\
+    r_name_sym\x18\x01\x20\x01(\x05R!polymorphicFieldSerializerNameSym\x12O\
+    \n$polymorphic_field_serializer_version\x18\x02\x20\x01(\x05R!polymorphi\
+    cFieldSerializerVersion\"\x9e\x01\n\x1aProtoFlattenedSerializer_t\x12.\n\
+    \x13serializer_name_sym\x18\x01\x20\x01(\x05R\x11serializerNameSym\x12-\
+    \n\x12serializer_version\x18\x02\x20\x01(\x05R\x11serializerVersion\x12!\
+    \n\x0cfields_index\x18\x03\x20\x03(\x05R\x0bfieldsIndex\"\xb0\x01\n\x1bC\
+    SVCMsg_FlattenedSerializer\x12=\n\x0bserializers\x18\x01\x20\x03(\x0b2\
+    \x1b.ProtoFlattenedSerializer_tR\x0bserializers\x12\x18\n\x07symbols\x18\
+    \x02\x20\x03(\tR\x07symbols\x128\n\x06fields\x18\x03\x20\x03(\x0b2\x20.P\
+    rotoFlattenedSerializerField_tR\x06fields\"'\n\x11CSVCMsg_StopSound\x12\
+    \x12\n\x04guid\x18\x01\x20\x01(\x07R\x04guid\"\xb2\x01\n\x1eCBidirMsg_Re\
+    broadcastGameEvent\x12\"\n\x0cposttoserver\x18\x01\x20\x01(\x08R\x0cpost\
+    toserver\x12\x18\n\x07buftype\x18\x02\x20\x01(\x05R\x07buftype\x12&\n\
+    \x0eclientbitcount\x18\x03\x20\x01(\rR\x0eclientbitcount\x12*\n\x10recei\
+    vingclients\x18\x04\x20\x01(\x04R\x10receivingclients\"?\n\x1bCBidirMsg_\
+    RebroadcastSource\x12\x20\n\x0beventsource\x18\x01\x20\x01(\x05R\x0beven\
+    tsource\"\xdb\t\n\x16CMsgServerNetworkStats\x12\x1c\n\tdedicated\x18\x01\
+    \x20\x01(\x08R\tdedicated\x12\x1b\n\tcpu_usage\x18\x02\x20\x01(\x05R\x08\
+    cpuUsage\x12$\n\x0ememory_used_mb\x18\x03\x20\x01(\x05R\x0cmemoryUsedMb\
+    \x12$\n\x0ememory_free_mb\x18\x04\x20\x01(\x05R\x0cmemoryFreeMb\x12\x16\
+    \n\x06uptime\x18\x05\x20\x01(\x05R\x06uptime\x12\x1f\n\x0bspawn_count\
+    \x18\x06\x20\x01(\x05R\nspawnCount\x12\x1f\n\x0bnum_clients\x18\x08\x20\
+    \x01(\x05R\nnumClients\x12\x19\n\x08num_bots\x18\t\x20\x01(\x05R\x07numB\
+    ots\x12%\n\x0enum_spectators\x18\n\x20\x01(\x05R\rnumSpectators\x12\"\n\
+    \rnum_tv_relays\x18\x0b\x20\x01(\x05R\x0bnumTvRelays\x12\x10\n\x03fps\
+    \x18\x0c\x20\x01(\x02R\x03fps\x122\n\x05ports\x18\x11\x20\x03(\x0b2\x1c.\
+    CMsgServerNetworkStats.PortR\x05ports\x12\x1e\n\x0bavg_ping_ms\x18\x12\
+    \x20\x01(\x02R\tavgPingMs\x123\n\x16avg_engine_latency_out\x18\x13\x20\
+    \x01(\x02R\x13avgEngineLatencyOut\x12&\n\x0favg_packets_out\x18\x14\x20\
+    \x01(\x02R\ravgPacketsOut\x12$\n\x0eavg_packets_in\x18\x15\x20\x01(\x02R\
+    \x0cavgPacketsIn\x12\x20\n\x0cavg_loss_out\x18\x16\x20\x01(\x02R\navgLos\
+    sOut\x12\x1e\n\x0bavg_loss_in\x18\x17\x20\x01(\x02R\tavgLossIn\x12\x20\n\
+    \x0cavg_data_out\x18\x18\x20\x01(\x02R\navgDataOut\x12\x1e\n\x0bavg_data\
+    _in\x18\x19\x20\x01(\x02R\tavgDataIn\x12\"\n\rtotal_data_in\x18\x1a\x20\
+    \x01(\x04R\x0btotalDataIn\x12(\n\x10total_packets_in\x18\x1b\x20\x01(\
+    \x04R\x0etotalPacketsIn\x12$\n\x0etotal_data_out\x18\x1c\x20\x01(\x04R\
+    \x0ctotalDataOut\x12*\n\x11total_packets_out\x18\x1d\x20\x01(\x04R\x0fto\
+    talPacketsOut\x128\n\x07players\x18\x1e\x20\x03(\x0b2\x1e.CMsgServerNetw\
+    orkStats.PlayerR\x07players\x1a.\n\x04Port\x12\x12\n\x04port\x18\x01\x20\
+    \x01(\x05R\x04port\x12\x12\n\x04name\x18\x02\x20\x01(\tR\x04name\x1a\x82\
+    \x02\n\x06Player\x12\x18\n\x07steamid\x18\x01\x20\x01(\x04R\x07steamid\
+    \x12\x1f\n\x0bremote_addr\x18\x02\x20\x01(\tR\nremoteAddr\x12\x1e\n\x0bp\
+    ing_avg_ms\x18\x04\x20\x01(\x05R\tpingAvgMs\x12&\n\x0fpacket_loss_pct\
+    \x18\x05\x20\x01(\x02R\rpacketLossPct\x12\x15\n\x06is_bot\x18\x06\x20\
+    \x01(\x08R\x05isBot\x12\x17\n\x07loss_in\x18\x07\x20\x01(\x02R\x06lossIn\
+    \x12\x19\n\x08loss_out\x18\x08\x20\x01(\x02R\x07lossOut\x12*\n\x11engine\
+    _latency_ms\x18\t\x20\x01(\x05R\x0fengineLatencyMs\"\xd1\x02\n\x12CSVCMs\
+    g_HltvReplay\x12\x14\n\x05delay\x18\x01\x20\x01(\x05R\x05delay\x12)\n\
+    \x0eprimary_target\x18\x02\x20\x01(\x05:\x02-1R\rprimaryTarget\x12$\n\
+    \x0ereplay_stop_at\x18\x03\x20\x01(\x05R\x0creplayStopAt\x12&\n\x0frepla\
+    y_start_at\x18\x04\x20\x01(\x05R\rreplayStartAt\x122\n\x15replay_slowdow\
+    n_begin\x18\x05\x20\x01(\x05R\x13replaySlowdownBegin\x12.\n\x13replay_sl\
+    owdown_end\x18\x06\x20\x01(\x05R\x11replaySlowdownEnd\x120\n\x14replay_s\
+    lowdown_rate\x18\x07\x20\x01(\x02R\x12replaySlowdownRate\x12\x16\n\x06re\
+    ason\x18\x08\x20\x01(\x05R\x06reason\"\xc6\x01\n\x12CCLCMsg_HltvReplay\
+    \x12\x18\n\x07request\x18\x01\x20\x01(\x05R\x07request\x12'\n\x0fslowdow\
+    n_length\x18\x02\x20\x01(\x02R\x0eslowdownLength\x12#\n\rslowdown_rate\
+    \x18\x03\x20\x01(\x02R\x0cslowdownRate\x12)\n\x0eprimary_target\x18\x04\
+    \x20\x01(\x05:\x02-1R\rprimaryTarget\x12\x1d\n\nevent_time\x18\x05\x20\
+    \x01(\x02R\teventTime\"-\n\x19CSVCMsg_Broadcast_Command\x12\x10\n\x03cmd\
+    \x18\x01\x20\x01(\tR\x03cmd\"\xd2\x02\n\x1dCCLCMsg_HltvFixupOperatorTick\
+    \x12\x12\n\x04tick\x18\x01\x20\x01(\x05R\x04tick\x12\x1d\n\nprops_data\
+    \x18\x02\x20\x01(\x0cR\tpropsData\x12#\n\x06origin\x18\x03\x20\x01(\x0b2\
+    \x0b.CMsgVectorR\x06origin\x12*\n\neye_angles\x18\x04\x20\x01(\x0b2\x0b.\
+    CMsgQAngleR\teyeAngles\x12#\n\robserver_mode\x18\x05\x20\x01(\x05R\x0cob\
+    serverMode\x121\n\x14cameraman_scoreboard\x18\x06\x20\x01(\x08R\x13camer\
+    amanScoreboard\x12'\n\x0fobserver_target\x18\x07\x20\x01(\x05R\x0eobserv\
+    erTarget\x12,\n\x0bview_offset\x18\x08\x20\x01(\x0b2\x0b.CMsgVectorR\nvi\
+    ewOffset\"k\n\x1fCSVCMsg_HltvFixupOperatorStatus\x12\x12\n\x04mode\x18\
+    \x01\x20\x01(\rR\x04mode\x124\n\x16override_operator_name\x18\x02\x20\
+    \x01(\tR\x14overrideOperatorName\"\xbe\x01\n\x11CMsgServerUserCmd\x12\
+    \x12\n\x04data\x18\x01\x20\x01(\x0cR\x04data\x12\x1d\n\ncmd_number\x18\
+    \x02\x20\x01(\x05R\tcmdNumber\x12#\n\x0bplayer_slot\x18\x03\x20\x01(\x05\
+    :\x02-1R\nplayerSlot\x120\n\x14server_tick_executed\x18\x04\x20\x01(\x05\
+    R\x12serverTickExecuted\x12\x1f\n\x0bclient_tick\x18\x05\x20\x01(\x05R\n\
+    clientTick\"F\n\x14CSVCMsg_UserCommands\x12.\n\x08commands\x18\x01\x20\
+    \x03(\x0b2\x12.CMsgServerUserCmdR\x08commands*\xe1\x02\n\x0cCLC_Messages\
+    \x12\x12\n\x0eclc_ClientInfo\x10\x14\x12\x0c\n\x08clc_Move\x10\x15\x12\
+    \x11\n\rclc_VoiceData\x10\x16\x12\x13\n\x0fclc_BaselineAck\x10\x17\x12\
+    \x18\n\x14clc_RespondCvarValue\x10\x19\x12\x14\n\x10clc_FileCRCCheck\x10\
+    \x1a\x12\x17\n\x13clc_LoadingProgress\x10\x1b\x12\x1a\n\x16clc_SplitPlay\
+    erConnect\x10\x1c\x12\x1d\n\x19clc_SplitPlayerDisconnect\x10\x1e\x12\x14\
+    \n\x10clc_ServerStatus\x10\x1f\x12\x14\n\x10clc_RequestPause\x10!\x12\
+    \x14\n\x10clc_CmdKeyValues\x10\"\x12\x19\n\x15clc_RconServerDetails\x10#\
+    \x12\x12\n\x0eclc_HltvReplay\x10$\x12\x12\n\x0eclc_Diagnostic\x10%*\x97\
+    \x05\n\x0cSVC_Messages\x12\x12\n\x0esvc_ServerInfo\x10(\x12\x1b\n\x17svc\
+    _FlattenedSerializer\x10)\x12\x11\n\rsvc_ClassInfo\x10*\x12\x10\n\x0csvc\
+    _SetPause\x10+\x12\x19\n\x15svc_CreateStringTable\x10,\x12\x19\n\x15svc_\
+    UpdateStringTable\x10-\x12\x11\n\rsvc_VoiceInit\x10.\x12\x11\n\rsvc_Voic\
+    eData\x10/\x12\r\n\tsvc_Print\x100\x12\x0e\n\nsvc_Sounds\x101\x12\x0f\n\
+    \x0bsvc_SetView\x102\x12\x1c\n\x18svc_ClearAllStringTables\x103\x12\x14\
+    \n\x10svc_CmdKeyValues\x104\x12\x10\n\x0csvc_BSPDecal\x105\x12\x13\n\x0f\
+    svc_SplitScreen\x106\x12\x16\n\x12svc_PacketEntities\x107\x12\x10\n\x0cs\
+    vc_Prefetch\x108\x12\x0c\n\x08svc_Menu\x109\x12\x14\n\x10svc_GetCvarValu\
+    e\x10:\x12\x11\n\rsvc_StopSound\x10;\x12\x10\n\x0csvc_PeerList\x10<\x12\
+    \x16\n\x12svc_PacketReliable\x10=\x12\x12\n\x0esvc_HLTVStatus\x10>\x12\
+    \x15\n\x11svc_ServerSteamID\x10?\x12\x16\n\x12svc_FullFrameSplit\x10F\
+    \x12\x19\n\x15svc_RconServerDetails\x10G\x12\x13\n\x0fsvc_UserMessage\
+    \x10H\x12\x19\n\x15svc_Broadcast_Command\x10J\x12\x1f\n\x1bsvc_HltvFixup\
+    OperatorStatus\x10K\x12\x10\n\x0csvc_UserCmds\x10L*g\n\x11VoiceDataForma\
+    t_t\x12\x1a\n\x16VOICEDATA_FORMAT_STEAM\x10\0\x12\x1b\n\x17VOICEDATA_FOR\
+    MAT_ENGINE\x10\x01\x12\x19\n\x15VOICEDATA_FORMAT_OPUS\x10\x02*B\n\x0eReq\
+    uestPause_t\x12\x0c\n\x08RP_PAUSE\x10\0\x12\x0e\n\nRP_UNPAUSE\x10\x01\
+    \x12\x12\n\x0eRP_TOGGLEPAUSE\x10\x02*\x1d\n\x0cPrefetchType\x12\r\n\tPFT\
+    _SOUND\x10\0*V\n\x17ESplitScreenMessageType\x12\x1b\n\x17MSG_SPLITSCREEN\
+    _ADDUSER\x10\0\x12\x1e\n\x1aMSG_SPLITSCREEN_REMOVEUSER\x10\x01*\xb3\x01\
+    \n\x15EQueryCvarValueStatus\x12%\n!eQueryCvarValueStatus_ValueIntact\x10\
+    \0\x12&\n\"eQueryCvarValueStatus_CvarNotFound\x10\x01\x12\"\n\x1eeQueryC\
+    varValueStatus_NotACvar\x10\x02\x12'\n#eQueryCvarValueStatus_CvarProtect\
+    ed\x10\x03*h\n\x0bDIALOG_TYPE\x12\x0e\n\nDIALOG_MSG\x10\0\x12\x0f\n\x0bD\
+    IALOG_MENU\x10\x01\x12\x0f\n\x0bDIALOG_TEXT\x10\x02\x12\x10\n\x0cDIALOG_\
+    ENTRY\x10\x03\x12\x15\n\x11DIALOG_ASKCONNECT\x10\x04*+\n\x19SVC_Messages\
+    _LowFrequency\x12\x0e\n\tsvc_dummy\x10\xd8\x04*a\n\x16Bidirectional_Mess\
+    ages\x12\x1b\n\x17bi_RebroadcastGameEvent\x10\x10\x12\x18\n\x14bi_Rebroa\
+    dcastSource\x10\x11\x12\x10\n\x0cbi_GameEvent\x10\x12*M\n#Bidirectional_\
+    Messages_LowFrequency\x12\x11\n\x0cbi_RelayInfo\x10\xbc\x05\x12\x13\n\
+    \x0ebi_RelayPacket\x10\xbd\x05*\xa1\x01\n\x11ReplayEventType_t\x12\x17\n\
+    \x13REPLAY_EVENT_CANCEL\x10\0\x12\x16\n\x12REPLAY_EVENT_DEATH\x10\x01\
+    \x12\x18\n\x14REPLAY_EVENT_GENERIC\x10\x02\x12'\n#REPLAY_EVENT_STUCK_NEE\
+    D_FULL_UPDATE\x10\x03\x12\x18\n\x14REPLAY_EVENT_VICTORY\x10\x04\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -22040,7 +21855,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(1);
             deps.push(super::networkbasetypes::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(78);
+            let mut messages = ::std::vec::Vec::with_capacity(77);
             messages.push(CCLCMsg_ClientInfo::generated_message_descriptor_data());
             messages.push(CCLCMsg_Move::generated_message_descriptor_data());
             messages.push(CMsgVoiceAudio::generated_message_descriptor_data());
@@ -22051,7 +21866,6 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             messages.push(CCLCMsg_FileCRCCheck::generated_message_descriptor_data());
             messages.push(CCLCMsg_LoadingProgress::generated_message_descriptor_data());
             messages.push(CCLCMsg_SplitPlayerConnect::generated_message_descriptor_data());
-            messages.push(CCLCMsg_ClientMessage::generated_message_descriptor_data());
             messages.push(CCLCMsg_SplitPlayerDisconnect::generated_message_descriptor_data());
             messages.push(CCLCMsg_ServerStatus::generated_message_descriptor_data());
             messages.push(CCLCMsg_RequestPause::generated_message_descriptor_data());

@@ -9836,6 +9836,8 @@ pub struct CMsgGC_ServerQuestUpdateData {
     pub mm_game_mode: ::std::option::Option<u32>,
     // @@protoc_insertion_point(field:CMsgGC_ServerQuestUpdateData.missionlbsdata)
     pub missionlbsdata: ::protobuf::MessageField<ScoreLeaderboardData>,
+    // @@protoc_insertion_point(field:CMsgGC_ServerQuestUpdateData.flags)
+    pub flags: ::std::option::Option<u32>,
     // special fields
     // @@protoc_insertion_point(special_field:CMsgGC_ServerQuestUpdateData.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -9907,8 +9909,27 @@ impl CMsgGC_ServerQuestUpdateData {
         self.mm_game_mode = ::std::option::Option::Some(v);
     }
 
+    // optional uint32 flags = 5;
+
+    pub fn flags(&self) -> u32 {
+        self.flags.unwrap_or(0)
+    }
+
+    pub fn clear_flags(&mut self) {
+        self.flags = ::std::option::Option::None;
+    }
+
+    pub fn has_flags(&self) -> bool {
+        self.flags.is_some()
+    }
+
+    // Param is passed by value, moved
+    pub fn set_flags(&mut self, v: u32) {
+        self.flags = ::std::option::Option::Some(v);
+    }
+
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(4);
+        let mut fields = ::std::vec::Vec::with_capacity(5);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
             "player_quest_data",
@@ -9929,6 +9950,11 @@ impl CMsgGC_ServerQuestUpdateData {
             "missionlbsdata",
             |m: &CMsgGC_ServerQuestUpdateData| { &m.missionlbsdata },
             |m: &mut CMsgGC_ServerQuestUpdateData| { &mut m.missionlbsdata },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "flags",
+            |m: &CMsgGC_ServerQuestUpdateData| { &m.flags },
+            |m: &mut CMsgGC_ServerQuestUpdateData| { &mut m.flags },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<CMsgGC_ServerQuestUpdateData>(
             "CMsgGC_ServerQuestUpdateData",
@@ -9960,6 +9986,9 @@ impl ::protobuf::Message for CMsgGC_ServerQuestUpdateData {
                 34 => {
                     ::protobuf::rt::read_singular_message_into_field(is, &mut self.missionlbsdata)?;
                 },
+                40 => {
+                    self.flags = ::std::option::Option::Some(is.read_uint32()?);
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -9986,6 +10015,9 @@ impl ::protobuf::Message for CMsgGC_ServerQuestUpdateData {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
         }
+        if let Some(v) = self.flags {
+            my_size += ::protobuf::rt::uint32_size(5, v);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -10003,6 +10035,9 @@ impl ::protobuf::Message for CMsgGC_ServerQuestUpdateData {
         }
         if let Some(v) = self.missionlbsdata.as_ref() {
             ::protobuf::rt::write_message_field_with_cached_size(4, v, os)?;
+        }
+        if let Some(v) = self.flags {
+            os.write_uint32(5, v)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -10025,6 +10060,7 @@ impl ::protobuf::Message for CMsgGC_ServerQuestUpdateData {
         self.binary_data = ::std::option::Option::None;
         self.mm_game_mode = ::std::option::Option::None;
         self.missionlbsdata.clear();
+        self.flags = ::std::option::Option::None;
         self.special_fields.clear();
     }
 
@@ -10034,6 +10070,7 @@ impl ::protobuf::Message for CMsgGC_ServerQuestUpdateData {
             binary_data: ::std::option::Option::None,
             mm_game_mode: ::std::option::Option::None,
             missionlbsdata: ::protobuf::MessageField::none(),
+            flags: ::std::option::Option::None,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -25522,6 +25559,8 @@ pub struct CEconItemPreviewDataBlock {
     pub entindex: ::std::option::Option<i32>,
     // @@protoc_insertion_point(field:CEconItemPreviewDataBlock.petindex)
     pub petindex: ::std::option::Option<u32>,
+    // @@protoc_insertion_point(field:CEconItemPreviewDataBlock.keychains)
+    pub keychains: ::std::vec::Vec<cecon_item_preview_data_block::Sticker>,
     // special fields
     // @@protoc_insertion_point(special_field:CEconItemPreviewDataBlock.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -25898,7 +25937,7 @@ impl CEconItemPreviewDataBlock {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(19);
+        let mut fields = ::std::vec::Vec::with_capacity(20);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "accountid",
@@ -25995,6 +26034,11 @@ impl CEconItemPreviewDataBlock {
             |m: &CEconItemPreviewDataBlock| { &m.petindex },
             |m: &mut CEconItemPreviewDataBlock| { &mut m.petindex },
         ));
+        fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
+            "keychains",
+            |m: &CEconItemPreviewDataBlock| { &m.keychains },
+            |m: &mut CEconItemPreviewDataBlock| { &mut m.keychains },
+        ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<CEconItemPreviewDataBlock>(
             "CEconItemPreviewDataBlock",
             fields,
@@ -26070,6 +26114,9 @@ impl ::protobuf::Message for CEconItemPreviewDataBlock {
                 152 => {
                     self.petindex = ::std::option::Option::Some(is.read_uint32()?);
                 },
+                162 => {
+                    self.keychains.push(is.read_message()?);
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -26140,6 +26187,10 @@ impl ::protobuf::Message for CEconItemPreviewDataBlock {
         if let Some(v) = self.petindex {
             my_size += ::protobuf::rt::uint32_size(19, v);
         }
+        for value in &self.keychains {
+            let len = value.compute_size();
+            my_size += 2 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        };
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -26203,6 +26254,9 @@ impl ::protobuf::Message for CEconItemPreviewDataBlock {
         if let Some(v) = self.petindex {
             os.write_uint32(19, v)?;
         }
+        for v in &self.keychains {
+            ::protobuf::rt::write_message_field_with_cached_size(20, v, os)?;
+        };
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -26239,6 +26293,7 @@ impl ::protobuf::Message for CEconItemPreviewDataBlock {
         self.musicindex = ::std::option::Option::None;
         self.entindex = ::std::option::Option::None;
         self.petindex = ::std::option::Option::None;
+        self.keychains.clear();
         self.special_fields.clear();
     }
 
@@ -26263,6 +26318,7 @@ impl ::protobuf::Message for CEconItemPreviewDataBlock {
             musicindex: ::std::option::Option::None,
             entindex: ::std::option::Option::None,
             petindex: ::std::option::Option::None,
+            keychains: ::std::vec::Vec::new(),
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -46883,180 +46939,181 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \t\x20\x01(\x05R\totherPosX\x12\x1e\n\x0bother_pos_y\x18\n\x20\x01(\x05R\
     \totherPosY\x12\x1e\n\x0bother_pos_z\x18\r\x20\x01(\x05R\totherPosZ\x12!\
     \n\x0cother_defidx\x18\x0b\x20\x01(\rR\x0botherDefidx\x12\x1d\n\nevent_d\
-    ata\x18\x0e\x20\x01(\x05R\teventData\"\xde\x01\n\x1cCMsgGC_ServerQuestUp\
+    ata\x18\x0e\x20\x01(\x05R\teventData\"\xf4\x01\n\x1cCMsgGC_ServerQuestUp\
     dateData\x12<\n\x11player_quest_data\x18\x01\x20\x03(\x0b2\x10.PlayerQue\
     stDataR\x0fplayerQuestData\x12\x1f\n\x0bbinary_data\x18\x02\x20\x01(\x0c\
     R\nbinaryData\x12\x20\n\x0cmm_game_mode\x18\x03\x20\x01(\rR\nmmGameMode\
     \x12=\n\x0emissionlbsdata\x18\x04\x20\x01(\x0b2\x15.ScoreLeaderboardData\
-    R\x0emissionlbsdata\"\x8e\x01\n.CMsgGCCStrike15_v2_MatchmakingGC2ServerC\
-    onfirm\x12\x14\n\x05token\x18\x01\x20\x01(\rR\x05token\x12\x14\n\x05stam\
-    p\x18\x02\x20\x01(\rR\x05stamp\x12\x1a\n\x08exchange\x18\x03\x20\x01(\
-    \x04R\x08exchange\x12\x14\n\x05retry\x18\x04\x20\x01(\rR\x05retry\"\x9b\
-    \x01\n-CMsgGCCStrike15_v2_GC2ServerReservationUpdate\x124\n\x16viewers_e\
-    xternal_total\x18\x01\x20\x01(\rR\x14viewersExternalTotal\x124\n\x16view\
-    ers_external_steam\x18\x02\x20\x01(\rR\x14viewersExternalSteam\"\xc6\x02\
-    \n#CMsgGCCStrike15_v2_MatchmakingStart\x12\x1f\n\x0baccount_ids\x18\x01\
-    \x20\x03(\rR\naccountIds\x12\x1b\n\tgame_type\x18\x02\x20\x01(\rR\x08gam\
-    eType\x12\x1f\n\x0bticket_data\x18\x03\x20\x01(\tR\nticketData\x12%\n\
-    \x0eclient_version\x18\x04\x20\x01(\rR\rclientVersion\x12@\n\x10tourname\
-    nt_match\x18\x05\x20\x01(\x0b2\x15.TournamentMatchSetupR\x0ftournamentMa\
-    tch\x12\x1d\n\nprime_only\x18\x06\x20\x01(\x08R\tprimeOnly\x12\x1d\n\ntv\
-    _control\x18\x07\x20\x01(\rR\ttvControl\x12\x19\n\x08lobby_id\x18\x08\
-    \x20\x01(\x04R\x07lobbyId\">\n\"CMsgGCCStrike15_v2_MatchmakingStop\x12\
-    \x18\n\x07abandon\x18\x01\x20\x01(\x05R\x07abandon\"\x9c\x01\n2CMsgGCCSt\
-    rike15_v2_MatchmakingGC2ClientUpdate_Note\x12\x12\n\x04type\x18\x01\x20\
-    \x01(\x05R\x04type\x12\x1b\n\tregion_id\x18\x02\x20\x01(\x05R\x08regionI\
-    d\x12\x19\n\x08region_r\x18\x03\x20\x01(\x02R\x07regionR\x12\x1a\n\x08di\
-    stance\x18\x04\x20\x01(\x02R\x08distance\"\xb6\x03\n/CMsgGCCStrike15_v2_\
-    MatchmakingClient2ServerPing\x129\n\x0fgameserverpings\x18\x01\x20\x03(\
-    \x0b2\x0f.GameServerPingR\x0fgameserverpings\x12!\n\x0coffset_index\x18\
-    \x02\x20\x01(\x05R\x0boffsetIndex\x12\x1f\n\x0bfinal_batch\x18\x03\x20\
-    \x01(\x05R\nfinalBatch\x12;\n\x11data_center_pings\x18\x04\x20\x03(\x0b2\
-    \x0f.DataCenterPingR\x0fdataCenterPings\x12\x19\n\x08max_ping\x18\x05\
-    \x20\x01(\rR\x07maxPing\x12\x1d\n\ntest_token\x18\x06\x20\x01(\x07R\ttes\
-    tToken\x12\x1d\n\nsearch_key\x18\x07\x20\x01(\x0cR\tsearchKey\x12I\n\x05\
-    notes\x18\x08\x20\x03(\x0b23.CMsgGCCStrike15_v2_MatchmakingGC2ClientUpda\
-    te_NoteR\x05notes\x12#\n\rdebug_message\x18\t\x20\x01(\tR\x0cdebugMessag\
-    e\"\x83\x08\n-CMsgGCCStrike15_v2_MatchmakingGC2ClientUpdate\x12\x20\n\
-    \x0bmatchmaking\x18\x01\x20\x01(\x05R\x0bmatchmaking\x12=\n\x1bwaiting_a\
-    ccount_id_sessions\x18\x02\x20\x03(\rR\x18waitingAccountIdSessions\x12\
-    \x14\n\x05error\x18\x03\x20\x01(\tR\x05error\x12G\n\x20ongoingmatch_acco\
-    unt_id_sessions\x18\x06\x20\x03(\rR\x1dongoingmatchAccountIdSessions\x12\
-    4\n\x0cglobal_stats\x18\x07\x20\x01(\x0b2\x11.GlobalStatisticsR\x0bgloba\
-    lStats\x12?\n\x1cfailping_account_id_sessions\x18\x08\x20\x03(\rR\x19fai\
-    lpingAccountIdSessions\x12=\n\x1bpenalty_account_id_sessions\x18\t\x20\
-    \x03(\rR\x18penaltyAccountIdSessions\x12A\n\x1dfailready_account_id_sess\
-    ions\x18\n\x20\x03(\rR\x1afailreadyAccountIdSessions\x12A\n\x1dvacbanned\
-    _account_id_sessions\x18\x0b\x20\x03(\rR\x1avacbannedAccountIdSessions\
-    \x12B\n\x15server_ipaddress_mask\x18\x0c\x20\x01(\x0b2\x0e.IpAddressMask\
-    R\x13serverIpaddressMask\x12I\n\x05notes\x18\r\x20\x03(\x0b23.CMsgGCCStr\
-    ike15_v2_MatchmakingGC2ClientUpdate_NoteR\x05notes\x12H\n!penalty_accoun\
-    t_id_sessions_green\x18\x0e\x20\x03(\rR\x1dpenaltyAccountIdSessionsGreen\
-    \x12=\n\x1ainsufficientlevel_sessions\x18\x0f\x20\x03(\rR\x19insufficien\
-    tlevelSessions\x12?\n\x1cvsncheck_account_id_sessions\x18\x10\x20\x03(\r\
-    R\x19vsncheckAccountIdSessions\x12<\n\x1alauncher_mismatch_sessions\x18\
-    \x11\x20\x03(\rR\x18launcherMismatchSessions\x12?\n\x1cinsecure_account_\
-    id_sessions\x18\x12\x20\x03(\rR\x19insecureAccountIdSessions\"\xc6\x06\n\
-    (CDataGCCStrike15_v2_TournamentMatchDraft\x12\x19\n\x08event_id\x18\x01\
-    \x20\x01(\x05R\x07eventId\x12$\n\x0eevent_stage_id\x18\x02\x20\x01(\x05R\
-    \x0ceventStageId\x12\x1a\n\tteam_id_0\x18\x03\x20\x01(\x05R\x07teamId0\
-    \x12\x1a\n\tteam_id_1\x18\x04\x20\x01(\x05R\x07teamId1\x12\x1d\n\nmaps_c\
-    ount\x18\x05\x20\x01(\x05R\tmapsCount\x12!\n\x0cmaps_current\x18\x06\x20\
-    \x01(\x05R\x0bmapsCurrent\x12\"\n\rteam_id_start\x18\x07\x20\x01(\x05R\
-    \x0bteamIdStart\x12\"\n\rteam_id_veto1\x18\x08\x20\x01(\x05R\x0bteamIdVe\
-    to1\x12\"\n\rteam_id_pickn\x18\t\x20\x01(\x05R\x0bteamIdPickn\x12G\n\x06\
-    drafts\x18\n\x20\x03(\x0b2/.CDataGCCStrike15_v2_TournamentMatchDraft.Ent\
-    ryR\x06drafts\x12\x20\n\x0cvote_mapid_0\x18\x0b\x20\x03(\x05R\nvoteMapid\
-    0\x12\x20\n\x0cvote_mapid_1\x18\x0c\x20\x03(\x05R\nvoteMapid1\x12\x20\n\
-    \x0cvote_mapid_2\x18\r\x20\x03(\x05R\nvoteMapid2\x12\x20\n\x0cvote_mapid\
-    _3\x18\x0e\x20\x03(\x05R\nvoteMapid3\x12\x20\n\x0cvote_mapid_4\x18\x0f\
-    \x20\x03(\x05R\nvoteMapid4\x12\x20\n\x0cvote_mapid_5\x18\x10\x20\x03(\
-    \x05R\nvoteMapid5\x12,\n\x12vote_starting_side\x18\x11\x20\x03(\x05R\x10\
-    voteStartingSide\x12\x1d\n\nvote_phase\x18\x12\x20\x01(\x05R\tvotePhase\
-    \x12(\n\x10vote_phase_start\x18\x13\x20\x01(\x02R\x0evotePhaseStart\x12*\
-    \n\x11vote_phase_length\x18\x14\x20\x01(\x02R\x0fvotePhaseLength\x1a;\n\
-    \x05Entry\x12\x14\n\x05mapid\x18\x01\x20\x01(\x05R\x05mapid\x12\x1c\n\nt\
-    eam_id_ct\x18\x02\x20\x01(\x05R\x08teamIdCt\"\xcf\x02\n\x11CPreMatchInfo\
-    Data\x12'\n\x0fpredictions_pct\x18\x01\x20\x01(\x05R\x0epredictionsPct\
-    \x12?\n\x05draft\x18\x04\x20\x01(\x0b2).CDataGCCStrike15_v2_TournamentMa\
-    tchDraftR\x05draft\x122\n\x05stats\x18\x05\x20\x03(\x0b2\x1c.CPreMatchIn\
-    foData.TeamStatsR\x05stats\x12\x12\n\x04wins\x18\x06\x20\x03(\x05R\x04wi\
-    ns\x1a\x87\x01\n\tTeamStats\x12*\n\x11match_info_idxtxt\x18\x01\x20\x01(\
-    \x05R\x0fmatchInfoIdxtxt\x12$\n\x0ematch_info_txt\x18\x02\x20\x01(\tR\
-    \x0cmatchInfoTxt\x12(\n\x10match_info_teams\x18\x03\x20\x03(\tR\x0ematch\
-    InfoTeams\"\x96\x07\n.CMsgGCCStrike15_v2_MatchmakingGC2ServerReserve\x12\
-    \x1f\n\x0baccount_ids\x18\x01\x20\x03(\rR\naccountIds\x12\x1b\n\tgame_ty\
-    pe\x18\x02\x20\x01(\rR\x08gameType\x12\x19\n\x08match_id\x18\x03\x20\x01\
-    (\x04R\x07matchId\x12%\n\x0eserver_version\x18\x04\x20\x01(\rR\rserverVe\
-    rsion\x12\x14\n\x05flags\x18\x12\x20\x01(\rR\x05flags\x12.\n\x08rankings\
-    \x18\x05\x20\x03(\x0b2\x12.PlayerRankingInfoR\x08rankings\x12%\n\x0eencr\
-    yption_key\x18\x06\x20\x01(\x04R\rencryptionKey\x12,\n\x12encryption_key\
-    _pub\x18\x07\x20\x01(\x04R\x10encryptionKeyPub\x12\x1b\n\tparty_ids\x18\
-    \x08\x20\x03(\rR\x08partyIds\x12,\n\twhitelist\x18\t\x20\x03(\x0b2\x0e.I\
-    pAddressMaskR\twhitelist\x12*\n\x11tv_master_steamid\x18\n\x20\x01(\x04R\
-    \x0ftvMasterSteamid\x12;\n\x10tournament_event\x18\x0b\x20\x01(\x0b2\x10\
-    .TournamentEventR\x0ftournamentEvent\x12:\n\x10tournament_teams\x18\x0c\
-    \x20\x03(\x0b2\x0f.TournamentTeamR\x0ftournamentTeams\x12C\n\x1etourname\
-    nt_casters_account_ids\x18\r\x20\x03(\rR\x1btournamentCastersAccountIds\
-    \x12(\n\x10tv_relay_steamid\x18\x0e\x20\x01(\x04R\x0etvRelaySteamid\x128\
-    \n\x0epre_match_data\x18\x0f\x20\x01(\x0b2\x12.CPreMatchInfoDataR\x0cpre\
-    MatchData\x12.\n\x13rtime32_event_start\x18\x10\x20\x01(\rR\x11rtime32Ev\
-    entStart\x12\x1d\n\ntv_control\x18\x11\x20\x01(\rR\ttvControl\x128\n\rop\
-    _var_values\x18\x13\x20\x03(\x0b2\x14.OperationalVarValueR\x0bopVarValue\
-    s\x12'\n\x0fsocache_control\x18\x14\x20\x01(\rR\x0esocacheControl\"\x91\
-    \x07\n7CMsgGCCStrike15_v2_MatchmakingServerReservationResponse\x12$\n\rr\
-    eservationid\x18\x01\x20\x01(\x04R\rreservationid\x12Q\n\x0breservation\
-    \x18\x02\x20\x01(\x0b2/.CMsgGCCStrike15_v2_MatchmakingGC2ServerReserveR\
-    \x0breservation\x12\x10\n\x03map\x18\x03\x20\x01(\tR\x03map\x12.\n\x13gc\
-    _reservation_sent\x18\x04\x20\x01(\x04R\x11gcReservationSent\x12%\n\x0es\
-    erver_version\x18\x05\x20\x01(\rR\rserverVersion\x12(\n\x07tv_info\x18\
-    \x06\x20\x01(\x0b2\x0f.ServerHltvInfoR\x06tvInfo\x124\n\x16reward_player\
-    _accounts\x18\x07\x20\x03(\rR\x14rewardPlayerAccounts\x120\n\x14idle_pla\
-    yer_accounts\x18\x08\x20\x03(\rR\x12idlePlayerAccounts\x126\n\x18reward_\
-    item_attr_def_idx\x18\t\x20\x01(\rR\x14rewardItemAttrDefIdx\x123\n\x16re\
-    ward_item_attr_value\x18\n\x20\x01(\rR\x13rewardItemAttrValue\x12<\n\x1b\
-    reward_item_attr_reward_idx\x18\x0b\x20\x01(\rR\x17rewardItemAttrRewardI\
-    dx\x12(\n\x10reward_drop_list\x18\x0c\x20\x01(\rR\x0erewardDropList\x12%\
-    \n\x0etournament_tag\x18\r\x20\x01(\tR\rtournamentTag\x12:\n\x19legacy_s\
-    teamdatagram_port\x18\x0e\x20\x01(\rR\x17legacySteamdatagramPort\x123\n\
-    \x15steamdatagram_routing\x18\x11\x20\x01(\rR\x14steamdatagramRouting\
-    \x12\x1d\n\ntest_token\x18\x0f\x20\x01(\x07R\ttestToken\x12\x14\n\x05fla\
-    gs\x18\x10\x20\x01(\rR\x05flags\x12\x1f\n\x0bsystem_load\x18\x12\x20\x01\
-    (\rR\nsystemLoad\x12\x1f\n\x0bcpus_online\x18\x13\x20\x01(\rR\ncpusOnlin\
-    e\"\x9a\x03\n.CMsgGCCStrike15_v2_MatchmakingGC2ClientReserve\x12\x1a\n\
-    \x08serverid\x18\x01\x20\x01(\x04R\x08serverid\x12\"\n\rdirect_udp_ip\
-    \x18\x02\x20\x01(\rR\x0bdirectUdpIp\x12&\n\x0fdirect_udp_port\x18\x03\
-    \x20\x01(\rR\rdirectUdpPort\x12$\n\rreservationid\x18\x04\x20\x01(\x04R\
-    \rreservationid\x12Q\n\x0breservation\x18\x05\x20\x01(\x0b2/.CMsgGCCStri\
-    ke15_v2_MatchmakingGC2ServerReserveR\x0breservation\x12\x10\n\x03map\x18\
-    \x06\x20\x01(\tR\x03map\x12%\n\x0eserver_address\x18\x07\x20\x01(\tR\rse\
-    rverAddress\x12(\n\x07gs_ping\x18\x08\x20\x01(\x0b2\x0f.DataCenterPingR\
-    \x06gsPing\x12$\n\x0egs_location_id\x18\t\x20\x01(\rR\x0cgsLocationId\"\
-    \x89\n\n.CMsgGCCStrike15_v2_MatchmakingServerRoundStats\x12$\n\rreservat\
-    ionid\x18\x01\x20\x01(\x04R\rreservationid\x12Q\n\x0breservation\x18\x02\
-    \x20\x01(\x0b2/.CMsgGCCStrike15_v2_MatchmakingGC2ServerReserveR\x0breser\
-    vation\x12\x10\n\x03map\x18\x03\x20\x01(\tR\x03map\x12\x14\n\x05round\
-    \x18\x04\x20\x01(\x05R\x05round\x12\x14\n\x05kills\x18\x05\x20\x03(\x05R\
-    \x05kills\x12\x18\n\x07assists\x18\x06\x20\x03(\x05R\x07assists\x12\x16\
-    \n\x06deaths\x18\x07\x20\x03(\x05R\x06deaths\x12\x16\n\x06scores\x18\x08\
-    \x20\x03(\x05R\x06scores\x12\x14\n\x05pings\x18\t\x20\x03(\x05R\x05pings\
-    \x12!\n\x0cround_result\x18\n\x20\x01(\x05R\x0broundResult\x12!\n\x0cmat\
-    ch_result\x18\x0b\x20\x01(\x05R\x0bmatchResult\x12\x1f\n\x0bteam_scores\
-    \x18\x0c\x20\x03(\x05R\nteamScores\x12I\n\x07confirm\x18\r\x20\x01(\x0b2\
-    /.CMsgGCCStrike15_v2_MatchmakingGC2ServerConfirmR\x07confirm\x12+\n\x11r\
-    eservation_stage\x18\x0e\x20\x01(\x05R\x10reservationStage\x12%\n\x0emat\
-    ch_duration\x18\x0f\x20\x01(\x05R\rmatchDuration\x12\x1f\n\x0benemy_kill\
-    s\x18\x10\x20\x03(\x05R\nenemyKills\x12'\n\x0fenemy_headshots\x18\x11\
-    \x20\x03(\x05R\x0eenemyHeadshots\x12\x1b\n\tenemy_3ks\x18\x12\x20\x03(\
-    \x05R\x08enemy3ks\x12\x1b\n\tenemy_4ks\x18\x13\x20\x03(\x05R\x08enemy4ks\
-    \x12\x1b\n\tenemy_5ks\x18\x14\x20\x03(\x05R\x08enemy5ks\x12\x12\n\x04mvp\
-    s\x18\x15\x20\x03(\x05R\x04mvps\x12)\n\x10spectators_count\x18\x16\x20\
-    \x01(\rR\x0fspectatorsCount\x12.\n\x13spectators_count_tv\x18\x17\x20\
-    \x01(\rR\x11spectatorsCountTv\x120\n\x14spectators_count_lnk\x18\x18\x20\
-    \x01(\rR\x12spectatorsCountLnk\x12&\n\x0fenemy_kills_agg\x18\x19\x20\x03\
-    (\x05R\renemyKillsAgg\x12U\n\tdrop_info\x18\x1a\x20\x01(\x0b28.CMsgGCCSt\
-    rike15_v2_MatchmakingServerRoundStats.DropInfoR\x08dropInfo\x12(\n\x10b_\
-    switched_teams\x18\x1b\x20\x01(\x08R\x0ebSwitchedTeams\x12\x1b\n\tenemy_\
-    2ks\x18\x1c\x20\x03(\x05R\x08enemy2ks\x12%\n\x0eplayer_spawned\x18\x1d\
-    \x20\x03(\x05R\rplayerSpawned\x12(\n\x10team_spawn_count\x18\x1e\x20\x03\
-    (\x05R\x0eteamSpawnCount\x12\x1d\n\nmax_rounds\x18\x1f\x20\x01(\rR\tmaxR\
-    ounds\x12\x15\n\x06map_id\x18\x20\x20\x01(\x05R\x05mapId\x1a+\n\x08DropI\
-    nfo\x12\x1f\n\x0baccount_mvp\x18\x01\x20\x01(\rR\naccountMvp\".\n,CMsgGC\
-    CStrike15_v2_MatchmakingClient2GCHello\"\xf6\x07\n,CMsgGCCStrike15_v2_Ma\
-    tchmakingGC2ClientHello\x12\x1d\n\naccount_id\x18\x01\x20\x01(\rR\taccou\
-    ntId\x12S\n\x0congoingmatch\x18\x02\x20\x01(\x0b2/.CMsgGCCStrike15_v2_Ma\
-    tchmakingGC2ClientReserveR\x0congoingmatch\x124\n\x0cglobal_stats\x18\
-    \x03\x20\x01(\x0b2\x11.GlobalStatisticsR\x0bglobalStats\x12'\n\x0fpenalt\
-    y_seconds\x18\x04\x20\x01(\rR\x0epenaltySeconds\x12%\n\x0epenalty_reason\
-    \x18\x05\x20\x01(\rR\rpenaltyReason\x12\x1d\n\nvac_banned\x18\x06\x20\
-    \x01(\x05R\tvacBanned\x12,\n\x07ranking\x18\x07\x20\x01(\x0b2\x12.Player\
-    RankingInfoR\x07ranking\x12;\n\x0ccommendation\x18\x08\x20\x01(\x0b2\x17\
-    .PlayerCommendationInfoR\x0ccommendation\x12)\n\x06medals\x18\t\x20\x01(\
-    \x0b2\x11.PlayerMedalsInfoR\x06medals\x12:\n\x10my_current_event\x18\n\
-    \x20\x01(\x0b2\x10.TournamentEventR\x0emyCurrentEvent\x12D\n\x16my_curre\
-    nt_event_teams\x18\x0b\x20\x03(\x0b2\x0f.TournamentTeamR\x13myCurrentEve\
-    ntTeams\x127\n\x0fmy_current_team\x18\x0c\x20\x01(\x0b2\x0f.TournamentTe\
-    amR\rmyCurrentTeam\x12G\n\x17my_current_event_stages\x18\r\x20\x03(\x0b2\
+    R\x0emissionlbsdata\x12\x14\n\x05flags\x18\x05\x20\x01(\rR\x05flags\"\
+    \x8e\x01\n.CMsgGCCStrike15_v2_MatchmakingGC2ServerConfirm\x12\x14\n\x05t\
+    oken\x18\x01\x20\x01(\rR\x05token\x12\x14\n\x05stamp\x18\x02\x20\x01(\rR\
+    \x05stamp\x12\x1a\n\x08exchange\x18\x03\x20\x01(\x04R\x08exchange\x12\
+    \x14\n\x05retry\x18\x04\x20\x01(\rR\x05retry\"\x9b\x01\n-CMsgGCCStrike15\
+    _v2_GC2ServerReservationUpdate\x124\n\x16viewers_external_total\x18\x01\
+    \x20\x01(\rR\x14viewersExternalTotal\x124\n\x16viewers_external_steam\
+    \x18\x02\x20\x01(\rR\x14viewersExternalSteam\"\xc6\x02\n#CMsgGCCStrike15\
+    _v2_MatchmakingStart\x12\x1f\n\x0baccount_ids\x18\x01\x20\x03(\rR\naccou\
+    ntIds\x12\x1b\n\tgame_type\x18\x02\x20\x01(\rR\x08gameType\x12\x1f\n\x0b\
+    ticket_data\x18\x03\x20\x01(\tR\nticketData\x12%\n\x0eclient_version\x18\
+    \x04\x20\x01(\rR\rclientVersion\x12@\n\x10tournament_match\x18\x05\x20\
+    \x01(\x0b2\x15.TournamentMatchSetupR\x0ftournamentMatch\x12\x1d\n\nprime\
+    _only\x18\x06\x20\x01(\x08R\tprimeOnly\x12\x1d\n\ntv_control\x18\x07\x20\
+    \x01(\rR\ttvControl\x12\x19\n\x08lobby_id\x18\x08\x20\x01(\x04R\x07lobby\
+    Id\">\n\"CMsgGCCStrike15_v2_MatchmakingStop\x12\x18\n\x07abandon\x18\x01\
+    \x20\x01(\x05R\x07abandon\"\x9c\x01\n2CMsgGCCStrike15_v2_MatchmakingGC2C\
+    lientUpdate_Note\x12\x12\n\x04type\x18\x01\x20\x01(\x05R\x04type\x12\x1b\
+    \n\tregion_id\x18\x02\x20\x01(\x05R\x08regionId\x12\x19\n\x08region_r\
+    \x18\x03\x20\x01(\x02R\x07regionR\x12\x1a\n\x08distance\x18\x04\x20\x01(\
+    \x02R\x08distance\"\xb6\x03\n/CMsgGCCStrike15_v2_MatchmakingClient2Serve\
+    rPing\x129\n\x0fgameserverpings\x18\x01\x20\x03(\x0b2\x0f.GameServerPing\
+    R\x0fgameserverpings\x12!\n\x0coffset_index\x18\x02\x20\x01(\x05R\x0boff\
+    setIndex\x12\x1f\n\x0bfinal_batch\x18\x03\x20\x01(\x05R\nfinalBatch\x12;\
+    \n\x11data_center_pings\x18\x04\x20\x03(\x0b2\x0f.DataCenterPingR\x0fdat\
+    aCenterPings\x12\x19\n\x08max_ping\x18\x05\x20\x01(\rR\x07maxPing\x12\
+    \x1d\n\ntest_token\x18\x06\x20\x01(\x07R\ttestToken\x12\x1d\n\nsearch_ke\
+    y\x18\x07\x20\x01(\x0cR\tsearchKey\x12I\n\x05notes\x18\x08\x20\x03(\x0b2\
+    3.CMsgGCCStrike15_v2_MatchmakingGC2ClientUpdate_NoteR\x05notes\x12#\n\rd\
+    ebug_message\x18\t\x20\x01(\tR\x0cdebugMessage\"\x83\x08\n-CMsgGCCStrike\
+    15_v2_MatchmakingGC2ClientUpdate\x12\x20\n\x0bmatchmaking\x18\x01\x20\
+    \x01(\x05R\x0bmatchmaking\x12=\n\x1bwaiting_account_id_sessions\x18\x02\
+    \x20\x03(\rR\x18waitingAccountIdSessions\x12\x14\n\x05error\x18\x03\x20\
+    \x01(\tR\x05error\x12G\n\x20ongoingmatch_account_id_sessions\x18\x06\x20\
+    \x03(\rR\x1dongoingmatchAccountIdSessions\x124\n\x0cglobal_stats\x18\x07\
+    \x20\x01(\x0b2\x11.GlobalStatisticsR\x0bglobalStats\x12?\n\x1cfailping_a\
+    ccount_id_sessions\x18\x08\x20\x03(\rR\x19failpingAccountIdSessions\x12=\
+    \n\x1bpenalty_account_id_sessions\x18\t\x20\x03(\rR\x18penaltyAccountIdS\
+    essions\x12A\n\x1dfailready_account_id_sessions\x18\n\x20\x03(\rR\x1afai\
+    lreadyAccountIdSessions\x12A\n\x1dvacbanned_account_id_sessions\x18\x0b\
+    \x20\x03(\rR\x1avacbannedAccountIdSessions\x12B\n\x15server_ipaddress_ma\
+    sk\x18\x0c\x20\x01(\x0b2\x0e.IpAddressMaskR\x13serverIpaddressMask\x12I\
+    \n\x05notes\x18\r\x20\x03(\x0b23.CMsgGCCStrike15_v2_MatchmakingGC2Client\
+    Update_NoteR\x05notes\x12H\n!penalty_account_id_sessions_green\x18\x0e\
+    \x20\x03(\rR\x1dpenaltyAccountIdSessionsGreen\x12=\n\x1ainsufficientleve\
+    l_sessions\x18\x0f\x20\x03(\rR\x19insufficientlevelSessions\x12?\n\x1cvs\
+    ncheck_account_id_sessions\x18\x10\x20\x03(\rR\x19vsncheckAccountIdSessi\
+    ons\x12<\n\x1alauncher_mismatch_sessions\x18\x11\x20\x03(\rR\x18launcher\
+    MismatchSessions\x12?\n\x1cinsecure_account_id_sessions\x18\x12\x20\x03(\
+    \rR\x19insecureAccountIdSessions\"\xc6\x06\n(CDataGCCStrike15_v2_Tournam\
+    entMatchDraft\x12\x19\n\x08event_id\x18\x01\x20\x01(\x05R\x07eventId\x12\
+    $\n\x0eevent_stage_id\x18\x02\x20\x01(\x05R\x0ceventStageId\x12\x1a\n\tt\
+    eam_id_0\x18\x03\x20\x01(\x05R\x07teamId0\x12\x1a\n\tteam_id_1\x18\x04\
+    \x20\x01(\x05R\x07teamId1\x12\x1d\n\nmaps_count\x18\x05\x20\x01(\x05R\tm\
+    apsCount\x12!\n\x0cmaps_current\x18\x06\x20\x01(\x05R\x0bmapsCurrent\x12\
+    \"\n\rteam_id_start\x18\x07\x20\x01(\x05R\x0bteamIdStart\x12\"\n\rteam_i\
+    d_veto1\x18\x08\x20\x01(\x05R\x0bteamIdVeto1\x12\"\n\rteam_id_pickn\x18\
+    \t\x20\x01(\x05R\x0bteamIdPickn\x12G\n\x06drafts\x18\n\x20\x03(\x0b2/.CD\
+    ataGCCStrike15_v2_TournamentMatchDraft.EntryR\x06drafts\x12\x20\n\x0cvot\
+    e_mapid_0\x18\x0b\x20\x03(\x05R\nvoteMapid0\x12\x20\n\x0cvote_mapid_1\
+    \x18\x0c\x20\x03(\x05R\nvoteMapid1\x12\x20\n\x0cvote_mapid_2\x18\r\x20\
+    \x03(\x05R\nvoteMapid2\x12\x20\n\x0cvote_mapid_3\x18\x0e\x20\x03(\x05R\n\
+    voteMapid3\x12\x20\n\x0cvote_mapid_4\x18\x0f\x20\x03(\x05R\nvoteMapid4\
+    \x12\x20\n\x0cvote_mapid_5\x18\x10\x20\x03(\x05R\nvoteMapid5\x12,\n\x12v\
+    ote_starting_side\x18\x11\x20\x03(\x05R\x10voteStartingSide\x12\x1d\n\nv\
+    ote_phase\x18\x12\x20\x01(\x05R\tvotePhase\x12(\n\x10vote_phase_start\
+    \x18\x13\x20\x01(\x02R\x0evotePhaseStart\x12*\n\x11vote_phase_length\x18\
+    \x14\x20\x01(\x02R\x0fvotePhaseLength\x1a;\n\x05Entry\x12\x14\n\x05mapid\
+    \x18\x01\x20\x01(\x05R\x05mapid\x12\x1c\n\nteam_id_ct\x18\x02\x20\x01(\
+    \x05R\x08teamIdCt\"\xcf\x02\n\x11CPreMatchInfoData\x12'\n\x0fpredictions\
+    _pct\x18\x01\x20\x01(\x05R\x0epredictionsPct\x12?\n\x05draft\x18\x04\x20\
+    \x01(\x0b2).CDataGCCStrike15_v2_TournamentMatchDraftR\x05draft\x122\n\
+    \x05stats\x18\x05\x20\x03(\x0b2\x1c.CPreMatchInfoData.TeamStatsR\x05stat\
+    s\x12\x12\n\x04wins\x18\x06\x20\x03(\x05R\x04wins\x1a\x87\x01\n\tTeamSta\
+    ts\x12*\n\x11match_info_idxtxt\x18\x01\x20\x01(\x05R\x0fmatchInfoIdxtxt\
+    \x12$\n\x0ematch_info_txt\x18\x02\x20\x01(\tR\x0cmatchInfoTxt\x12(\n\x10\
+    match_info_teams\x18\x03\x20\x03(\tR\x0ematchInfoTeams\"\x96\x07\n.CMsgG\
+    CCStrike15_v2_MatchmakingGC2ServerReserve\x12\x1f\n\x0baccount_ids\x18\
+    \x01\x20\x03(\rR\naccountIds\x12\x1b\n\tgame_type\x18\x02\x20\x01(\rR\
+    \x08gameType\x12\x19\n\x08match_id\x18\x03\x20\x01(\x04R\x07matchId\x12%\
+    \n\x0eserver_version\x18\x04\x20\x01(\rR\rserverVersion\x12\x14\n\x05fla\
+    gs\x18\x12\x20\x01(\rR\x05flags\x12.\n\x08rankings\x18\x05\x20\x03(\x0b2\
+    \x12.PlayerRankingInfoR\x08rankings\x12%\n\x0eencryption_key\x18\x06\x20\
+    \x01(\x04R\rencryptionKey\x12,\n\x12encryption_key_pub\x18\x07\x20\x01(\
+    \x04R\x10encryptionKeyPub\x12\x1b\n\tparty_ids\x18\x08\x20\x03(\rR\x08pa\
+    rtyIds\x12,\n\twhitelist\x18\t\x20\x03(\x0b2\x0e.IpAddressMaskR\twhiteli\
+    st\x12*\n\x11tv_master_steamid\x18\n\x20\x01(\x04R\x0ftvMasterSteamid\
+    \x12;\n\x10tournament_event\x18\x0b\x20\x01(\x0b2\x10.TournamentEventR\
+    \x0ftournamentEvent\x12:\n\x10tournament_teams\x18\x0c\x20\x03(\x0b2\x0f\
+    .TournamentTeamR\x0ftournamentTeams\x12C\n\x1etournament_casters_account\
+    _ids\x18\r\x20\x03(\rR\x1btournamentCastersAccountIds\x12(\n\x10tv_relay\
+    _steamid\x18\x0e\x20\x01(\x04R\x0etvRelaySteamid\x128\n\x0epre_match_dat\
+    a\x18\x0f\x20\x01(\x0b2\x12.CPreMatchInfoDataR\x0cpreMatchData\x12.\n\
+    \x13rtime32_event_start\x18\x10\x20\x01(\rR\x11rtime32EventStart\x12\x1d\
+    \n\ntv_control\x18\x11\x20\x01(\rR\ttvControl\x128\n\rop_var_values\x18\
+    \x13\x20\x03(\x0b2\x14.OperationalVarValueR\x0bopVarValues\x12'\n\x0fsoc\
+    ache_control\x18\x14\x20\x01(\rR\x0esocacheControl\"\x91\x07\n7CMsgGCCSt\
+    rike15_v2_MatchmakingServerReservationResponse\x12$\n\rreservationid\x18\
+    \x01\x20\x01(\x04R\rreservationid\x12Q\n\x0breservation\x18\x02\x20\x01(\
+    \x0b2/.CMsgGCCStrike15_v2_MatchmakingGC2ServerReserveR\x0breservation\
+    \x12\x10\n\x03map\x18\x03\x20\x01(\tR\x03map\x12.\n\x13gc_reservation_se\
+    nt\x18\x04\x20\x01(\x04R\x11gcReservationSent\x12%\n\x0eserver_version\
+    \x18\x05\x20\x01(\rR\rserverVersion\x12(\n\x07tv_info\x18\x06\x20\x01(\
+    \x0b2\x0f.ServerHltvInfoR\x06tvInfo\x124\n\x16reward_player_accounts\x18\
+    \x07\x20\x03(\rR\x14rewardPlayerAccounts\x120\n\x14idle_player_accounts\
+    \x18\x08\x20\x03(\rR\x12idlePlayerAccounts\x126\n\x18reward_item_attr_de\
+    f_idx\x18\t\x20\x01(\rR\x14rewardItemAttrDefIdx\x123\n\x16reward_item_at\
+    tr_value\x18\n\x20\x01(\rR\x13rewardItemAttrValue\x12<\n\x1breward_item_\
+    attr_reward_idx\x18\x0b\x20\x01(\rR\x17rewardItemAttrRewardIdx\x12(\n\
+    \x10reward_drop_list\x18\x0c\x20\x01(\rR\x0erewardDropList\x12%\n\x0etou\
+    rnament_tag\x18\r\x20\x01(\tR\rtournamentTag\x12:\n\x19legacy_steamdatag\
+    ram_port\x18\x0e\x20\x01(\rR\x17legacySteamdatagramPort\x123\n\x15steamd\
+    atagram_routing\x18\x11\x20\x01(\rR\x14steamdatagramRouting\x12\x1d\n\nt\
+    est_token\x18\x0f\x20\x01(\x07R\ttestToken\x12\x14\n\x05flags\x18\x10\
+    \x20\x01(\rR\x05flags\x12\x1f\n\x0bsystem_load\x18\x12\x20\x01(\rR\nsyst\
+    emLoad\x12\x1f\n\x0bcpus_online\x18\x13\x20\x01(\rR\ncpusOnline\"\x9a\
+    \x03\n.CMsgGCCStrike15_v2_MatchmakingGC2ClientReserve\x12\x1a\n\x08serve\
+    rid\x18\x01\x20\x01(\x04R\x08serverid\x12\"\n\rdirect_udp_ip\x18\x02\x20\
+    \x01(\rR\x0bdirectUdpIp\x12&\n\x0fdirect_udp_port\x18\x03\x20\x01(\rR\rd\
+    irectUdpPort\x12$\n\rreservationid\x18\x04\x20\x01(\x04R\rreservationid\
+    \x12Q\n\x0breservation\x18\x05\x20\x01(\x0b2/.CMsgGCCStrike15_v2_Matchma\
+    kingGC2ServerReserveR\x0breservation\x12\x10\n\x03map\x18\x06\x20\x01(\t\
+    R\x03map\x12%\n\x0eserver_address\x18\x07\x20\x01(\tR\rserverAddress\x12\
+    (\n\x07gs_ping\x18\x08\x20\x01(\x0b2\x0f.DataCenterPingR\x06gsPing\x12$\
+    \n\x0egs_location_id\x18\t\x20\x01(\rR\x0cgsLocationId\"\x89\n\n.CMsgGCC\
+    Strike15_v2_MatchmakingServerRoundStats\x12$\n\rreservationid\x18\x01\
+    \x20\x01(\x04R\rreservationid\x12Q\n\x0breservation\x18\x02\x20\x01(\x0b\
+    2/.CMsgGCCStrike15_v2_MatchmakingGC2ServerReserveR\x0breservation\x12\
+    \x10\n\x03map\x18\x03\x20\x01(\tR\x03map\x12\x14\n\x05round\x18\x04\x20\
+    \x01(\x05R\x05round\x12\x14\n\x05kills\x18\x05\x20\x03(\x05R\x05kills\
+    \x12\x18\n\x07assists\x18\x06\x20\x03(\x05R\x07assists\x12\x16\n\x06deat\
+    hs\x18\x07\x20\x03(\x05R\x06deaths\x12\x16\n\x06scores\x18\x08\x20\x03(\
+    \x05R\x06scores\x12\x14\n\x05pings\x18\t\x20\x03(\x05R\x05pings\x12!\n\
+    \x0cround_result\x18\n\x20\x01(\x05R\x0broundResult\x12!\n\x0cmatch_resu\
+    lt\x18\x0b\x20\x01(\x05R\x0bmatchResult\x12\x1f\n\x0bteam_scores\x18\x0c\
+    \x20\x03(\x05R\nteamScores\x12I\n\x07confirm\x18\r\x20\x01(\x0b2/.CMsgGC\
+    CStrike15_v2_MatchmakingGC2ServerConfirmR\x07confirm\x12+\n\x11reservati\
+    on_stage\x18\x0e\x20\x01(\x05R\x10reservationStage\x12%\n\x0ematch_durat\
+    ion\x18\x0f\x20\x01(\x05R\rmatchDuration\x12\x1f\n\x0benemy_kills\x18\
+    \x10\x20\x03(\x05R\nenemyKills\x12'\n\x0fenemy_headshots\x18\x11\x20\x03\
+    (\x05R\x0eenemyHeadshots\x12\x1b\n\tenemy_3ks\x18\x12\x20\x03(\x05R\x08e\
+    nemy3ks\x12\x1b\n\tenemy_4ks\x18\x13\x20\x03(\x05R\x08enemy4ks\x12\x1b\n\
+    \tenemy_5ks\x18\x14\x20\x03(\x05R\x08enemy5ks\x12\x12\n\x04mvps\x18\x15\
+    \x20\x03(\x05R\x04mvps\x12)\n\x10spectators_count\x18\x16\x20\x01(\rR\
+    \x0fspectatorsCount\x12.\n\x13spectators_count_tv\x18\x17\x20\x01(\rR\
+    \x11spectatorsCountTv\x120\n\x14spectators_count_lnk\x18\x18\x20\x01(\rR\
+    \x12spectatorsCountLnk\x12&\n\x0fenemy_kills_agg\x18\x19\x20\x03(\x05R\r\
+    enemyKillsAgg\x12U\n\tdrop_info\x18\x1a\x20\x01(\x0b28.CMsgGCCStrike15_v\
+    2_MatchmakingServerRoundStats.DropInfoR\x08dropInfo\x12(\n\x10b_switched\
+    _teams\x18\x1b\x20\x01(\x08R\x0ebSwitchedTeams\x12\x1b\n\tenemy_2ks\x18\
+    \x1c\x20\x03(\x05R\x08enemy2ks\x12%\n\x0eplayer_spawned\x18\x1d\x20\x03(\
+    \x05R\rplayerSpawned\x12(\n\x10team_spawn_count\x18\x1e\x20\x03(\x05R\
+    \x0eteamSpawnCount\x12\x1d\n\nmax_rounds\x18\x1f\x20\x01(\rR\tmaxRounds\
+    \x12\x15\n\x06map_id\x18\x20\x20\x01(\x05R\x05mapId\x1a+\n\x08DropInfo\
+    \x12\x1f\n\x0baccount_mvp\x18\x01\x20\x01(\rR\naccountMvp\".\n,CMsgGCCSt\
+    rike15_v2_MatchmakingClient2GCHello\"\xf6\x07\n,CMsgGCCStrike15_v2_Match\
+    makingGC2ClientHello\x12\x1d\n\naccount_id\x18\x01\x20\x01(\rR\taccountI\
+    d\x12S\n\x0congoingmatch\x18\x02\x20\x01(\x0b2/.CMsgGCCStrike15_v2_Match\
+    makingGC2ClientReserveR\x0congoingmatch\x124\n\x0cglobal_stats\x18\x03\
+    \x20\x01(\x0b2\x11.GlobalStatisticsR\x0bglobalStats\x12'\n\x0fpenalty_se\
+    conds\x18\x04\x20\x01(\rR\x0epenaltySeconds\x12%\n\x0epenalty_reason\x18\
+    \x05\x20\x01(\rR\rpenaltyReason\x12\x1d\n\nvac_banned\x18\x06\x20\x01(\
+    \x05R\tvacBanned\x12,\n\x07ranking\x18\x07\x20\x01(\x0b2\x12.PlayerRanki\
+    ngInfoR\x07ranking\x12;\n\x0ccommendation\x18\x08\x20\x01(\x0b2\x17.Play\
+    erCommendationInfoR\x0ccommendation\x12)\n\x06medals\x18\t\x20\x01(\x0b2\
+    \x11.PlayerMedalsInfoR\x06medals\x12:\n\x10my_current_event\x18\n\x20\
+    \x01(\x0b2\x10.TournamentEventR\x0emyCurrentEvent\x12D\n\x16my_current_e\
+    vent_teams\x18\x0b\x20\x03(\x0b2\x0f.TournamentTeamR\x13myCurrentEventTe\
+    ams\x127\n\x0fmy_current_team\x18\x0c\x20\x01(\x0b2\x0f.TournamentTeamR\
+    \rmyCurrentTeam\x12G\n\x17my_current_event_stages\x18\r\x20\x03(\x0b2\
     \x10.TournamentEventR\x14myCurrentEventStages\x12\x1f\n\x0bsurvey_vote\
     \x18\x0e\x20\x01(\rR\nsurveyVote\x12,\n\x08activity\x18\x0f\x20\x01(\x0b\
     2\x10.AccountActivityR\x08activity\x12!\n\x0cplayer_level\x18\x11\x20\
@@ -47204,7 +47261,7 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \n)CMsgGCCStrike15_v2_MatchEndRunRewardDrops\x12X\n\nserverinfo\x18\x03\
     \x20\x01(\x0b28.CMsgGCCStrike15_v2_MatchmakingServerReservationResponseR\
     \nserverinfo\x12N\n\x14match_end_quest_data\x18\x04\x20\x01(\x0b2\x1d.CM\
-    sgGC_ServerQuestUpdateDataR\x11matchEndQuestData\"\xcf\x06\n\x19CEconIte\
+    sgGC_ServerQuestUpdateDataR\x11matchEndQuestData\"\x91\x07\n\x19CEconIte\
     mPreviewDataBlock\x12\x1c\n\taccountid\x18\x01\x20\x01(\rR\taccountid\
     \x12\x16\n\x06itemid\x18\x02\x20\x01(\x04R\x06itemid\x12\x1a\n\x08defind\
     ex\x18\x03\x20\x01(\rR\x08defindex\x12\x1e\n\npaintindex\x18\x04\x20\x01\
@@ -47220,40 +47277,41 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x07questid\x12\x1e\n\ndropreason\x18\x10\x20\x01(\rR\ndropreason\x12\
     \x1e\n\nmusicindex\x18\x11\x20\x01(\rR\nmusicindex\x12\x1a\n\x08entindex\
     \x18\x12\x20\x01(\x05R\x08entindex\x12\x1a\n\x08petindex\x18\x13\x20\x01\
-    (\rR\x08petindex\x1a\xd1\x01\n\x07Sticker\x12\x12\n\x04slot\x18\x01\x20\
-    \x01(\rR\x04slot\x12\x1d\n\nsticker_id\x18\x02\x20\x01(\rR\tstickerId\
-    \x12\x12\n\x04wear\x18\x03\x20\x01(\x02R\x04wear\x12\x14\n\x05scale\x18\
-    \x04\x20\x01(\x02R\x05scale\x12\x1a\n\x08rotation\x18\x05\x20\x01(\x02R\
-    \x08rotation\x12\x17\n\x07tint_id\x18\x06\x20\x01(\rR\x06tintId\x12\x19\
-    \n\x08offset_x\x18\x07\x20\x01(\x02R\x07offsetX\x12\x19\n\x08offset_y\
-    \x18\x08\x20\x01(\x02R\x07offsetY\"l\n2CMsgGCCStrike15_v2_MatchEndReward\
-    DropsNotification\x126\n\x08iteminfo\x18\x06\x20\x01(\x0b2\x1a.CEconItem\
-    PreviewDataBlockR\x08iteminfo\"N\n\x14CMsgItemAcknowledged\x126\n\x08ite\
-    minfo\x18\x01\x20\x01(\x0b2\x1a.CEconItemPreviewDataBlockR\x08iteminfo\"\
-    \x9d\x01\n7CMsgGCCStrike15_v2_Client2GCEconPreviewDataBlockRequest\x12\
-    \x17\n\x07param_s\x18\x01\x20\x01(\x04R\x06paramS\x12\x17\n\x07param_a\
-    \x18\x02\x20\x01(\x04R\x06paramA\x12\x17\n\x07param_d\x18\x03\x20\x01(\
-    \x04R\x06paramD\x12\x17\n\x07param_m\x18\x04\x20\x01(\x04R\x06paramM\"r\
-    \n8CMsgGCCStrike15_v2_Client2GCEconPreviewDataBlockResponse\x126\n\x08it\
-    eminfo\x18\x01\x20\x01(\x0b2\x1a.CEconItemPreviewDataBlockR\x08iteminfo\
-    \"5\n3CMsgGCCStrike15_v2_MatchListRequestCurrentLiveGames\"R\n2CMsgGCCSt\
-    rike15_v2_MatchListRequestLiveGameForUser\x12\x1c\n\taccountid\x18\x01\
-    \x20\x01(\rR\taccountid\"R\n2CMsgGCCStrike15_v2_MatchListRequestRecentUs\
-    erGames\x12\x1c\n\taccountid\x18\x01\x20\x01(\rR\taccountid\"N\n2CMsgGCC\
-    Strike15_v2_MatchListRequestTournamentGames\x12\x18\n\x07eventid\x18\x01\
-    \x20\x01(\x05R\x07eventid\"\x7f\n/CMsgGCCStrike15_v2_MatchListRequestFul\
-    lGameInfo\x12\x18\n\x07matchid\x18\x01\x20\x01(\x04R\x07matchid\x12\x1c\
-    \n\toutcomeid\x18\x02\x20\x01(\x04R\toutcomeid\x12\x14\n\x05token\x18\
-    \x03\x20\x01(\rR\x05token\"\xd1\x02\n\x1dCDataGCCStrike15_v2_MatchInfo\
-    \x12\x18\n\x07matchid\x18\x01\x20\x01(\x04R\x07matchid\x12\x1c\n\tmatcht\
-    ime\x18\x02\x20\x01(\rR\tmatchtime\x12C\n\x12watchablematchinfo\x18\x03\
-    \x20\x01(\x0b2\x13.WatchableMatchInfoR\x12watchablematchinfo\x12\\\n\x11\
-    roundstats_legacy\x18\x04\x20\x01(\x0b2/.CMsgGCCStrike15_v2_MatchmakingS\
-    erverRoundStatsR\x10roundstatsLegacy\x12U\n\rroundstatsall\x18\x05\x20\
-    \x03(\x0b2/.CMsgGCCStrike15_v2_MatchmakingServerRoundStatsR\rroundstatsa\
-    ll\"z\n'CDataGCCStrike15_v2_TournamentGroupTeam\x12\x17\n\x07team_id\x18\
-    \x01\x20\x01(\x05R\x06teamId\x12\x14\n\x05score\x18\x02\x20\x01(\x05R\
-    \x05score\x12\x20\n\x0bcorrectpick\x18\x03\x20\x01(\x08R\x0bcorrectpick\
+    (\rR\x08petindex\x12@\n\tkeychains\x18\x14\x20\x03(\x0b2\".CEconItemPrev\
+    iewDataBlock.StickerR\tkeychains\x1a\xd1\x01\n\x07Sticker\x12\x12\n\x04s\
+    lot\x18\x01\x20\x01(\rR\x04slot\x12\x1d\n\nsticker_id\x18\x02\x20\x01(\r\
+    R\tstickerId\x12\x12\n\x04wear\x18\x03\x20\x01(\x02R\x04wear\x12\x14\n\
+    \x05scale\x18\x04\x20\x01(\x02R\x05scale\x12\x1a\n\x08rotation\x18\x05\
+    \x20\x01(\x02R\x08rotation\x12\x17\n\x07tint_id\x18\x06\x20\x01(\rR\x06t\
+    intId\x12\x19\n\x08offset_x\x18\x07\x20\x01(\x02R\x07offsetX\x12\x19\n\
+    \x08offset_y\x18\x08\x20\x01(\x02R\x07offsetY\"l\n2CMsgGCCStrike15_v2_Ma\
+    tchEndRewardDropsNotification\x126\n\x08iteminfo\x18\x06\x20\x01(\x0b2\
+    \x1a.CEconItemPreviewDataBlockR\x08iteminfo\"N\n\x14CMsgItemAcknowledged\
+    \x126\n\x08iteminfo\x18\x01\x20\x01(\x0b2\x1a.CEconItemPreviewDataBlockR\
+    \x08iteminfo\"\x9d\x01\n7CMsgGCCStrike15_v2_Client2GCEconPreviewDataBloc\
+    kRequest\x12\x17\n\x07param_s\x18\x01\x20\x01(\x04R\x06paramS\x12\x17\n\
+    \x07param_a\x18\x02\x20\x01(\x04R\x06paramA\x12\x17\n\x07param_d\x18\x03\
+    \x20\x01(\x04R\x06paramD\x12\x17\n\x07param_m\x18\x04\x20\x01(\x04R\x06p\
+    aramM\"r\n8CMsgGCCStrike15_v2_Client2GCEconPreviewDataBlockResponse\x126\
+    \n\x08iteminfo\x18\x01\x20\x01(\x0b2\x1a.CEconItemPreviewDataBlockR\x08i\
+    teminfo\"5\n3CMsgGCCStrike15_v2_MatchListRequestCurrentLiveGames\"R\n2CM\
+    sgGCCStrike15_v2_MatchListRequestLiveGameForUser\x12\x1c\n\taccountid\
+    \x18\x01\x20\x01(\rR\taccountid\"R\n2CMsgGCCStrike15_v2_MatchListRequest\
+    RecentUserGames\x12\x1c\n\taccountid\x18\x01\x20\x01(\rR\taccountid\"N\n\
+    2CMsgGCCStrike15_v2_MatchListRequestTournamentGames\x12\x18\n\x07eventid\
+    \x18\x01\x20\x01(\x05R\x07eventid\"\x7f\n/CMsgGCCStrike15_v2_MatchListRe\
+    questFullGameInfo\x12\x18\n\x07matchid\x18\x01\x20\x01(\x04R\x07matchid\
+    \x12\x1c\n\toutcomeid\x18\x02\x20\x01(\x04R\toutcomeid\x12\x14\n\x05toke\
+    n\x18\x03\x20\x01(\rR\x05token\"\xd1\x02\n\x1dCDataGCCStrike15_v2_MatchI\
+    nfo\x12\x18\n\x07matchid\x18\x01\x20\x01(\x04R\x07matchid\x12\x1c\n\tmat\
+    chtime\x18\x02\x20\x01(\rR\tmatchtime\x12C\n\x12watchablematchinfo\x18\
+    \x03\x20\x01(\x0b2\x13.WatchableMatchInfoR\x12watchablematchinfo\x12\\\n\
+    \x11roundstats_legacy\x18\x04\x20\x01(\x0b2/.CMsgGCCStrike15_v2_Matchmak\
+    ingServerRoundStatsR\x10roundstatsLegacy\x12U\n\rroundstatsall\x18\x05\
+    \x20\x03(\x0b2/.CMsgGCCStrike15_v2_MatchmakingServerRoundStatsR\rroundst\
+    atsall\"z\n'CDataGCCStrike15_v2_TournamentGroupTeam\x12\x17\n\x07team_id\
+    \x18\x01\x20\x01(\x05R\x06teamId\x12\x14\n\x05score\x18\x02\x20\x01(\x05\
+    R\x05score\x12\x20\n\x0bcorrectpick\x18\x03\x20\x01(\x08R\x0bcorrectpick\
     \"\xd1\x03\n#CDataGCCStrike15_v2_TournamentGroup\x12\x18\n\x07groupid\
     \x18\x01\x20\x01(\rR\x07groupid\x12\x12\n\x04name\x18\x02\x20\x01(\tR\
     \x04name\x12\x12\n\x04desc\x18\x03\x20\x01(\tR\x04desc\x12*\n\x11picks__\

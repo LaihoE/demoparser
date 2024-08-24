@@ -4,6 +4,7 @@ fn main() {
         .includes(&["Protobufs/csgo/"])
         .input("Protobufs/csgo/demo.proto")
         .input("Protobufs/csgo/cstrike15_gcmessages.proto")
+        .input("Protobufs/csgo/cstrike15_usermessages.proto")
         .input("Protobufs/csgo/usermessages.proto")
         .input("Protobufs/csgo/networkbasetypes.proto")
         .input("Protobufs/csgo/engine_gcmessages.proto")
@@ -11,7 +12,9 @@ fn main() {
         .input("Protobufs/csgo/netmessages.proto")
         .input("Protobufs/csgo/network_connection.proto")
         .input("Protobufs/csgo/gcsdk_gcmessages.proto")
-        .out_dir("src2/")
+        .input("Protobufs/csgo/cs_usercmd.proto")
+        .input("Protobufs/csgo/usercmd.proto")
+        .out_dir("src/")
         .customize(protobuf_codegen::Customize::default().tokio_bytes(true))
         .run_from_script();
 }
