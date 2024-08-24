@@ -143,19 +143,17 @@ impl FrameParser {
         offsets.sort_by_key(|x| x.end);
 
         let is_ok = check_all_bytes_are_covered(offsets, demo_bytes.len(), sender.clone());
-        sender
-            .send({
-                StartEndOffset {
-                    start: 0,
-                    end: 0,
-                    msg_type: if is_ok {
-                        StartEndType::EndOfMessages
-                    } else {
-                        StartEndType::MultithreadingWasNotOk
-                    },
-                }
-            })
-            .unwrap();
+        let _ = sender.send({
+            StartEndOffset {
+                start: 0,
+                end: 0,
+                msg_type: if is_ok {
+                    StartEndType::EndOfMessages
+                } else {
+                    StartEndType::MultithreadingWasNotOk
+                },
+            }
+        });
 
         Ok(())
     }
@@ -205,7 +203,6 @@ impl FrameParser {
                 }
                 // If we are past our designated end and we find a fullpacket we exit
                 if ptr > end && frame.demo_cmd == csgoproto::demo::EDemoCommands::DEM_FullPacket {
-                    // println!("EXIT {:?}", bef.elapsed());
                     return Ok(outs);
                 }
             } else {
@@ -219,8 +216,8 @@ fn check_all_bytes_are_covered(mut sorted_offsets: Vec<StartEndOffset>, demo_len
     sorted_offsets.dedup();
     let mut send_ok = true;
     // Check that no gaps in the ranges
-    for i in 0..sorted_offsets.len() - 1 {
-        if sorted_offsets[i].end != sorted_offsets[i + 1].start {
+    for w in sorted_offsets.windows(2) {
+        if w[0].end != w[1].start {
             return false;
         }
     }
