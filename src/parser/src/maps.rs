@@ -1,3 +1,26 @@
+use crate::first_pass::prop_controller::AGENT_SKIN_ID;
+use crate::first_pass::prop_controller::ENTITY_ID_ID;
+use crate::first_pass::prop_controller::INVENTORY_AS_IDS_ID;
+use crate::first_pass::prop_controller::INVENTORY_ID;
+use crate::first_pass::prop_controller::IS_AIRBORNE_ID;
+use crate::first_pass::prop_controller::IS_ALIVE_ID;
+use crate::first_pass::prop_controller::PITCH_ID;
+use crate::first_pass::prop_controller::PLAYER_X_ID;
+use crate::first_pass::prop_controller::PLAYER_Y_ID;
+use crate::first_pass::prop_controller::PLAYER_Z_ID;
+use crate::first_pass::prop_controller::USERID_ID;
+use crate::first_pass::prop_controller::VELOCITY_ID;
+use crate::first_pass::prop_controller::VELOCITY_X_ID;
+use crate::first_pass::prop_controller::VELOCITY_Y_ID;
+use crate::first_pass::prop_controller::VELOCITY_Z_ID;
+use crate::first_pass::prop_controller::WEAPON_FLOAT;
+use crate::first_pass::prop_controller::WEAPON_NAME_ID;
+use crate::first_pass::prop_controller::WEAPON_ORIGINGAL_OWNER_ID;
+use crate::first_pass::prop_controller::WEAPON_PAINT_SEED;
+use crate::first_pass::prop_controller::WEAPON_SKIN_ID;
+use crate::first_pass::prop_controller::WEAPON_SKIN_NAME;
+use crate::first_pass::prop_controller::WEAPON_STICKERS_ID;
+use crate::first_pass::prop_controller::YAW_ID;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::decoder::Decoder;
@@ -1929,6 +1952,32 @@ pub static PAINTKITS: phf::Map<u32, &'static str> = phf_map! {
     10086_u32=>"Yellow-banded",
     10087_u32=>"NeedlePoint",
     10088_u32=>"Unhinged",
+};
+
+pub static CUSTOM_PLAYER_PROP_IDS: phf::Map<&'static str, u32> = phf_map! {
+    "entity_id" => ENTITY_ID_ID,
+    "user_id"=> USERID_ID,
+    "X"=> PLAYER_X_ID,
+    "Y"=> PLAYER_Y_ID,
+    "Z"=> PLAYER_Z_ID,
+    "velocity_X" => VELOCITY_X_ID,
+    "velocity_Y" => VELOCITY_Y_ID,
+    "velocity_Z" => VELOCITY_Z_ID,
+    "velocity" => VELOCITY_ID,
+    "pitch"=> PITCH_ID,
+    "yaw"=> YAW_ID,
+    "is_alive" => IS_ALIVE_ID,
+    "is_airborne" => IS_AIRBORNE_ID,
+    "agent_skin" => AGENT_SKIN_ID,
+    "inventory" => INVENTORY_ID,
+    "inventory_as_ids" => INVENTORY_AS_IDS_ID,
+    "active_weapon_original_owner" => WEAPON_ORIGINGAL_OWNER_ID,
+    "active_weapon_name" => WEAPON_NAME_ID,
+    "active_weapon_skin" => WEAPON_SKIN_NAME,
+    "weapon_skin_id" => WEAPON_SKIN_ID,
+    "weapon_paint_seed" => WEAPON_PAINT_SEED,
+    "weapon_float" => WEAPON_FLOAT,
+    "weapon_stickers" => WEAPON_STICKERS_ID,
 };
 
 pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
