@@ -154,11 +154,12 @@ impl PropController {
                 self.prop_infos.push(PropInfo {
                     id: *custom_prop_id,
                     prop_type: PropType::Custom,
-                    prop_name: FRIENDLY_NAMES_MAPPING
-                        .get(&custom_prop_name)
-                        .unwrap_or(&custom_prop_name)
+                    prop_name: custom_prop_name.to_string(),
+                    prop_friendly_name: self
+                        .real_name_to_og_name
+                        .get(&custom_prop_name.to_string())
+                        .unwrap_or(&custom_prop_name.to_string())
                         .to_string(),
-                    prop_friendly_name: custom_prop_name.to_string(),
                     is_player_prop: true,
                 })
             }
@@ -167,11 +168,12 @@ impl PropController {
                     base: PropInfo {
                         id: *custom_prop_id,
                         prop_type: PropType::Custom,
-                        prop_name: FRIENDLY_NAMES_MAPPING
-                            .get(&custom_prop_name)
-                            .unwrap_or(&custom_prop_name)
+                        prop_name: custom_prop_name.to_string(),
+                        prop_friendly_name: self
+                            .real_name_to_og_name
+                            .get(&custom_prop_name.to_string())
+                            .unwrap_or(&custom_prop_name.to_string())
                             .to_string(),
-                        prop_friendly_name: custom_prop_name.to_string(),
                         is_player_prop: true,
                     },
                     wanted_prop_state: wanted_state.clone(),
