@@ -6,6 +6,12 @@ from demoparser2 import DemoParser
 
 demo_path = "../parser/test_demo.dem"
 
+class WantedPropState:
+    def __init__(self, prop, state):
+        self.prop = prop
+        self.state = state
+
+
 class SignatureTest(TestCase):
     def test_parse_header_signature(self):
         parser = DemoParser(demo_path)
@@ -60,6 +66,8 @@ class SignatureTest(TestCase):
         )
         parser.parse_event("player_death", player=None, other=None)
         parser.parse_event("player_death", player=[], other=[])
+        parser.parse_event("player_death", player_states=[WantedPropState("is_defusing", True)])
+        parser.parse_event("player_death", other_states=[WantedPropState("is_bomb_planted", False)])
 
         with self.assertRaises(TypeError):
             parser.parse_event("player_death", player=5, other=None)
@@ -72,6 +80,12 @@ class SignatureTest(TestCase):
 
         with self.assertRaises(TypeError):
             parser.parse_event(5)
+
+        with self.assertRaises(AttributeError):
+            parser.parse_event("player_death", player_states=[{"prop": "is_defusing", "state": True}])
+
+        with self.assertRaises(AttributeError):
+            parser.parse_event("player_death", other_states=[{"prop": "is_bomb_planted", "state": True}])
 
     def test_parse_events_signature(self):
         parser = DemoParser(demo_path)
@@ -95,6 +109,8 @@ class SignatureTest(TestCase):
         )
         parser.parse_events(["player_death"], player=None, other=None)
         parser.parse_events(["player_death"], player=[], other=[])
+        parser.parse_events(["player_death"], player_states=[WantedPropState("is_defusing", True)])
+        parser.parse_events(["player_death"], other_states=[WantedPropState("is_bomb_planted", False)])
 
         with self.assertRaises(TypeError):
             parser.parse_events(["player_death"], player=5, other=None)
@@ -110,6 +126,12 @@ class SignatureTest(TestCase):
 
         with self.assertRaises(TypeError):
             parser.parse_events(5)
+
+        with self.assertRaises(AttributeError):
+            parser.parse_events(["player_death"], player_states=[{"prop": "is_defusing", "state": True}])
+
+        with self.assertRaises(AttributeError):
+            parser.parse_events(["player_death"], other_states=[{"prop": "is_bomb_planted", "state": True}])
 
     def test_parse_voice_signature(self):
         parser = DemoParser(demo_path)
@@ -128,6 +150,7 @@ class SignatureTest(TestCase):
         parser.parse_ticks(["X", "Y"], players=[1, 2, 3], ticks=[1, 2, 3])
         parser.parse_ticks(["X", "Y"], players=None, ticks=None)
         parser.parse_ticks(["X", "Y"], players=[], ticks=[])
+        parser.parse_ticks(["X", "Y"], player_states=[WantedPropState("is_alive", True)], other_states=[WantedPropState("is_bomb_planted", True)])
 
         with self.assertRaises(TypeError):
             parser.parse_ticks(["X", "Y"], players=5, ticks=None)
@@ -140,6 +163,9 @@ class SignatureTest(TestCase):
 
         with self.assertRaises(TypeError):
             parser.parse_ticks(5)
+
+        with self.assertRaises(AttributeError):
+            parser.parse_ticks(["X", "Y"], player_states=[{"prop": "is_alive", "state": True}])
 
 
 if __name__ == "__main__":
