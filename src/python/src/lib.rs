@@ -10,7 +10,6 @@ use parser::parse_demo::Parser;
 use parser::second_pass::game_events::EventField;
 use parser::second_pass::game_events::GameEvent;
 use parser::second_pass::parser_settings::create_huffman_lookup_table;
-use parser::second_pass::variants::Sticker;
 use parser::second_pass::variants::VarVec;
 use parser::second_pass::variants::Variant;
 #[cfg(feature = "voice")]
@@ -38,7 +37,6 @@ use pyo3::create_exception;
 create_exception!(DemoParser, Exception, pyo3::exceptions::PyException);
 
 struct PyVariant(Variant);
-struct PySticker(Sticker);
 
 impl<'source> FromPyObject<'source> for PyVariant {
     fn extract_bound(obj: &pyo3::Bound<'source, PyAny>) -> PyResult<Self> {
@@ -68,28 +66,16 @@ impl<'source> FromPyObject<'source> for PyVariant {
             Ok(PyVariant(Variant::U32Vec(val)))
         } else if let Ok(val) = obj.extract::<Vec<u64>>() {
             Ok(PyVariant(Variant::U64Vec(val)))
-        } else if let Ok(val) = obj.extract::<Vec<PySticker>>() {
-            Ok(PyVariant(Variant::Stickers(
-                val.into_iter().map(|ps| ps.0).collect(),
-            )))
         } else {
             Err(PyValueError::new_err("Unsupported type for Variant"))
         }
     }
 }
 
-impl<'source> FromPyObject<'source> for PySticker {
-    fn extract_bound(obj: &pyo3::Bound<'source, PyAny>) -> PyResult<Self> {
-        let dict = obj.extract::<&PyDict>()?;
-        let sticker = Sticker {
-            name: dict.get_item("name").unwrap().extract::<String>()?,
-            wear: dict.get_item("wear").unwrap().extract::<f32>()?,
-            id: dict.get_item("id").unwrap().extract::<u32>()?,
-            x: dict.get_item("x").unwrap().extract::<f32>()?,
-            y: dict.get_item("y").unwrap().extract::<f32>()?,
-        };
-        Ok(PySticker(sticker))
-    }
+#[derive(FromPyObject)]
+struct WantedPropState {
+    prop: String,
+    state: PyVariant,
 }
 
 #[pymethods]
@@ -455,20 +441,20 @@ impl DemoParser {
         event_name: String,
         player: Option<Vec<String>>,
         other: Option<Vec<String>>,
-        player_states: Option<AHashMap<String, PyVariant>>,
-        other_states: Option<AHashMap<String, PyVariant>>,
+        player_states: Option<Vec<WantedPropState>>,
+        other_states: Option<Vec<WantedPropState>>,
     ) -> PyResult<Py<PyAny>> {
         let wanted_player_props = player.unwrap_or_default();
         let wanted_other_props = other.unwrap_or_default();
-        let wanted_player_states = player_states
+        let wanted_player_states: AHashMap<String, Variant> = player_states
             .unwrap_or_default()
             .into_iter()
-            .map(|(k, v)| (k, v.0))
+            .map(|prop| (prop.prop, prop.state.0))
             .collect();
         let wanted_other_states = other_states
             .unwrap_or_default()
             .into_iter()
-            .map(|(k, v)| (k, v.0))
+            .map(|prop| (prop.prop, prop.state.0))
             .collect();
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
@@ -548,20 +534,20 @@ impl DemoParser {
         event_name: Vec<String>,
         player: Option<Vec<String>>,
         other: Option<Vec<String>>,
-        player_states: Option<AHashMap<String, PyVariant>>,
-        other_states: Option<AHashMap<String, PyVariant>>,
+        player_states: Option<Vec<WantedPropState>>,
+        other_states: Option<Vec<WantedPropState>>,
     ) -> PyResult<Py<PyAny>> {
         let wanted_player_props = player.unwrap_or_default();
         let wanted_other_props = other.unwrap_or_default();
         let wanted_player_states = player_states
             .unwrap_or_default()
             .into_iter()
-            .map(|(k, v)| (k, v.0))
+            .map(|prop| (prop.prop, prop.state.0))
             .collect();
         let wanted_other_states = other_states
             .unwrap_or_default()
             .into_iter()
-            .map(|(k, v)| (k, v.0))
+            .map(|prop| (prop.prop, prop.state.0))
             .collect();
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
@@ -673,20 +659,20 @@ impl DemoParser {
         wanted_props: Vec<String>,
         players: Option<Vec<u64>>,
         ticks: Option<Vec<i32>>,
-        player_states: Option<AHashMap<String, PyVariant>>,
-        other_states: Option<AHashMap<String, PyVariant>>,
+        player_states: Option<Vec<WantedPropState>>,
+        other_states: Option<Vec<WantedPropState>>,
     ) -> PyResult<PyObject> {
         let wanted_players = players.unwrap_or_default();
         let wanted_ticks = ticks.unwrap_or_default();
         let wanted_player_states = player_states
             .unwrap_or_default()
             .into_iter()
-            .map(|(k, v)| (k, v.0))
+            .map(|prop| (prop.prop, prop.state.0))
             .collect();
         let wanted_other_states = other_states
             .unwrap_or_default()
             .into_iter()
-            .map(|(k, v)| (k, v.0))
+            .map(|prop| (prop.prop, prop.state.0))
             .collect();
         let real_props = rm_user_friendly_names(&wanted_props);
         let real_wanted_player_states = rm_map_user_friendly_names(&wanted_player_states);
