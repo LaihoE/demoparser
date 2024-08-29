@@ -169,6 +169,17 @@ pub fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoPa
     Ok(real_names)
 }
 
+pub fn rm_map_user_friendly_names(map: &AHashMap<String, Variant>) -> Result<AHashMap<String, Variant>, DemoParserError> {
+    let mut real_names_map: AHashMap<String, Variant> = AHashMap::default();
+    for (name, variant) in map {
+        match FRIENDLY_NAMES_MAPPING.get(&name) {
+            Some(real_name) => real_names_map.insert(real_name.to_string(), variant.clone()),
+            None => return Err(DemoParserError::UnknownPropName(name.to_string())),
+        };
+    }
+    Ok(real_names_map)
+}
+
 pub fn create_mmap(path: String) -> Result<Mmap, DemoParserError> {
     let file = match File::open(path) {
         Err(e) => return Err(DemoParserError::FileNotFound(format!("{}", e))),
