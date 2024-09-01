@@ -65,8 +65,7 @@ pub struct PropController {
     pub event_with_velocity: bool,
     pub needs_velocity: bool,
     pub path_to_name: AHashMap<[i32; 7], String>,
-    pub wanted_player_prop_states: AHashMap<String, Variant>,
-    pub wanted_other_prop_states: AHashMap<String, Variant>,
+    pub wanted_prop_states: AHashMap<String, Variant>,
     pub wanted_prop_state_infos: Vec<WantedPropStateInfo>,
 }
 
@@ -95,8 +94,7 @@ impl PropController {
     pub fn new(
         wanted_player_props: Vec<String>,
         wanted_other_props: Vec<String>,
-        wanted_player_prop_states: AHashMap<String, Variant>,
-        wanted_other_prop_states: AHashMap<String, Variant>,
+        wanted_prop_states: AHashMap<String, Variant>,
         real_name_to_og_name: AHashMap<String, String>,
         needs_velocty: bool,
         wanted_events: &[String],
@@ -115,8 +113,7 @@ impl PropController {
             event_with_velocity: !wanted_events.is_empty() && needs_velocty,
             path_to_name: AHashMap::default(),
             needs_velocity: needs_velocty,
-            wanted_player_prop_states: wanted_player_prop_states,
-            wanted_other_prop_states: wanted_other_prop_states,
+            wanted_prop_states: wanted_prop_states,
             wanted_prop_state_infos: vec![],
         }
     }
@@ -136,7 +133,7 @@ impl PropController {
                 });
                 someid += 1;
             }
-            if let Some(wanted_state) = self.wanted_player_prop_states.get(&(bn.to_string())) {
+            if let Some(wanted_state) = self.wanted_prop_states.get(&(bn.to_string())) {
                 self.wanted_prop_state_infos.push(WantedPropStateInfo {
                     base: PropInfo {
                         id: someid2,
@@ -165,7 +162,7 @@ impl PropController {
                     is_player_prop: true,
                 })
             }
-            if let Some(wanted_state) = self.wanted_player_prop_states.get(&(custom_prop_name.to_string())) {
+            if let Some(wanted_state) = self.wanted_prop_states.get(&(custom_prop_name.to_string())) {
                 self.wanted_prop_state_infos.push(WantedPropStateInfo {
                     base: PropInfo {
                         id: *custom_prop_id,
@@ -192,7 +189,7 @@ impl PropController {
                 is_player_prop: true,
             });
         }
-        if let Some(wanted_state) = self.wanted_player_prop_states.get(&("game_time".to_string())) {
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("game_time".to_string())) {
             self.wanted_prop_state_infos.push(WantedPropStateInfo {
                 base: PropInfo {
                     id: GAME_TIME_ID,
@@ -212,18 +209,6 @@ impl PropController {
                 prop_name: "game_time".to_string(),
                 prop_friendly_name: "game_time".to_string(),
                 is_player_prop: false,
-            });
-        }
-        if let Some(wanted_state) = self.wanted_other_prop_states.get(&("game_time".to_string())) {
-            self.wanted_prop_state_infos.push(WantedPropStateInfo {
-                base: PropInfo {
-                    id: GAME_TIME_ID,
-                    prop_type: PropType::GameTime,
-                    prop_name: "game_time".to_string(),
-                    prop_friendly_name: "game_time".to_string(),
-                    is_player_prop: false,
-                },
-                wanted_prop_state: wanted_state.clone(),
             });
         }
 
@@ -300,7 +285,7 @@ impl PropController {
                     is_player_prop: false,
                 })
             }
-            if let Some(wanted_state) = self.wanted_player_prop_states.get(&prop_name.to_string()) {
+            if let Some(wanted_state) = self.wanted_prop_states.get(&prop_name.to_string()) {
                 self.wanted_prop_state_infos.push(WantedPropStateInfo {
                     base: PropInfo {
                         id: f.prop_id as u32,
@@ -312,22 +297,6 @@ impl PropController {
                             .unwrap_or(&(prop_name.to_string()))
                             .to_string(),
                         is_player_prop: true,
-                    },
-                    wanted_prop_state: wanted_state.clone(),
-                });
-            }
-            if let Some(wanted_state) = self.wanted_other_prop_states.get(&prop_name.to_string()) {
-                self.wanted_prop_state_infos.push(WantedPropStateInfo {
-                    base: PropInfo {
-                        id: f.prop_id as u32,
-                        prop_type: *prop_type,
-                        prop_name: prop_name.to_string(),
-                        prop_friendly_name: self
-                            .real_name_to_og_name
-                            .get(&prop_name.to_string())
-                            .unwrap_or(&(prop_name.to_string()))
-                            .to_string(),
-                        is_player_prop: false,
                     },
                     wanted_prop_state: wanted_state.clone(),
                 });

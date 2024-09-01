@@ -142,7 +142,6 @@ impl<'a> SecondPassParser<'a> {
                 vec![],
                 AHashMap::default(),
                 AHashMap::default(),
-                AHashMap::default(),
                 false,
                 &["none".to_string()],
             ),
