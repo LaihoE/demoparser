@@ -1,7 +1,10 @@
+use std::fs;
+
 use crate::first_pass::parser::Frame;
 use crate::first_pass::parser::HEADER_ENDS_AT_BYTE;
 use crate::first_pass::parser_settings::FirstPassParser;
 use crate::first_pass::prop_controller::PropController;
+use crate::first_pass::prop_controller::*;
 use crate::first_pass::read_bits::read_varint;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
@@ -16,13 +19,16 @@ use crate::second_pass::game_events::GameEvent;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::parser_settings::*;
 use crate::second_pass::variants::PropColumn;
+use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use csgoproto::cs_usercmd::CSGOUserCmdPB;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
 use csgoproto::networkbasetypes::CNETMsg_Tick;
+use protobuf::text_format::print_to_string_pretty;
 use protobuf::Message;
+use protobuf_json_mapping::print_to_string;
 use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
 use EDemoCommands::*;
@@ -70,6 +76,10 @@ impl<'a> SecondPassParser<'a> {
                 DEM_SignonPacket => self.parse_packet(&bytes, &mut buf2),
                 DEM_Packet => self.parse_packet(&bytes, &mut buf2),
                 DEM_Stop => break,
+                DEM_UserCmd => {
+                    println!("{}", self.tick);
+                    Ok(())
+                }
                 DEM_FullPacket => {
                     if self.parse_full_packet_and_break_if_needed(&bytes, &mut buf2, started_at)? {
                         break;
@@ -216,7 +226,7 @@ impl<'a> SecondPassParser<'a> {
                 svc_ClearAllStringTables => self.clear_stringtables(),
                 svc_VoiceData => self.parse_voice_data(msg_bytes),
                 GE_Source1LegacyGameEvent => self.parse_game_event(msg_bytes, &mut wrong_order_events),
-                svc_UserCmds => self.parse_user_cmd(msg_bytes),
+                // svc_UserCmds => self.parse_user_cmd(msg_bytes),
                 _ => Ok(()),
             };
             ok?
@@ -227,64 +237,36 @@ impl<'a> SecondPassParser<'a> {
         Ok(())
     }
     pub fn parse_user_cmd(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let m: CSVCMsg_UserCommands = Message::parse_from_bytes(bytes).unwrap();
+        // We simply inject the values into the entities as if they came from packet_ents like any other val.
 
+        let m: CSVCMsg_UserCommands = Message::parse_from_bytes(bytes).unwrap();
         for cmd in m.commands {
             let user_cmd = CSGOUserCmdPB::parse_from_bytes(cmd.data()).unwrap();
-            let mut fields = vec![];
-            fields.push(EventField {
-                data: Some(crate::second_pass::variants::Variant::F32(user_cmd.base.viewangles.x())),
-                name: "X".to_string(),
-            });
-            fields.push(EventField {
-                data: Some(crate::second_pass::variants::Variant::F32(user_cmd.base.viewangles.y())),
-                name: "Y".to_string(),
-            });
-            fields.push(EventField {
-                data: Some(crate::second_pass::variants::Variant::F32(user_cmd.base.viewangles.z())),
-                name: "Z".to_string(),
-            });
-            fields.push(EventField {
-                data: Some(crate::second_pass::variants::Variant::F32(user_cmd.base.forwardmove())),
-                name: "forward_move".to_string(),
-            });
-            fields.push(EventField {
-                data: Some(crate::second_pass::variants::Variant::I32(user_cmd.base.impulse())),
-                name: "impulse".to_string(),
-            });
-            fields.push(EventField {
-                data: Some(crate::second_pass::variants::Variant::I32(user_cmd.base.mousedx())),
-                name: "mouse_x".to_string(),
-            });
-            fields.push(EventField {
-                data: Some(crate::second_pass::variants::Variant::I32(user_cmd.base.mousedy())),
-                name: "mouse_y".to_string(),
-            });
+            let s = print_to_string(&user_cmd);
+            //fs::write("omg.json", s);
 
-            fields.push(EventField {
-                data: Some(crate::second_pass::variants::Variant::U64(
-                    user_cmd.base.buttons_pb.buttonstate1(),
-                )),
-                name: "button_state_1".to_string(),
-            });
-            fields.push(EventField {
-                data: Some(crate::second_pass::variants::Variant::U64(
-                    user_cmd.base.buttons_pb.buttonstate2(),
-                )),
-                name: "button_state_2".to_string(),
-            });
-            fields.push(EventField {
-                data: Some(crate::second_pass::variants::Variant::U64(
-                    user_cmd.base.buttons_pb.buttonstate3(),
-                )),
-                name: "button_state_3".to_string(),
-            });
+            let entity_id = user_cmd.base.pawn_entity_handle() & 0x7FF;
 
-            self.game_events.push(GameEvent {
-                name: "user_cmd".to_string(),
-                fields: fields,
-                tick: self.tick,
-            })
+            if let Some(Some(ent)) = self.entities.get_mut(entity_id as usize) {
+                ent.props
+                    .insert(USERCMD_VIEWANGLE_X, Variant::F32(user_cmd.base.viewangles.x()));
+                ent.props
+                    .insert(USERCMD_VIEWANGLE_Y, Variant::F32(user_cmd.base.viewangles.y()));
+                ent.props
+                    .insert(USERCMD_VIEWANGLE_Z, Variant::F32(user_cmd.base.viewangles.z()));
+                ent.props
+                    .insert(USERCMD_FORWARDMOVE, Variant::F32(user_cmd.base.forwardmove()));
+                ent.props.insert(USERCMD_LEFTMOVE, Variant::F32(user_cmd.base.leftmove()));
+                ent.props.insert(USERCMD_IMPULSE, Variant::I32(user_cmd.base.impulse()));
+                ent.props.insert(USERCMD_MOUSE_DX, Variant::I32(user_cmd.base.mousedx()));
+                ent.props.insert(USERCMD_MOUSE_DY, Variant::I32(user_cmd.base.mousedy()));
+                ent.props
+                    .insert(USERCMD_BUTTONSTATE_1, Variant::U64(user_cmd.base.buttons_pb.buttonstate1()));
+                ent.props
+                    .insert(USERCMD_BUTTONSTATE_2, Variant::U64(user_cmd.base.buttons_pb.buttonstate2()));
+                ent.props
+                    .insert(USERCMD_BUTTONSTATE_3, Variant::U64(user_cmd.base.buttons_pb.buttonstate3()));
+            }
         }
         Ok(())
     }

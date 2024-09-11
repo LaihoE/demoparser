@@ -1,3 +1,5 @@
+use std::fs;
+
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::sendtables::find_field;
@@ -58,6 +60,8 @@ impl<'a> SecondPassParser<'a> {
             Err(_) => return Err(DemoParserError::MalformedMessage),
             Ok(msg) => msg,
         };
+        // println!("{:?}", msg);
+        return Ok(());
 
         let mut bitreader = Bitreader::new(msg.entity_data());
         let mut entity_id: i32 = -1;
@@ -277,7 +281,7 @@ impl<'a> SecondPassParser<'a> {
         _entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
-            if _v.full_name.contains("Services")  {
+            if _v.full_name.contains("Services") {
                 println!("{:?} {:?} {:?} {:?}", _path, field_info, _v.full_name, _result);
             }
         }

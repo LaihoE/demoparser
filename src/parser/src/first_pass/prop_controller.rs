@@ -48,6 +48,29 @@ pub const ITEM_PURCHASE_HANDLE: u32 = 500000000;
 pub const ITEM_PURCHASE_NEW_DEF_IDX: u32 = 600000000;
 pub const FLATTENED_VEC_MAX_LEN: u32 = 100000;
 
+pub const USERCMD_VIEWANGLE_X: u32 = 100000022;
+pub const USERCMD_VIEWANGLE_Y: u32 = 100000023;
+pub const USERCMD_VIEWANGLE_Z: u32 = 100000024;
+pub const USERCMD_FORWARDMOVE: u32 = 100000025;
+pub const USERCMD_IMPULSE: u32 = 100000026;
+pub const USERCMD_MOUSE_DX: u32 = 100000027;
+pub const USERCMD_MOUSE_DY: u32 = 100000028;
+pub const USERCMD_BUTTONSTATE_1: u32 = 100000029;
+pub const USERCMD_BUTTONSTATE_2: u32 = 100000030;
+pub const USERCMD_BUTTONSTATE_3: u32 = 100000031;
+pub const USERCMD_CONSUMED_SERVER_ANGLE_CHANGES: u32 = 100000032;
+pub const USERCMD_LEFTMOVE: u32 = 100000033;
+pub const USERCMD_WEAPON_SELECT: u32 = 100000034;
+pub const USERCMD_SUBTICK_MOVE_ANALOG_FORWARD_DELTA: u32 = 100000035;
+pub const USERCMD_SUBTICK_MOVE_ANALOG_LEFT_DELTA: u32 = 100000036;
+pub const USERCMD_SUBTICK_MOVE_BUTTON: u32 = 100000037;
+pub const USERCMD_SUBTICK_MOVE_WHEN: u32 = 100000038;
+pub const USERCMD_SUBTICK_LEFT_HAND_DESIRED: u32 = 100000039;
+
+pub const USERCMD_ATTACK_START_HISTORY_INDEX_1: u32 = 100000040;
+pub const USERCMD_ATTACK_START_HISTORY_INDEX_2: u32 = 100000041;
+pub const USERCMD_ATTACK_START_HISTORY_INDEX_3: u32 = 100000042;
+
 #[derive(Clone, Debug)]
 pub struct PropController {
     pub id: u32,
@@ -340,6 +363,118 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        if self.wanted_player_props.contains(&("usercmd_viewangle_x".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_VIEWANGLE_X,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_viewangle_x".to_string(),
+                prop_friendly_name: "usercmd_viewangle_x".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_viewangle_y".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_VIEWANGLE_Y,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_viewangle_y".to_string(),
+                prop_friendly_name: "usercmd_viewangle_y".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_viewangle_z".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_VIEWANGLE_Z,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_viewangle_z".to_string(),
+                prop_friendly_name: "usercmd_viewangle_z".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_buttonstate_1".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_BUTTONSTATE_1,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_buttonstate_1".to_string(),
+                prop_friendly_name: "usercmd_buttonstate_1".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_buttonstate_2".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_BUTTONSTATE_2,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_buttonstate_2".to_string(),
+                prop_friendly_name: "usercmd_buttonstate_2".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self
+            .wanted_player_props
+            .contains(&("usercmd_consumed_server_angle_changes".to_string()))
+        {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_consumed_server_angle_changes".to_string(),
+                prop_friendly_name: "usercmd_consumed_server_angle_changes".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_forward_move".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_FORWARDMOVE,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_forward_move".to_string(),
+                prop_friendly_name: "usercmd_forward_move".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_impulse".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_IMPULSE,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_impulse".to_string(),
+                prop_friendly_name: "usercmd_impulse".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_mouse_dx".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_MOUSE_DX,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_mouse_dx".to_string(),
+                prop_friendly_name: "usercmd_mouse_dx".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_mouse_dy".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_MOUSE_DY,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_mouse_dy".to_string(),
+                prop_friendly_name: "usercmd_mouse_dy".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_left_hand_desired".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_SUBTICK_LEFT_HAND_DESIRED,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_left_hand_desired".to_string(),
+                prop_friendly_name: "usercmd_left_hand_desired".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_weapon_select".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_WEAPON_SELECT,
+                prop_type: PropType::Player,
+                prop_name: "usercmd_weapon_select".to_string(),
+                prop_friendly_name: "usercmd_weapon_select".to_string(),
+                is_player_prop: true,
+            });
+        }
+
         if self.wanted_player_props.contains(&("is_airborne".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: IS_AIRBORNE_ID,
