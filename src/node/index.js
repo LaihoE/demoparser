@@ -224,14 +224,72 @@ switch (platform) {
         }
         break
       case 'arm':
+        if (isMusl()) {
+          localFileExisted = existsSync(
+            join(__dirname, 'demoparser2.linux-arm-musleabihf.node')
+          )
+          try {
+            if (localFileExisted) {
+              nativeBinding = require('./demoparser2.linux-arm-musleabihf.node')
+            } else {
+              nativeBinding = require('@laihoe/demoparser2-linux-arm-musleabihf')
+            }
+          } catch (e) {
+            loadError = e
+          }
+        } else {
+          localFileExisted = existsSync(
+            join(__dirname, 'demoparser2.linux-arm-gnueabihf.node')
+          )
+          try {
+            if (localFileExisted) {
+              nativeBinding = require('./demoparser2.linux-arm-gnueabihf.node')
+            } else {
+              nativeBinding = require('@laihoe/demoparser2-linux-arm-gnueabihf')
+            }
+          } catch (e) {
+            loadError = e
+          }
+        }
+        break
+      case 'riscv64':
+        if (isMusl()) {
+          localFileExisted = existsSync(
+            join(__dirname, 'demoparser2.linux-riscv64-musl.node')
+          )
+          try {
+            if (localFileExisted) {
+              nativeBinding = require('./demoparser2.linux-riscv64-musl.node')
+            } else {
+              nativeBinding = require('@laihoe/demoparser2-linux-riscv64-musl')
+            }
+          } catch (e) {
+            loadError = e
+          }
+        } else {
+          localFileExisted = existsSync(
+            join(__dirname, 'demoparser2.linux-riscv64-gnu.node')
+          )
+          try {
+            if (localFileExisted) {
+              nativeBinding = require('./demoparser2.linux-riscv64-gnu.node')
+            } else {
+              nativeBinding = require('@laihoe/demoparser2-linux-riscv64-gnu')
+            }
+          } catch (e) {
+            loadError = e
+          }
+        }
+        break
+      case 's390x':
         localFileExisted = existsSync(
-          join(__dirname, 'demoparser2.linux-arm-gnueabihf.node')
+          join(__dirname, 'demoparser2.linux-s390x-gnu.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require('./demoparser2.linux-arm-gnueabihf.node')
+            nativeBinding = require('./demoparser2.linux-s390x-gnu.node')
           } else {
-            nativeBinding = require('@laihoe/demoparser2-linux-arm-gnueabihf')
+            nativeBinding = require('@laihoe/demoparser2-linux-s390x-gnu')
           }
         } catch (e) {
           loadError = e
@@ -252,9 +310,11 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { parseChatMessages, listGameEvents, parseGrenades, parseHeader, parseEvent, parseEvents, parseTicks, parsePlayerInfo } = nativeBinding
+const { JsVariant, WantedPropState, parseVoice, listGameEvents, parseGrenades, parseHeader, parseEvent, parseEvents, parseTicks, parsePlayerInfo, parsePlayerSkins } = nativeBinding
 
-module.exports.parseChatMessages = parseChatMessages
+module.exports.JsVariant = JsVariant
+module.exports.WantedPropState = WantedPropState
+module.exports.parseVoice = parseVoice
 module.exports.listGameEvents = listGameEvents
 module.exports.parseGrenades = parseGrenades
 module.exports.parseHeader = parseHeader
@@ -262,3 +322,4 @@ module.exports.parseEvent = parseEvent
 module.exports.parseEvents = parseEvents
 module.exports.parseTicks = parseTicks
 module.exports.parsePlayerInfo = parsePlayerInfo
+module.exports.parsePlayerSkins = parsePlayerSkins
