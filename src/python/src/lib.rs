@@ -42,20 +42,20 @@ impl<'source> FromPyObject<'source> for PyVariant {
     fn extract_bound(obj: &pyo3::Bound<'source, PyAny>) -> PyResult<Self> {
         if let Ok(val) = obj.extract::<bool>() {
             Ok(PyVariant(Variant::Bool(val)))
-        } else if let Ok(val) = obj.extract::<u32>() {
-            Ok(PyVariant(Variant::U32(val)))
-        } else if let Ok(val) = obj.extract::<i32>() {
-            Ok(PyVariant(Variant::I32(val)))
-        } else if let Ok(val) = obj.extract::<i16>() {
-            Ok(PyVariant(Variant::I16(val)))
-        } else if let Ok(val) = obj.extract::<f32>() {
-            Ok(PyVariant(Variant::F32(val)))
-        } else if let Ok(val) = obj.extract::<u64>() {
-            Ok(PyVariant(Variant::U64(val)))
-        } else if let Ok(val) = obj.extract::<u8>() {
-            Ok(PyVariant(Variant::U8(val)))
         } else if let Ok(val) = obj.extract::<String>() {
             Ok(PyVariant(Variant::String(val)))
+        } else if let Ok(val) = obj.extract::<u8>() {
+            Ok(PyVariant(Variant::U8(val)))
+        } else if let Ok(val) = obj.extract::<i16>() {
+            Ok(PyVariant(Variant::I16(val)))
+        } else if let Ok(val) = obj.extract::<i32>() {
+            Ok(PyVariant(Variant::I32(val)))
+        } else if let Ok(val) = obj.extract::<u32>() {
+            Ok(PyVariant(Variant::U32(val)))
+        } else if let Ok(val) = obj.extract::<u64>() {
+            Ok(PyVariant(Variant::U64(val)))
+        } else if let Ok(val) = obj.extract::<f32>() {
+            Ok(PyVariant(Variant::F32(val)))
         } else {
             Err(PyValueError::new_err("Unsupported type for Variant"))
         }
