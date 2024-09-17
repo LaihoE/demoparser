@@ -56,16 +56,6 @@ impl<'source> FromPyObject<'source> for PyVariant {
             Ok(PyVariant(Variant::U8(val)))
         } else if let Ok(val) = obj.extract::<String>() {
             Ok(PyVariant(Variant::String(val)))
-        } else if let Ok(val) = obj.extract::<[f32; 2]>() {
-            Ok(PyVariant(Variant::VecXY(val)))
-        } else if let Ok(val) = obj.extract::<[f32; 3]>() {
-            Ok(PyVariant(Variant::VecXYZ(val)))
-        } else if let Ok(val) = obj.extract::<Vec<String>>() {
-            Ok(PyVariant(Variant::StringVec(val)))
-        } else if let Ok(val) = obj.extract::<Vec<u32>>() {
-            Ok(PyVariant(Variant::U32Vec(val)))
-        } else if let Ok(val) = obj.extract::<Vec<u64>>() {
-            Ok(PyVariant(Variant::U64Vec(val)))
         } else {
             Err(PyValueError::new_err("Unsupported type for Variant"))
         }
