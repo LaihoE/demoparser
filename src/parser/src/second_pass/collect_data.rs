@@ -70,6 +70,19 @@ impl<'a> SecondPassParser<'a> {
         // iterate every player and every wanted prop name
         // if either one is missing then push None to output
         for (entity_id, player) in &self.players {
+            // iterate every wanted prop state
+            // if any prop's state for this tick is not the wanted state, dont extract info from tick
+            for wanted_prop_state_info in &self.prop_controller.wanted_prop_state_infos {
+                match self.find_prop(&wanted_prop_state_info.base, entity_id, player) {
+                    Ok(prop) => {
+                        if prop != wanted_prop_state_info.wanted_prop_state {
+                            return;
+                        }
+                    }
+                    Err(_e) => return,
+                }
+            }
+
             for prop_info in &self.prop_controller.prop_infos {
                 let player_steamid = match player.steamid {
                     Some(steamid) => steamid,

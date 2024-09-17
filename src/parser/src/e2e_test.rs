@@ -307,6 +307,7 @@ pub fn _create_ge_tests() {
         parse_ents: true,
         wanted_players: vec![],
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
+        wanted_prop_states: AHashMap::default(),
         parse_projectiles: true,
         only_header: false,
         count_props: false,
@@ -680,6 +681,7 @@ pub fn _create_tests() {
         parse_ents: true,
         wanted_players: vec![],
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
+        wanted_prop_states: AHashMap::default(),
         parse_projectiles: true,
         only_header: false,
         count_props: false,
@@ -1052,6 +1054,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         parse_ents: true,
         wanted_players: vec![],
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
+        wanted_prop_states: AHashMap::default(),
         parse_projectiles: true,
         only_header: false,
         count_props: false,
@@ -1076,6 +1079,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         parse_ents: true,
         wanted_players: vec![],
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
+        wanted_prop_states: AHashMap::default(),
         parse_projectiles: true,
         only_header: false,
         count_props: false,
@@ -1169,6 +1173,7 @@ mod tests {
     use crate::second_pass::variants::VarVec;
     use crate::second_pass::variants::VarVec::String;
     use crate::second_pass::variants::VarVec::*;
+    use crate::second_pass::variants::Variant;
     use ahash::AHashMap;
     use lazy_static::lazy_static;
     use memmap2::MmapOptions;
@@ -1177,6 +1182,109 @@ mod tests {
 
     lazy_static! {
         static ref out: (DemoOutput, PropController, BTreeMap<std::string::String, Vec<GameEvent>>) = create_data();
+    }
+
+    #[test]
+    fn test_parse_ticks_prop_state_filter() {
+        let huf = create_huffman_lookup_table();
+        let huf2 = create_huffman_lookup_table();
+
+        let settings = ParserInputs {
+            wanted_players: vec![76561198244754626],
+            real_name_to_og_name: AHashMap::default(),
+            wanted_player_props: vec!["X".to_string(), "CCSGameRulesProxy.CCSGameRules.m_bBombPlanted".to_string()],
+            wanted_events: vec![],
+            wanted_other_props: vec![],
+            parse_ents: true,
+            wanted_ticks: vec![],
+            wanted_prop_states: AHashMap::default(),
+            parse_projectiles: true,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
+            huffman_lookup_table: &huf,
+            order_by_steamid: false,
+        };
+
+        let mut wanted_prop_states: AHashMap<std::string::String, Variant> = AHashMap::default();
+        wanted_prop_states.insert(
+            "CCSGameRulesProxy.CCSGameRules.m_bBombPlanted".to_string(),
+            Variant::Bool(true),
+        );
+        let settings_with_filter = ParserInputs {
+            wanted_players: vec![76561198244754626],
+            real_name_to_og_name: AHashMap::default(),
+            wanted_player_props: vec!["X".to_string()],
+            wanted_events: vec![],
+            wanted_other_props: vec![],
+            parse_ents: true,
+            wanted_ticks: vec![],
+            wanted_prop_states: wanted_prop_states,
+            parse_projectiles: true,
+            only_header: false,
+            count_props: false,
+            only_convars: false,
+            huffman_lookup_table: &huf2,
+            order_by_steamid: false,
+        };
+
+        let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceMultiThreaded);
+        let mut ds_with_filter = Parser::new(settings_with_filter, crate::parse_demo::ParsingMode::ForceMultiThreaded);
+        let file = File::open("test_demo.dem").unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+        let output = ds.parse_demo(&mmap).unwrap();
+        let output_with_filter = ds_with_filter.parse_demo(&mmap).unwrap();
+
+        let positions = match output
+            .df
+            .get(&PLAYER_X_ID)
+            .unwrap()
+            .data
+            .clone()
+            .unwrap_or(VarVec::F32(vec![]))
+        {
+            VarVec::F32(positions_vec) => positions_vec,
+            _ => vec![],
+        };
+        let bomb_prop_id = output
+            .prop_controller
+            .prop_infos
+            .iter()
+            .find(|prop| prop.prop_name == "CCSGameRulesProxy.CCSGameRules.m_bBombPlanted")
+            .map(|prop| prop.id)
+            .unwrap();
+        let bomb = match output
+            .df
+            .get(&bomb_prop_id)
+            .unwrap()
+            .data
+            .clone()
+            .unwrap_or(VarVec::Bool(vec![]))
+        {
+            VarVec::Bool(bomb_vec) => bomb_vec,
+            _ => vec![],
+        };
+        let manually_filtered_positions: Vec<Option<f32>> = positions
+            .iter()
+            .zip(bomb.iter())
+            .filter_map(|(xPos, bombPlanted)| match bombPlanted {
+                Some(true) => Some(*xPos),
+                _ => None,
+            })
+            .collect();
+        let automatically_filtered_positions = match output_with_filter
+            .df
+            .get(&PLAYER_X_ID)
+            .unwrap()
+            .data
+            .clone()
+            .unwrap_or(VarVec::F32(vec![]))
+        {
+            VarVec::F32(positions_vec) => positions_vec,
+            _ => vec![],
+        };
+
+        assert_eq!(manually_filtered_positions, automatically_filtered_positions);
     }
 
     #[test]
@@ -1191,6 +1299,7 @@ mod tests {
             wanted_other_props: vec!["CCSTeam.m_iScore".to_string()],
             parse_ents: true,
             wanted_ticks: vec![10000, 10001],
+            wanted_prop_states: AHashMap::default(),
             parse_projectiles: true,
             only_header: false,
             count_props: false,

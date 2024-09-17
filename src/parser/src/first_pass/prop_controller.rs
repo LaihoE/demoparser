@@ -2,9 +2,11 @@ use crate::first_pass::sendtables::Field;
 use crate::first_pass::sendtables::Serializer;
 use crate::first_pass::sendtables::ValueField;
 use crate::maps::BUTTONMAP;
+use crate::maps::CUSTOM_PLAYER_PROP_IDS;
 use crate::maps::TYPEHM;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::parser_settings::SpecialIDs;
+use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 
 pub const PLAYER_ENTITY_HANDLE_MISSING: i32 = 2047;
@@ -63,6 +65,8 @@ pub struct PropController {
     pub event_with_velocity: bool,
     pub needs_velocity: bool,
     pub path_to_name: AHashMap<[i32; 7], String>,
+    pub wanted_prop_states: AHashMap<String, Variant>,
+    pub wanted_prop_state_infos: Vec<WantedPropStateInfo>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -72,6 +76,12 @@ pub struct PropInfo {
     pub prop_name: String,
     pub prop_friendly_name: String,
     pub is_player_prop: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WantedPropStateInfo {
+    pub base: PropInfo,
+    pub wanted_prop_state: Variant,
 }
 
 pub enum PropCollectionType {
@@ -84,6 +94,7 @@ impl PropController {
     pub fn new(
         wanted_player_props: Vec<String>,
         wanted_other_props: Vec<String>,
+        wanted_prop_states: AHashMap<String, Variant>,
         real_name_to_og_name: AHashMap<String, String>,
         needs_velocty: bool,
         wanted_events: &[String],
@@ -102,12 +113,15 @@ impl PropController {
             event_with_velocity: !wanted_events.is_empty() && needs_velocty,
             path_to_name: AHashMap::default(),
             needs_velocity: needs_velocty,
+            wanted_prop_states: wanted_prop_states,
+            wanted_prop_state_infos: vec![],
         }
     }
 
     pub fn set_custom_propinfos(&mut self) {
         let button_names = BUTTONMAP.keys();
         let mut someid = BUTTONS_BASEID;
+        let mut someid2 = BUTTONS_BASEID;
         for bn in button_names {
             if self.wanted_player_props.contains(&(bn.to_string())) {
                 self.prop_infos.push(PropInfo {
@@ -119,100 +133,53 @@ impl PropController {
                 });
                 someid += 1;
             }
+            if let Some(wanted_state) = self.wanted_prop_states.get(&(bn.to_string())) {
+                self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                    base: PropInfo {
+                        id: someid2,
+                        prop_type: PropType::Button,
+                        prop_name: bn.to_string(),
+                        prop_friendly_name: bn.to_string(),
+                        is_player_prop: true,
+                    },
+                    wanted_prop_state: wanted_state.clone(),
+                });
+                someid2 += 1;
+            }
         }
-        if self
-            .wanted_player_props
-            .contains(&("active_weapon_original_owner".to_string()))
-        {
-            self.prop_infos.push(PropInfo {
-                id: WEAPON_ORIGINGAL_OWNER_ID,
-                prop_type: PropType::Custom,
-                prop_name: "active_weapon_original_owner".to_string(),
-                prop_friendly_name: "active_weapon_original_owner".to_string(),
-                is_player_prop: true,
-            });
+
+        for (custom_prop_name, custom_prop_id) in CUSTOM_PLAYER_PROP_IDS.entries() {
+            if self.wanted_player_props.contains(&(custom_prop_name.to_string())) {
+                self.prop_infos.push(PropInfo {
+                    id: *custom_prop_id,
+                    prop_type: PropType::Custom,
+                    prop_name: custom_prop_name.to_string(),
+                    prop_friendly_name: self
+                        .real_name_to_og_name
+                        .get(&custom_prop_name.to_string())
+                        .unwrap_or(&custom_prop_name.to_string())
+                        .to_string(),
+                    is_player_prop: true,
+                })
+            }
+            if let Some(wanted_state) = self.wanted_prop_states.get(&(custom_prop_name.to_string())) {
+                self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                    base: PropInfo {
+                        id: *custom_prop_id,
+                        prop_type: PropType::Custom,
+                        prop_name: custom_prop_name.to_string(),
+                        prop_friendly_name: self
+                            .real_name_to_og_name
+                            .get(&custom_prop_name.to_string())
+                            .unwrap_or(&custom_prop_name.to_string())
+                            .to_string(),
+                        is_player_prop: true,
+                    },
+                    wanted_prop_state: wanted_state.clone(),
+                })
+            }
         }
-        if self.wanted_player_props.contains(&("inventory".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: INVENTORY_ID,
-                prop_type: PropType::Custom,
-                prop_name: "inventory".to_string(),
-                prop_friendly_name: "inventory".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("inventory_as_ids".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: INVENTORY_AS_IDS_ID,
-                prop_type: PropType::Custom,
-                prop_name: "inventory_as_ids".to_string(),
-                prop_friendly_name: "inventory_as_ids".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("user_id".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: USERID_ID,
-                prop_type: PropType::Custom,
-                prop_name: "user_id".to_string(),
-                prop_friendly_name: "user_id".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("velocity_X".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: VELOCITY_X_ID,
-                prop_type: PropType::Custom,
-                prop_name: "velocity_X".to_string(),
-                prop_friendly_name: "velocity_X".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("velocity_Y".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: VELOCITY_Y_ID,
-                prop_type: PropType::Custom,
-                prop_name: "velocity_Y".to_string(),
-                prop_friendly_name: "velocity_Y".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("velocity_Z".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: VELOCITY_Z_ID,
-                prop_type: PropType::Custom,
-                prop_name: "velocity_Z".to_string(),
-                prop_friendly_name: "velocity_Z".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("velocity".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: VELOCITY_ID,
-                prop_type: PropType::Custom,
-                prop_name: "velocity".to_string(),
-                prop_friendly_name: "velocity".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("is_alive".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: IS_ALIVE_ID,
-                prop_type: PropType::Custom,
-                prop_name: "is_alive".to_string(),
-                prop_friendly_name: "is_alive".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("entity_id".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: ENTITY_ID_ID,
-                prop_type: PropType::Custom,
-                prop_name: "entity_id".to_string(),
-                prop_friendly_name: "entity_id".to_string(),
-                is_player_prop: true,
-            });
-        }
+
         if self.wanted_player_props.contains(&("game_time".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: GAME_TIME_ID,
@@ -220,6 +187,18 @@ impl PropController {
                 prop_name: "game_time".to_string(),
                 prop_friendly_name: "game_time".to_string(),
                 is_player_prop: true,
+            });
+        }
+        if let Some(wanted_state) = self.wanted_prop_states.get(&("game_time".to_string())) {
+            self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                base: PropInfo {
+                    id: GAME_TIME_ID,
+                    prop_type: PropType::GameTime,
+                    prop_name: "game_time".to_string(),
+                    prop_friendly_name: "game_time".to_string(),
+                    is_player_prop: true,
+                },
+                wanted_prop_state: wanted_state.clone(),
             });
         }
         // Can also be non-player prop
@@ -232,123 +211,7 @@ impl PropController {
                 is_player_prop: false,
             });
         }
-        if self.wanted_player_props.contains(&("weapon_skin".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: WEAPON_SKIN_NAME,
-                prop_type: PropType::Custom,
-                prop_name: "weapon_skin".to_string(),
-                prop_friendly_name: "active_weapon_skin".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("weapon_skin_id".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: WEAPON_SKIN_ID,
-                prop_type: PropType::Custom,
-                prop_name: "weapon_skin_id".to_string(),
-                prop_friendly_name: "weapon_skin_id".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("weapon_paint_seed".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: WEAPON_PAINT_SEED,
-                prop_type: PropType::Custom,
-                prop_name: "weapon_paint_seed".to_string(),
-                prop_friendly_name: "weapon_paint_seed".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("weapon_float".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: WEAPON_FLOAT,
-                prop_type: PropType::Custom,
-                prop_name: "weapon_float".to_string(),
-                prop_friendly_name: "weapon_float".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("weapon_stickers".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: WEAPON_STICKERS_ID,
-                prop_type: PropType::Custom,
-                prop_name: "weapon_stickers".to_string(),
-                prop_friendly_name: "weapon_stickers".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("weapon_name".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: WEAPON_NAME_ID,
-                prop_type: PropType::Custom,
-                prop_name: "weapon_name".to_string(),
-                prop_friendly_name: "active_weapon_name".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("pitch".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: PITCH_ID,
-                prop_type: PropType::Custom,
-                prop_name: "pitch".to_string(),
-                prop_friendly_name: "pitch".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("yaw".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: YAW_ID,
-                prop_type: PropType::Custom,
-                prop_name: "yaw".to_string(),
-                prop_friendly_name: "yaw".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("agent_skin".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: AGENT_SKIN_ID,
-                prop_type: PropType::Custom,
-                prop_name: "agent_skin".to_string(),
-                prop_friendly_name: "agent_skin".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("X".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: PLAYER_X_ID,
-                prop_type: PropType::Custom,
-                prop_name: "X".to_string(),
-                prop_friendly_name: "X".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("Y".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: PLAYER_Y_ID,
-                prop_type: PropType::Custom,
-                prop_name: "Y".to_string(),
-                prop_friendly_name: "Y".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("Z".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: PLAYER_Z_ID,
-                prop_type: PropType::Custom,
-                prop_name: "Z".to_string(),
-                prop_friendly_name: "Z".to_string(),
-                is_player_prop: true,
-            });
-        }
-        if self.wanted_player_props.contains(&("is_airborne".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: IS_AIRBORNE_ID,
-                prop_type: PropType::Custom,
-                prop_name: "is_airborne".to_string(),
-                prop_friendly_name: "is_airborne".to_string(),
-                is_player_prop: true,
-            });
-        }
+
         self.prop_infos.push(PropInfo {
             id: TICK_ID,
             prop_type: PropType::Tick,
@@ -356,7 +219,6 @@ impl PropController {
             prop_friendly_name: "tick".to_string(),
             is_player_prop: true,
         });
-
         self.prop_infos.push(PropInfo {
             id: STEAMID_ID,
             prop_type: PropType::Steamid,
@@ -422,6 +284,22 @@ impl PropController {
                         .to_string(),
                     is_player_prop: false,
                 })
+            }
+            if let Some(wanted_state) = self.wanted_prop_states.get(&prop_name.to_string()) {
+                self.wanted_prop_state_infos.push(WantedPropStateInfo {
+                    base: PropInfo {
+                        id: f.prop_id as u32,
+                        prop_type: *prop_type,
+                        prop_name: prop_name.to_string(),
+                        prop_friendly_name: self
+                            .real_name_to_og_name
+                            .get(&prop_name.to_string())
+                            .unwrap_or(&(prop_name.to_string()))
+                            .to_string(),
+                        is_player_prop: true,
+                    },
+                    wanted_prop_state: wanted_state.clone(),
+                });
             }
         }
     }
