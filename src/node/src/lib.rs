@@ -57,8 +57,8 @@ impl FromNapiValue for JsVariant {
           if let Ok(val) = js_unknown.coerce_to_number() {
             let num = val.get_double()?;
             if num.fract() == 0.0 {
-              if let Ok(val) = val.get_uint32() {
-                Ok(JsVariant(Variant::U32(val)))
+              if num >= u8::MIN as f64 && num <= u8::MAX as f64 {
+                Ok(JsVariant(Variant::U8(num as u8)))
               } else if let Ok(val) = val.get_int32() {
                 let int32_val = val;
                 if int32_val >= i16::MIN as i32 && int32_val <= i16::MAX as i32 {
@@ -66,6 +66,8 @@ impl FromNapiValue for JsVariant {
                 } else {
                   Ok(JsVariant(Variant::I32(int32_val)))
                 }
+              } else if let Ok(val) = val.get_uint32() {
+                Ok(JsVariant(Variant::U32(val)))
               } else {
                 Err(Error::new(
                   Status::InvalidArg,
