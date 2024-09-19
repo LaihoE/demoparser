@@ -60,8 +60,6 @@ impl<'a> SecondPassParser<'a> {
             Err(_) => return Err(DemoParserError::MalformedMessage),
             Ok(msg) => msg,
         };
-        // println!("{:?}", msg);
-        return Ok(());
 
         let mut bitreader = Bitreader::new(msg.entity_data());
         let mut entity_id: i32 = -1;

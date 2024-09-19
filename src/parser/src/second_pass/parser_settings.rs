@@ -73,6 +73,7 @@ pub struct SecondPassParser<'a> {
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
     pub order_by_steamid: bool,
     pub last_tick: i32,
+    pub parse_usercmd: bool,
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -151,14 +152,16 @@ impl<'a> SecondPassParser<'a> {
         parse_all_packets: bool,
         start_end_offset: Option<StartEndOffset>,
     ) -> Result<Self, DemoParserError> {
-        first_pass_output.settings.wanted_player_props.clone().extend(vec![
-            "tick".to_owned(),
-            "steamid".to_owned(),
-            "name".to_owned(),
-        ]);
+        first_pass_output
+            .settings
+            .wanted_player_props
+            .clone()
+            .extend(vec!["tick".to_owned(), "steamid".to_owned(), "name".to_owned()]);
         let args: Vec<String> = env::args().collect();
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
+
         Ok(SecondPassParser {
+            parse_usercmd: contains_usercmd_prop(&first_pass_output.settings.wanted_player_props),
             last_tick: 0,
             start_end_offset: start_end_offset,
             order_by_steamid: first_pass_output.order_by_steamid,
@@ -171,10 +174,7 @@ impl<'a> SecondPassParser<'a> {
                 };
                 8192
             ],
-            parse_inventory: first_pass_output
-                .prop_controller
-                .wanted_player_props
-                .contains(&"inventory".to_string()),
+            parse_inventory: first_pass_output.prop_controller.wanted_player_props.contains(&"inventory".to_string()),
             net_tick: 0,
             c4_entity_id: None,
             stringtable_players: first_pass_output.stringtable_players,
@@ -333,4 +333,8 @@ pub fn create_huffman_lookup_table() -> Vec<(u8, u8)> {
         huf2.push((chunk[0], chunk[1]));
     }
     return huf2;
+}
+
+fn contains_usercmd_prop(names: &[String]) -> bool {
+    names.iter().any(|name| name.contains("usercmd"))
 }

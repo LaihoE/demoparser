@@ -23,7 +23,7 @@
 
 /// Generated files are compatible only with the same version
 /// of protobuf runtime.
-const _PROTOBUF_VERSION_CHECK: () = ::protobuf::VERSION_3_5_0;
+const _PROTOBUF_VERSION_CHECK: () = ::protobuf::VERSION_3_5_1;
 
 // @@protoc_insertion_point(message:CUserMessageAchievementEvent)
 #[derive(PartialEq,Clone,Default,Debug)]

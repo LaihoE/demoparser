@@ -1947,6 +1947,22 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "SCOREBOARD" =>PropType::Button,
     "WALK" => PropType::Button,
 
+    "usercmd_viewangle_x" => PropType::Player,
+    "usercmd_viewangle_y" => PropType::Player,
+    "usercmd_viewangle_z" => PropType::Player,
+    "usercmd_forward_move" => PropType::Player,
+    "usercmd_left_move" => PropType::Player,
+    "usercmd_impulse" => PropType::Player,
+    "usercmd_mouse_dx" => PropType::Player,
+    "usercmd_mouse_dy" => PropType::Player,
+    "usercmd_buttonstate_1" => PropType::Player,
+    "usercmd_buttonstate_2" => PropType::Player,
+    "usercmd_buttonstate_3" => PropType::Player,
+    "usercmd_weapon_select" => PropType::Player,
+    "usercmd_left_hand_desired" => PropType::Player,
+    "usercmd_input_history" => PropType::Custom,
+
+
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => PropType::Player,
     // TEAM
     "CCSTeam.m_iTeamNum" => PropType::Team,
@@ -2529,6 +2545,23 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
 };
 
 pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_map! {
+    "usercmd_viewangle_x" => "usercmd_viewangle_x",
+    "usercmd_viewangle_y" => "usercmd_viewangle_y",
+    "usercmd_viewangle_z" => "usercmd_viewangle_z",
+    "usercmd_forward_move" => "usercmd_forward_move",
+    "usercmd_left_move" => "usercmd_left_move",
+    "usercmd_impulse" => "usercmd_impulse",
+    "usercmd_mouse_dx" => "usercmd_mouse_dx",
+    "usercmd_mouse_dy" => "usercmd_mouse_dy",
+    "usercmd_buttonstate_1" => "usercmd_buttonstate_1",
+    "usercmd_buttonstate_2" => "usercmd_buttonstate_2",
+    "usercmd_buttonstate_3" => "usercmd_buttonstate_3",
+    "usercmd_weapon_select" => "usercmd_weapon_select",
+    "usercmd_left_hand_desired" => "usercmd_left_hand_desired",
+    "usercmd_input_history" => "usercmd_input_history",
+
+
+
     "active_weapon_skin" => "weapon_skin",
     "weapon_skin_id" => "weapon_skin_id",
     "FORWARD" => "FORWARD",

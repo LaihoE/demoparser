@@ -71,6 +71,7 @@ impl<'a> SecondPassParser<'a> {
         // if either one is missing then push None to output
         for (entity_id, player) in &self.players {
             for prop_info in &self.prop_controller.prop_infos {
+                // println!("{:?}", prop_info);
                 let player_steamid = match player.steamid {
                     Some(steamid) => steamid,
                     None => 0,
@@ -139,6 +140,7 @@ impl<'a> SecondPassParser<'a> {
             PropType::Controller => return self.get_controller_prop(&prop_info.id, player),
             PropType::Rules => return self.get_rules_prop(prop_info),
             PropType::GameTime => return Ok(Variant::F32(self.net_tick as f32 / 64.0)),
+            // PropType::InputHistory => return self.get_input_history_prop(&prop_info.id, entity_id),
         }
     }
     pub fn get_prop_from_ent(&self, prop_id: &u32, entity_id: &i32) -> Result<Variant, PropCollectionError> {
@@ -450,6 +452,7 @@ impl<'a> SecondPassParser<'a> {
             "is_airborne" => self.find_is_airborne(player),
             "agent_skin" => return self.find_agent_skin(player),
             "CCSPlayerController.m_iCompTeammateColor" => return self.find_player_color(player, prop_info),
+            "usercmd_input_history" => self.get_prop_from_ent(&USERCMD_INPUT_HISTORY_BASEID, entity_id),
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
     }

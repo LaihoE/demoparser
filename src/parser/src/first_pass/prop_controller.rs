@@ -71,6 +71,15 @@ pub const USERCMD_ATTACK_START_HISTORY_INDEX_1: u32 = 100000040;
 pub const USERCMD_ATTACK_START_HISTORY_INDEX_2: u32 = 100000041;
 pub const USERCMD_ATTACK_START_HISTORY_INDEX_3: u32 = 100000042;
 
+pub const USERCMD_INPUT_HISTORY_BASEID: u32 = 100001000;
+pub const INPUT_HISTORY_X_OFFSET: u32 = 0;
+pub const INPUT_HISTORY_Y_OFFSET: u32 = 1;
+pub const INPUT_HISTORY_Z_OFFSET: u32 = 2;
+pub const INPUT_HISTORY_RENDER_TICK_COUNT_OFFSET: u32 = 3;
+pub const INPUT_HISTORY_RENDER_TICK_FRACTION_OFFSET: u32 = 4;
+pub const INPUT_HISTORY_PLAYER_TICK_COUNT_OFFSET: u32 = 5;
+pub const INPUT_HISTORY_PLAYER_TICK_FRACTION_OFFSET: u32 = 6;
+
 #[derive(Clone, Debug)]
 pub struct PropController {
     pub id: u32,
@@ -161,6 +170,15 @@ impl PropController {
                 prop_type: PropType::Custom,
                 prop_name: "inventory".to_string(),
                 prop_friendly_name: "inventory".to_string(),
+                is_player_prop: true,
+            });
+        }
+        if self.wanted_player_props.contains(&("usercmd_input_history".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_INPUT_HISTORY_BASEID,
+                prop_type: PropType::Custom,
+                prop_name: "usercmd_input_history".to_string(),
+                prop_friendly_name: "usercmd_input_history".to_string(),
                 is_player_prop: true,
             });
         }
