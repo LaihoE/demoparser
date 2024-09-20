@@ -698,6 +698,39 @@ impl DemoParser {
                         df_column_names_py.push(prop_info.prop_friendly_name);
                         all_pyobjects.push(dicts.to_object(py));
                     }
+
+                    Some(VarVec::InputHistory(data)) => {
+                        let mut dicts = vec![];
+                        for input in data {
+                            let mut v = vec![];
+                            for sticker in input {
+                                let dict = PyDict::new_bound(py);
+                                dict.set_item("x", sticker.x.to_object(py))?;
+                                dict.set_item("y", sticker.y.to_object(py))?;
+                                dict.set_item("z", sticker.z.to_object(py))?;
+                                dict.set_item(
+                                    "render_tick_count",
+                                    sticker.render_tick_count.to_object(py),
+                                )?;
+                                dict.set_item(
+                                    "render_tick_fraction",
+                                    sticker.render_tick_fraction.to_object(py),
+                                )?;
+                                dict.set_item(
+                                    "player_tick_count",
+                                    sticker.player_tick_count.to_object(py),
+                                )?;
+                                dict.set_item(
+                                    "player_tick_fraction",
+                                    sticker.player_tick_fraction.to_object(py),
+                                )?;
+                                v.push(dict);
+                            }
+                            dicts.push(v);
+                        }
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(dicts.to_object(py));
+                    }
                     _ => {}
                 }
             }

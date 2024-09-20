@@ -100,33 +100,21 @@ impl<'a> SecondPassParser<'a> {
                     match self.find_prop(prop_info, entity_id, player) {
                         Ok(prop) => {
                             let df_this_player = self.df_per_player.get_mut(&player.steamid.unwrap_or(0)).unwrap();
-                            df_this_player
-                                .entry(prop_info.id)
-                                .or_insert_with(|| PropColumn::new())
-                                .push(Some(prop.clone()));
+                            df_this_player.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(Some(prop.clone()));
                         }
                         Err(_e) => {
                             let df_this_player = self.df_per_player.get_mut(&player.steamid.unwrap_or(0)).unwrap();
-                            df_this_player
-                                .entry(prop_info.id)
-                                .or_insert_with(|| PropColumn::new())
-                                .push(None);
+                            df_this_player.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(None);
                         }
                     }
                 } else {
                     match self.find_prop(prop_info, entity_id, player) {
                         Ok(prop) => {
-                            self.output
-                                .entry(prop_info.id)
-                                .or_insert_with(|| PropColumn::new())
-                                .push(Some(prop));
+                            self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(Some(prop));
                         }
                         Err(_e) => {
                             // Ultimate debugger is to print this error
-                            self.output
-                                .entry(prop_info.id)
-                                .or_insert_with(|| PropColumn::new())
-                                .push(None);
+                            self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(None);
                         }
                     }
                 }
@@ -134,12 +122,7 @@ impl<'a> SecondPassParser<'a> {
         }
     }
 
-    pub fn find_prop(
-        &self,
-        prop_info: &PropInfo,
-        entity_id: &i32,
-        player: &PlayerMetaData,
-    ) -> Result<Variant, PropCollectionError> {
+    pub fn find_prop(&self, prop_info: &PropInfo, entity_id: &i32, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         match prop_info.prop_type {
             PropType::Tick => return self.create_tick(),
             PropType::Name => return self.create_name(player),
@@ -430,13 +413,7 @@ impl<'a> SecondPassParser<'a> {
             None => Err(PropCollectionError::SpecialidsEyeAnglesNotSet),
         }
     }
-    pub fn create_custom_prop(
-        &self,
-        prop_name: &str,
-        entity_id: &i32,
-        prop_info: &PropInfo,
-        player: &PlayerMetaData,
-    ) -> Result<Variant, PropCollectionError> {
+    pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32, prop_info: &PropInfo, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         match prop_name {
             "X" => self.collect_cell_coordinate_player(CoordinateAxis::X, entity_id),
             "Y" => self.collect_cell_coordinate_player(CoordinateAxis::Y, entity_id),
@@ -463,6 +440,7 @@ impl<'a> SecondPassParser<'a> {
             "is_airborne" => self.find_is_airborne(player),
             "agent_skin" => return self.find_agent_skin(player),
             "CCSPlayerController.m_iCompTeammateColor" => return self.find_player_color(player, prop_info),
+            "usercmd_input_history" => self.get_prop_from_ent(&USERCMD_INPUT_HISTORY_BASEID, entity_id),
             _ => Err(PropCollectionError::UnknownCustomPropName),
         }
     }
@@ -534,21 +512,12 @@ impl<'a> SecondPassParser<'a> {
         }
         return Ok(Variant::Stickers(stickers));
     }
-    fn find_sticker(
-        &self,
-        entity_id: &i32,
-        sticker_id_id: u32,
-        sticker_wear_id: u32,
-        sticker_x: u32,
-        sticker_y: u32,
-    ) -> Option<Sticker> {
+    fn find_sticker(&self, entity_id: &i32, sticker_id_id: u32, sticker_wear_id: u32, sticker_x: u32, sticker_y: u32) -> Option<Sticker> {
         let id = self.get_prop_from_ent(&sticker_id_id, entity_id);
         let wear = self.get_prop_from_ent(&sticker_wear_id, entity_id);
         let sticker_x = self.get_prop_from_ent(&sticker_x, entity_id);
         let sticker_y = self.get_prop_from_ent(&sticker_y, entity_id);
-        if let (Ok(Variant::F32(id)), Ok(Variant::F32(wear)), Ok(Variant::F32(sticker_x)), Ok(Variant::F32(sticker_y))) =
-            (id, wear, sticker_x, sticker_y)
-        {
+        if let (Ok(Variant::F32(id)), Ok(Variant::F32(wear)), Ok(Variant::F32(sticker_x)), Ok(Variant::F32(sticker_y))) = (id, wear, sticker_x, sticker_y) {
             return Some(Sticker {
                 id: id.to_bits(),
                 name: STICKER_ID_TO_NAME.get(&id.to_bits()).unwrap_or(&"unknown").to_string(),
@@ -933,9 +902,7 @@ impl<'a> SecondPassParser<'a> {
                     Ok(p) => Ok(p),
                     Err(e) => match e {
                         PropCollectionError::GetPropFromEntEntityNotFound => Err(PropCollectionError::WeaponEntityNotFound),
-                        PropCollectionError::GetPropFromEntPropNotFound => {
-                            Err(PropCollectionError::WeaponEntityWantedPropNotFound)
-                        }
+                        PropCollectionError::GetPropFromEntPropNotFound => Err(PropCollectionError::WeaponEntityWantedPropNotFound),
                         _ => Err(e),
                     },
                 }
@@ -1064,10 +1031,7 @@ impl<'a> SecondPassParser<'a> {
     }
 }
 
-fn coord_from_cell(
-    cell: Result<Variant, PropCollectionError>,
-    offset: Result<Variant, PropCollectionError>,
-) -> Result<f32, PropCollectionError> {
+fn coord_from_cell(cell: Result<Variant, PropCollectionError>, offset: Result<Variant, PropCollectionError>) -> Result<f32, PropCollectionError> {
     // Both cell and offset are needed for calculation
     match (offset, cell) {
         (Ok(Variant::F32(offset)), Ok(Variant::U32(cell))) => {

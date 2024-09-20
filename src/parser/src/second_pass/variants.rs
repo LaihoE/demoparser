@@ -24,6 +24,7 @@ pub enum Variant {
     U32Vec(Vec<u32>),
     U64Vec(Vec<u64>),
     Stickers(Vec<Sticker>),
+    InputHistory(Vec<InputHistory>),
 }
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Sticker {
@@ -32,6 +33,16 @@ pub struct Sticker {
     pub id: u32,
     pub x: f32,
     pub y: f32,
+}
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct InputHistory {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub render_tick_count: i32,
+    pub render_tick_fraction: f32,
+    pub player_tick_count: i32,
+    pub player_tick_fraction: f32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -48,6 +59,7 @@ pub enum VarVec {
     XYVec(Vec<Option<[f32; 2]>>),
     XYZVec(Vec<Option<[f32; 3]>>),
     Stickers(Vec<Vec<Sticker>>),
+    InputHistory(Vec<Vec<InputHistory>>),
 }
 
 impl VarVec {
@@ -67,6 +79,7 @@ impl VarVec {
             Variant::Stickers(_) => VarVec::Stickers(vec![]),
             Variant::I16(_) => VarVec::I32(vec![]),
             Variant::U8(_) => VarVec::I32(vec![]),
+            Variant::InputHistory(_) => VarVec::InputHistory(vec![]),
         }
     }
 }
@@ -98,6 +111,7 @@ impl PropColumn {
             Some(VarVec::XYVec(b)) => VarVec::XYVec(indicies.iter().map(|x| b[*x]).collect_vec()),
             Some(VarVec::XYZVec(b)) => VarVec::XYZVec(indicies.iter().map(|x| b[*x]).collect_vec()),
             Some(VarVec::Stickers(b)) => VarVec::Stickers(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
+            Some(VarVec::InputHistory(b)) => VarVec::InputHistory(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
             None => {
                 return Some(PropColumn {
                     data: None,
@@ -124,6 +138,7 @@ impl PropColumn {
             Some(VarVec::XYVec(b)) => b.len(),
             Some(VarVec::XYZVec(b)) => b.len(),
             Some(VarVec::Stickers(b)) => b.len(),
+            Some(VarVec::InputHistory(b)) => b.len(),
             None => self.num_nones,
         }
     }
@@ -250,6 +265,17 @@ impl PropColumn {
                 }
                 _ => {}
             },
+            Some(VarVec::InputHistory(v)) => match &other.data {
+                Some(VarVec::InputHistory(v_other)) => {
+                    v.extend_from_slice(&v_other);
+                }
+                None => {
+                    for _ in 0..other.num_nones {
+                        v.push(vec![]);
+                    }
+                }
+                _ => {}
+            },
             Some(VarVec::U32Vec(v)) => match &other.data {
                 Some(VarVec::U32Vec(v_other)) => {
                     v.extend_from_slice(&v_other);
@@ -310,6 +336,10 @@ impl PropColumn {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
                 }
+                Some(VarVec::InputHistory(_inner)) => {
+                    self.resolve_vec_type(PropColumn::get_type(&other.data));
+                    self.extend_from(other);
+                }
                 None => {
                     self.num_nones += other.num_nones;
                 }
@@ -331,6 +361,8 @@ impl PropColumn {
             Some(VarVec::XYZVec(_)) => Some(9),
             Some(VarVec::Stickers(_)) => Some(10),
             Some(VarVec::U32Vec(_)) => Some(11),
+            Some(VarVec::InputHistory(_)) => Some(12),
+
             None => None,
         }
     }
@@ -347,7 +379,11 @@ impl PropColumn {
             Some(5) => self.data = Some(VarVec::U64(vec![])),
             Some(6) => self.data = Some(VarVec::StringVec(vec![])),
             Some(7) => self.data = Some(VarVec::U64Vec(vec![])),
+            Some(8) => self.data = Some(VarVec::XYVec(vec![])),
+            Some(9) => self.data = Some(VarVec::XYZVec(vec![])),
+            Some(10) => self.data = Some(VarVec::Stickers(vec![])),
             Some(11) => self.data = Some(VarVec::U32Vec(vec![])),
+            Some(12) => self.data = Some(VarVec::InputHistory(vec![])),
             _ => {}
         }
         for _ in 0..self.num_nones {
@@ -428,6 +464,10 @@ impl VarVec {
                 VarVec::Stickers(f) => f.push(p),
                 _ => {}
             },
+            Some(Variant::InputHistory(p)) => match self {
+                VarVec::InputHistory(f) => f.push(p),
+                _ => {}
+            },
             None => self.push_none(),
             _ => {}
         }
@@ -446,6 +486,7 @@ impl VarVec {
             VarVec::XYZVec(f) => f.push(None),
             VarVec::U32Vec(f) => f.push(vec![]),
             VarVec::Stickers(f) => f.push(vec![]),
+            VarVec::InputHistory(f) => f.push(vec![]),
         }
     }
 }
@@ -504,6 +545,13 @@ impl Serialize for Variant {
                 s.end()
             }
             Variant::Stickers(v) => {
+                let mut s = serializer.serialize_seq(Some(v.len()))?;
+                for item in v {
+                    s.serialize_element(&item)?;
+                }
+                s.end()
+            }
+            Variant::InputHistory(v) => {
                 let mut s = serializer.serialize_seq(Some(v.len()))?;
                 for item in v {
                     s.serialize_element(&item)?;
@@ -674,6 +722,10 @@ pub fn soa_to_aos(soa: OutputSerdeHelperStruct) -> Vec<std::collections::HashMap
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::Stickers(f.clone()))),
                         _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
+                    Some(VarVec::InputHistory(val)) => match val.get(idx) {
+                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::InputHistory(f.clone()))),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                    },
                 };
             }
         }
@@ -731,6 +783,9 @@ impl Serialize for OutputSerdeHelperStruct {
                         map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::Stickers(val)) => {
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
+                    }
+                    Some(VarVec::InputHistory(val)) => {
                         map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::U64Vec(val)) => {

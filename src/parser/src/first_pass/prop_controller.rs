@@ -50,6 +50,38 @@ pub const ITEM_PURCHASE_HANDLE: u32 = 500000000;
 pub const ITEM_PURCHASE_NEW_DEF_IDX: u32 = 600000000;
 pub const FLATTENED_VEC_MAX_LEN: u32 = 100000;
 
+pub const USERCMD_VIEWANGLE_X: u32 = 100000022;
+pub const USERCMD_VIEWANGLE_Y: u32 = 100000023;
+pub const USERCMD_VIEWANGLE_Z: u32 = 100000024;
+pub const USERCMD_FORWARDMOVE: u32 = 100000025;
+pub const USERCMD_IMPULSE: u32 = 100000026;
+pub const USERCMD_MOUSE_DX: u32 = 100000027;
+pub const USERCMD_MOUSE_DY: u32 = 100000028;
+pub const USERCMD_BUTTONSTATE_1: u32 = 100000029;
+pub const USERCMD_BUTTONSTATE_2: u32 = 100000030;
+pub const USERCMD_BUTTONSTATE_3: u32 = 100000031;
+pub const USERCMD_CONSUMED_SERVER_ANGLE_CHANGES: u32 = 100000032;
+pub const USERCMD_LEFTMOVE: u32 = 100000033;
+pub const USERCMD_WEAPON_SELECT: u32 = 100000034;
+pub const USERCMD_SUBTICK_MOVE_ANALOG_FORWARD_DELTA: u32 = 100000035;
+pub const USERCMD_SUBTICK_MOVE_ANALOG_LEFT_DELTA: u32 = 100000036;
+pub const USERCMD_SUBTICK_MOVE_BUTTON: u32 = 100000037;
+pub const USERCMD_SUBTICK_MOVE_WHEN: u32 = 100000038;
+pub const USERCMD_SUBTICK_LEFT_HAND_DESIRED: u32 = 100000039;
+
+pub const USERCMD_ATTACK_START_HISTORY_INDEX_1: u32 = 100000040;
+pub const USERCMD_ATTACK_START_HISTORY_INDEX_2: u32 = 100000041;
+pub const USERCMD_ATTACK_START_HISTORY_INDEX_3: u32 = 100000042;
+
+pub const USERCMD_INPUT_HISTORY_BASEID: u32 = 100001000;
+pub const INPUT_HISTORY_X_OFFSET: u32 = 0;
+pub const INPUT_HISTORY_Y_OFFSET: u32 = 1;
+pub const INPUT_HISTORY_Z_OFFSET: u32 = 2;
+pub const INPUT_HISTORY_RENDER_TICK_COUNT_OFFSET: u32 = 3;
+pub const INPUT_HISTORY_RENDER_TICK_FRACTION_OFFSET: u32 = 4;
+pub const INPUT_HISTORY_PLAYER_TICK_COUNT_OFFSET: u32 = 5;
+pub const INPUT_HISTORY_PLAYER_TICK_FRACTION_OFFSET: u32 = 6;
+
 #[derive(Clone, Debug)]
 pub struct PropController {
     pub id: u32,
@@ -211,7 +243,6 @@ impl PropController {
                 is_player_prop: false,
             });
         }
-
         self.prop_infos.push(PropInfo {
             id: TICK_ID,
             prop_type: PropType::Tick,
@@ -307,8 +338,7 @@ impl PropController {
         f.full_name = full_name.to_string();
         // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]
         let split_at_dot: Vec<&str> = full_name.split(".").collect();
-        let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK"))
-            && !split_at_dot[0].contains("Player")
+        let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK")) && !split_at_dot[0].contains("Player")
             || split_at_dot[0].contains("Knife")
             || split_at_dot[0].contains("CDEagle")
             || split_at_dot[0].contains("C4")
@@ -316,9 +346,8 @@ impl PropController {
             || split_at_dot[0].contains("Inc")
             || split_at_dot[0].contains("Infer");
 
-        let is_projectile_prop =
-            (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
-                && !split_at_dot[0].contains("Player");
+        let is_projectile_prop = (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
+            && !split_at_dot[0].contains("Player");
         let is_grenade_or_weapon = is_weapon_prop || is_projectile_prop;
 
         // Strip first part of name from grenades and weapons.
@@ -422,16 +451,8 @@ impl PropController {
                     let full_name = ser_name.clone() + "." + &x.name;
                     self.handle_prop(&full_name, x, path);
                 }
-                Field::Serializer(ser) => self.traverse_fields(
-                    &mut ser.serializer.fields,
-                    ser_name.clone() + "." + &ser.serializer.name,
-                    path.clone(),
-                ),
-                Field::Pointer(ser) => self.traverse_fields(
-                    &mut ser.serializer.fields,
-                    ser_name.clone() + "." + &ser.serializer.name,
-                    path.clone(),
-                ),
+                Field::Serializer(ser) => self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name, path.clone()),
+                Field::Pointer(ser) => self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name, path.clone()),
                 Field::Array(ser) => match &mut ser.field_enum.as_mut() {
                     Field::Value(v) => {
                         self.handle_prop(&(ser_name.clone() + "." + &v.name), v, path);
@@ -453,11 +474,7 @@ impl PropController {
                                         _ => {}
                                     }
                                 }
-                                self.traverse_fields(
-                                    &mut s.serializer.fields,
-                                    ser_name.clone() + "." + &s.serializer.name,
-                                    path_og.clone(),
-                                )
+                                self.traverse_fields(&mut s.serializer.fields, ser_name.clone() + "." + &s.serializer.name, path_og.clone())
                             }
                             Field::Value(x) => {
                                 self.handle_prop(&(ser_name.clone() + "." + &x.name), x, path.clone());

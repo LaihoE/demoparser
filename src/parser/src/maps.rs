@@ -1,26 +1,4 @@
-use crate::first_pass::prop_controller::AGENT_SKIN_ID;
-use crate::first_pass::prop_controller::ENTITY_ID_ID;
-use crate::first_pass::prop_controller::INVENTORY_AS_IDS_ID;
-use crate::first_pass::prop_controller::INVENTORY_ID;
-use crate::first_pass::prop_controller::IS_AIRBORNE_ID;
-use crate::first_pass::prop_controller::IS_ALIVE_ID;
-use crate::first_pass::prop_controller::PITCH_ID;
-use crate::first_pass::prop_controller::PLAYER_X_ID;
-use crate::first_pass::prop_controller::PLAYER_Y_ID;
-use crate::first_pass::prop_controller::PLAYER_Z_ID;
-use crate::first_pass::prop_controller::USERID_ID;
-use crate::first_pass::prop_controller::VELOCITY_ID;
-use crate::first_pass::prop_controller::VELOCITY_X_ID;
-use crate::first_pass::prop_controller::VELOCITY_Y_ID;
-use crate::first_pass::prop_controller::VELOCITY_Z_ID;
-use crate::first_pass::prop_controller::WEAPON_FLOAT;
-use crate::first_pass::prop_controller::WEAPON_NAME_ID;
-use crate::first_pass::prop_controller::WEAPON_ORIGINGAL_OWNER_ID;
-use crate::first_pass::prop_controller::WEAPON_PAINT_SEED;
-use crate::first_pass::prop_controller::WEAPON_SKIN_ID;
-use crate::first_pass::prop_controller::WEAPON_SKIN_NAME;
-use crate::first_pass::prop_controller::WEAPON_STICKERS_ID;
-use crate::first_pass::prop_controller::YAW_ID;
+use crate::first_pass::prop_controller::*;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::decoder::Decoder;
@@ -295,6 +273,7 @@ pub fn netmessage_type_from_int(msg_type: i32) -> NetmessageType {
         72 => svc_UserMessage,
         73 => svc_HltvReplay,
         74 => svc_Broadcast_Command,
+        76 => svc_UserCmds,
         101 => UM_AchievementEvent,
         102 => UM_CloseCaption,
         103 => UM_CloseCaptionDirect,
@@ -612,6 +591,7 @@ pub enum NetmessageType {
     UM_DllStatusResponse,
     UM_RequestInventory,
     UM_InventoryResponse,
+    svc_UserCmds,
 }
 pub fn demo_cmd_type_from_int(value: i32) -> Result<EDemoCommands, DemoParserError> {
     match value {
@@ -1978,6 +1958,22 @@ pub static CUSTOM_PLAYER_PROP_IDS: phf::Map<&'static str, u32> = phf_map! {
     "weapon_paint_seed" => WEAPON_PAINT_SEED,
     "weapon_float" => WEAPON_FLOAT,
     "weapon_stickers" => WEAPON_STICKERS_ID,
+
+    "usercmd_viewangle_x" => USERCMD_VIEWANGLE_X,
+    "usercmd_viewangle_y" => USERCMD_VIEWANGLE_Y,
+    "usercmd_viewangle_z" => USERCMD_VIEWANGLE_Z,
+    "usercmd_buttonstate_1" => USERCMD_BUTTONSTATE_1,
+    "usercmd_buttonstate_2" => USERCMD_BUTTONSTATE_2,
+    "usercmd_buttonstate_3" => USERCMD_BUTTONSTATE_3,
+    "usercmd_consumed_server_angle_changes" => USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
+    "usercmd_forward_move" => USERCMD_FORWARDMOVE,
+    "usercmd_left_move" => USERCMD_LEFTMOVE,
+    "usercmd_impulse" => USERCMD_IMPULSE,
+    "usercmd_mouse_dx" => USERCMD_MOUSE_DX,
+    "usercmd_mouse_dy" => USERCMD_MOUSE_DY,
+    "usercmd_left_hand_desired" => USERCMD_SUBTICK_LEFT_HAND_DESIRED,
+    "usercmd_weapon_select" => USERCMD_WEAPON_SELECT,
+    "usercmd_input_history" => USERCMD_INPUT_HISTORY_BASEID,
 };
 
 pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
@@ -1993,6 +1989,23 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "ZOOM" => PropType::Button,
     "SCOREBOARD" =>PropType::Button,
     "WALK" => PropType::Button,
+
+    "usercmd_viewangle_x" => PropType::Player,
+    "usercmd_viewangle_y" => PropType::Player,
+    "usercmd_viewangle_z" => PropType::Player,
+    "usercmd_forward_move" => PropType::Player,
+    "usercmd_left_move" => PropType::Player,
+    "usercmd_impulse" => PropType::Player,
+    "usercmd_mouse_dx" => PropType::Player,
+    "usercmd_mouse_dy" => PropType::Player,
+    "usercmd_buttonstate_1" => PropType::Player,
+    "usercmd_buttonstate_2" => PropType::Player,
+    "usercmd_buttonstate_3" => PropType::Player,
+    "usercmd_weapon_select" => PropType::Player,
+    "usercmd_left_hand_desired" => PropType::Player,
+    "usercmd_consumed_server_angle_changes" => PropType::Player,
+    "usercmd_input_history" => PropType::Custom,
+
 
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => PropType::Player,
     // TEAM
@@ -2576,6 +2589,22 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
 };
 
 pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_map! {
+    "usercmd_viewangle_x" => "usercmd_viewangle_x",
+    "usercmd_viewangle_y" => "usercmd_viewangle_y",
+    "usercmd_viewangle_z" => "usercmd_viewangle_z",
+    "usercmd_forward_move" => "usercmd_forward_move",
+    "usercmd_left_move" => "usercmd_left_move",
+    "usercmd_impulse" => "usercmd_impulse",
+    "usercmd_mouse_dx" => "usercmd_mouse_dx",
+    "usercmd_mouse_dy" => "usercmd_mouse_dy",
+    "usercmd_buttonstate_1" => "usercmd_buttonstate_1",
+    "usercmd_buttonstate_2" => "usercmd_buttonstate_2",
+    "usercmd_buttonstate_3" => "usercmd_buttonstate_3",
+    "usercmd_weapon_select" => "usercmd_weapon_select",
+    "usercmd_left_hand_desired" => "usercmd_left_hand_desired",
+    "usercmd_consumed_server_angle_changes" => "usercmd_consumed_server_angle_changes",
+    "usercmd_input_history" => "usercmd_input_history",
+
     "active_weapon_skin" => "weapon_skin",
     "weapon_skin_id" => "weapon_skin_id",
     "FORWARD" => "FORWARD",
