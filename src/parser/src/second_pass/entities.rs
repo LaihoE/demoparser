@@ -1,5 +1,3 @@
-use std::fs;
-
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::sendtables::find_field;
@@ -112,8 +110,7 @@ impl<'a> SecondPassParser<'a> {
         is_fullpacket: bool,
     ) -> Result<(), DemoParserError> {
         let n_updates = self.parse_paths(bitreader)?;
-        let n_updated_values =
-            self.decode_entity_update(bitreader, entity_id, n_updates, is_fullpacket, is_baseline, events_to_emit)?;
+        let n_updated_values = self.decode_entity_update(bitreader, entity_id, n_updates, is_fullpacket, is_baseline, events_to_emit)?;
         if n_updated_values > 0 {
             self.gather_extra_info(&entity_id, is_baseline)?;
         }
@@ -239,13 +236,7 @@ impl<'a> SecondPassParser<'a> {
             let result = bitreader.decode(&decoder, self.qf_mapper)?;
 
             if !is_fullpacket && !is_baseline {
-                events_to_emit.extend(SecondPassParser::listen_for_events(
-                    entity,
-                    &result,
-                    field,
-                    field_info,
-                    &self.prop_controller,
-                ));
+                events_to_emit.extend(SecondPassParser::listen_for_events(entity, &result, field, field_info, &self.prop_controller));
             }
             if self.is_debug_mode {
                 SecondPassParser::debug_inspect(
@@ -308,12 +299,7 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(())
     }
-    fn create_new_entity(
-        &mut self,
-        bitreader: &mut Bitreader,
-        entity_id: &i32,
-        _events_to_emit: &mut Vec<GameEventInfo>,
-    ) -> Result<(), DemoParserError> {
+    fn create_new_entity(&mut self, bitreader: &mut Bitreader, entity_id: &i32, _events_to_emit: &mut Vec<GameEventInfo>) -> Result<(), DemoParserError> {
         let cls_id: u32 = bitreader.read_nbits(8)?;
         // Both of these are not used. Don't think they are interesting for the parser
         let _serial = bitreader.read_nbits(NSERIALBITS)?;

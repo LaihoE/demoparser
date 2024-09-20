@@ -1,5 +1,3 @@
-use std::fs;
-
 use crate::first_pass::parser::Frame;
 use crate::first_pass::parser::HEADER_ENDS_AT_BYTE;
 use crate::first_pass::parser_settings::FirstPassParser;
@@ -14,7 +12,6 @@ use crate::maps::netmessage_type_from_int;
 use crate::maps::NetmessageType::*;
 use crate::second_pass::collect_data::ProjectileRecord;
 use crate::second_pass::entities::Entity;
-use crate::second_pass::game_events::EventField;
 use crate::second_pass::game_events::GameEvent;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::parser_settings::*;
@@ -26,7 +23,6 @@ use csgoproto::cs_usercmd::CSGOUserCmdPB;
 use csgoproto::demo::*;
 use csgoproto::netmessages::*;
 use csgoproto::networkbasetypes::CNETMsg_Tick;
-use protobuf::text_format::print_to_string_pretty;
 use protobuf::Message;
 use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
@@ -77,10 +73,7 @@ impl<'a> SecondPassParser<'a> {
                 DEM_SignonPacket => self.parse_packet(&bytes, &mut buf2),
                 DEM_Packet => self.parse_packet(&bytes, &mut buf2),
                 DEM_Stop => break,
-                DEM_UserCmd => {
-                    println!("{}", self.tick);
-                    Ok(())
-                }
+                DEM_UserCmd => Ok(()),
                 DEM_FullPacket => {
                     if self.parse_full_packet_and_break_if_needed(&bytes, &mut buf2, started_at)? {
                         break;

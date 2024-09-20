@@ -294,6 +294,20 @@ pub fn _create_ge_tests() {
         "user_id".to_string(),
         "agent_skin".to_string(),
         "is_airborne".to_string(),
+        "usercmd_viewangle_x".to_string(),
+        "usercmd_viewangle_y".to_string(),
+        "usercmd_viewangle_z".to_string(),
+        "usercmd_forward_move".to_string(),
+        "usercmd_left_move".to_string(),
+        "usercmd_impulse".to_string(),
+        "usercmd_mouse_dx".to_string(),
+        "usercmd_mouse_dy".to_string(),
+        "usercmd_buttonstate_1".to_string(),
+        "usercmd_buttonstate_2".to_string(),
+        "usercmd_buttonstate_3".to_string(),
+        "usercmd_weapon_select".to_string(),
+        "usercmd_left_hand_desired".to_string(),
+        "usercmd_input_history".to_string(),
     ];
 
     let wanted_events = vec!["all".to_string()];
@@ -366,6 +380,20 @@ pub fn _create_ge_tests() {
         "round_mvp",
         "round_announce_match_start",
         "hegrenade_detonate",
+        "usercmd_viewangle_x",
+        "usercmd_viewangle_y",
+        "usercmd_viewangle_z",
+        "usercmd_forward_move",
+        "usercmd_left_move",
+        "usercmd_impulse",
+        "usercmd_mouse_dx",
+        "usercmd_mouse_dy",
+        "usercmd_buttonstate_1",
+        "usercmd_buttonstate_2",
+        "usercmd_buttonstate_3",
+        "usercmd_weapon_select",
+        "usercmd_left_hand_desired",
+        "usercmd_input_history",
     ];
 
     for name in events {
@@ -669,6 +697,20 @@ pub fn _create_tests() {
         "user_id".to_string(),
         "agent_skin".to_string(),
         "is_airborne".to_string(),
+        "usercmd_viewangle_x".to_string(),
+        "usercmd_viewangle_y".to_string(),
+        "usercmd_viewangle_z".to_string(),
+        "usercmd_forward_move".to_string(),
+        "usercmd_left_move".to_string(),
+        "usercmd_impulse".to_string(),
+        "usercmd_mouse_dx".to_string(),
+        "usercmd_mouse_dy".to_string(),
+        "usercmd_buttonstate_1".to_string(),
+        "usercmd_buttonstate_2".to_string(),
+        "usercmd_buttonstate_3".to_string(),
+        "usercmd_weapon_select".to_string(),
+        "usercmd_left_hand_desired".to_string(),
+        "usercmd_input_history".to_string(),
     ];
     let huf = create_huffman_lookup_table();
 
@@ -720,6 +762,21 @@ pub fn _create_tests() {
     custom.insert(NAME_ID, "name");
     custom.insert(WEAPON_STICKERS_ID, "weapon_stickers");
     custom.insert(IS_AIRBORNE_ID, "is_airborne");
+    custom.insert(USERCMD_INPUT_HISTORY_BASEID, "usercmd_input_history");
+    // Currently test demo is too old to contain these :/
+    custom.insert(USERCMD_VIEWANGLE_X, "usercmd_viewangle_x");
+    custom.insert(USERCMD_VIEWANGLE_Y, "usercmd_viewangle_y");
+    custom.insert(USERCMD_VIEWANGLE_Z, "usercmd_viewangle_z");
+    custom.insert(USERCMD_FORWARDMOVE, "usercmd_forward_move");
+    custom.insert(USERCMD_LEFTMOVE, "usercmd_left_move");
+    custom.insert(USERCMD_IMPULSE, "usercmd_impulsee");
+    custom.insert(USERCMD_MOUSE_DX, "usercmd_mouse_dx");
+    custom.insert(USERCMD_MOUSE_DY, "usercmd_mouse_dy");
+    custom.insert(USERCMD_BUTTONSTATE_1, "usercmd_buttonstate_1");
+    custom.insert(USERCMD_BUTTONSTATE_2, "usercmd_buttonstate_2");
+    custom.insert(USERCMD_BUTTONSTATE_3, "usercmd_buttonstate_3");
+    custom.insert(USERCMD_WEAPON_SELECT, "usercmd_weapon_select");
+    custom.insert(USERCMD_SUBTICK_LEFT_HAND_DESIRED, "usercmd_left_hand_desired");
 
     for (k, v) in d.df {
         if let Some(real_name) = d.prop_controller.id_to_name.get(&k) {
@@ -1137,12 +1194,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
     let mut hm = BTreeMap::default();
 
     for name in events {
-        let mut v = out2
-            .game_events
-            .iter()
-            .map(|x| x.clone())
-            .filter(|x| x.name == name)
-            .collect_vec();
+        let mut v = out2.game_events.iter().map(|x| x.clone()).filter(|x| x.name == name).collect_vec();
         v.truncate(2);
         hm.insert(name.to_string(), v);
     }
@@ -1206,10 +1258,7 @@ mod tests {
 
         let steamids = output.df.get(&STEAMID_ID).unwrap();
 
-        assert_eq!(
-            steamids.data,
-            Some(VarVec::U64(vec![Some(76561198244754626), Some(76561198244754626)]))
-        );
+        assert_eq!(steamids.data, Some(VarVec::U64(vec![Some(76561198244754626), Some(76561198244754626)])));
     }
     #[test]
     fn CBodyComponentBaseAnimGraph_m_nNewSequenceParity() {
@@ -1266,13 +1315,7 @@ mod tests {
     }
     #[test]
     fn CCSPlayerController_m_nDisconnectionTick() {
-        let prop = (
-            "CCSPlayerController.m_nDisconnectionTick",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CCSPlayerController.m_nDisconnectionTick", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
@@ -1386,10 +1429,7 @@ mod tests {
     fn CCSPlayerController_CCSPlayerController_ActionTrackingServices_m_iMoneySaved() {
         let prop = (
             "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iMoneySaved",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
+            PropColumn { data: None, num_nones: 40 },
         );
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
@@ -1555,13 +1595,7 @@ mod tests {
     }
     #[test]
     fn CEconItemAttribute_m_iRawValue32() {
-        let prop = (
-            "CEconItemAttribute.m_iRawValue32",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CEconItemAttribute.m_iRawValue32", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
@@ -1779,13 +1813,7 @@ mod tests {
     }
     #[test]
     fn CCSPlayerController_m_nQuestProgressReason() {
-        let prop = (
-            "CCSPlayerController.m_nQuestProgressReason",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CCSPlayerController.m_nQuestProgressReason", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
@@ -2006,10 +2034,7 @@ mod tests {
     fn CCSPlayerController_CCSPlayerController_ActionTrackingServices_m_iCashEarned() {
         let prop = (
             "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iCashEarned",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
+            PropColumn { data: None, num_nones: 40 },
         );
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
@@ -2811,13 +2836,7 @@ mod tests {
     }
     #[test]
     fn velocity_Y() {
-        let prop = (
-            "velocity_Y",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("velocity_Y", PropColumn { data: None, num_nones: 40 });
         assert_eq!(out.0.df[&VELOCITY_Y_ID], prop.1);
     }
     #[test]
@@ -3141,13 +3160,7 @@ mod tests {
     }
     #[test]
     fn velocity() {
-        let prop = (
-            "velocity",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("velocity", PropColumn { data: None, num_nones: 40 });
         assert_eq!(out.0.df[&VELOCITY_ID], prop.1);
     }
     #[test]
@@ -4900,13 +4913,7 @@ mod tests {
     }
     #[test]
     fn velocity_X() {
-        let prop = (
-            "velocity_X",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("velocity_X", PropColumn { data: None, num_nones: 40 });
         assert_eq!(out.0.df[&VELOCITY_X_ID], prop.1);
     }
     #[test]
@@ -5600,13 +5607,7 @@ mod tests {
     }
     #[test]
     fn CCSPlayerController_m_iPawnArmor() {
-        let prop = (
-            "CCSPlayerController.m_iPawnArmor",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CCSPlayerController.m_iPawnArmor", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
@@ -6088,13 +6089,7 @@ mod tests {
     }
     #[test]
     fn CCSPlayerController_m_bPawnHasHelmet() {
-        let prop = (
-            "CCSPlayerController.m_bPawnHasHelmet",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CCSPlayerController.m_bPawnHasHelmet", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
@@ -8060,13 +8055,7 @@ mod tests {
     }
     #[test]
     fn CCSPlayerController_m_nTickBase() {
-        let prop = (
-            "CCSPlayerController.m_nTickBase",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CCSPlayerController.m_nTickBase", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
@@ -8286,10 +8275,7 @@ mod tests {
     fn CCSPlayerController_CCSPlayerController_ActionTrackingServices_m_iKillReward() {
         let prop = (
             "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iKillReward",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
+            PropColumn { data: None, num_nones: 40 },
         );
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
@@ -9727,23 +9713,14 @@ mod tests {
     fn CCSPlayerController_CCSPlayerController_ActionTrackingServices_m_iEquipmentValue() {
         let prop = (
             "CCSPlayerController.CCSPlayerController_ActionTrackingServices.m_iEquipmentValue",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
+            PropColumn { data: None, num_nones: 40 },
         );
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
     #[test]
     fn CCSPlayerController_m_bPawnHasDefuser() {
-        let prop = (
-            "CCSPlayerController.m_bPawnHasDefuser",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CCSPlayerController.m_bPawnHasDefuser", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
@@ -10202,12 +10179,7 @@ mod tests {
                     ],
                     vec!["knife".to_string(), "USP-S".to_string()],
                     vec!["knife_t".to_string()],
-                    vec![
-                        "knife_t".to_string(),
-                        "Glock-18".to_string(),
-                        "AK-47".to_string(),
-                        "Flashbang".to_string(),
-                    ],
+                    vec!["knife_t".to_string(), "Glock-18".to_string(), "AK-47".to_string(), "Flashbang".to_string()],
                     vec!["knife_survival_bowie".to_string(), "USP-S".to_string(), "M4A4".to_string()],
                     vec!["knife_t".to_string(), "Glock-18".to_string(), "AK-47".to_string()],
                     vec!["knife_t".to_string(), "Glock-18".to_string(), "MAC-10".to_string()],
@@ -10248,11 +10220,7 @@ mod tests {
                     ],
                     vec![],
                     vec!["knife".to_string()],
-                    vec![
-                        "knife_tactical".to_string(),
-                        "Smoke Grenade".to_string(),
-                        "Flashbang".to_string(),
-                    ],
+                    vec!["knife_tactical".to_string(), "Smoke Grenade".to_string(), "Flashbang".to_string()],
                     vec![
                         "knife_t".to_string(),
                         "Glock-18".to_string(),
@@ -11629,13 +11597,7 @@ mod tests {
     }
     #[test]
     fn CCSPlayerController_m_unPlayerTvControlFlags() {
-        let prop = (
-            "CCSPlayerController.m_unPlayerTvControlFlags",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CCSPlayerController.m_unPlayerTvControlFlags", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
@@ -12383,13 +12345,7 @@ mod tests {
     }
     #[test]
     fn CCSPlayerController_m_iPawnHealth() {
-        let prop = (
-            "CCSPlayerController.m_iPawnHealth",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CCSPlayerController.m_iPawnHealth", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
@@ -13243,13 +13199,7 @@ mod tests {
     }
     #[test]
     fn CCSPlayerController_m_bCanControlObservedBot() {
-        let prop = (
-            "CCSPlayerController.m_bCanControlObservedBot",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CCSPlayerController.m_bCanControlObservedBot", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
@@ -14260,13 +14210,7 @@ mod tests {
     }
     #[test]
     fn velocity_Z() {
-        let prop = (
-            "velocity_Z",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("velocity_Z", PropColumn { data: None, num_nones: 40 });
         assert_eq!(out.0.df[&VELOCITY_Z_ID], prop.1);
     }
     #[test]
@@ -14905,13 +14849,7 @@ mod tests {
     }
     #[test]
     fn CCSPlayerController_m_unActiveQuestId() {
-        let prop = (
-            "CCSPlayerController.m_unActiveQuestId",
-            PropColumn {
-                data: None,
-                num_nones: 40,
-            },
-        );
+        let prop = ("CCSPlayerController.m_unActiveQuestId", PropColumn { data: None, num_nones: 40 });
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
     }

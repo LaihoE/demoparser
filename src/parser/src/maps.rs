@@ -1962,7 +1962,6 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "usercmd_left_hand_desired" => PropType::Player,
     "usercmd_input_history" => PropType::Custom,
 
-
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => PropType::Player,
     // TEAM
     "CCSTeam.m_iTeamNum" => PropType::Team,
@@ -2559,8 +2558,6 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "usercmd_weapon_select" => "usercmd_weapon_select",
     "usercmd_left_hand_desired" => "usercmd_left_hand_desired",
     "usercmd_input_history" => "usercmd_input_history",
-
-
 
     "active_weapon_skin" => "weapon_skin",
     "weapon_skin_id" => "weapon_skin_id",
