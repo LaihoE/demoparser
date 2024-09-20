@@ -1976,6 +1976,23 @@ pub static CUSTOM_PLAYER_PROP_IDS: phf::Map<&'static str, u32> = phf_map! {
     "usercmd_input_history" => USERCMD_INPUT_HISTORY_BASEID,
 };
 
+pub static USERCMD_IDS: phf::Map<&'static str, u32> = phf_map! {
+    "usercmd_viewangle_x" => USERCMD_VIEWANGLE_X,
+    "usercmd_viewangle_y" => USERCMD_VIEWANGLE_Y,
+    "usercmd_viewangle_z" => USERCMD_VIEWANGLE_Z,
+    "usercmd_buttonstate_1" => USERCMD_BUTTONSTATE_1,
+    "usercmd_buttonstate_2" => USERCMD_BUTTONSTATE_2,
+    "usercmd_buttonstate_3" => USERCMD_BUTTONSTATE_3,
+    "usercmd_consumed_server_angle_changes" => USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
+    "usercmd_forward_move" => USERCMD_FORWARDMOVE,
+    "usercmd_left_move" => USERCMD_LEFTMOVE,
+    "usercmd_impulse" => USERCMD_IMPULSE,
+    "usercmd_mouse_dx" => USERCMD_MOUSE_DX,
+    "usercmd_mouse_dy" => USERCMD_MOUSE_DY,
+    "usercmd_left_hand_desired" => USERCMD_SUBTICK_LEFT_HAND_DESIRED,
+    "usercmd_weapon_select" => USERCMD_WEAPON_SELECT,
+};
+
 pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "FORWARD" => PropType::Button,
     "LEFT" => PropType::Button,
