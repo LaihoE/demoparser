@@ -500,10 +500,6 @@ impl ::protobuf::Message for CSGOInputHistoryEntryPB {
     fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
         while let Some(tag) = is.read_raw_tag_or_eof()? {
 
-            if tag != 18 && tag != 32 && tag != 45 && tag != 48 && tag != 61 && tag != 106 && tag != 114 && tag != 98 && tag != 122{
-                println!("TAG: {:?}", tag);
-            }
-
             match tag {
                 18 => {
                     ::protobuf::rt::read_singular_message_into_field(is, &mut self.view_angles)?;
@@ -905,9 +901,7 @@ impl ::protobuf::Message for CSGOUserCmdPB {
                     ::protobuf::rt::read_singular_message_into_field(is, &mut self.base)?;
                 },
                 18 => {
-                    let m = is.read_message()?;
-                    // println!("{:?}", m);
-                    self.input_history.push(m);
+                    self.input_history.push(is.read_message()?);
                 },
                 48 => {
                     self.attack1_start_history_index = ::std::option::Option::Some(is.read_int32()?);
