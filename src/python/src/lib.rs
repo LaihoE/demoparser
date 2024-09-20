@@ -735,7 +735,6 @@ impl DemoParser {
                 }
             }
         }
-        println!("{:?} {:?}", df_column_names_arrow, df_column_names_py);
         Python::with_gil(|py| {
             let polars = py.import_bound("polars")?;
             let all_series_py = all_series.to_object(py);
