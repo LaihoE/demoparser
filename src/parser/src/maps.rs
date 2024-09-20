@@ -1,3 +1,4 @@
+use crate::first_pass::prop_controller::*;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::decoder::Decoder;
@@ -1931,6 +1932,48 @@ pub static PAINTKITS: phf::Map<u32, &'static str> = phf_map! {
     10086_u32=>"Yellow-banded",
     10087_u32=>"NeedlePoint",
     10088_u32=>"Unhinged",
+};
+
+pub static CUSTOM_PLAYER_PROP_IDS: phf::Map<&'static str, u32> = phf_map! {
+    "entity_id" => ENTITY_ID_ID,
+    "user_id"=> USERID_ID,
+    "X"=> PLAYER_X_ID,
+    "Y"=> PLAYER_Y_ID,
+    "Z"=> PLAYER_Z_ID,
+    "velocity_X" => VELOCITY_X_ID,
+    "velocity_Y" => VELOCITY_Y_ID,
+    "velocity_Z" => VELOCITY_Z_ID,
+    "velocity" => VELOCITY_ID,
+    "pitch"=> PITCH_ID,
+    "yaw"=> YAW_ID,
+    "is_alive" => IS_ALIVE_ID,
+    "is_airborne" => IS_AIRBORNE_ID,
+    "agent_skin" => AGENT_SKIN_ID,
+    "inventory" => INVENTORY_ID,
+    "inventory_as_ids" => INVENTORY_AS_IDS_ID,
+    "active_weapon_original_owner" => WEAPON_ORIGINGAL_OWNER_ID,
+    "weapon_name" => WEAPON_NAME_ID,
+    "weapon_skin" => WEAPON_SKIN_NAME,
+    "weapon_skin_id" => WEAPON_SKIN_ID,
+    "weapon_paint_seed" => WEAPON_PAINT_SEED,
+    "weapon_float" => WEAPON_FLOAT,
+    "weapon_stickers" => WEAPON_STICKERS_ID,
+
+    "usercmd_viewangle_x" => USERCMD_VIEWANGLE_X,
+    "usercmd_viewangle_y" => USERCMD_VIEWANGLE_Y,
+    "usercmd_viewangle_z" => USERCMD_VIEWANGLE_Z,
+    "usercmd_buttonstate_1" => USERCMD_BUTTONSTATE_1,
+    "usercmd_buttonstate_2" => USERCMD_BUTTONSTATE_2,
+    "usercmd_buttonstate_3" => USERCMD_BUTTONSTATE_3,
+    "usercmd_consumed_server_angle_changes" => USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
+    "usercmd_forward_move" => USERCMD_FORWARDMOVE,
+    "usercmd_left_move" => USERCMD_LEFTMOVE,
+    "usercmd_impulse" => USERCMD_IMPULSE,
+    "usercmd_mouse_dx" => USERCMD_MOUSE_DX,
+    "usercmd_mouse_dy" => USERCMD_MOUSE_DY,
+    "usercmd_left_hand_desired" => USERCMD_SUBTICK_LEFT_HAND_DESIRED,
+    "usercmd_weapon_select" => USERCMD_WEAPON_SELECT,
+    "usercmd_input_history" => USERCMD_INPUT_HISTORY_BASEID,
 };
 
 pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {

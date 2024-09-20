@@ -2,6 +2,7 @@ use ahash::AHashMap;
 use itertools::Itertools;
 use memmap2::Mmap;
 use parser::first_pass::parser_settings::create_mmap;
+use parser::first_pass::parser_settings::rm_map_user_friendly_names;
 use parser::first_pass::parser_settings::rm_user_friendly_names;
 use parser::first_pass::parser_settings::ParserInputs;
 use parser::first_pass::read_bits::DemoParserError;
@@ -35,6 +36,38 @@ use std::sync::Arc;
 use pyo3::create_exception;
 create_exception!(DemoParser, Exception, pyo3::exceptions::PyException);
 
+struct PyVariant(Variant);
+
+impl<'source> FromPyObject<'source> for PyVariant {
+    fn extract_bound(obj: &pyo3::Bound<'source, PyAny>) -> PyResult<Self> {
+        if let Ok(val) = obj.extract::<bool>() {
+            Ok(PyVariant(Variant::Bool(val)))
+        } else if let Ok(val) = obj.extract::<String>() {
+            Ok(PyVariant(Variant::String(val)))
+        } else if let Ok(val) = obj.extract::<u8>() {
+            Ok(PyVariant(Variant::U8(val)))
+        } else if let Ok(val) = obj.extract::<i16>() {
+            Ok(PyVariant(Variant::I16(val)))
+        } else if let Ok(val) = obj.extract::<i32>() {
+            Ok(PyVariant(Variant::I32(val)))
+        } else if let Ok(val) = obj.extract::<u32>() {
+            Ok(PyVariant(Variant::U32(val)))
+        } else if let Ok(val) = obj.extract::<u64>() {
+            Ok(PyVariant(Variant::U64(val)))
+        } else if let Ok(val) = obj.extract::<f32>() {
+            Ok(PyVariant(Variant::F32(val)))
+        } else {
+            Err(PyValueError::new_err("Unsupported type for Variant"))
+        }
+    }
+}
+
+#[derive(FromPyObject)]
+struct WantedPropState {
+    prop: String,
+    state: PyVariant,
+}
+
 #[pymethods]
 impl DemoParser {
     #[new]
@@ -60,6 +93,7 @@ impl DemoParser {
             wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_other_props: vec![],
+            wanted_prop_states: AHashMap::default(),
             wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -87,6 +121,7 @@ impl DemoParser {
             wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_other_props: vec![],
+            wanted_prop_states: AHashMap::default(),
             wanted_events: vec!["all".to_string()],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -121,6 +156,7 @@ impl DemoParser {
             wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_other_props: vec![],
+            wanted_prop_states: AHashMap::default(),
             wanted_events: vec![],
             parse_ents: true,
             wanted_ticks: vec![],
@@ -191,6 +227,7 @@ impl DemoParser {
             wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_other_props: vec![],
+            wanted_prop_states: AHashMap::default(),
             wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -235,6 +272,7 @@ impl DemoParser {
             wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_other_props: vec![],
+            wanted_prop_states: AHashMap::default(),
             wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -315,6 +353,7 @@ impl DemoParser {
             wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_other_props: vec![],
+            wanted_prop_states: AHashMap::default(),
             wanted_events: vec![],
             parse_ents: false,
             wanted_ticks: vec![],
@@ -389,6 +428,7 @@ impl DemoParser {
     ) -> PyResult<Py<PyAny>> {
         let wanted_player_props = player.unwrap_or_default();
         let wanted_other_props = other.unwrap_or_default();
+
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
@@ -400,6 +440,7 @@ impl DemoParser {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
+
         let mut real_name_to_og_name = AHashMap::default();
         for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
@@ -414,6 +455,7 @@ impl DemoParser {
             wanted_player_props: real_player_props,
             wanted_other_props: real_other_props,
             wanted_events: vec![event_name],
+            wanted_prop_states: AHashMap::default(),
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -445,6 +487,7 @@ impl DemoParser {
     ) -> PyResult<Py<PyAny>> {
         let wanted_player_props = player.unwrap_or_default();
         let wanted_other_props = other.unwrap_or_default();
+
         let real_player_props = rm_user_friendly_names(&wanted_player_props);
         let real_other_props = rm_user_friendly_names(&wanted_other_props);
 
@@ -456,6 +499,7 @@ impl DemoParser {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
+
         let mut real_name_to_og_name = AHashMap::default();
         for (real_name, user_friendly_name) in real_player_props.iter().zip(&wanted_player_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
@@ -470,6 +514,7 @@ impl DemoParser {
             wanted_player_props: real_player_props,
             wanted_other_props: real_other_props,
             wanted_events: event_name,
+            wanted_prop_states: AHashMap::default(),
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
@@ -496,6 +541,7 @@ impl DemoParser {
             wanted_players: vec![],
             wanted_player_props: vec![],
             wanted_other_props: vec![],
+            wanted_prop_states: AHashMap::default(),
             wanted_events: vec![],
             wanted_ticks: vec![],
             real_name_to_og_name: AHashMap::default(),
@@ -521,20 +567,31 @@ impl DemoParser {
         Ok(out_hm.to_object(py))
     }
 
-    #[pyo3(signature = (wanted_props, *, players=None, ticks=None))]
+    #[pyo3(signature = (wanted_props, *, players=None, ticks=None, prop_states=None))]
     pub fn parse_ticks(
         &self,
         py: Python,
         wanted_props: Vec<String>,
         players: Option<Vec<u64>>,
         ticks: Option<Vec<i32>>,
+        prop_states: Option<Vec<WantedPropState>>,
     ) -> PyResult<PyObject> {
         let wanted_players = players.unwrap_or_default();
         let wanted_ticks = ticks.unwrap_or_default();
+        let wanted_prop_states = prop_states
+            .unwrap_or_default()
+            .into_iter()
+            .map(|prop| (prop.prop, prop.state.0))
+            .collect();
         let real_props = rm_user_friendly_names(&wanted_props);
+        let real_wanted_prop_states = rm_map_user_friendly_names(&wanted_prop_states);
 
         let real_props = match real_props {
             Ok(real_props) => real_props,
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
+        };
+        let real_wanted_prop_states = match real_wanted_prop_states {
+            Ok(real_wanted_prop_states) => real_wanted_prop_states,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
 
@@ -543,12 +600,20 @@ impl DemoParser {
         for (real_name, user_friendly_name) in real_props.iter().zip(&wanted_props) {
             real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
         }
+        for (real_name, user_friendly_name) in real_wanted_prop_states
+            .keys()
+            .zip(wanted_prop_states.keys())
+        {
+            real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+        }
+
         let settings = ParserInputs {
             real_name_to_og_name,
             wanted_players,
             wanted_player_props: real_props,
             wanted_other_props: vec![],
             wanted_events: vec![],
+            wanted_prop_states: real_wanted_prop_states,
             parse_ents: true,
             wanted_ticks,
             parse_projectiles: false,
