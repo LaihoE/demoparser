@@ -487,15 +487,6 @@ impl PropController {
                 is_player_prop: true,
             });
         }
-        if self.wanted_player_props.contains(&("usercmd_consumed_server_angle_changes".to_string())) {
-            self.prop_infos.push(PropInfo {
-                id: USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
-                prop_type: PropType::Custom,
-                prop_name: "usercmd_consumed_server_angle_changes".to_string(),
-                prop_friendly_name: "usercmd_consumed_server_angle_changes".to_string(),
-                is_player_prop: true,
-            });
-        }
         if self.wanted_player_props.contains(&("is_airborne".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: IS_AIRBORNE_ID,
