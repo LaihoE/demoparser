@@ -1960,7 +1960,9 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "usercmd_buttonstate_3" => PropType::Player,
     "usercmd_weapon_select" => PropType::Player,
     "usercmd_left_hand_desired" => PropType::Player,
+    "usercmd_consumed_server_angle_changes" => PropType::Player,
     "usercmd_input_history" => PropType::Custom,
+
 
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => PropType::Player,
     // TEAM
@@ -2557,6 +2559,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "usercmd_buttonstate_3" => "usercmd_buttonstate_3",
     "usercmd_weapon_select" => "usercmd_weapon_select",
     "usercmd_left_hand_desired" => "usercmd_left_hand_desired",
+    "usercmd_consumed_server_angle_changes" => "usercmd_consumed_server_angle_changes",
     "usercmd_input_history" => "usercmd_input_history",
 
     "active_weapon_skin" => "weapon_skin",

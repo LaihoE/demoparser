@@ -237,6 +237,7 @@ impl<'a> SecondPassParser<'a> {
                 Ok(m) => m,
                 _ => return Ok(()),
             };
+
             let entity_id = user_cmd.base.pawn_entity_handle() & 0x7FF;
             if let Some(Some(ent)) = self.entities.get_mut(entity_id as usize) {
                 let mut history = vec![];
@@ -264,6 +265,10 @@ impl<'a> SecondPassParser<'a> {
                 ent.props.insert(USERCMD_BUTTONSTATE_1, Variant::U64(user_cmd.base.buttons_pb.buttonstate1()));
                 ent.props.insert(USERCMD_BUTTONSTATE_2, Variant::U64(user_cmd.base.buttons_pb.buttonstate2()));
                 ent.props.insert(USERCMD_BUTTONSTATE_3, Variant::U64(user_cmd.base.buttons_pb.buttonstate3()));
+                ent.props.insert(
+                    USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
+                    Variant::U32(user_cmd.base.consumed_server_angle_changes()),
+                );
             }
         }
         Ok(())

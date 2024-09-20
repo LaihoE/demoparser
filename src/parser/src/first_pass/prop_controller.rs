@@ -152,10 +152,7 @@ impl PropController {
                 someid += 1;
             }
         }
-        if self
-            .wanted_player_props
-            .contains(&("active_weapon_original_owner".to_string()))
-        {
+        if self.wanted_player_props.contains(&("active_weapon_original_owner".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: WEAPON_ORIGINGAL_OWNER_ID,
                 prop_type: PropType::Custom,
@@ -182,6 +179,7 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+
         if self.wanted_player_props.contains(&("inventory_as_ids".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: INVENTORY_AS_IDS_ID,
@@ -426,10 +424,7 @@ impl PropController {
                 is_player_prop: true,
             });
         }
-        if self
-            .wanted_player_props
-            .contains(&("usercmd_consumed_server_angle_changes".to_string()))
-        {
+        if self.wanted_player_props.contains(&("usercmd_consumed_server_angle_changes".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
                 prop_type: PropType::Player,
@@ -492,7 +487,15 @@ impl PropController {
                 is_player_prop: true,
             });
         }
-
+        if self.wanted_player_props.contains(&("usercmd_consumed_server_angle_changes".to_string())) {
+            self.prop_infos.push(PropInfo {
+                id: USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
+                prop_type: PropType::Custom,
+                prop_name: "usercmd_consumed_server_angle_changes".to_string(),
+                prop_friendly_name: "usercmd_consumed_server_angle_changes".to_string(),
+                is_player_prop: true,
+            });
+        }
         if self.wanted_player_props.contains(&("is_airborne".to_string())) {
             self.prop_infos.push(PropInfo {
                 id: IS_AIRBORNE_ID,
@@ -582,8 +585,7 @@ impl PropController {
         f.full_name = full_name.to_string();
         // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]
         let split_at_dot: Vec<&str> = full_name.split(".").collect();
-        let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK"))
-            && !split_at_dot[0].contains("Player")
+        let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK")) && !split_at_dot[0].contains("Player")
             || split_at_dot[0].contains("Knife")
             || split_at_dot[0].contains("CDEagle")
             || split_at_dot[0].contains("C4")
@@ -591,9 +593,8 @@ impl PropController {
             || split_at_dot[0].contains("Inc")
             || split_at_dot[0].contains("Infer");
 
-        let is_projectile_prop =
-            (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
-                && !split_at_dot[0].contains("Player");
+        let is_projectile_prop = (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
+            && !split_at_dot[0].contains("Player");
         let is_grenade_or_weapon = is_weapon_prop || is_projectile_prop;
 
         // Strip first part of name from grenades and weapons.
@@ -697,16 +698,8 @@ impl PropController {
                     let full_name = ser_name.clone() + "." + &x.name;
                     self.handle_prop(&full_name, x, path);
                 }
-                Field::Serializer(ser) => self.traverse_fields(
-                    &mut ser.serializer.fields,
-                    ser_name.clone() + "." + &ser.serializer.name,
-                    path.clone(),
-                ),
-                Field::Pointer(ser) => self.traverse_fields(
-                    &mut ser.serializer.fields,
-                    ser_name.clone() + "." + &ser.serializer.name,
-                    path.clone(),
-                ),
+                Field::Serializer(ser) => self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name, path.clone()),
+                Field::Pointer(ser) => self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name, path.clone()),
                 Field::Array(ser) => match &mut ser.field_enum.as_mut() {
                     Field::Value(v) => {
                         self.handle_prop(&(ser_name.clone() + "." + &v.name), v, path);
@@ -728,11 +721,7 @@ impl PropController {
                                         _ => {}
                                     }
                                 }
-                                self.traverse_fields(
-                                    &mut s.serializer.fields,
-                                    ser_name.clone() + "." + &s.serializer.name,
-                                    path_og.clone(),
-                                )
+                                self.traverse_fields(&mut s.serializer.fields, ser_name.clone() + "." + &s.serializer.name, path_og.clone())
                             }
                             Field::Value(x) => {
                                 self.handle_prop(&(ser_name.clone() + "." + &x.name), x, path.clone());
