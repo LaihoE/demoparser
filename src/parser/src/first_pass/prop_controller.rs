@@ -184,7 +184,7 @@ impl PropController {
             if self.wanted_player_props.contains(&(custom_prop_name.to_string())) {
                 self.prop_infos.push(PropInfo {
                     id: *custom_prop_id,
-                    prop_type: PropType::Custom,
+                    prop_type: *TYPEHM.get(&custom_prop_name).unwrap_or(&PropType::Custom),
                     prop_name: custom_prop_name.to_string(),
                     prop_friendly_name: self
                         .real_name_to_og_name
@@ -198,7 +198,7 @@ impl PropController {
                 self.wanted_prop_state_infos.push(WantedPropStateInfo {
                     base: PropInfo {
                         id: *custom_prop_id,
-                        prop_type: PropType::Custom,
+                        prop_type: *TYPEHM.get(&custom_prop_name).unwrap_or(&PropType::Custom),
                         prop_name: custom_prop_name.to_string(),
                         prop_friendly_name: self
                             .real_name_to_og_name
