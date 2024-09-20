@@ -84,7 +84,6 @@ impl<'a> SecondPassParser<'a> {
             }
 
             for prop_info in &self.prop_controller.prop_infos {
-                // println!("{:?}", prop_info);
                 let player_steamid = match player.steamid {
                     Some(steamid) => steamid,
                     None => 0,
