@@ -34,38 +34,29 @@ pub struct UserInfo {
 
 impl<'a> FirstPassParser<'a> {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let table: CSVCMsg_UpdateStringTable = match Message::parse_from_bytes(&bytes) {
-            Ok(table) => table,
-            Err(_) => return Err(DemoParserError::MalformedMessage),
-        };
-        match self.string_tables.get(table.table_id() as usize) {
-            Some(st) => self.parse_string_table(
-                table.string_data().to_vec(),
-                table.num_changed_entries(),
-                st.name.clone(),
-                st.user_data_fixed,
-                st.user_data_size,
-                st.flags,
-                st.var_bit_counts,
-            )?,
-            None => return Err(DemoParserError::StringTableNotFound),
-        }
+        let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).map_err(|_| DemoParserError::MalformedMessage)?;
+
+        let st = self.string_tables.get(table.table_id() as usize).ok_or(DemoParserError::StringTableNotFound)?;
+        self.parse_string_table(
+            table.string_data().to_vec(),
+            table.num_changed_entries(),
+            st.name.clone(),
+            st.user_data_fixed,
+            st.user_data_size,
+            st.flags,
+            st.var_bit_counts,
+        )?;
         Ok(())
     }
 
     pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let table: CSVCMsg_CreateStringTable = match Message::parse_from_bytes(&bytes) {
-            Ok(table) => table,
-            Err(_) => return Err(DemoParserError::MalformedMessage),
-        };
+        let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).map_err(|_| DemoParserError::MalformedMessage)?;
+
         if !(table.name() == "instancebaseline" || table.name() == "userinfo") {
             return Ok(());
         }
         let bytes = match table.data_compressed() {
-            true => match snap::raw::Decoder::new().decompress_vec(table.string_data()) {
-                Ok(bytes) => bytes,
-                Err(_) => return Err(DemoParserError::MalformedMessage),
-            },
+            true => snap::raw::Decoder::new().decompress_vec(table.string_data()).map_err(|_| DemoParserError::MalformedMessage)?,
             false => table.string_data().to_vec(),
         };
         self.parse_string_table(
@@ -175,28 +166,25 @@ impl<'a> FirstPassParser<'a> {
                     };
                 }
                 items.push(StringTableEntry {
-                    idx: idx,
-                    key: key,
-                    value: value,
+                    idx,
+                    key,
+                    value,
                 });
             }
         }
         self.string_tables.push(StringTable {
             data: items,
-            name: name,
-            user_data_size: user_data_size,
+            name,
+            user_data_size,
             user_data_fixed: udf,
-            flags: flags,
+            flags,
             var_bit_counts: variant_bit_count,
         });
         Ok(())
     }
 }
 pub fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
-    let player = match CMsgPlayerInfo::parse_from_bytes(bytes) {
-        Err(_e) => return Err(DemoParserError::MalformedMessage),
-        Ok(player) => player,
-    };
+    let player = CMsgPlayerInfo::parse_from_bytes(bytes).map_err(|_| DemoParserError::MalformedMessage)?;
     Ok(UserInfo {
         is_hltv: player.ishltv(),
         steamid: player.xuid(),
@@ -207,10 +195,7 @@ pub fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
 
 impl<'a> SecondPassParser<'a> {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let table: CSVCMsg_UpdateStringTable = match Message::parse_from_bytes(&bytes) {
-            Ok(table) => table,
-            Err(_) => return Err(DemoParserError::MalformedMessage),
-        };
+        let table: CSVCMsg_UpdateStringTable = Message::parse_from_bytes(&bytes).map_err(|_| DemoParserError::MalformedMessage)?; 
         match self.string_tables.get(table.table_id() as usize) {
             Some(st) => self.parse_string_table(
                 table.string_data().to_vec(),
@@ -228,15 +213,9 @@ impl<'a> SecondPassParser<'a> {
         Ok(())
     }
     pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let table: CSVCMsg_CreateStringTable = match Message::parse_from_bytes(&bytes) {
-            Ok(table) => table,
-            Err(_) => return Err(DemoParserError::MalformedMessage),
-        };
+        let table: CSVCMsg_CreateStringTable = Message::parse_from_bytes(&bytes).map_err(|_| DemoParserError::MalformedMessage)?;
         let bytes = match table.data_compressed() {
-            true => match snap::raw::Decoder::new().decompress_vec(table.string_data()) {
-                Ok(bytes) => bytes,
-                Err(_) => return Err(DemoParserError::MalformedMessage),
-            },
+            true => snap::raw::Decoder::new().decompress_vec(table.string_data()).map_err(|_| DemoParserError::MalformedMessage)?,
             false => table.string_data().to_vec(),
         };
         self.parse_string_table(
@@ -345,18 +324,18 @@ impl<'a> SecondPassParser<'a> {
                     };
                 }
                 items.push(StringTableEntry {
-                    idx: idx,
-                    key: key,
-                    value: value,
+                    idx,
+                    key,
+                    value,
                 });
             }
         }
         self.string_tables.push(StringTable {
             data: items,
-            name: name,
-            user_data_size: user_data_size,
+            name,
+            user_data_size,
             user_data_fixed: udf,
-            flags: flags,
+            flags,
             var_bit_counts: variant_bit_count,
         });
         Ok(())
