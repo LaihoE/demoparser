@@ -312,6 +312,27 @@ True/Flase if player is pressing button.
 | weapon_paint_seed |  m_iRawValue32 |
 | weapon_stickers |  m_iRawValue32 |
 
+
+
+#### usercommands
+|         Name          | Real name                                                                                                                               |
+| :-------------------: | :----------------------------------- |
+| usercmd_viewangle_x | - |
+| usercmd_viewangle_y | - |
+| usercmd_viewangle_z | - |
+| usercmd_buttonstate_1 | - |
+| usercmd_buttonstate_2 | - |
+| usercmd_buttonstate_3 | - |
+| usercmd_consumed_server_angle_changes | - |
+| usercmd_forward_move | - |
+| usercmd_left_move | - |
+| usercmd_impulse | - |
+| usercmd_mouse_dx | - |
+| usercmd_mouse_dy | - |
+| usercmd_left_hand_desired | - |
+| usercmd_weapon_select | - |
+| usercmd_input_history | - |
+
 #### Aggregate stats (updates one time per round)
 |         Name          | Real name                                                                                                                               |
 | :-------------------: | :----------------------------------- |
