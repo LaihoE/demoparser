@@ -432,7 +432,7 @@ impl<'a> SecondPassParser<'a> {
         };
         EventField {
             name: prefix.to_owned() + "_steamid",
-            data: data,
+            data,
         }
     }
     pub fn player_from_steamid32(&self, steamid32: i32) -> Option<i32> {
@@ -476,7 +476,7 @@ impl<'a> SecondPassParser<'a> {
             fields.extend(self.find_non_player_props());
             let ge = GameEvent {
                 name: "server_cvar".to_string(),
-                fields: fields,
+                fields,
                 tick: self.tick,
             };
             self.game_events.push(ge);
@@ -575,7 +575,7 @@ impl<'a> SecondPassParser<'a> {
                     fields.extend(self.find_non_player_props());
                     let ge = GameEvent {
                         name: "item_sold".to_string(),
-                        fields: fields,
+                        fields,
                         tick: self.tick,
                     };
                     self.game_events.push(ge);
@@ -742,7 +742,7 @@ impl<'a> SecondPassParser<'a> {
                         fields.extend(self.find_non_player_props());
                         let ge = GameEvent {
                             name: "item_purchase".to_string(),
-                            fields: fields,
+                            fields,
                             tick: self.tick,
                         };
                         self.game_events.push(ge);
@@ -819,7 +819,7 @@ impl<'a> SecondPassParser<'a> {
             });
             let ge = GameEvent {
                 name: "round_end".to_string(),
-                fields: fields,
+                fields,
                 tick: self.tick,
             };
             self.game_events.push(ge);
@@ -855,7 +855,7 @@ impl<'a> SecondPassParser<'a> {
         });
         let ge = GameEvent {
             name: "round_officially_ended".to_string(),
-            fields: fields,
+            fields,
             tick: self.tick,
         };
         self.game_events.push(ge);
@@ -879,7 +879,7 @@ impl<'a> SecondPassParser<'a> {
         });
         let ge = GameEvent {
             name: "cs_win_panel_match".to_string(),
-            fields: fields,
+            fields,
             tick: self.tick,
         };
         self.game_events.push(ge);
@@ -929,7 +929,7 @@ impl<'a> SecondPassParser<'a> {
         fields.extend(self.find_non_player_props());
         let ge = GameEvent {
             name: "chat_message".to_string(),
-            fields: fields,
+            fields,
             tick: self.tick,
         };
         self.game_events.push(ge);
@@ -956,7 +956,7 @@ impl<'a> SecondPassParser<'a> {
         fields.extend(self.find_non_player_props());
         let ge = GameEvent {
             name: "server_message".to_string(),
-            fields: fields,
+            fields,
             tick: self.tick,
         };
         self.game_events.push(ge);
@@ -981,7 +981,7 @@ impl<'a> SecondPassParser<'a> {
         fields.extend(self.find_non_player_props());
         let ge = GameEvent {
             name: "round_start".to_string(),
-            fields: fields,
+            fields,
             tick: self.tick,
         };
         self.game_events.push(ge);
@@ -1037,7 +1037,7 @@ impl<'a> SecondPassParser<'a> {
             fields.extend(self.find_non_player_props());
             let ge = GameEvent {
                 name: "rank_update".to_string(),
-                fields: fields,
+                fields,
                 tick: self.tick,
             };
             self.game_events.push(ge);
