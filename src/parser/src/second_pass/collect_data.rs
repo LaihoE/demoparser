@@ -285,8 +285,8 @@ impl<'a> SecondPassParser<'a> {
             };
 
             self.projectile_records.push(ProjectileRecord {
-                steamid: steamid,
-                name: name,
+                steamid,
+                name,
                 x: float_x,
                 y: float_y,
                 z: float_z,
@@ -1010,10 +1010,10 @@ impl<'a> SecondPassParser<'a> {
                 self.players.insert(
                     e,
                     PlayerMetaData {
-                        name: name,
-                        team_num: team_num,
+                        name,
+                        team_num,
                         player_entity_id: player_entid,
-                        steamid: steamid,
+                        steamid,
                         controller_entid: Some(*entity_id),
                     },
                 );

@@ -165,31 +165,41 @@ impl<'a> FirstPassParser<'a> {
         big: &CSVCMsg_FlattenedSerializer,
         serializers: &AHashMap<String, Serializer>,
     ) -> Result<Serializer, DemoParserError> {
-        match big.symbols.get(serializer_msg.serializer_name_sym() as usize) {
+        let sid = match big.symbols.get(serializer_msg.serializer_name_sym() as usize) {
+            Some(sid) => sid,
             None => return Err(DemoParserError::MalformedMessage),
-            Some(sid) => {
-                let mut fields_this_ser: Vec<Field> = vec![Field::None; serializer_msg.fields_index.len()];
-                for (idx, field_this_ser) in fields_this_ser.iter_mut().enumerate() {
-                    if let Some(fi) = serializer_msg.fields_index.get(idx) {
-                        let fi = *fi as usize;
-                        if let Some(Some(f)) = field_data.get_mut(fi) {
-                            if f.field_enum_type.is_none() {
-                                f.field_enum_type = Some(create_field(&sid, f, serializers)?)
-                            }
-                            if let Some(Some(f)) = &field_data.get(fi) {
-                                if let Some(field) = &f.field_enum_type {
-                                    *field_this_ser = field.clone()
-                                }
-                            }
-                        };
-                    }
+        };
+
+        // TODO
+        // This loop could probably just be an iterator over serializer_msg.fields_index that returns
+        // a Field::None by default but could also return whatever is the found field (which
+        // currently overwrites the entry) and then collect that iterator into a vec
+        let mut fields_this_ser: Vec<Field> = vec![Field::None; serializer_msg.fields_index.len()];
+        for (idx, field_this_ser) in fields_this_ser.iter_mut().enumerate() {
+            let fi = match serializer_msg.fields_index.get(idx) {
+                Some(i) => *i as usize,
+                None => continue,
+            };
+
+            let f = match field_data.get_mut(fi) {
+                Some(Some(f)) => f,
+                _ => continue,
+            };
+
+            if f.field_enum_type.is_none() {
+                f.field_enum_type = Some(create_field(&sid, f, serializers)?)
+            }
+            if let Some(Some(f)) = &field_data.get(fi) {
+                if let Some(field) = &f.field_enum_type {
+                    *field_this_ser = field.clone()
                 }
-                Ok(Serializer {
-                    name: sid.clone(),
-                    fields: fields_this_ser,
-                })
             }
         }
+
+        Ok(Serializer {
+            name: sid.clone(),
+            fields: fields_this_ser,
+        })
     }
 
     fn generate_field_data(
@@ -207,19 +217,14 @@ impl<'a> FirstPassParser<'a> {
         let mut field = field_from_msg(&msg, &big, ft.clone())?;
 
         field.category = find_category(&mut field);
-        let f = field.find_decoder(qf_mapper);
-        field.decoder = f;
+        field.decoder = field.find_decoder(qf_mapper);
 
         match field.var_name.as_str() {
-            "m_PredFloatVariables" => field.decoder = NoscaleDecoder,
-            "m_OwnerOnlyPredNetFloatVariables" => field.decoder = NoscaleDecoder,
-            "m_OwnerOnlyPredNetVectorVariables" => field.decoder = VectorNoscaleDecoder,
-            "m_PredVectorVariables" => field.decoder = VectorNoscaleDecoder,
+            "m_PredFloatVariables" | "m_OwnerOnlyPredNetFloatVariables" => field.decoder = NoscaleDecoder,
+            "m_OwnerOnlyPredNetVectorVariables" | "m_PredVectorVariables" => field.decoder = VectorNoscaleDecoder,
+            "m_pGameModeRules" => field.decoder = GameModeRulesDecoder,
             _ => {}
         };
-        if field.var_name == "m_pGameModeRules" {
-            field.decoder = GameModeRulesDecoder
-        }
         if field.encoder == "qangle_precise" {
             field.decoder = QanglePresDecoder;
         }
@@ -320,7 +325,7 @@ impl ArrayField {
     pub fn new(field_enum: Field, length: usize) -> ArrayField {
         ArrayField {
             field_enum: Box::new(field_enum),
-            length: length,
+            length,
         }
     }
 }
@@ -333,7 +338,7 @@ impl PointerField {
         };
         PointerField {
             serializer: serializer.clone(),
-            decoder: decoder,
+            decoder,
         }
     }
 }
@@ -347,7 +352,7 @@ impl SerializerField {
 impl ValueField {
     pub fn new(decoder: Decoder, name: &str) -> ValueField {
         ValueField {
-            decoder: decoder,
+            decoder,
             name: name.to_string(),
             prop_id: 0,
             should_parse: false,
@@ -397,9 +402,9 @@ pub fn field_from_msg(
     let f = ConstructorField {
         field_enum_type: None,
         bitcount: field.bit_count(),
-        var_name: var_name,
-        var_type: var_type,
-        send_node: send_node,
+        var_name,
+        var_type,
+        send_node,
         serializer_name: ser_name,
         encoder: enc_name,
         encode_flags: field.encode_flags(),
@@ -455,54 +460,53 @@ pub fn get_decoder_from_field(field: &Field) -> Result<Decoder, DemoParserError>
 }
 
 pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
-    let info = match field {
-        Field::Value(v) => Some(FieldInfo {
+    let mut fi = match field {
+        Field::Value(v) => FieldInfo {
             decoder: v.decoder,
             should_parse: v.should_parse,
             prop_id: v.prop_id,
-        }),
+        },
         Field::Vector(v) => match field.get_inner(0) {
-            Ok(Field::Value(inner)) => Some(FieldInfo {
+            Ok(Field::Value(inner)) => FieldInfo {
                 decoder: v.decoder,
                 should_parse: inner.should_parse,
                 prop_id: inner.prop_id,
-            }),
-            _ => None,
+            },
+            _ => return None,
         },
-        _ => None,
+        _ => return None,
     };
 
     // Flatten vector props
-    if let Some(mut fi) = info {
-        if fi.prop_id == MY_WEAPONS_OFFSET {
-            if path.last == 1 {
-            } else {
-                fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
-            }
+    if fi.prop_id == MY_WEAPONS_OFFSET {
+        if path.last == 1 {
+            // TODO
+            // Why is this part here?
+        } else {
+            fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
         }
-        if fi.prop_id == WEAPON_SKIN_ID {
-            fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
-        }
-        if path.path[1] != 1 {
-            if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
-                fi.prop_id = ITEM_PURCHASE_COUNT + path.path[2] as u32;
-            }
-            if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
-                fi.prop_id = ITEM_PURCHASE_DEF_IDX + path.path[2] as u32;
-            }
-            if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
-                fi.prop_id = ITEM_PURCHASE_COST + path.path[2] as u32;
-            }
-            if fi.prop_id >= ITEM_PURCHASE_HANDLE && fi.prop_id < ITEM_PURCHASE_HANDLE + FLATTENED_VEC_MAX_LEN {
-                fi.prop_id = ITEM_PURCHASE_HANDLE + path.path[2] as u32;
-            }
-            if fi.prop_id >= ITEM_PURCHASE_NEW_DEF_IDX && fi.prop_id < ITEM_PURCHASE_NEW_DEF_IDX + FLATTENED_VEC_MAX_LEN {
-                fi.prop_id = ITEM_PURCHASE_NEW_DEF_IDX + path.path[2] as u32;
-            }
-        }
-        return Some(fi);
     }
-    return None;
+    if fi.prop_id == WEAPON_SKIN_ID {
+        fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
+    }
+    if path.path[1] != 1 {
+        if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
+            fi.prop_id = ITEM_PURCHASE_COUNT + path.path[2] as u32;
+        }
+        if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
+            fi.prop_id = ITEM_PURCHASE_DEF_IDX + path.path[2] as u32;
+        }
+        if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
+            fi.prop_id = ITEM_PURCHASE_COST + path.path[2] as u32;
+        }
+        if fi.prop_id >= ITEM_PURCHASE_HANDLE && fi.prop_id < ITEM_PURCHASE_HANDLE + FLATTENED_VEC_MAX_LEN {
+            fi.prop_id = ITEM_PURCHASE_HANDLE + path.path[2] as u32;
+        }
+        if fi.prop_id >= ITEM_PURCHASE_NEW_DEF_IDX && fi.prop_id < ITEM_PURCHASE_NEW_DEF_IDX + FLATTENED_VEC_MAX_LEN {
+            fi.prop_id = ITEM_PURCHASE_NEW_DEF_IDX + path.path[2] as u32;
+        }
+    }
+    return Some(fi);
 }
 
 fn create_field(
@@ -570,8 +574,8 @@ fn find_field_type(name: &str, field_type_map: &mut AHashMap<String, FieldType>)
     };
 
     let mut ft = FieldType {
-        base_type: base_type,
-        pointer: pointer,
+        base_type,
+        pointer,
         generic_type: None,
         count: None,
         element_type: None,
@@ -675,42 +679,30 @@ impl ConstructorField {
 }
 
 pub fn find_category(field: &mut ConstructorField) -> FieldCategory {
-    let is_pointer = is_pointer(&field);
-    let is_array = is_array(&field);
-    let is_vector = is_vector(&field);
-
-    if is_pointer {
-        FieldCategory::Pointer
-    } else if is_vector {
-        FieldCategory::Vector
-    } else if is_array {
-        FieldCategory::Array
-    } else {
-        FieldCategory::Value
+    if is_pointer(&field) {
+        return FieldCategory::Pointer
     }
+    if is_vector(&field) {
+        return FieldCategory::Vector
+    }
+    if is_array(&field) {
+        return FieldCategory::Array
+    }
+    FieldCategory::Value
 }
 pub fn is_pointer(field: &ConstructorField) -> bool {
-    match field.field_type.pointer {
-        true => true,
-        false => match field.field_type.base_type.as_str() {
-            "CBodyComponent" => true,
-            "CLightComponent" => true,
-            "CPhysicsComponent" => true,
-            "CRenderComponent" => true,
-            "CPlayerLocalData" => true,
-            _ => false,
-        },
+    if field.field_type.pointer {
+        return true;
     }
+
+    matches!(field.field_type.base_type.as_str(), "CBodyComponent" | "CLightComponent" | "CPhysicsComponent" | "CRenderComponent" | "CPlayerLocalData")
 }
 pub fn is_vector(field: &ConstructorField) -> bool {
     if field.serializer_name.is_some() {
         return true;
-    };
-    match field.field_type.base_type.as_str() {
-        "CUtlVector" => true,
-        "CNetworkUtlVectorBase" => true,
-        _ => false,
     }
+
+    matches!(field.field_type.base_type.as_str(), "CUtlVector" | "CNetworkUtlVectorBase")
 }
 pub fn is_array(field: &ConstructorField) -> bool {
     if field.field_type.count.is_some() {

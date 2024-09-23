@@ -315,9 +315,9 @@ impl<'a> SecondPassParser<'a> {
         };
         let entity = Entity {
             entity_id: *entity_id,
-            cls_id: cls_id,
+            cls_id,
             props: AHashMap::with_capacity(0),
-            entity_type: entity_type,
+            entity_type,
         };
         if self.entities.len() as i32 <= *entity_id {
             // if corrupt, this can cause oom allocations

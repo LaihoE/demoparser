@@ -55,9 +55,9 @@ impl FrameParser {
             frame_ends_at: ptr,
             size: size as usize,
             tick: tick as i32,
-            frame_starts_at: frame_starts_at,
-            is_compressed: is_compressed,
-            demo_cmd: demo_cmd,
+            frame_starts_at,
+            is_compressed,
+            demo_cmd,
         })
     }
     #[inline(always)]
@@ -75,9 +75,9 @@ impl FrameParser {
             frame_ends_at: *ptr,
             size: size as usize,
             tick: tick as i32,
-            frame_starts_at: frame_starts_at,
-            is_compressed: is_compressed,
-            demo_cmd: demo_cmd,
+            frame_starts_at,
+            is_compressed,
+            demo_cmd,
         })
     }
 

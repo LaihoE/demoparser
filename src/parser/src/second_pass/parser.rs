@@ -123,9 +123,9 @@ impl<'a> SecondPassParser<'a> {
 
         Ok(Frame {
             size: size as usize,
-            frame_starts_at: frame_starts_at,
-            is_compressed: is_compressed,
-            demo_cmd: demo_cmd,
+            frame_starts_at,
+            is_compressed,
+            demo_cmd,
             tick: self.tick,
         })
     }

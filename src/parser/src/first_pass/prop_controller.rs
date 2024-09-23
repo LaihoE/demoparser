@@ -133,19 +133,19 @@ impl PropController {
     ) -> Self {
         PropController {
             id: NORMAL_PROP_BASEID,
-            wanted_player_props: wanted_player_props,
+            wanted_player_props,
             wanted_prop_ids: vec![],
             prop_infos: vec![],
             name_to_id: AHashMap::default(),
             special_ids: SpecialIDs::new(),
             id_to_name: AHashMap::default(),
             name_to_special_id: AHashMap::default(),
-            wanted_other_props: wanted_other_props,
-            real_name_to_og_name: real_name_to_og_name,
+            wanted_other_props,
+            real_name_to_og_name,
             event_with_velocity: !wanted_events.is_empty() && needs_velocty,
             path_to_name: AHashMap::default(),
             needs_velocity: needs_velocty,
-            wanted_prop_states: wanted_prop_states,
+            wanted_prop_states,
             wanted_prop_state_infos: vec![],
         }
     }
@@ -442,7 +442,7 @@ impl PropController {
             };
         }
     }
-    fn traverse_fields(&mut self, fields: &mut Vec<Field>, ser_name: String, path_og: Vec<i32>) {
+    fn traverse_fields(&mut self, fields: &mut [Field], ser_name: String, path_og: Vec<i32>) {
         for (idx, f) in fields.iter_mut().enumerate() {
             let mut path = path_og.clone();
             path.push(idx as i32);

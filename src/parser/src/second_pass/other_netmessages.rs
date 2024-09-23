@@ -31,7 +31,7 @@ impl<'a> SecondPassParser<'a> {
                 Some(name) => Some(name.to_string()),
                 None => None,
             };
-            self.item_drops.push(EconItem { account_id: item.accountid, item_id: item.itemid, def_index: item.defindex, paint_index: item.paintindex, rarity: item.rarity, quality: item.quality, paint_seed: item.paintseed, paint_wear: item.paintwear, quest_id: item.questid, dropreason: item.dropreason, custom_name: item.customname.clone(), inventory: item.inventory, ent_idx: item.entindex, steamid: None, item_name: item_name, skin_name: skin_name });
+            self.item_drops.push(EconItem { account_id: item.accountid, item_id: item.itemid, def_index: item.defindex, paint_index: item.paintindex, rarity: item.rarity, quality: item.quality, paint_seed: item.paintseed, paint_wear: item.paintwear, quest_id: item.questid, dropreason: item.dropreason, custom_name: item.customname.clone(), inventory: item.inventory, ent_idx: item.entindex, steamid: None, item_name, skin_name });
         }
         Ok(())
     }
@@ -70,7 +70,7 @@ impl<'a> SecondPassParser<'a> {
                         Some(name) => Some(name.to_string()),
                         None => None,
                     };
-                    self.skins.push(EconItem { account_id: item.accountid, item_id: item.itemid, def_index: item.defindex, paint_index: item.paintindex, rarity: item.rarity, quality: item.quality, paint_seed: item.paintseed, paint_wear: item.paintwear, quest_id: item.questid, dropreason: item.dropreason, custom_name: item.customname.clone(), inventory: item.inventory, ent_idx: item.entindex, steamid: player.xuid, item_name: item_name, skin_name: skin_name });
+                    self.skins.push(EconItem { account_id: item.accountid, item_id: item.itemid, def_index: item.defindex, paint_index: item.paintindex, rarity: item.rarity, quality: item.quality, paint_seed: item.paintseed, paint_wear: item.paintwear, quest_id: item.questid, dropreason: item.dropreason, custom_name: item.customname.clone(), inventory: item.inventory, ent_idx: item.entindex, steamid: player.xuid, item_name, skin_name });
                 }
             }
         }
