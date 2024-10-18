@@ -18,8 +18,8 @@ use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::HashMap;
 use ahash::RandomState;
-use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use csgoproto::netmessages::CSVCMsg_VoiceData;
+use csgoproto::csvc_msg_game_event_list::DescriptorT;
+use csgoproto::CsvcMsgVoiceData;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::env;
@@ -37,7 +37,7 @@ pub struct SecondPassParser<'a> {
     pub paths: Vec<FieldPath>,
     pub ptr: usize,
     pub parse_all_packets: bool,
-    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
+    pub ge_list: &'a AHashMap<i32, DescriptorT>,
     pub serializers: AHashMap<String, Serializer, RandomState>,
     pub cls_bits: Option<u32>,
     pub entities: Vec<Option<Entity>>,
@@ -57,7 +57,7 @@ pub struct SecondPassParser<'a> {
     pub wanted_ticks: AHashSet<i32>,
     // Output from parsing
     pub projectile_records: Vec<ProjectileRecord>,
-    pub voice_data: Vec<CSVCMsg_VoiceData>,
+    pub voice_data: Vec<CsvcMsgVoiceData>,
     pub output: AHashMap<u32, PropColumn, RandomState>,
     pub header: HashMap<String, String>,
     pub skins: Vec<EconItem>,
