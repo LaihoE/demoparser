@@ -12,7 +12,7 @@ use crate::second_pass::variants::VarVec;
 use crate::second_pass::variants::{PropColumn, Variant};
 use ahash::AHashMap;
 use ahash::AHashSet;
-use csgoproto::netmessages::CSVCMsg_VoiceData;
+use csgoproto::CsvcMsgVoiceData;
 use itertools::Itertools;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::ParallelIterator;
@@ -34,7 +34,7 @@ pub struct DemoOutput {
     pub player_md: Vec<PlayerEndMetaData>,
     pub game_events_counter: AHashSet<String>,
     pub projectiles: Vec<ProjectileRecord>,
-    pub voice_data: Vec<CSVCMsg_VoiceData>,
+    pub voice_data: Vec<CsvcMsgVoiceData>,
     pub prop_controller: PropController,
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
 }

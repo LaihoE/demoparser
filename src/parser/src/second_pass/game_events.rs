@@ -19,14 +19,14 @@ use crate::second_pass::entities::Entity;
 use crate::second_pass::entities::PlayerMetaData;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::*;
-use csgoproto::cstrike15_usermessages::CCSUsrMsg_ServerRankUpdate;
-use csgoproto::networkbasetypes::csvcmsg_game_event::Key_t;
-use csgoproto::networkbasetypes::CNETMsg_SetConVar;
-use csgoproto::networkbasetypes::CSVCMsg_GameEvent;
-use csgoproto::usermessages::CUserMessageSayText;
-use csgoproto::usermessages::CUserMessageSayText2;
+use csgoproto::CcsUsrMsgServerRankUpdate;
+use csgoproto::csvc_msg_game_event::KeyT;
+use csgoproto::CnetMsgSetConVar;
+use csgoproto::CsvcMsgGameEvent;
+use csgoproto::CUserMessageSayText;
+use csgoproto::CUserMessageSayText2;
 use itertools::Itertools;
-use protobuf::Message;
+use prost::Message;
 use serde::ser::SerializeMap;
 use serde::Serialize;
 
@@ -74,7 +74,7 @@ impl<'a> SecondPassParser<'a> {
             return Ok(None);
         }
 
-        let event: CSVCMsg_GameEvent = match Message::parse_from_bytes(&bytes) {
+        let event = match CsvcMsgGameEvent::decode(bytes) {
             Ok(event) => event,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
@@ -453,7 +453,7 @@ impl<'a> SecondPassParser<'a> {
         if !self.wanted_events.contains(&"server_cvar".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
-        let convar: CNETMsg_SetConVar = match Message::parse_from_bytes(&bytes) {
+        let convar = match CnetMsgSetConVar::decode(bytes) {
             Ok(m) => m,
             Err(_e) => return Err(DemoParserError::MalformedMessage),
         };
@@ -904,7 +904,7 @@ impl<'a> SecondPassParser<'a> {
         if !self.wanted_events.contains(&"chat_message".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
-        let chat_msg: CUserMessageSayText2 = match Message::parse_from_bytes(&msg_bytes) {
+        let chat_msg = match CUserMessageSayText2::decode(msg_bytes) {
             Ok(msg) => msg,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
@@ -940,7 +940,7 @@ impl<'a> SecondPassParser<'a> {
         if !self.wanted_events.contains(&"server_message".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
-        let chat_msg: CUserMessageSayText = match Message::parse_from_bytes(&msg_bytes) {
+        let chat_msg = match CUserMessageSayText::decode(msg_bytes) {
             Ok(msg) => msg,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
@@ -993,7 +993,7 @@ impl<'a> SecondPassParser<'a> {
         if !self.wanted_events.contains(&"rank_update".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
-        let update_msg: CCSUsrMsg_ServerRankUpdate = match Message::parse_from_bytes(&msg_bytes) {
+        let update_msg = match CcsUsrMsgServerRankUpdate::decode(msg_bytes) {
             Ok(m) => m,
             Err(_e) => return Err(DemoParserError::MalformedMessage),
         };
@@ -1109,8 +1109,8 @@ impl<'a> SecondPassParser<'a> {
     }
 }
 // what is this shit
-fn parse_key(key: &Key_t) -> Option<Variant> {
-    match key.type_() {
+fn parse_key(key: &KeyT) -> Option<Variant> {
+    match key.r#type() {
         1 => Some(Variant::String(key.val_string().to_owned())),
         2 => Some(Variant::F32(key.val_float())),
         // These seem to return an i32

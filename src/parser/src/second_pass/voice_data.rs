@@ -4,7 +4,7 @@ use crate::first_pass::read_bits::DemoParserError;
 #[cfg(feature = "voice")]
 use ahash::AHashMap;
 #[cfg(feature = "voice")]
-use csgoproto::netmessages::CSVCMsg_VoiceData;
+use csgoproto::{CsvcMsgVoiceData, VoiceDataFormatT::*};
 #[cfg(feature = "voice")]
 use opus::Decoder;
 #[cfg(feature = "voice")]
@@ -85,9 +85,9 @@ fn generate_wav_header(num_channels: u16, sample_rate: u32, bits_per_sample: u16
     header
 }
 #[cfg(feature = "voice")]
-pub fn convert_voice_data_to_wav(voice_data: Vec<CSVCMsg_VoiceData>) -> Result<Vec<(String, Vec<u8>)>, DemoParserError> {
+pub fn convert_voice_data_to_wav(voice_data: Vec<CsvcMsgVoiceData>) -> Result<Vec<(String, Vec<u8>)>, DemoParserError> {
     // Group by steamid
-    let mut hm: AHashMap<u64, Vec<&CSVCMsg_VoiceData>> = AHashMap::default();
+    let mut hm: AHashMap<u64, Vec<&CsvcMsgVoiceData>> = AHashMap::default();
     for data in &voice_data {
         hm.entry(data.xuid()).or_insert(vec![]).push(data);
     }
@@ -99,21 +99,23 @@ pub fn convert_voice_data_to_wav(voice_data: Vec<CSVCMsg_VoiceData>) -> Result<V
             let mut data_this_player = Vec::with_capacity(AVG_BYTES_PER_PACKET * data.len());
             // add voice data
             for chunk in data {
-                match chunk.audio.format() {
-                    csgoproto::netmessages::VoiceDataFormat_t::VOICEDATA_FORMAT_OPUS => data_this_player.extend(
-                        parse_voice_chunk_new_format(chunk.audio.voice_data(), &mut decoder)?
-                            .iter()
-                            .flat_map(|x| x.to_le_bytes()),
-                    ),
-                    csgoproto::netmessages::VoiceDataFormat_t::VOICEDATA_FORMAT_STEAM => data_this_player.extend(
-                        parse_voice_chunk_new_format(chunk.audio.voice_data(), &mut decoder)?
-                            .iter()
-                            .flat_map(|x| x.to_le_bytes()),
-                    ),
-                    csgoproto::netmessages::VoiceDataFormat_t::VOICEDATA_FORMAT_ENGINE => {
-                        return Err(DemoParserError::UnkVoiceFormat);
-                    }
-                };
+                if let Some(audio) = &chunk.audio {
+                    match audio.format() {
+                        VoicedataFormatOpus => data_this_player.extend(
+                            parse_voice_chunk_new_format(audio.voice_data(), &mut decoder)?
+                                .iter()
+                                .flat_map(|x| x.to_le_bytes()),
+                        ),
+                        VoicedataFormatSteam => data_this_player.extend(
+                            parse_voice_chunk_new_format(audio.voice_data(), &mut decoder)?
+                                .iter()
+                                .flat_map(|x| x.to_le_bytes()),
+                        ),
+                        VoicedataFormatEngine => {
+                            return Err(DemoParserError::UnkVoiceFormat);
+                        }
+                    };
+                }
             }
             let mut out = vec![];
             out.extend(generate_wav_header(1, 48000, 16, data_this_player.len() as u32));

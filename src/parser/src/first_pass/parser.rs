@@ -15,14 +15,15 @@ use crate::second_pass::decoder::QfMapper;
 use crate::second_pass::other_netmessages::Class;
 use ahash::AHashMap;
 use ahash::AHashSet;
-use csgoproto::demo::CDemoFullPacket;
-use csgoproto::demo::CDemoPacket;
-use csgoproto::demo::EDemoCommands;
-use csgoproto::demo::EDemoCommands::*;
-use csgoproto::demo::{CDemoClassInfo, CDemoFileHeader};
-use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
-use csgoproto::netmessages::CSVCMsg_GameEventList;
-use protobuf::Message;
+use csgoproto::CDemoFullPacket;
+use csgoproto::CDemoPacket;
+use csgoproto::CDemoSendTables;
+use csgoproto::EDemoCommands;
+use csgoproto::CDemoClassInfo;
+use csgoproto::CDemoFileHeader;
+use csgoproto::csvc_msg_game_event_list::DescriptorT;
+use csgoproto::CsvcMsgGameEventList;
+use prost::Message;
 use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
 use std::collections::BTreeMap;
@@ -37,7 +38,7 @@ pub struct ParserThreadInput<'a> {
     pub prop_controller: &'a PropController,
     pub cls_by_id: &'a Vec<Class>,
     pub qfmap: &'a QfMapper,
-    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
+    pub ge_list: &'a AHashMap<i32, DescriptorT>,
     pub parse_all_packets: bool,
     pub wanted_ticks: AHashSet<i32>,
     pub string_tables: Vec<StringTable>,
@@ -57,7 +58,7 @@ pub struct FirstPassOutput<'a> {
     pub prop_controller: &'a PropController,
     pub cls_by_id: &'a Vec<Class>,
     pub qfmap: &'a QfMapper,
-    pub ge_list: &'a AHashMap<i32, Descriptor_t>,
+    pub ge_list: &'a AHashMap<i32, DescriptorT>,
     pub wanted_ticks: AHashSet<i32>,
     pub string_tables: Vec<StringTable>,
     pub stringtable_players: BTreeMap<i32, UserInfo>,
@@ -93,12 +94,12 @@ impl<'a> FirstPassParser<'a> {
             let bytes = self.decompress_if_needed(&mut reuseable_buffer, bytes, &frame)?;
             self.ptr += frame.size;
             match frame.demo_cmd {
-                DEM_SendTables => self.parse_sendtable_bytes(bytes)?,
-                DEM_FileHeader => self.parse_header(&bytes)?,
-                DEM_ClassInfo => self.parse_class_info(&bytes)?,
-                DEM_SignonPacket => self.parse_packet(&bytes)?,
-                DEM_FullPacket => self.parse_full_packet(&bytes, &frame)?,
-                DEM_Stop => break,
+                EDemoCommands::DemSendTables => self.parse_sendtable_bytes(bytes)?,
+                EDemoCommands::DemFileHeader => self.parse_header(bytes)?,
+                EDemoCommands::DemClassInfo => self.parse_class_info(bytes)?,
+                EDemoCommands::DemSignonPacket => self.parse_packet(bytes)?,
+                EDemoCommands::DemFullPacket => self.parse_full_packet(bytes, &frame)?,
+                EDemoCommands::DemStop => break,
                 _ => {}
             };
         }
@@ -107,7 +108,7 @@ impl<'a> FirstPassParser<'a> {
     }
 
     fn parse_sendtable_bytes(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        self.sendtable_message = match Message::parse_from_bytes(&bytes) {
+        self.sendtable_message = match CDemoSendTables::decode(bytes) {
             Ok(m) => Some(m),
             Err(_e) => return Err(DemoParserError::MalformedMessage),
         };
@@ -133,7 +134,7 @@ impl<'a> FirstPassParser<'a> {
         })
     }
     fn is_packet_we_skip_on_first_pass(&self, demo_cmd: EDemoCommands) -> bool {
-        demo_cmd == DEM_Packet || demo_cmd == DEM_AnimationData
+        demo_cmd == EDemoCommands::DemPacket || demo_cmd == EDemoCommands::DemAnimationData
     }
     fn slice_packet_bytes(&mut self, demo_bytes: &'a [u8], frame_size: usize) -> Result<&'a [u8], DemoParserError> {
         if self.ptr + frame_size as usize >= demo_bytes.len() {
@@ -170,11 +171,10 @@ impl<'a> FirstPassParser<'a> {
         Ok(())
     }
     pub fn parse_fallback_event_list(&mut self) -> Result<(), DemoParserError> {
-        let event_list: CSVCMsg_GameEventList =
-            match Message::parse_from_bytes(&crate::first_pass::fallbackbytes::GAME_EVENT_LIST_FALLBACK_BYTES) {
-                Ok(list) => list,
-                Err(_) => return Err(DemoParserError::MalformedMessage),
-            };
+        let event_list = match CsvcMsgGameEventList::decode(crate::first_pass::fallbackbytes::GAME_EVENT_LIST_FALLBACK_BYTES) {
+            Ok(list) => list,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
         for event_desc in event_list.descriptors {
             self.ge_list.insert(event_desc.eventid(), event_desc);
         }
@@ -214,11 +214,11 @@ impl<'a> FirstPassParser<'a> {
     }
     // Message that should come before first game event
     pub fn parse_game_event_list(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let event_list: CSVCMsg_GameEventList = match Message::parse_from_bytes(&bytes) {
+        let event_list = match CsvcMsgGameEventList::decode(bytes) {
             Ok(list) => list,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
-        let mut hm: AHashMap<i32, Descriptor_t> = AHashMap::default();
+        let mut hm: AHashMap<i32, DescriptorT> = AHashMap::default();
         for event_desc in event_list.descriptors {
             hm.insert(event_desc.eventid(), event_desc);
         }
@@ -228,22 +228,24 @@ impl<'a> FirstPassParser<'a> {
     pub fn parse_full_packet(&mut self, bytes: &[u8], frame: &Frame) -> Result<(), DemoParserError> {
         self.fullpacket_offsets.push(frame.frame_starts_at);
 
-        let full_packet: CDemoFullPacket = match Message::parse_from_bytes(&bytes) {
+        let full_packet = match CDemoFullPacket::decode(bytes) {
             Ok(list) => list,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
-        for item in &full_packet.string_table.tables {
-            if item.table_name() == "instancebaseline" {
-                for i in &item.items {
-                    let k = i.str().parse::<u32>().unwrap_or(u32::MAX);
-                    self.baselines.insert(k, i.data().to_vec());
+        if let Some(string_table) = full_packet.string_table {
+            for item in &string_table.tables {
+                if item.table_name() == "instancebaseline" {
+                    for i in &item.items {
+                        let k = i.str().parse::<u32>().unwrap_or(u32::MAX);
+                        self.baselines.insert(k, i.data().to_vec());
+                    }
                 }
-            }
-            if item.table_name() == "userinfo" {
-                for i in &item.items {
-                    if let Ok(player) = parse_userinfo(&i.data()) {
-                        if player.steamid != 0 {
-                            self.stringtable_players.insert(player.userid, player);
+                if item.table_name() == "userinfo" {
+                    for i in &item.items {
+                        if let Ok(player) = parse_userinfo(&i.data()) {
+                            if player.steamid != 0 {
+                                self.stringtable_players.insert(player.userid, player);
+                            }
                         }
                     }
                 }
@@ -255,7 +257,7 @@ impl<'a> FirstPassParser<'a> {
 
 impl<'a> FirstPassParser<'a> {
     pub fn parse_packet(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let msg: CDemoPacket = match Message::parse_from_bytes(bytes) {
+        let msg = match CDemoPacket::decode(bytes) {
             Err(_) => return Err(DemoParserError::MalformedMessage),
             Ok(msg) => msg,
         };
@@ -282,12 +284,12 @@ impl<'a> FirstPassParser<'a> {
         Ok(())
     }
     pub fn parse_header(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let header: CDemoFileHeader = match Message::parse_from_bytes(&bytes) {
+        let header = match CDemoFileHeader::decode(bytes) {
             Ok(list) => list,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
         self.header
-            .insert("demo_file_stamp".to_string(), header.demo_file_stamp().to_string());
+            .insert("demo_file_stamp".to_string(), header.demo_file_stamp.to_string());
         self.header
             .insert("demo_version_guid".to_string(), header.demo_version_guid().to_string());
         self.header
@@ -361,7 +363,7 @@ impl<'a> FirstPassParser<'a> {
 
     pub fn parse_class_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let (mut serializers, qf_mapper, p) = self.parse_sendtable()?;
-        let msg: CDemoClassInfo = match Message::parse_from_bytes(bytes) {
+        let msg = match CDemoClassInfo::decode(bytes) {
             Err(_) => return Err(DemoParserError::MalformedMessage),
             Ok(msg) => msg,
         };
