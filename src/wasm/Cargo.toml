@@ -8,28 +8,29 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-js-sys = "0.3.61"
-serde = { version = "1.0.160", features = ["derive"] }
-serde-wasm-bindgen = "0.5.0"
-wasm-bindgen = "0.2.84"
-itertools = "0.10.5"
-web-sys = { version = "0.3.61", features = ["console"] }
-wasm-bindgen-file-reader = "1.0.0"
-getrandom = { version = "0.2", features = ["js"] }
+js-sys = "0.3.72"
+serde = { version = "1.0.210", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
+wasm-bindgen = "0.2.95"
+wasm-bindgen-rayon = { version = "1.2.2", optional = true }
+itertools = "0.13.0"
+web-sys = { version = "0.3.72", features = ["console"] }
+getrandom = { version = "0.2.15", features = ["js"] }
 
+[features]
+threads = ["dep:wasm-bindgen-rayon"]
 
+[profile.release]
+# debug = true
+strip = true
+lto = "fat"
+opt-level = 2
+codegen-units = 1
+# panic = "abort"
 
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = false
-
+wasm-opt = ["--enable-threads", "--enable-bulk-memory", "-O2", "-O4"]
+# wasm-opt = false
 
 [dependencies.parser]
 path = "../parser"
-
-
-[dependencies.csgoproto]
-path = "../csgoproto"
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
-
-# https://github.com/Badel2/wasm-bindgen-file-reader
-wasm-bindgen-file-reader = "1"
