@@ -201,7 +201,7 @@ pub fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
         is_hltv: player.ishltv(),
         steamid: player.xuid(),
         name: player.name().to_string(),
-        userid: player.userid(),
+        userid: player.userid() & 0xff,
     })
 }
 
