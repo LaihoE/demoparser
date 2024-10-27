@@ -1259,10 +1259,7 @@ mod tests {
         };
 
         let mut wanted_prop_states: AHashMap<std::string::String, Variant> = AHashMap::default();
-        wanted_prop_states.insert(
-            "CCSGameRulesProxy.CCSGameRules.m_bBombPlanted".to_string(),
-            Variant::Bool(true),
-        );
+        wanted_prop_states.insert("CCSGameRulesProxy.CCSGameRules.m_bBombPlanted".to_string(), Variant::Bool(true));
         let settings_with_filter = ParserInputs {
             wanted_players: vec![76561198244754626],
             real_name_to_og_name: AHashMap::default(),
@@ -1287,14 +1284,7 @@ mod tests {
         let output = ds.parse_demo(&mmap).unwrap();
         let output_with_filter = ds_with_filter.parse_demo(&mmap).unwrap();
 
-        let positions = match output
-            .df
-            .get(&PLAYER_X_ID)
-            .unwrap()
-            .data
-            .clone()
-            .unwrap_or(VarVec::F32(vec![]))
-        {
+        let positions = match output.df.get(&PLAYER_X_ID).unwrap().data.clone().unwrap_or(VarVec::F32(vec![])) {
             VarVec::F32(positions_vec) => positions_vec,
             _ => vec![],
         };
@@ -1305,14 +1295,7 @@ mod tests {
             .find(|prop| prop.prop_name == "CCSGameRulesProxy.CCSGameRules.m_bBombPlanted")
             .map(|prop| prop.id)
             .unwrap();
-        let bomb = match output
-            .df
-            .get(&bomb_prop_id)
-            .unwrap()
-            .data
-            .clone()
-            .unwrap_or(VarVec::Bool(vec![]))
-        {
+        let bomb = match output.df.get(&bomb_prop_id).unwrap().data.clone().unwrap_or(VarVec::Bool(vec![])) {
             VarVec::Bool(bomb_vec) => bomb_vec,
             _ => vec![],
         };
@@ -1324,14 +1307,7 @@ mod tests {
                 _ => None,
             })
             .collect();
-        let automatically_filtered_positions = match output_with_filter
-            .df
-            .get(&PLAYER_X_ID)
-            .unwrap()
-            .data
-            .clone()
-            .unwrap_or(VarVec::F32(vec![]))
-        {
+        let automatically_filtered_positions = match output_with_filter.df.get(&PLAYER_X_ID).unwrap().data.clone().unwrap_or(VarVec::F32(vec![])) {
             VarVec::F32(positions_vec) => positions_vec,
             _ => vec![],
         };
@@ -3543,46 +3519,46 @@ mod tests {
             "user_id",
             PropColumn {
                 data: Some(I32(vec![
-                    Some(65283),
-                    Some(65285),
-                    Some(65282),
-                    Some(65281),
-                    Some(65287),
-                    Some(65288),
-                    Some(65289),
-                    Some(65280),
-                    Some(65286),
-                    Some(65284),
-                    Some(65283),
-                    Some(65285),
-                    Some(65282),
-                    Some(65281),
-                    Some(65287),
-                    Some(65288),
-                    Some(65289),
-                    Some(65280),
-                    Some(65286),
-                    Some(65284),
-                    Some(65283),
-                    Some(65285),
-                    Some(65282),
-                    Some(65281),
-                    Some(65287),
-                    Some(65288),
-                    Some(65289),
-                    Some(65280),
-                    Some(65286),
-                    Some(65284),
-                    Some(65283),
-                    Some(65285),
-                    Some(65282),
-                    Some(65281),
-                    Some(65287),
-                    Some(65288),
-                    Some(65289),
-                    Some(65280),
-                    Some(65286),
-                    Some(65284),
+                    Some(3),
+                    Some(5),
+                    Some(2),
+                    Some(1),
+                    Some(7),
+                    Some(8),
+                    Some(9),
+                    Some(0),
+                    Some(6),
+                    Some(4),
+                    Some(3),
+                    Some(5),
+                    Some(2),
+                    Some(1),
+                    Some(7),
+                    Some(8),
+                    Some(9),
+                    Some(0),
+                    Some(6),
+                    Some(4),
+                    Some(3),
+                    Some(5),
+                    Some(2),
+                    Some(1),
+                    Some(7),
+                    Some(8),
+                    Some(9),
+                    Some(0),
+                    Some(6),
+                    Some(4),
+                    Some(3),
+                    Some(5),
+                    Some(2),
+                    Some(1),
+                    Some(7),
+                    Some(8),
+                    Some(9),
+                    Some(0),
+                    Some(6),
+                    Some(4),
                 ])),
                 num_nones: 0,
             },
