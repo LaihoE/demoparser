@@ -4,6 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "demoparser2"
+dynamic = ["version"]
 requires-python = ">=3.8"
 dependencies = ["pandas>=1.5.0", "numpy", "polars", "pyarrow", "tqdm"]
 classifiers = [
@@ -21,6 +22,3 @@ path = "./csgoproto"
 
 [profile.dev]
 overflow-checks = false
-
-[tool.maturin]
-python-source = "src/python"
