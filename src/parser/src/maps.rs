@@ -70,6 +70,7 @@ pub static HIT_GROUP: phf::Map<i32, &'static str> = phf_map! {
     5_i32 => "right_arm",
     6_i32 => "left_leg",
     7_i32 => "right_leg",
+    8_i32 => "neck",
     10_i32 => "gear",
 };
 
