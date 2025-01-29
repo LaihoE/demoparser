@@ -614,7 +614,8 @@ pub fn demo_cmd_type_from_int(value: i32) -> Result<EDemoCommands, DemoParserErr
         14 => Ok(EDemoCommands::DEM_SaveGame),
         15 => Ok(EDemoCommands::DEM_SpawnGroups),
         16 => Ok(EDemoCommands::DEM_AnimationData),
-        17 => Ok(EDemoCommands::DEM_Max),
+        17 => Ok(EDemoCommands::DEM_Recovery),
+        18 => Ok(EDemoCommands::DEM_Max),
         64 => Ok(EDemoCommands::DEM_IsCompressed),
         _ => Err(DemoParserError::UnknownDemoCmd(value)),
     }

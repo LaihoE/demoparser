@@ -141,12 +141,7 @@ impl<'a> FirstPassParser<'a> {
         }
         Ok(&demo_bytes[self.ptr..self.ptr + frame_size])
     }
-    fn decompress_if_needed<'b>(
-        &mut self,
-        buf: &'b mut Vec<u8>,
-        possibly_uncompressed_bytes: &'b [u8],
-        frame: &Frame,
-    ) -> Result<&'b [u8], DemoParserError> {
+    fn decompress_if_needed<'b>(&mut self, buf: &'b mut Vec<u8>, possibly_uncompressed_bytes: &'b [u8], frame: &Frame) -> Result<&'b [u8], DemoParserError> {
         match frame.is_compressed {
             true => {
                 FirstPassParser::resize_if_needed(buf, decompress_len(possibly_uncompressed_bytes))?;
@@ -170,11 +165,10 @@ impl<'a> FirstPassParser<'a> {
         Ok(())
     }
     pub fn parse_fallback_event_list(&mut self) -> Result<(), DemoParserError> {
-        let event_list: CSVCMsg_GameEventList =
-            match Message::parse_from_bytes(&crate::first_pass::fallbackbytes::GAME_EVENT_LIST_FALLBACK_BYTES) {
-                Ok(list) => list,
-                Err(_) => return Err(DemoParserError::MalformedMessage),
-            };
+        let event_list: CSVCMsg_GameEventList = match Message::parse_from_bytes(&crate::first_pass::fallbackbytes::GAME_EVENT_LIST_FALLBACK_BYTES) {
+            Ok(list) => list,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
         for event_desc in event_list.descriptors {
             self.ge_list.insert(event_desc.eventid(), event_desc);
         }
@@ -286,36 +280,22 @@ impl<'a> FirstPassParser<'a> {
             Ok(list) => list,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
-        self.header
-            .insert("demo_file_stamp".to_string(), header.demo_file_stamp().to_string());
-        self.header
-            .insert("demo_version_guid".to_string(), header.demo_version_guid().to_string());
-        self.header
-            .insert("network_protocol".to_string(), header.network_protocol().to_string());
-        self.header
-            .insert("server_name".to_string(), header.server_name().to_string());
-        self.header
-            .insert("client_name".to_string(), header.client_name().to_string());
+        self.header.insert("demo_file_stamp".to_string(), header.demo_file_stamp().to_string());
+        self.header.insert("demo_version_guid".to_string(), header.demo_version_guid().to_string());
+        self.header.insert("network_protocol".to_string(), header.network_protocol().to_string());
+        self.header.insert("server_name".to_string(), header.server_name().to_string());
+        self.header.insert("client_name".to_string(), header.client_name().to_string());
         self.header.insert("map_name".to_string(), header.map_name().to_string());
+        self.header.insert("game_directory".to_string(), header.game_directory().to_string());
+        self.header.insert("fullpackets_version".to_string(), header.fullpackets_version().to_string());
         self.header
-            .insert("game_directory".to_string(), header.game_directory().to_string());
+            .insert("allow_clientside_entities".to_string(), header.allow_clientside_entities().to_string());
         self.header
-            .insert("fullpackets_version".to_string(), header.fullpackets_version().to_string());
-        self.header.insert(
-            "allow_clientside_entities".to_string(),
-            header.allow_clientside_entities().to_string(),
-        );
-        self.header.insert(
-            "allow_clientside_particles".to_string(),
-            header.allow_clientside_particles().to_string(),
-        );
-        self.header.insert(
-            "allow_clientside_particles".to_string(),
-            header.allow_clientside_particles().to_string(),
-        );
+            .insert("allow_clientside_particles".to_string(), header.allow_clientside_particles().to_string());
+        self.header
+            .insert("allow_clientside_particles".to_string(), header.allow_clientside_particles().to_string());
         self.header.insert("addons".to_string(), header.addons().to_string());
-        self.header
-            .insert("demo_version_name".to_string(), header.demo_version_name().to_string());
+        self.header.insert("demo_version_name".to_string(), header.demo_version_name().to_string());
         self.header.insert("addons".to_string(), header.addons().to_string());
         Ok(())
     }
