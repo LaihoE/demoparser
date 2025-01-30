@@ -57,6 +57,7 @@ pub fn parseEvent(
         only_convars: false,
         huffman_lookup_table: &arc_huf,
         order_by_steamid: false,
+        wanted_prop_states: HashMap::default().into(),
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -119,6 +120,7 @@ pub fn parseEvents(
         only_convars: false,
         huffman_lookup_table: &arc_huf,
         order_by_steamid: false,
+        wanted_prop_states: HashMap::default().into(),
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -149,6 +151,7 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
+        wanted_prop_states: HashMap::default().into(),
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -209,6 +212,7 @@ pub fn parseTicks(
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
+        wanted_prop_states: HashMap::default().into(),
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -263,6 +267,7 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
+        wanted_prop_states: HashMap::default().into(),
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -295,6 +300,7 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
+        wanted_prop_states: HashMap::default().into(),
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
     let output = match parser.parse_demo(&file) {
