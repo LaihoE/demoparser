@@ -57,35 +57,46 @@ impl<'a> Parser<'a> {
             parsing_mode: parsing_mode,
         }
     }
-
     pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
-        // Multi threaded second pass
-        if self.parsing_mode == ParsingMode::ForceMultiThreaded
-            || check_multithreadability(&self.input.wanted_player_props)
-                && !(self.parsing_mode == ParsingMode::ForceSingleThreaded)
-        {
-            let (sender, receiver) = channel();
-            let mut fp = FrameParser::new();
-            return thread::scope(|s| {
-                let _handle = s.spawn(|| fp.par_start(demo_bytes, sender));
-                let mut first_pass_parser = FirstPassParser::new(&self.input);
-                match first_pass_parser.parse_demo(&demo_bytes, true) {
-                    Ok(first_pass_output) => self.second_pass_threaded_with_channels(demo_bytes, first_pass_output, receiver),
-                    Err(e) => Err(e),
-                }
-            });
-        }
-        // Single threaded second pass
         let mut first_pass_parser = FirstPassParser::new(&self.input);
         let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, false)?;
-        return self.second_pass_single_threaded(demo_bytes, first_pass_output);
+        if self.parsing_mode == ParsingMode::ForceMultiThreaded
+            || check_multithreadability(&self.input.wanted_player_props) && !(self.parsing_mode == ParsingMode::ForceSingleThreaded)
+        {
+            return self.second_pass_multi_threaded(demo_bytes, first_pass_output);
+        } else {
+            self.second_pass_single_threaded(demo_bytes, first_pass_output)
+        }
     }
 
-    fn second_pass_single_threaded(
-        &self,
-        outer_bytes: &[u8],
-        first_pass_output: FirstPassOutput,
-    ) -> Result<DemoOutput, DemoParserError> {
+    fn second_pass_multi_threaded(&self, outer_bytes: &[u8], first_pass_output: FirstPassOutput) -> Result<DemoOutput, DemoParserError> {
+        let second_pass_outputs: Vec<Result<SecondPassOutput, DemoParserError>> = first_pass_output
+            .fullpacket_offsets
+            .par_iter()
+            .map(|offset| {
+                let mut parser = SecondPassParser::new(first_pass_output.clone(), *offset, false, None)?;
+                parser.start(outer_bytes)?;
+                Ok(parser.create_output())
+            })
+            .collect();
+        // check for errors
+        let mut ok = vec![];
+        for result in second_pass_outputs {
+            match result {
+                Err(e) => return Err(e),
+                Ok(r) => ok.push(r),
+            };
+        }
+        let mut outputs = self.combine_outputs(&mut ok, first_pass_output);
+        if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
+            outputs.df = new_df;
+        }
+        Parser::add_item_purchase_sell_column(&mut outputs.game_events);
+        Parser::remove_item_sold_events(&mut outputs.game_events);
+        Ok(outputs)
+    }
+
+    fn second_pass_single_threaded(&self, outer_bytes: &[u8], first_pass_output: FirstPassOutput) -> Result<DemoOutput, DemoParserError> {
         let mut parser = SecondPassParser::new(first_pass_output.clone(), 16, true, None)?;
         parser.start(outer_bytes)?;
         let second_pass_output = parser.create_output();
@@ -118,8 +129,7 @@ impl<'a> Parser<'a> {
                     }
                     let my_first_out = first_pass_output.clone();
                     handles.push(s.spawn(move || {
-                        let mut parser =
-                            SecondPassParser::new(my_first_out, start_end_offset.start, false, Some(start_end_offset))?;
+                        let mut parser = SecondPassParser::new(my_first_out, start_end_offset.start, false, Some(start_end_offset))?;
                         parser.start(outer_bytes)?;
                         Ok(parser.create_output())
                     }));
@@ -153,11 +163,7 @@ impl<'a> Parser<'a> {
             return Ok(outputs);
         })
     }
-    fn second_pass_multi_threaded_no_channels(
-        &self,
-        outer_bytes: &[u8],
-        first_pass_output: FirstPassOutput,
-    ) -> Result<DemoOutput, DemoParserError> {
+    fn second_pass_multi_threaded_no_channels(&self, outer_bytes: &[u8], first_pass_output: FirstPassOutput) -> Result<DemoOutput, DemoParserError> {
         let second_pass_outputs: Vec<Result<SecondPassOutput, DemoParserError>> = first_pass_output
             .fullpacket_offsets
             .par_iter()
@@ -192,23 +198,17 @@ impl<'a> Parser<'a> {
         let purchases = events.iter().filter(|x| x.name == "item_purchase").collect_vec();
         let sells = events.iter().filter(|x| x.name == "item_sold").collect_vec();
 
-        let purchases = purchases
-            .iter()
-            .filter_map(|event| SellBackHelper::from_event(event))
-            .collect_vec();
-        let sells = sells
-            .iter()
-            .filter_map(|event| SellBackHelper::from_event(event))
-            .collect_vec();
+        let purchases = purchases.iter().filter_map(|event| SellBackHelper::from_event(event)).collect_vec();
+        let sells = sells.iter().filter_map(|event| SellBackHelper::from_event(event)).collect_vec();
 
         let mut was_sold = vec![];
         for purchase in &purchases {
-            let wanted_sells = sells.iter().filter(|sell| {
-                sell.tick > purchase.tick && sell.steamid == purchase.steamid && sell.inventory_slot == purchase.inventory_slot
-            });
-            let wanted_buys = purchases.iter().filter(|buy| {
-                buy.tick > purchase.tick && buy.steamid == purchase.steamid && buy.inventory_slot == purchase.inventory_slot
-            });
+            let wanted_sells = sells
+                .iter()
+                .filter(|sell| sell.tick > purchase.tick && sell.steamid == purchase.steamid && sell.inventory_slot == purchase.inventory_slot);
+            let wanted_buys = purchases
+                .iter()
+                .filter(|buy| buy.tick > purchase.tick && buy.steamid == purchase.steamid && buy.inventory_slot == purchase.inventory_slot);
             let min_tick_sells = wanted_sells.min_by_key(|x| x.tick);
             let min_tick_buys = wanted_buys.min_by_key(|x| x.tick);
             if let (Some(sell_tick), Some(buy_tick)) = (min_tick_sells, min_tick_buys) {
@@ -264,16 +264,14 @@ impl<'a> Parser<'a> {
 
         let mut dfs = second_pass_outputs.iter().map(|x| x.df.clone()).collect();
         let all_dfs_combined = self.combine_dfs(&mut dfs, false);
-        let all_game_events: AHashSet<String> =
-            AHashSet::from_iter(second_pass_outputs.iter().flat_map(|x| x.game_events_counter.iter().cloned()));
+        let all_game_events: AHashSet<String> = AHashSet::from_iter(second_pass_outputs.iter().flat_map(|x| x.game_events_counter.iter().cloned()));
         // Remove temp props
         let mut prop_controller = first_pass_output.prop_controller.clone();
         for prop in first_pass_output.added_temp_props {
             prop_controller.wanted_player_props.retain(|x| x != &prop);
             prop_controller.prop_infos.retain(|x| &x.prop_name != &prop);
         }
-        let per_players: Vec<AHashMap<u64, AHashMap<u32, PropColumn>>> =
-            second_pass_outputs.iter().map(|x| x.df_per_player.clone()).collect();
+        let per_players: Vec<AHashMap<u64, AHashMap<u32, PropColumn>>> = second_pass_outputs.iter().map(|x| x.df_per_player.clone()).collect();
         let mut all_steamids = AHashSet::default();
         for entry in &per_players {
             for (k, _) in entry {
