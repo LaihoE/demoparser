@@ -1,4 +1,3 @@
-
 # Demo parser for Counter-Strike 2
 
 We now have a discord channel: [Discord](https://discord.gg/rNUjS4vfnX)
