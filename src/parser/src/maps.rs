@@ -3,7 +3,7 @@ use crate::first_pass::read_bits::DemoParserError;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::decoder::Decoder;
 use crate::second_pass::decoder::Decoder::*;
-use csgoproto::demo::EDemoCommands;
+use csgoproto::EDemoCommands;
 use phf_macros::phf_map;
 use phf_macros::phf_set;
 use NetmessageType::*;
@@ -596,27 +596,28 @@ pub enum NetmessageType {
 }
 pub fn demo_cmd_type_from_int(value: i32) -> Result<EDemoCommands, DemoParserError> {
     match value {
-        -1 => Ok(EDemoCommands::DEM_Error),
-        0 => Ok(EDemoCommands::DEM_Stop),
-        1 => Ok(EDemoCommands::DEM_FileHeader),
-        2 => Ok(EDemoCommands::DEM_FileInfo),
-        3 => Ok(EDemoCommands::DEM_SyncTick),
-        4 => Ok(EDemoCommands::DEM_SendTables),
-        5 => Ok(EDemoCommands::DEM_ClassInfo),
-        6 => Ok(EDemoCommands::DEM_StringTables),
-        7 => Ok(EDemoCommands::DEM_Packet),
-        8 => Ok(EDemoCommands::DEM_SignonPacket),
-        9 => Ok(EDemoCommands::DEM_ConsoleCmd),
-        10 => Ok(EDemoCommands::DEM_CustomData),
-        11 => Ok(EDemoCommands::DEM_CustomDataCallbacks),
-        12 => Ok(EDemoCommands::DEM_UserCmd),
-        13 => Ok(EDemoCommands::DEM_FullPacket),
-        14 => Ok(EDemoCommands::DEM_SaveGame),
-        15 => Ok(EDemoCommands::DEM_SpawnGroups),
-        16 => Ok(EDemoCommands::DEM_AnimationData),
-        17 => Ok(EDemoCommands::DEM_Recovery),
-        18 => Ok(EDemoCommands::DEM_Max),
-        64 => Ok(EDemoCommands::DEM_IsCompressed),
+        -1 => Ok(EDemoCommands::DemError),
+        0 => Ok(EDemoCommands::DemStop),
+        1 => Ok(EDemoCommands::DemFileHeader),
+        2 => Ok(EDemoCommands::DemFileInfo),
+        3 => Ok(EDemoCommands::DemSyncTick),
+        4 => Ok(EDemoCommands::DemSendTables),
+        5 => Ok(EDemoCommands::DemClassInfo),
+        6 => Ok(EDemoCommands::DemStringTables),
+        7 => Ok(EDemoCommands::DemPacket),
+        8 => Ok(EDemoCommands::DemSignonPacket),
+        9 => Ok(EDemoCommands::DemConsoleCmd),
+        10 => Ok(EDemoCommands::DemCustomData),
+        11 => Ok(EDemoCommands::DemCustomDataCallbacks),
+        12 => Ok(EDemoCommands::DemUserCmd),
+        13 => Ok(EDemoCommands::DemFullPacket),
+        14 => Ok(EDemoCommands::DemSaveGame),
+        15 => Ok(EDemoCommands::DemSpawnGroups),
+        16 => Ok(EDemoCommands::DemAnimationData),
+        17 => Ok(EDemoCommands::DemAnimationHeader),
+        18 => Ok(EDemoCommands::DemRecovery),
+        19 => Ok(EDemoCommands::DemMax),
+        64 => Ok(EDemoCommands::DemIsCompressed),
         _ => Err(DemoParserError::UnknownDemoCmd(value)),
     }
 }

@@ -19,14 +19,17 @@ use crate::second_pass::variants::PropColumn;
 use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use ahash::AHashSet;
-use csgoproto::cs_usercmd::CSGOUserCmdPB;
-use csgoproto::demo::*;
-use csgoproto::netmessages::*;
-use csgoproto::networkbasetypes::CNETMsg_Tick;
-use protobuf::Message;
+use csgoproto::CDemoFullPacket;
+use csgoproto::CDemoPacket;
+use csgoproto::CsvcMsgServerInfo;
+use csgoproto::CsvcMsgUserCommands;
+use csgoproto::CsvcMsgVoiceData;
+use csgoproto::CsgoUserCmdPb;
+use csgoproto::CnetMsgTick;
+use csgoproto::EDemoCommands::*;
+use prost::Message;
 use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
-use EDemoCommands::*;
 
 use super::variants::InputHistory;
 
@@ -47,7 +50,7 @@ pub struct SecondPassOutput {
     pub prop_info: PropController,
     pub projectiles: Vec<ProjectileRecord>,
     pub ptr: usize,
-    pub voice_data: Vec<CSVCMsg_VoiceData>,
+    pub voice_data: Vec<CsvcMsgVoiceData>,
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
     pub entities: Vec<Option<Entity>>,
     pub last_tick: i32,
@@ -60,7 +63,7 @@ impl<'a> SecondPassParser<'a> {
         let mut buf2 = vec![0_u8; OUTER_BUF_DEFAULT_LEN];
         loop {
             let frame = self.read_frame(demo_bytes)?;
-            if frame.demo_cmd == DEM_AnimationData || frame.demo_cmd == DEM_SendTables || frame.demo_cmd == DEM_StringTables {
+            if frame.demo_cmd == DemAnimationData || frame.demo_cmd == DemSendTables || frame.demo_cmd == DemStringTables {
                 self.ptr += frame.size as usize;
                 continue;
             }
@@ -70,11 +73,11 @@ impl<'a> SecondPassParser<'a> {
             self.ptr += frame.size;
 
             let ok = match frame.demo_cmd {
-                DEM_SignonPacket => self.parse_packet(&bytes, &mut buf2),
-                DEM_Packet => self.parse_packet(&bytes, &mut buf2),
-                DEM_Stop => break,
-                DEM_UserCmd => Ok(()),
-                DEM_FullPacket => {
+                DemSignonPacket => self.parse_packet(&bytes, &mut buf2),
+                DemPacket => self.parse_packet(&bytes, &mut buf2),
+                DemStop => break,
+                DemUserCmd => Ok(()),
+                DemFullPacket => {
                     if self.parse_full_packet_and_break_if_needed(&bytes, &mut buf2, started_at)? {
                         break;
                     }
@@ -160,7 +163,7 @@ impl<'a> SecondPassParser<'a> {
     }
 
     pub fn parse_packet(&mut self, bytes: &[u8], buf: &mut Vec<u8>) -> Result<(), DemoParserError> {
-        let msg: CDemoPacket = match Message::parse_from_bytes(bytes) {
+        let msg = match CDemoPacket::decode(bytes) {
             Err(_) => return Err(DemoParserError::MalformedMessage),
             Ok(msg) => msg,
         };
@@ -228,54 +231,60 @@ impl<'a> SecondPassParser<'a> {
             return Ok(());
         }
 
-        let msg: CSVCMsg_UserCommands = match CSVCMsg_UserCommands::parse_from_bytes(bytes) {
+        let msg = match CsvcMsgUserCommands::decode(bytes) {
             Ok(m) => m,
             _ => return Ok(()),
         };
         for cmd in msg.commands {
-            let user_cmd: CSGOUserCmdPB = match CSGOUserCmdPB::parse_from_bytes(cmd.data()) {
+            let user_cmd = match CsgoUserCmdPb::decode(cmd.data()) {
                 Ok(m) => m,
                 _ => return Ok(()),
             };
 
-            let entity_id = user_cmd.base.pawn_entity_handle() & 0x7FF;
-            if let Some(Some(ent)) = self.entities.get_mut(entity_id as usize) {
-                let mut history = vec![];
-                for input in user_cmd.input_history {
-                    let ih = InputHistory {
-                        player_tick_count: input.player_tick_count(),
-                        player_tick_fraction: input.player_tick_fraction(),
-                        render_tick_count: input.render_tick_count(),
-                        render_tick_fraction: input.render_tick_fraction(),
-                        x: input.view_angles.x(),
-                        y: input.view_angles.y(),
-                        z: input.view_angles.z(),
-                    };
-                    history.push(ih);
+            if let Some(base) = user_cmd.base {
+                let entity_id = base.pawn_entity_handle() & 0x7FF;
+                if let Some(Some(ent)) = self.entities.get_mut(entity_id as usize) {
+                    let mut history = vec![];
+                    for input in user_cmd.input_history {
+                        let ih = InputHistory {
+                            player_tick_count: input.player_tick_count(),
+                            player_tick_fraction: input.player_tick_fraction(),
+                            render_tick_count: input.render_tick_count(),
+                            render_tick_fraction: input.render_tick_fraction(),
+                            x: input.view_angles.expect("CsgoInputHistoryEntryPb has no CMsgQAngle").x(),
+                            y: input.view_angles.expect("CsgoInputHistoryEntryPb has no CMsgQAngle").y(),
+                            z: input.view_angles.expect("CsgoInputHistoryEntryPb has no CMsgQAngle").z(),
+                        };
+                        history.push(ih);
+                    }
+                    ent.props.insert(USERCMD_INPUT_HISTORY_BASEID, Variant::InputHistory(history));
+                    ent.props.insert(USERCMD_LEFTMOVE, Variant::F32(base.leftmove()));
+                    ent.props.insert(USERCMD_FORWARDMOVE, Variant::F32(base.forwardmove()));
+                    ent.props.insert(USERCMD_IMPULSE, Variant::I32(base.impulse()));
+                    ent.props.insert(USERCMD_MOUSE_DX, Variant::I32(base.mousedx()));
+                    ent.props.insert(USERCMD_MOUSE_DY, Variant::I32(base.mousedy()));
+                    if let Some(viewangles) = base.viewangles {
+                        ent.props.insert(USERCMD_VIEWANGLE_X, Variant::F32(viewangles.x()));
+                        ent.props.insert(USERCMD_VIEWANGLE_Y, Variant::F32(viewangles.y()));
+                        ent.props.insert(USERCMD_VIEWANGLE_Z, Variant::F32(viewangles.z()));
+                    }
+                    if let Some(buttons_pb) = base.buttons_pb {
+                        ent.props.insert(USERCMD_BUTTONSTATE_1, Variant::U64(buttons_pb.buttonstate1()));
+                        ent.props.insert(USERCMD_BUTTONSTATE_2, Variant::U64(buttons_pb.buttonstate2()));
+                        ent.props.insert(USERCMD_BUTTONSTATE_3, Variant::U64(buttons_pb.buttonstate3()));
+                    }
+                    ent.props.insert(
+                        USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
+                        Variant::U32(base.consumed_server_angle_changes()),
+                    );
                 }
-                ent.props.insert(USERCMD_INPUT_HISTORY_BASEID, Variant::InputHistory(history));
-                ent.props.insert(USERCMD_LEFTMOVE, Variant::F32(user_cmd.base.leftmove()));
-                ent.props.insert(USERCMD_IMPULSE, Variant::I32(user_cmd.base.impulse()));
-                ent.props.insert(USERCMD_MOUSE_DX, Variant::I32(user_cmd.base.mousedx()));
-                ent.props.insert(USERCMD_MOUSE_DY, Variant::I32(user_cmd.base.mousedy()));
-                ent.props.insert(USERCMD_VIEWANGLE_X, Variant::F32(user_cmd.base.viewangles.x()));
-                ent.props.insert(USERCMD_VIEWANGLE_Y, Variant::F32(user_cmd.base.viewangles.y()));
-                ent.props.insert(USERCMD_VIEWANGLE_Z, Variant::F32(user_cmd.base.viewangles.z()));
-                ent.props.insert(USERCMD_FORWARDMOVE, Variant::F32(user_cmd.base.forwardmove()));
-                ent.props.insert(USERCMD_BUTTONSTATE_1, Variant::U64(user_cmd.base.buttons_pb.buttonstate1()));
-                ent.props.insert(USERCMD_BUTTONSTATE_2, Variant::U64(user_cmd.base.buttons_pb.buttonstate2()));
-                ent.props.insert(USERCMD_BUTTONSTATE_3, Variant::U64(user_cmd.base.buttons_pb.buttonstate3()));
-                ent.props.insert(
-                    USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
-                    Variant::U32(user_cmd.base.consumed_server_angle_changes()),
-                );
             }
         }
         Ok(())
     }
 
     pub fn parse_voice_data(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        if let Ok(m) = Message::parse_from_bytes(bytes) {
+        if let Ok(m) = CsvcMsgVoiceData::decode(bytes) {
             self.voice_data.push(m);
         }
         Ok(())
@@ -292,7 +301,7 @@ impl<'a> SecondPassParser<'a> {
     }
 
     pub fn parse_net_tick(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let message: CNETMsg_Tick = match Message::parse_from_bytes(&bytes) {
+        let message = match CnetMsgTick::decode(bytes) {
             Ok(message) => message,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
@@ -302,28 +311,34 @@ impl<'a> SecondPassParser<'a> {
 
     pub fn parse_full_packet(&mut self, bytes: &[u8], should_parse_entities: bool, buf: &mut Vec<u8>) -> Result<(), DemoParserError> {
         self.string_tables = vec![];
-        let full_packet: CDemoFullPacket = match Message::parse_from_bytes(bytes) {
+        let full_packet = match CDemoFullPacket::decode(bytes) {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
             Ok(p) => p,
         };
         self.parse_full_packet_stringtables(&full_packet);
-        let mut bitreader = Bitreader::new(full_packet.packet.data());
-        self.parse_packet_from_bitreader(&mut bitreader, buf, should_parse_entities, true)
+        if let Some(packet) = full_packet.packet {
+            let mut bitreader = Bitreader::new(packet.data());
+            self.parse_packet_from_bitreader(&mut bitreader, buf, should_parse_entities, true)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn parse_full_packet_stringtables(&mut self, full_packet: &CDemoFullPacket) {
-        for item in &full_packet.string_table.tables {
-            if item.table_name == Some("instancebaseline".to_string()) {
-                for i in &item.items {
-                    let k = i.str().parse::<u32>().unwrap_or(u32::MAX);
-                    self.baselines.insert(k, i.data().to_vec());
+        if let Some(string_table) = &full_packet.string_table {
+            for item in &string_table.tables {
+                if item.table_name == Some("instancebaseline".to_string()) {
+                    for i in &item.items {
+                        let k = i.str().parse::<u32>().unwrap_or(u32::MAX);
+                        self.baselines.insert(k, i.data().to_vec());
+                    }
                 }
-            }
-            if item.table_name == Some("userinfo".to_string()) {
-                for i in &item.items {
-                    if let Ok(player) = parse_userinfo(&i.data()) {
-                        if player.steamid != 0 {
-                            self.stringtable_players.insert(player.userid, player);
+                if item.table_name == Some("userinfo".to_string()) {
+                    for i in &item.items {
+                        if let Ok(player) = parse_userinfo(&i.data()) {
+                            if player.steamid != 0 {
+                                self.stringtable_players.insert(player.userid, player);
+                            }
                         }
                     }
                 }
@@ -335,7 +350,7 @@ impl<'a> SecondPassParser<'a> {
         Ok(())
     }
     pub fn parse_server_info(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let server_info: CSVCMsg_ServerInfo = match Message::parse_from_bytes(bytes) {
+        let server_info = match CsvcMsgServerInfo::decode(bytes) {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
             Ok(p) => p,
         };

@@ -18,10 +18,11 @@ use crate::second_pass::decoder::QfMapper;
 use crate::second_pass::decoder::QuantalizedFloat;
 use crate::second_pass::path_ops::FieldPath;
 use ahash::AHashMap;
-use csgoproto::netmessages::ProtoFlattenedSerializer_t;
-use csgoproto::netmessages::{CSVCMsg_FlattenedSerializer, ProtoFlattenedSerializerField_t};
+use csgoproto::ProtoFlattenedSerializerT;
+use csgoproto::ProtoFlattenedSerializerFieldT;
+use csgoproto::CsvcMsgFlattenedSerializer;
 use lazy_static::lazy_static;
-use protobuf::Message;
+use prost::Message;
 use regex::Regex;
 
 lazy_static! {
@@ -80,7 +81,7 @@ impl<'a> FirstPassParser<'a> {
         let mut bitreader = Bitreader::new(tables.data());
         let n_bytes = bitreader.read_varint()?;
         let bytes = bitreader.read_n_bytes(n_bytes as usize)?;
-        let serializer_msg: CSVCMsg_FlattenedSerializer = match Message::parse_from_bytes(&bytes) {
+        let serializer_msg = match CsvcMsgFlattenedSerializer::decode(bytes.as_slice()) {
             Ok(msg) => msg,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
@@ -112,7 +113,7 @@ impl<'a> FirstPassParser<'a> {
     }
     fn create_fields(
         &mut self,
-        serializer_msg: &CSVCMsg_FlattenedSerializer,
+        serializer_msg: &CsvcMsgFlattenedSerializer,
         qf_mapper: &mut QfMapper,
         prop_controller: &mut PropController,
     ) -> Result<AHashMap<String, Serializer>, DemoParserError> {
@@ -160,9 +161,9 @@ impl<'a> FirstPassParser<'a> {
     }
     fn generate_serializer(
         &mut self,
-        serializer_msg: &ProtoFlattenedSerializer_t,
+        serializer_msg: &ProtoFlattenedSerializerT,
         field_data: &mut Vec<Option<ConstructorField>>,
-        big: &CSVCMsg_FlattenedSerializer,
+        big: &CsvcMsgFlattenedSerializer,
         serializers: &AHashMap<String, Serializer>,
     ) -> Result<Serializer, DemoParserError> {
         let sid = match big.symbols.get(serializer_msg.serializer_name_sym() as usize) {
@@ -204,8 +205,8 @@ impl<'a> FirstPassParser<'a> {
 
     fn generate_field_data(
         &mut self,
-        msg: &ProtoFlattenedSerializerField_t,
-        big: &CSVCMsg_FlattenedSerializer,
+        msg: &ProtoFlattenedSerializerFieldT,
+        big: &CsvcMsgFlattenedSerializer,
         field_type_map: &mut AHashMap<String, FieldType>,
         qf_mapper: &mut QfMapper,
     ) -> Result<ConstructorField, DemoParserError> {
@@ -369,18 +370,18 @@ impl VectorField {
     }
 }
 pub fn field_from_msg(
-    field: &ProtoFlattenedSerializerField_t,
-    serializer_msg: &CSVCMsg_FlattenedSerializer,
+    field: &ProtoFlattenedSerializerFieldT,
+    serializer_msg: &CsvcMsgFlattenedSerializer,
     ft: FieldType,
 ) -> Result<ConstructorField, DemoParserError> {
-    let ser_name = match field.has_field_serializer_name_sym() {
+    let ser_name = match field.field_serializer_name_sym.is_some() {
         true => match serializer_msg.symbols.get(field.field_serializer_name_sym() as usize) {
             Some(entry) => Some(entry.clone()),
             None => return Err(DemoParserError::MalformedMessage),
         },
         false => None,
     };
-    let enc_name = match field.has_var_encoder_sym() {
+    let enc_name = match field.var_encoder_sym.is_some() {
         true => match serializer_msg.symbols.get(field.var_encoder_sym() as usize) {
             Some(enc_name) => enc_name.to_owned(),
             None => return Err(DemoParserError::MalformedMessage),

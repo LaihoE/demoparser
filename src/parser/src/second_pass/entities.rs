@@ -11,8 +11,8 @@ use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::path_ops::*;
 use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
-use csgoproto::netmessages::CSVCMsg_PacketEntities;
-use protobuf::Message;
+use csgoproto::CsvcMsgPacketEntities;
+use prost::Message;
 
 const NSERIALBITS: u32 = 17;
 const STOP_READING_SYMBOL: u8 = 39;
@@ -54,7 +54,7 @@ impl<'a> SecondPassParser<'a> {
         if !self.parse_entities {
             return Ok(());
         }
-        let msg: CSVCMsg_PacketEntities = match Message::parse_from_bytes(bytes) {
+        let msg = match CsvcMsgPacketEntities::decode(bytes) {
             Err(_) => return Err(DemoParserError::MalformedMessage),
             Ok(msg) => msg,
         };

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 bitter = "0.7.0"
-protobuf = "=3.5.1"
+prost = "0.13.3"
 snap = "1.1.0"
 ahash = "0.8.3"
 regex = "1.7.3"
@@ -19,7 +19,6 @@ memmap2 = "0.9.4"
 serde = { version = "1.0.164", features = ["derive"] }
 libc = "0.2.147"
 rayon = "1.7.0"
-protobuf-support = "=3.5.1"
 proc-macro2 = "1.0.69"
 rand = "0.8.5"
 opus = { version = "0.3.0", optional = true}
