@@ -27,6 +27,9 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+
       - if: matrix.python-version == '3.13'
         uses: actions/setup-python@v5
         with:
@@ -59,6 +62,9 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
         env:
@@ -84,6 +90,9 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
 
       - name: Build Wheels
         uses: PyO3/maturin-action@v1

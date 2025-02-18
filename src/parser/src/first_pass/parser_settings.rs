@@ -14,8 +14,8 @@ use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
-use csgoproto::demo::CDemoSendTables;
-use csgoproto::netmessages::csvcmsg_game_event_list::Descriptor_t;
+use csgoproto::CDemoSendTables;
+use csgoproto::csvc_msg_game_event_list::DescriptorT;
 use memmap2::Mmap;
 use memmap2::MmapOptions;
 use std::collections::BTreeMap;
@@ -55,7 +55,7 @@ pub struct FirstPassParser<'a> {
     pub convars: AHashMap<String, String>,
     pub player_md: Vec<PlayerEndMetaData>,
     pub prop_controller: PropController,
-    pub ge_list: AHashMap<i32, Descriptor_t>,
+    pub ge_list: AHashMap<i32, DescriptorT>,
     pub qf_mapper: QfMapper,
     pub stringtable_players: BTreeMap<i32, UserInfo>,
     pub qf_map_set: bool,

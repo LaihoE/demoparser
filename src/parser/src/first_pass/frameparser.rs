@@ -1,7 +1,7 @@
 use crate::first_pass::read_bits::read_varint;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::maps::demo_cmd_type_from_int;
-use csgoproto::demo::EDemoCommands;
+use csgoproto::EDemoCommands;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use std::sync::mpsc::Sender;
@@ -173,7 +173,7 @@ impl FrameParser {
         loop {
             if let Ok(frame) = FrameParser::read_frame_mut_ptr(demo_bytes, &mut ptr) {
                 ptr += frame.size;
-                if frame.demo_cmd == csgoproto::demo::EDemoCommands::DEM_FullPacket {
+                if frame.demo_cmd == EDemoCommands::DemFullPacket {
                     if !fullpacket_offsets.is_empty() {
                         let _ = sender.send(StartEndOffset {
                             start: *fullpacket_offsets.last().unwrap_or(&16),
@@ -200,10 +200,11 @@ impl FrameParser {
                         })
                     }
                     fullpacket_offsets.push(frame.frame_starts_at);
-                }
-                // If we are past our designated end and we find a fullpacket we exit
-                if ptr > end && frame.demo_cmd == csgoproto::demo::EDemoCommands::DEM_FullPacket {
-                    return Ok(outs);
+
+                    // If we are past our designated end and we find a fullpacket we exit
+                    if ptr > end {
+                        return Ok(outs);
+                    }
                 }
             } else {
                 return Ok(outs);

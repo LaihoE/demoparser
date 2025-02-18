@@ -5,9 +5,9 @@ use crate::maps::WEAPINDICIES;
 use crate::second_pass::parser_settings::EconItem;
 use crate::second_pass::parser_settings::PlayerEndMetaData;
 use crate::second_pass::parser_settings::SecondPassParser;
-use csgoproto::cstrike15_usermessages::CCSUsrMsg_EndOfMatchAllPlayersData;
-use csgoproto::cstrike15_usermessages::CCSUsrMsg_SendPlayerItemDrops;
-use protobuf::Message;
+use csgoproto::CcsUsrMsgEndOfMatchAllPlayersData;
+use csgoproto::CcsUsrMsgSendPlayerItemDrops;
+use prost::Message;
 
 #[derive(Debug, Clone)]
 pub struct Class {
@@ -18,7 +18,7 @@ pub struct Class {
 
 impl<'a> SecondPassParser<'a> {
     pub fn parse_item_drops(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let drops: CCSUsrMsg_SendPlayerItemDrops = match Message::parse_from_bytes(&bytes) {
+        let drops = match CcsUsrMsgSendPlayerItemDrops::decode(bytes) {
             Ok(msg) => msg,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
@@ -37,7 +37,7 @@ impl<'a> SecondPassParser<'a> {
     }
 
     pub fn parse_player_end_msg(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let end_data: CCSUsrMsg_EndOfMatchAllPlayersData = match Message::parse_from_bytes(&bytes) {
+        let end_data = match CcsUsrMsgEndOfMatchAllPlayersData::decode(bytes) {
             Ok(msg) => msg,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };
