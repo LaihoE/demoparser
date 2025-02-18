@@ -52,6 +52,11 @@ jobs:
       - name: Print commit hash
         run: git rev-parse HEAD
 
+      - name: Clone Protobufs repository
+        run: |
+          cd src/csgoproto
+          git clone https://github.com/SteamDatabase/Protobufs
+
 
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1

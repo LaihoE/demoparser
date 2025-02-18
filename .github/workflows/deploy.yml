@@ -30,6 +30,12 @@ jobs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
 
+      - name: Clone Protobufs repository
+        run: |
+          cd src/csgoproto
+          git clone https://github.com/SteamDatabase/Protobufs
+
+
       - if: matrix.python-version == '3.13'
         uses: actions/setup-python@v5
         with:
@@ -62,6 +68,12 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Clone Protobufs repository
+        run: |
+          cd src/csgoproto
+          git clone https://github.com/SteamDatabase/Protobufs
+
+
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
 
@@ -90,6 +102,12 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+
+      - name: Clone Protobufs repository
+        run: |
+          cd src/csgoproto
+          git clone https://github.com/SteamDatabase/Protobufs
+
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
