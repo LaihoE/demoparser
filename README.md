@@ -1,3 +1,4 @@
+
 # Demo parser for Counter-Strike 2
 
 We now have a discord channel: [Discord](https://discord.gg/rNUjS4vfnX)
@@ -175,6 +176,51 @@ Python/JS are rougly as fast.
 | is_airborne  | m_hGroundEntity |
 | aim_punch_angle  | CCSPlayerPawn.m_aimPunchAngle |
 | aim_punch_angle_vel  | CCSPlayerPawn.m_aimPunchAngleVel |
+
+#### Events
+| Event Name                         |
+| ----------------------------------- |
+| announce_phase_end                  |
+| begin_new_match                     |
+| bomb_defused                        |
+| bomb_dropped                        |
+| bomb_exploded                       |
+| bomb_planted                        |
+| bomb_pickup                         |
+| chat_message                        |
+| cs_intermission                     |
+| cs_pre_restart                      |
+| cs_round_final_beep                 |
+| cs_round_start_beep                 |
+| cs_win_panel_match                  |
+| entity_killed                       |
+| flashbang_detonate                  |
+| hltv_chase                          |
+| hltv_fixed                          |
+| hltv_versioninfo                    |
+| inferno_expire                      |
+| inferno_startburn                   |
+| item_pickup                         |
+| player_death                        |
+| player_disconnect                   |
+| player_given_c4                     |
+| player_ping                         |
+| player_ping_stop                    |
+| player_sound                        |
+| player_spawn                        |
+| player_team                         |
+| player_hurt                         |
+| round_announce_last_round_half      |
+| round_announce_match_point          |
+| round_announce_match_start          |
+| round_end_upload_stats              |
+| round_freeze_end                    |
+| round_officially_ended              |
+| round_time_warning                  |
+| smokegrenade_detonate               |
+| smokegrenade_expired                |
+| vote_cast                           |
+| weapon_fire                         |
 
 #### Buttons 
 True/Flase if player is pressing button.
