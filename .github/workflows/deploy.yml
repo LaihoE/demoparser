@@ -108,7 +108,6 @@ jobs:
           cd src/csgoproto
           git clone https://github.com/SteamDatabase/Protobufs
 
-
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
 
