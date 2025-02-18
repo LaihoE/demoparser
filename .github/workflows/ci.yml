@@ -17,6 +17,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+      
+      - name: Clone Protobufs repository
+        run: |
+          cd src/csgoproto
+          git clone https://github.com/SteamDatabase/Protobufs
 
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1
