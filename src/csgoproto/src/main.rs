@@ -197,11 +197,16 @@ fn create_weapons_map(items: &GameItems, translation: &Translation) -> String {
         return String::new();
     };
 
-    let mut weapons_or_equipment: Vec<(i32, String)> = vec![];
+    let mut weapons_or_equipment: Vec<(i32, String)> = vec![(42, "knife".to_string()), (59, "knife_t".to_string())];
     for item in items {
         let Some((id, data)) = get_item_data(item) else {
             continue;
         };
+
+        // Skip translating default CT&T knives
+        if id == 42 || id == 59 {
+            continue;
+        }
         let Some(Str(prefab)) = data.get("prefab") else {
             continue;
         };

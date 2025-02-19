@@ -1,7 +1,7 @@
 use std::{io::Result, process::Command};
 
 fn main() -> Result<()> {
-    println!("cargo::rerun-if-changed=./GameTracking-CS2/Protobufs/demo.proto");
+    println!("cargo::rerun-if-changed=GameTracking-CS2/Protobufs/demo.proto");
 
     Command::new("git")
         .args([
