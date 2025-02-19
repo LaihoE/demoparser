@@ -3,18 +3,18 @@ use super::variants::Sticker;
 use super::variants::Variant;
 use crate::first_pass::prop_controller::*;
 use crate::first_pass::read_bits::DemoParserError;
-use crate::maps::AGENTSMAP;
 use crate::maps::BUTTONMAP;
 use crate::maps::GRENADE_FRIENDLY_NAMES;
-use crate::maps::PAINTKITS;
 use crate::maps::PLAYER_COLOR;
-use crate::maps::STICKER_ID_TO_NAME;
-use crate::maps::WEAPINDICIES;
 use crate::second_pass::entities::EntityType;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::PropColumn;
 use crate::second_pass::variants::VarVec;
 use ahash::AHashMap;
+use csgoproto::maps::AGENTSMAP;
+use csgoproto::maps::PAINTKITS;
+use csgoproto::maps::STICKER_ID_TO_NAME;
+use csgoproto::maps::WEAPINDICIES;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
