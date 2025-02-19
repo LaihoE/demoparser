@@ -9,6 +9,9 @@ crate-type = ["lib"]
 
 [dependencies]
 prost = "0.13.3"
+phf = { version = "0.11", features = ["macros"] }
+strum = { version = "0.26", features = ["derive"] }
+winnow = { version = "0.7.2", features = ["simd"] }
 
 [build-dependencies]
 prost-build = "0.13.3"

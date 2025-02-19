@@ -9,13 +9,13 @@ use crate::first_pass::stringtables::parse_userinfo;
 use crate::first_pass::stringtables::StringTable;
 use crate::first_pass::stringtables::UserInfo;
 use crate::maps::demo_cmd_type_from_int;
-use crate::maps::netmessage_type_from_int;
-use crate::maps::NetmessageType::*;
+
 use crate::second_pass::decoder::QfMapper;
 use crate::second_pass::other_netmessages::Class;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use csgoproto::csvc_msg_game_event_list::DescriptorT;
+use csgoproto::message_type::NetMessageType::{self, *};
 use csgoproto::CDemoClassInfo;
 use csgoproto::CDemoFileHeader;
 use csgoproto::CDemoFullPacket;
@@ -263,7 +263,7 @@ impl<'a> FirstPassParser<'a> {
             let size = bitreader.read_varint()?;
             let msg_bytes = bitreader.read_n_bytes(size as usize)?;
 
-            let ok = match netmessage_type_from_int(msg_type as i32) {
+            let ok = match NetMessageType::from(msg_type as i32) {
                 GE_Source1LegacyGameEventList => self.parse_game_event_list(&msg_bytes),
                 svc_CreateStringTable => self.parse_create_stringtable(&msg_bytes),
                 svc_UpdateStringTable => self.update_string_table(&msg_bytes),

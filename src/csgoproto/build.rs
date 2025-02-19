@@ -1,27 +1,37 @@
-use std::io::Result;
+use std::{io::Result, process::Command};
 
 fn main() -> Result<()> {
+    println!("cargo::rerun-if-changed=GameTracking-CS2/Protobufs/demo.proto");
+
+    Command::new("git")
+        .args([
+            "clone",
+            "https://github.com/SteamDatabase/GameTracking-CS2.git",
+            "--depth=1",
+        ])
+        .status()?;
+
     let protos = vec![
-        "Protobufs/csgo/steammessages.proto",
-        "Protobufs/csgo/gcsdk_gcmessages.proto",
-        "Protobufs/csgo/demo.proto",
-        "Protobufs/csgo/cstrike15_gcmessages.proto",
-        "Protobufs/csgo/cstrike15_usermessages.proto",
-        "Protobufs/csgo/usermessages.proto",
-        "Protobufs/csgo/networkbasetypes.proto",
-        "Protobufs/csgo/engine_gcmessages.proto",
-        "Protobufs/csgo/netmessages.proto",
-        "Protobufs/csgo/network_connection.proto",
-        "Protobufs/csgo/cs_usercmd.proto",
-        "Protobufs/csgo/usercmd.proto",
+        "GameTracking-CS2/Protobufs/steammessages.proto",
+        "GameTracking-CS2/Protobufs/gcsdk_gcmessages.proto",
+        "GameTracking-CS2/Protobufs/demo.proto",
+        "GameTracking-CS2/Protobufs/cstrike15_gcmessages.proto",
+        "GameTracking-CS2/Protobufs/cstrike15_usermessages.proto",
+        "GameTracking-CS2/Protobufs/usermessages.proto",
+        "GameTracking-CS2/Protobufs/networkbasetypes.proto",
+        "GameTracking-CS2/Protobufs/engine_gcmessages.proto",
+        "GameTracking-CS2/Protobufs/netmessages.proto",
+        "GameTracking-CS2/Protobufs/network_connection.proto",
+        "GameTracking-CS2/Protobufs/cs_usercmd.proto",
+        "GameTracking-CS2/Protobufs/usercmd.proto",
+        "GameTracking-CS2/Protobufs/gameevents.proto",
     ];
 
     prost_build::Config::new()
         .format(false)
         .out_dir("src")
-        .default_package_filename("lib")
+        .default_package_filename("protobuf")
         .bytes(["."])
-        .compile_protos(&protos, &["Protobufs/csgo/"])?;
-
-    Ok(())
+        .enum_attribute(".", "#[derive(::strum::EnumIter)]")
+        .compile_protos(&protos, &["GameTracking-CS2/Protobufs/"])
 }

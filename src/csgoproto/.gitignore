@@ -1,12 +1,1 @@
-/target
-/Protobufs
-/target
-*.dem
-.vscode/
-venv
-*.py
-flamegraph.svg
-perf.data
-perf.data.old
-junk.txt
-voxels.txt
+/GameTracking-CS2

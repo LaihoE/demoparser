@@ -13,18 +13,18 @@ use crate::first_pass::stringtables::UserInfo;
 use crate::maps::HIT_GROUP;
 use crate::maps::ROUND_WIN_REASON;
 use crate::maps::ROUND_WIN_REASON_TO_WINNER;
-use crate::maps::WEAPINDICIES;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::entities::Entity;
 use crate::second_pass::entities::PlayerMetaData;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::*;
-use csgoproto::CcsUsrMsgServerRankUpdate;
 use csgoproto::csvc_msg_game_event::KeyT;
-use csgoproto::CnetMsgSetConVar;
-use csgoproto::CsvcMsgGameEvent;
+use csgoproto::maps::WEAPINDICIES;
 use csgoproto::CUserMessageSayText;
 use csgoproto::CUserMessageSayText2;
+use csgoproto::CcsUsrMsgServerRankUpdate;
+use csgoproto::CnetMsgSetConVar;
+use csgoproto::CsvcMsgGameEvent;
 use itertools::Itertools;
 use prost::Message;
 use serde::ser::SerializeMap;
@@ -89,8 +89,7 @@ impl<'a> SecondPassParser<'a> {
             self.game_events_counter.insert(event_name.to_owned());
         }
         // Return early if this is not a wanted event.
-        if !self.wanted_events.contains(&event_desc.name().to_string()) && self.wanted_events.first() != Some(&"all".to_string())
-        {
+        if !self.wanted_events.contains(&event_desc.name().to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(None);
         }
         if REMOVEDEVENTS.contains(&event_desc.name()) {
@@ -544,9 +543,7 @@ impl<'a> SecondPassParser<'a> {
                         name: "tick".to_string(),
                     });
                     let inventory_slot = prop_id - ITEM_PURCHASE_COUNT;
-                    let def_idx = self
-                        .get_prop_from_ent(&(&ITEM_PURCHASE_NEW_DEF_IDX + inventory_slot), entid)
-                        .ok();
+                    let def_idx = self.get_prop_from_ent(&(&ITEM_PURCHASE_NEW_DEF_IDX + inventory_slot), entid).ok();
 
                     let name = match def_idx {
                         Some(Variant::U32(id)) => {
@@ -831,9 +828,7 @@ impl<'a> SecondPassParser<'a> {
 
     pub fn create_custom_event_round_officially_ended(&mut self, _events: &[GameEventInfo]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("round_officially_ended".to_string());
-        if !self.wanted_events.contains(&"round_officially_ended".to_string())
-            && self.wanted_events.first() != Some(&"all".to_string())
-        {
+        if !self.wanted_events.contains(&"round_officially_ended".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
 
@@ -865,9 +860,7 @@ impl<'a> SecondPassParser<'a> {
 
     pub fn create_custom_event_match_end(&mut self, _events: &[GameEventInfo]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("cs_win_panel_match".to_string());
-        if !self.wanted_events.contains(&"cs_win_panel_match".to_string())
-            && self.wanted_events.first() != Some(&"all".to_string())
-        {
+        if !self.wanted_events.contains(&"cs_win_panel_match".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
 
@@ -1091,18 +1084,10 @@ impl<'a> SecondPassParser<'a> {
                 events.push(GameEventInfo::WeaponCreateHitem((result.clone(), entity.entity_id)));
             }
             if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
-                events.push(GameEventInfo::WeaponPurchaseCount((
-                    result.clone(),
-                    entity.entity_id,
-                    fi.prop_id,
-                )));
+                events.push(GameEventInfo::WeaponPurchaseCount((result.clone(), entity.entity_id, fi.prop_id)));
             }
             if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
-                events.push(GameEventInfo::WeaponCreateDefIdx((
-                    result.clone(),
-                    entity.entity_id,
-                    fi.prop_id,
-                )));
+                events.push(GameEventInfo::WeaponCreateDefIdx((result.clone(), entity.entity_id, fi.prop_id)));
             }
         }
         events
