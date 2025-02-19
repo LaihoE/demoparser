@@ -1,5 +1,4 @@
-/Protobufs
-/target
+target/
 .vscode/
 venv
 .venv

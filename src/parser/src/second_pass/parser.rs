@@ -8,8 +8,6 @@ use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::stringtables::parse_userinfo;
 use crate::maps::demo_cmd_type_from_int;
-use crate::maps::netmessage_type_from_int;
-use crate::maps::NetmessageType::*;
 use crate::second_pass::collect_data::ProjectileRecord;
 use crate::second_pass::entities::Entity;
 use crate::second_pass::game_events::GameEvent;
@@ -19,13 +17,14 @@ use crate::second_pass::variants::PropColumn;
 use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use ahash::AHashSet;
+use csgoproto::message_type::NetMessageType::{self, *};
 use csgoproto::CDemoFullPacket;
 use csgoproto::CDemoPacket;
+use csgoproto::CnetMsgTick;
+use csgoproto::CsgoUserCmdPb;
 use csgoproto::CsvcMsgServerInfo;
 use csgoproto::CsvcMsgUserCommands;
 use csgoproto::CsvcMsgVoiceData;
-use csgoproto::CsgoUserCmdPb;
-use csgoproto::CnetMsgTick;
 use csgoproto::EDemoCommands::*;
 use prost::Message;
 use snap::raw::decompress_len;
@@ -189,7 +188,7 @@ impl<'a> SecondPassParser<'a> {
             }
             bitreader.read_n_bytes_mut(size as usize, buf)?;
             let msg_bytes = &buf[..size as usize];
-            let ok = match netmessage_type_from_int(msg_type as i32) {
+            let ok = match NetMessageType::from(msg_type as i32) {
                 svc_PacketEntities => {
                     if should_parse_entities {
                         self.parse_packet_ents(&msg_bytes, is_fullpacket)?;
@@ -273,10 +272,8 @@ impl<'a> SecondPassParser<'a> {
                         ent.props.insert(USERCMD_BUTTONSTATE_2, Variant::U64(buttons_pb.buttonstate2()));
                         ent.props.insert(USERCMD_BUTTONSTATE_3, Variant::U64(buttons_pb.buttonstate3()));
                     }
-                    ent.props.insert(
-                        USERCMD_CONSUMED_SERVER_ANGLE_CHANGES,
-                        Variant::U32(base.consumed_server_angle_changes()),
-                    );
+                    ent.props
+                        .insert(USERCMD_CONSUMED_SERVER_ANGLE_CHANGES, Variant::U32(base.consumed_server_angle_changes()));
                 }
             }
         }
