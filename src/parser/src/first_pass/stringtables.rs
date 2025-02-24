@@ -55,7 +55,9 @@ impl<'a> FirstPassParser<'a> {
             return Ok(());
         }
         let bytes = match table.data_compressed() {
-            true => snap::raw::Decoder::new().decompress_vec(table.string_data()).map_err(|_| DemoParserError::MalformedMessage)?,
+            true => snap::raw::Decoder::new()
+                .decompress_vec(table.string_data())
+                .map_err(|_| DemoParserError::MalformedMessage)?,
             false => table.string_data().to_vec(),
         };
         self.parse_string_table(
@@ -113,7 +115,7 @@ impl<'a> FirstPassParser<'a> {
                                 if length > s.len() as u32 {
                                     key = key.to_owned() + &s + &bitreader.read_string()?;
                                 } else {
-                                    key = key.to_owned() + &s[0..length as usize] + &bitreader.read_string()?;
+                                    key = key.to_owned() + &s.get(0..length as usize).unwrap_or("") + &bitreader.read_string()?;
                                 }
                             }
                         }
@@ -164,11 +166,7 @@ impl<'a> FirstPassParser<'a> {
                         Err(_e) => None,
                     };
                 }
-                items.push(StringTableEntry {
-                    idx,
-                    key,
-                    value,
-                });
+                items.push(StringTableEntry { idx, key, value });
             }
         }
         self.string_tables.push(StringTable {
@@ -194,7 +192,7 @@ pub fn parse_userinfo(bytes: &[u8]) -> Result<UserInfo, DemoParserError> {
 
 impl<'a> SecondPassParser<'a> {
     pub fn update_string_table(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
-        let table = CsvcMsgUpdateStringTable::decode(bytes).map_err(|_| DemoParserError::MalformedMessage)?; 
+        let table = CsvcMsgUpdateStringTable::decode(bytes).map_err(|_| DemoParserError::MalformedMessage)?;
         match self.string_tables.get(table.table_id() as usize) {
             Some(st) => self.parse_string_table(
                 table.string_data().to_vec(),
@@ -214,7 +212,9 @@ impl<'a> SecondPassParser<'a> {
     pub fn parse_create_stringtable(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         let table = CsvcMsgCreateStringTable::decode(bytes).map_err(|_| DemoParserError::MalformedMessage)?;
         let bytes = match table.data_compressed() {
-            true => snap::raw::Decoder::new().decompress_vec(table.string_data()).map_err(|_| DemoParserError::MalformedMessage)?,
+            true => snap::raw::Decoder::new()
+                .decompress_vec(table.string_data())
+                .map_err(|_| DemoParserError::MalformedMessage)?,
             false => table.string_data().to_vec(),
         };
         self.parse_string_table(
@@ -272,7 +272,7 @@ impl<'a> SecondPassParser<'a> {
                             if length > s.len() as u32 {
                                 key = key.to_owned() + &s + &bitreader.read_string()?;
                             } else {
-                                key = key.to_owned() + &s[0..length as usize] + &bitreader.read_string()?;
+                                key = key.to_owned() + &s.get(0..length as usize).unwrap_or("") + &bitreader.read_string()?;
                             }
                         }
                     }
@@ -322,11 +322,7 @@ impl<'a> SecondPassParser<'a> {
                         Err(_e) => None,
                     };
                 }
-                items.push(StringTableEntry {
-                    idx,
-                    key,
-                    value,
-                });
+                items.push(StringTableEntry { idx, key, value });
             }
         }
         self.string_tables.push(StringTable {
