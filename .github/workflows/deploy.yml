@@ -71,10 +71,25 @@ jobs:
           target: ${{ matrix.target }}
           args: --no-default-features -i ${{ matrix.python-version }} --no-sdist --skip-existing -m src/python/Cargo.toml
           before-script-linux: |
-            yum install -y wget
-            wget https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip
-            unzip protoc-25.1-linux-x86_64.zip -d $HOME/protoc
-            mv $HOME/protoc/bin/protoc /usr/local/bin
+            apt-get update
+            apt-get install -y protobuf-compiler
+
+            before-script-linux: |
+            case "${{ matrix.target }}" in
+              "aarch64")
+                # NOTE: pypa/manylinux docker images are Debian based
+                apt-get update
+                apt-get install -y protobuf-compiler
+                ;;
+              "x86" | "x86_64")
+                # NOTE: rust-cross/manylinux docker images are CentOS based
+                yum install -y wget
+                wget https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip
+                unzip protoc-25.1-linux-x86_64.zip -d $HOME/protoc
+                mv $HOME/protoc/bin/protoc /usr/local/bin
+                ;;
+            esac
+
 
   macos:
     runs-on: macos-latest
