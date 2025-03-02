@@ -91,11 +91,9 @@ impl<'a> SecondPassParser<'a> {
                 if !self.wanted_players.is_empty() && !self.wanted_players.contains(&player_steamid) {
                     continue;
                 }
-
                 if self.order_by_steamid && !self.df_per_player.contains_key(&player_steamid) {
                     self.df_per_player.insert(player_steamid, AHashMap::default());
                 }
-
                 if self.order_by_steamid {
                     match self.find_prop(prop_info, entity_id, player) {
                         Ok(prop) => {
@@ -711,6 +709,7 @@ impl<'a> SecondPassParser<'a> {
             Ok(Variant::U32(p)) => p,
             _ => return Err(PropCollectionError::InventoryMaxNotFound),
         };
+
         for i in 1..inventory_max_len + 1 {
             let prop_id = MY_WEAPONS_OFFSET + i;
             match self.get_prop_from_ent(&(prop_id as u32), entity_id) {
@@ -722,7 +721,6 @@ impl<'a> SecondPassParser<'a> {
                         continue;
                     }
                     unique_eids.push(eid);
-
                     if let Some(item_def_id) = &self.prop_controller.special_ids.item_def {
                         let res = match self.get_prop_from_ent(item_def_id, &eid) {
                             Err(_e) => continue,

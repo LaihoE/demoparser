@@ -289,11 +289,34 @@ impl PropController {
     }
 
     fn insert_propinfo(&mut self, prop_name: &str, f: &mut ValueField) {
-        if let Some(prop_type) = TYPEHM.get(&prop_name) {
+        let split_at_dot: Vec<&str> = prop_name.split(".").collect();
+
+        let prop_name = split_weapon_prefix_from_prop_name(&prop_name);
+        let grenade_or_weapon = is_grenade_or_weapon(&prop_name);
+
+        let prop_name = match grenade_or_weapon {
+            true => split_at_dot[1..].join("."),
+            false => prop_name.to_string(),
+        };
+        let mut prefix_type = match prop_name.split(".").next() {
+            Some("CCSGameRulesProxy") => Some(PropType::Rules),
+            Some("CCSTeam") => Some(PropType::Team),
+            Some("CCSPlayerPawn") => Some(PropType::Player),
+            Some("CCSPlayerController") => Some(PropType::Controller),
+            _ => None,
+        };
+        if grenade_or_weapon {
+            prefix_type = Some(PropType::Weapon);
+        }
+        // If any custom mapping found use that one
+        if let Some(mapping) = TYPEHM.get(&prop_name) {
+            prefix_type = Some(*mapping);
+        }
+        if let Some(prop_type) = prefix_type {
             if self.wanted_player_props.contains(&prop_name.to_string()) {
                 self.prop_infos.push(PropInfo {
                     id: f.prop_id as u32,
-                    prop_type: *prop_type,
+                    prop_type: prop_type,
                     prop_name: prop_name.to_string(),
                     prop_friendly_name: self
                         .real_name_to_og_name
@@ -301,12 +324,12 @@ impl PropController {
                         .unwrap_or(&prop_name.to_string())
                         .to_string(),
                     is_player_prop: true,
-                })
+                });
             }
             if self.wanted_other_props.contains(&prop_name.to_string()) {
                 self.prop_infos.push(PropInfo {
                     id: f.prop_id as u32,
-                    prop_type: *prop_type,
+                    prop_type: prop_type,
                     prop_name: prop_name.to_string(),
                     prop_friendly_name: self
                         .real_name_to_og_name
@@ -320,7 +343,7 @@ impl PropController {
                 self.wanted_prop_state_infos.push(WantedPropStateInfo {
                     base: PropInfo {
                         id: f.prop_id as u32,
-                        prop_type: *prop_type,
+                        prop_type: prop_type,
                         prop_name: prop_name.to_string(),
                         prop_friendly_name: self
                             .real_name_to_og_name
@@ -336,39 +359,22 @@ impl PropController {
     }
     pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField, path: Vec<i32>) {
         f.full_name = full_name.to_string();
-        // CAK47.m_iClip1 => ["CAK47", "m_iClip1"]
-        let split_at_dot: Vec<&str> = full_name.split(".").collect();
-        let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK")) && !split_at_dot[0].contains("Player")
-            || split_at_dot[0].contains("Knife")
-            || split_at_dot[0].contains("CDEagle")
-            || split_at_dot[0].contains("C4")
-            || split_at_dot[0].contains("Molo")
-            || split_at_dot[0].contains("Inc")
-            || split_at_dot[0].contains("Infer");
+        let prop_name = split_weapon_prefix_from_prop_name(full_name);
 
-        let is_projectile_prop = (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
-            && !split_at_dot[0].contains("Player");
-        let is_grenade_or_weapon = is_weapon_prop || is_projectile_prop;
-
-        // Strip first part of name from grenades and weapons.
-        // if weapon prop: CAK47.m_iClip1 => m_iClip1
-        // if grenade: CSmokeGrenadeProjectile.CBodyComponentBaseAnimGraph.m_cellX => CBodyComponentBaseAnimGraph.m_cellX
-        let prop_name = match is_grenade_or_weapon {
-            true => split_at_dot[1..].join("."),
-            false => full_name.to_string(),
-        };
         let mut a = [0, 0, 0, 0, 0, 0, 0];
         for (idx, v) in path.iter().enumerate() {
             a[idx] = *v;
         }
         self.path_to_name.insert(a, prop_name.to_string());
+        let grenade_or_weapon = is_grenade_or_weapon(full_name);
 
         let prop_already_exists = self.name_to_id.contains_key(&(prop_name).to_string());
-        self.set_id(&prop_name, f, is_grenade_or_weapon);
+        self.set_id(&prop_name, f, grenade_or_weapon);
         if !prop_already_exists {
-            self.insert_propinfo(&prop_name, f);
+            self.insert_propinfo(&full_name, f);
         }
         f.should_parse = true;
+
         if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {
             f.prop_id = MY_WEAPONS_OFFSET as u32;
         }
@@ -390,6 +396,7 @@ impl PropController {
         if prop_name.contains("CEconItemAttribute.m_iRawValue32") {
             f.prop_id = WEAPON_SKIN_ID as u32;
         }
+
         self.id += 1;
     }
 
@@ -487,4 +494,31 @@ impl PropController {
             }
         }
     }
+}
+
+pub fn split_weapon_prefix_from_prop_name(full_name: &str) -> String {
+    let split_at_dot: Vec<&str> = full_name.split(".").collect();
+    let grenade_or_weapon = is_grenade_or_weapon(full_name);
+    // Strip first part of name from grenades and weapons.
+    // if weapon prop: CAK47.m_iClip1 => m_iClip1
+    // if grenade: CSmokeGrenadeProjectile.CBodyComponentBaseAnimGraph.m_cellX => CBodyComponentBaseAnimGraph.m_cellX
+    match grenade_or_weapon {
+        true => split_at_dot[1..].join("."),
+        false => full_name.to_string(),
+    }
+}
+
+pub fn is_grenade_or_weapon(full_name: &str) -> bool {
+    let split_at_dot: Vec<&str> = full_name.split(".").collect();
+    let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK")) && !split_at_dot[0].contains("Player")
+        || split_at_dot[0].contains("Knife")
+        || split_at_dot[0].contains("CDEagle")
+        || split_at_dot[0].contains("C4")
+        || split_at_dot[0].contains("Molo")
+        || split_at_dot[0].contains("Inc")
+        || split_at_dot[0].contains("Infer");
+
+    let is_projectile_prop = (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
+        && !split_at_dot[0].contains("Player");
+    is_weapon_prop || is_projectile_prop
 }

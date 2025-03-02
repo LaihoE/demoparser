@@ -99,7 +99,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             only_header: true,
-            count_props: false,
+            list_props: false,
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
@@ -115,6 +115,32 @@ impl DemoParser {
             .to_object(py))
     }
     /// Returns the names of game events present in the demo
+    pub fn list_updated_fields(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let settings = ParserInputs {
+            real_name_to_og_name: AHashMap::default(),
+            wanted_players: vec![],
+            wanted_player_props: vec![],
+            wanted_other_props: vec![],
+            wanted_prop_states: AHashMap::default(),
+            wanted_events: vec!["none".to_string()],
+            parse_ents: true,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            only_header: false,
+            list_props: true,
+            only_convars: false,
+            huffman_lookup_table: &self.huf,
+            order_by_steamid: false,
+        };
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+        let output = match parser.parse_demo(&self.mmap) {
+            Ok(output) => output,
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
+        };
+        let as_vec = output.uniq_prop_names.iter().collect_vec();
+        let ge = pyo3::Python::with_gil(|py| as_vec.to_object(py));
+        Ok(ge)
+    }
     pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
@@ -126,8 +152,8 @@ impl DemoParser {
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
-            only_header: true,
-            count_props: false,
+            only_header: false,
+            list_props: false,
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
@@ -162,7 +188,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: true,
             only_header: true,
-            count_props: false,
+            list_props: false,
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
@@ -233,7 +259,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             only_header: true,
-            count_props: false,
+            list_props: false,
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
@@ -278,7 +304,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             only_header: true,
-            count_props: false,
+            list_props: false,
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
@@ -359,7 +385,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             only_header: true,
-            count_props: false,
+            list_props: false,
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
@@ -460,7 +486,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             only_header: true,
-            count_props: false,
+            list_props: false,
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
@@ -519,7 +545,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             only_header: true,
-            count_props: false,
+            list_props: false,
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
@@ -548,7 +574,7 @@ impl DemoParser {
             parse_ents: false,
             parse_projectiles: false,
             only_header: false,
-            count_props: false,
+            list_props: false,
             only_convars: false,
             huffman_lookup_table: &vec![],
             order_by_steamid: false,
@@ -583,6 +609,7 @@ impl DemoParser {
             .into_iter()
             .map(|prop| (prop.prop, prop.state.0))
             .collect();
+
         let real_props = rm_user_friendly_names(&wanted_props);
         let real_wanted_prop_states = rm_map_user_friendly_names(&wanted_prop_states);
 
@@ -618,7 +645,7 @@ impl DemoParser {
             wanted_ticks,
             parse_projectiles: false,
             only_header: true,
-            count_props: false,
+            list_props: false,
             only_convars: false,
             huffman_lookup_table: &arc_huf,
             order_by_steamid: false,

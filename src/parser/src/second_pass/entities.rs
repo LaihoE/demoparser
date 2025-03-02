@@ -1,3 +1,5 @@
+use crate::first_pass::prop_controller::is_grenade_or_weapon;
+use crate::first_pass::prop_controller::split_weapon_prefix_from_prop_name;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::sendtables::find_field;
@@ -235,9 +237,19 @@ impl<'a> SecondPassParser<'a> {
             let decoder = get_decoder_from_field(field)?;
             let result = bitreader.decode(&decoder, self.qf_mapper)?;
 
+            // listen_to_props()
+            if self.list_props {
+                if let Field::Value(_v) = field {
+                    if should_emit_prop_to_listen(&_v.full_name) {
+                        self.uniq_prop_names.insert(convert_weapon_prefix_to_general(&_v.full_name));
+                    }
+                }
+            }
+            // Custom events
             if !is_fullpacket && !is_baseline {
                 events_to_emit.extend(SecondPassParser::listen_for_events(entity, &result, field, field_info, &self.prop_controller));
             }
+            // Debug
             if self.is_debug_mode {
                 SecondPassParser::debug_inspect(
                     &result,
@@ -270,7 +282,7 @@ impl<'a> SecondPassParser<'a> {
         _entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
-            if _v.full_name.contains("Services") {
+            if _v.full_name.contains("CKnife") {
                 println!("{:?} {:?} {:?} {:?}", _path, field_info, _v.full_name, _result);
             }
         }
@@ -358,4 +370,35 @@ impl<'a> SecondPassParser<'a> {
         }
         return Ok(EntityType::Normal);
     }
+}
+
+fn should_emit_prop_to_listen(prop_name: &str) -> bool {
+    match prop_name.split(".").next() {
+        Some("CCSGameRulesProxy") => return true,
+        Some("CCSTeam") => return true,
+        Some("CCSPlayerPawn") => return true,
+        Some("CCSPlayerController") => return true,
+        _ => {}
+    };
+    if is_weapon_prop(prop_name) {
+        return true;
+    }
+    false
+}
+fn convert_weapon_prefix_to_general(full_name: &str) -> String {
+    let split_at_dot: Vec<&str> = full_name.split(".").collect();
+    let grenade_or_weapon = is_grenade_or_weapon(full_name);
+    // Strip first part of name from grenades and weapons.
+    // if weapon prop: CAK47.m_iClip1 => m_iClip1
+    // if grenade: CSmokeGrenadeProjectile.CBodyComponentBaseAnimGraph.m_cellX => CBodyComponentBaseAnimGraph.m_cellX
+    match grenade_or_weapon {
+        true => "Weapon.".to_owned() + &split_at_dot[1..].join("."),
+        false => full_name.to_string(),
+    }
+}
+fn is_weapon_prop(full_name: &str) -> bool {
+    let split_at_dot: Vec<&str> = full_name.split(".").collect();
+    let is_weapon_prop =
+        (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK")) && !split_at_dot[0].contains("Player") || split_at_dot[0].contains("CDEagle");
+    is_weapon_prop
 }

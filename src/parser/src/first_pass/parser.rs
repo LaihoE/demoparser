@@ -66,6 +66,7 @@ pub struct FirstPassOutput<'a> {
     pub wanted_players: AHashSet<u64>,
     pub header: AHashMap<String, String>,
     pub order_by_steamid: bool,
+    pub list_props: bool,
 }
 #[derive(Debug)]
 pub struct Frame {
@@ -196,6 +197,7 @@ impl<'a> FirstPassParser<'a> {
             string_tables: self.string_tables.clone(),
             stringtable_players: self.stringtable_players.clone(),
             added_temp_props: self.added_temp_props.clone(),
+            list_props: self.list_props,
         })
     }
     fn fallback_if_first_pass_missing_data(&mut self) -> Result<(), DemoParserError> {

@@ -18,9 +18,9 @@ use crate::second_pass::decoder::QfMapper;
 use crate::second_pass::decoder::QuantalizedFloat;
 use crate::second_pass::path_ops::FieldPath;
 use ahash::AHashMap;
-use csgoproto::ProtoFlattenedSerializerT;
-use csgoproto::ProtoFlattenedSerializerFieldT;
 use csgoproto::CsvcMsgFlattenedSerializer;
+use csgoproto::ProtoFlattenedSerializerFieldT;
+use csgoproto::ProtoFlattenedSerializerT;
 use lazy_static::lazy_static;
 use prost::Message;
 use regex::Regex;
@@ -357,7 +357,7 @@ impl ValueField {
             name: name.to_string(),
             prop_id: 0,
             should_parse: false,
-            full_name: "None ".to_string() + name,
+            full_name: "".to_string() + name,
         }
     }
 }
@@ -510,11 +510,7 @@ pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
     return Some(fi);
 }
 
-fn create_field(
-    _sid: &String,
-    fd: &mut ConstructorField,
-    serializers: &AHashMap<String, Serializer>,
-) -> Result<Field, DemoParserError> {
+fn create_field(_sid: &String, fd: &mut ConstructorField, serializers: &AHashMap<String, Serializer>) -> Result<Field, DemoParserError> {
     /*
     TODO
     let element_type = match fd.category {
@@ -644,12 +640,7 @@ impl ConstructorField {
                 if self.bitcount <= 0 || self.bitcount >= 32 {
                     return Decoder::NoscaleDecoder;
                 } else {
-                    let qf = QuantalizedFloat::new(
-                        self.bitcount as u32,
-                        Some(self.encode_flags),
-                        Some(self.low_value),
-                        Some(self.high_value),
-                    );
+                    let qf = QuantalizedFloat::new(self.bitcount as u32, Some(self.encode_flags), Some(self.low_value), Some(self.high_value));
                     let idx = qf_map.idx;
                     qf_map.map.insert(idx, qf);
                     qf_map.idx += 1;
@@ -681,13 +672,13 @@ impl ConstructorField {
 
 pub fn find_category(field: &mut ConstructorField) -> FieldCategory {
     if is_pointer(&field) {
-        return FieldCategory::Pointer
+        return FieldCategory::Pointer;
     }
     if is_vector(&field) {
-        return FieldCategory::Vector
+        return FieldCategory::Vector;
     }
     if is_array(&field) {
-        return FieldCategory::Array
+        return FieldCategory::Array;
     }
     FieldCategory::Value
 }
@@ -696,7 +687,10 @@ pub fn is_pointer(field: &ConstructorField) -> bool {
         return true;
     }
 
-    matches!(field.field_type.base_type.as_str(), "CBodyComponent" | "CLightComponent" | "CPhysicsComponent" | "CRenderComponent" | "CPlayerLocalData")
+    matches!(
+        field.field_type.base_type.as_str(),
+        "CBodyComponent" | "CLightComponent" | "CPhysicsComponent" | "CRenderComponent" | "CPlayerLocalData"
+    )
 }
 pub fn is_vector(field: &ConstructorField) -> bool {
     if field.serializer_name.is_some() {
@@ -747,13 +741,7 @@ fn to_string(ft: &FieldType, omit_count: bool) -> String {
     }
     s
 }
-pub const POINTER_TYPES: &'static [&'static str] = &[
-    "CBodyComponent",
-    "CLightComponent",
-    "CPhysicsComponent",
-    "CRenderComponent",
-    "CPlayerLocalData",
-];
+pub const POINTER_TYPES: &'static [&'static str] = &["CBodyComponent", "CLightComponent", "CPhysicsComponent", "CRenderComponent", "CPlayerLocalData"];
 #[derive(Debug, Clone)]
 pub struct FieldType {
     pub base_type: String,

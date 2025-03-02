@@ -53,7 +53,7 @@ pub fn parseEvent(
         wanted_ticks: vec![],
         parse_projectiles: false,
         only_header: false,
-        count_props: false,
+        list_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf,
         order_by_steamid: false,
@@ -116,7 +116,7 @@ pub fn parseEvents(
         wanted_ticks: vec![],
         parse_projectiles: false,
         only_header: false,
-        count_props: false,
+        list_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf,
         order_by_steamid: false,
@@ -147,7 +147,38 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_ticks: vec![],
         parse_projectiles: false,
         only_header: false,
-        count_props: false,
+        list_props: false,
+        only_convars: false,
+        huffman_lookup_table: &arc_huf.clone(),
+        order_by_steamid: false,
+        wanted_prop_states: HashMap::default().into(),
+    };
+    let mut parser = Parser::new(settings, ForceSingleThreaded);
+
+    let output = match parser.parse_demo(&fileBytes) {
+        Ok(output) => output,
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
+    };
+    let v = Vec::from_iter(output.game_events_counter.iter());
+    match serde_wasm_bindgen::to_value(&v) {
+        Ok(s) => Ok(s),
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
+    }
+}
+#[wasm_bindgen]
+pub fn listUpdatedFields(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
+    let arc_huf = Arc::new(create_huffman_lookup_table());
+    let settings = ParserInputs {
+        wanted_players: vec![],
+        real_name_to_og_name: HashMap::default().into(),
+        wanted_player_props: vec![],
+        wanted_other_props: vec![],
+        wanted_events: vec!["none".to_string()],
+        parse_ents: false,
+        wanted_ticks: vec![],
+        parse_projectiles: false,
+        only_header: false,
+        list_props: true,
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
@@ -208,7 +239,7 @@ pub fn parseTicks(
         wanted_ticks: wanted_ticks,
         parse_projectiles: false,
         only_header: false,
-        count_props: false,
+        list_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
@@ -263,7 +294,7 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_ticks: vec![],
         parse_projectiles: true,
         only_header: true,
-        count_props: false,
+        list_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
@@ -296,7 +327,7 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_ticks: vec![],
         parse_projectiles: true,
         only_header: true,
-        count_props: false,
+        list_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,

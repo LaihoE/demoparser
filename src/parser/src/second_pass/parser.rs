@@ -46,6 +46,7 @@ pub struct SecondPassOutput {
     pub header: Option<AHashMap<String, String>>,
     pub player_md: Vec<PlayerEndMetaData>,
     pub game_events_counter: AHashSet<String>,
+    pub uniq_prop_names: AHashSet<String>,
     pub prop_info: PropController,
     pub projectiles: Vec<ProjectileRecord>,
     pub ptr: usize,
@@ -66,7 +67,6 @@ impl<'a> SecondPassParser<'a> {
                 self.ptr += frame.size as usize;
                 continue;
             }
-
             let bytes = self.slice_packet_bytes(demo_bytes, frame.size)?;
             let bytes = self.decompress_if_needed(&mut buf, bytes, &frame)?;
             self.ptr += frame.size;
