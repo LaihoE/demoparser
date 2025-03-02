@@ -62,11 +62,6 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Install Protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
         env:
@@ -75,6 +70,9 @@ jobs:
           command: publish
           target: ${{ matrix.target }}
           args: --no-default-features -i ${{ matrix.python-version }} --no-sdist --skip-existing -m src/python/Cargo.toml
+          before-script-linux: |
+            sudo apt-get update
+            sudo apt-get install -y protobuf-compiler
 
   macos:
     runs-on: macos-latest
