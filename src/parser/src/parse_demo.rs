@@ -33,6 +33,7 @@ pub struct DemoOutput {
     pub header: Option<AHashMap<String, String>>,
     pub player_md: Vec<PlayerEndMetaData>,
     pub game_events_counter: AHashSet<String>,
+    pub uniq_prop_names: Vec<String>,
     pub projectiles: Vec<ProjectileRecord>,
     pub voice_data: Vec<CsvcMsgVoiceData>,
     pub prop_controller: PropController,
@@ -60,8 +61,10 @@ impl<'a> Parser<'a> {
     pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
         let mut first_pass_parser = FirstPassParser::new(&self.input);
         let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, false)?;
-        if self.parsing_mode == ParsingMode::ForceMultiThreaded
-            || check_multithreadability(&self.input.wanted_player_props) && !(self.parsing_mode == ParsingMode::ForceSingleThreaded)
+        if self.parsing_mode == ParsingMode::Normal
+            && check_multithreadability(&self.input.wanted_player_props)
+            && !(self.parsing_mode == ParsingMode::ForceSingleThreaded)
+            || self.parsing_mode == ParsingMode::ForceMultiThreaded
         {
             return self.second_pass_multi_threaded(demo_bytes, first_pass_output);
         } else {
@@ -265,6 +268,9 @@ impl<'a> Parser<'a> {
         let mut dfs = second_pass_outputs.iter().map(|x| x.df.clone()).collect();
         let all_dfs_combined = self.combine_dfs(&mut dfs, false);
         let all_game_events: AHashSet<String> = AHashSet::from_iter(second_pass_outputs.iter().flat_map(|x| x.game_events_counter.iter().cloned()));
+        let mut all_prop_names: Vec<String> = Vec::from_iter(second_pass_outputs.iter().flat_map(|x| x.uniq_prop_names.iter().cloned()));
+        all_prop_names.sort();
+        all_prop_names.dedup();
         // Remove temp props
         let mut prop_controller = first_pass_output.prop_controller.clone();
         for prop in first_pass_output.added_temp_props {
@@ -304,6 +310,7 @@ impl<'a> Parser<'a> {
             projectiles: second_pass_outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
             voice_data: second_pass_outputs.iter().flat_map(|x| x.voice_data.clone()).collect_vec(),
             df_per_player: pp,
+            uniq_prop_names: all_prop_names,
         }
     }
 

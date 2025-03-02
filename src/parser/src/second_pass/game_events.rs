@@ -456,9 +456,9 @@ impl<'a> SecondPassParser<'a> {
             Ok(m) => m,
             Err(_e) => return Err(DemoParserError::MalformedMessage),
         };
-        for cv in &convar.convars {
+        if let Some(convars) = &convar.convars {
             let mut fields = vec![];
-            for var in &cv.cvars {
+            for var in &convars.cvars {
                 fields.push(EventField {
                     data: Some(Variant::String(var.value().to_owned())),
                     name: "value".to_string(),

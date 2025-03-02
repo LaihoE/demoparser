@@ -153,7 +153,7 @@ pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<HashMap<
     parse_ents: false,
     parse_projectiles: false,
     only_header: false,
-    count_props: false,
+    list_props: false,
     only_convars: false,
     huffman_lookup_table: &vec![],
     order_by_steamid: false,
@@ -187,7 +187,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     wanted_ticks: vec![],
     parse_projectiles: false,
     only_header: false,
-    count_props: false,
+    list_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
@@ -219,7 +219,7 @@ pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value
     wanted_ticks: vec![],
     parse_projectiles: true,
     only_header: true,
-    count_props: false,
+    list_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
@@ -249,7 +249,7 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     wanted_ticks: vec![],
     parse_projectiles: false,
     only_header: true,
-    count_props: false,
+    list_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
@@ -314,7 +314,7 @@ pub fn parse_event(
     wanted_ticks: vec![],
     parse_projectiles: false,
     only_header: true,
-    count_props: false,
+    list_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
@@ -377,7 +377,7 @@ pub fn parse_events(
     wanted_ticks: vec![],
     parse_projectiles: false,
     only_header: true,
-    count_props: false,
+    list_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
@@ -455,7 +455,7 @@ pub fn parse_ticks(
     wanted_ticks: wanted_ticks,
     parse_projectiles: false,
     only_header: false,
-    count_props: false,
+    list_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: order_by_steamid,
@@ -528,7 +528,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     wanted_ticks: vec![],
     parse_projectiles: false,
     only_header: true,
-    count_props: false,
+    list_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
@@ -558,7 +558,7 @@ pub fn parse_player_skins(path_or_buf: Either<String, Buffer>) -> napi::Result<V
     wanted_ticks: vec![],
     parse_projectiles: false,
     only_header: true,
-    count_props: false,
+    list_props: false,
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
@@ -566,6 +566,35 @@ pub fn parse_player_skins(path_or_buf: Either<String, Buffer>) -> napi::Result<V
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
   let s = match serde_json::to_value(&output.skins) {
+    Ok(s) => s,
+    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+  };
+  Ok(s)
+}
+#[napi]
+pub fn list_updated_fields(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
+  let bytes = resolve_byte_type(path_or_buf)?;
+  let huf = create_huffman_lookup_table();
+
+  let settings = ParserInputs {
+    wanted_players: vec![],
+    real_name_to_og_name: AHashMap::default(),
+    wanted_player_props: vec![],
+    wanted_other_props: vec![],
+    wanted_prop_states: AHashMap::default(),
+    wanted_events: vec!["none".to_string()],
+    parse_ents: true,
+    wanted_ticks: vec![],
+    parse_projectiles: false,
+    only_header: false,
+    list_props: true,
+    only_convars: false,
+    huffman_lookup_table: &huf,
+    order_by_steamid: false,
+  };
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+  let output = parse_demo(bytes, &mut parser)?;
+  let s = match serde_json::to_value(&output.uniq_prop_names) {
     Ok(s) => s,
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
   };

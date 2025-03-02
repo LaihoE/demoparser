@@ -650,6 +650,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "weapon_stickers" => PropType::Custom,
     "is_airborne" => PropType::Custom,
     // Weapon
+
     "m_flAnimTime" => PropType::Weapon,
     "m_flSimulationTime"=> PropType::Weapon,
     "m_hOwnerEntity"=> PropType::Weapon,

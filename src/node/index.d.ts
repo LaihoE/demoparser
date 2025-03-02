@@ -12,8 +12,9 @@ export function parseEvents(pathOrBuf: string | Buffer, eventNames?: Array<strin
 export function parseTicks(pathOrBuf: string | Buffer, wantedProps: Array<string>, wantedTicks?: Array<number> | undefined | null, wantedPlayers?: Array<string> | undefined | null, structOfArrays?: boolean | undefined | null, orderBySteamid?: boolean | undefined | null, propStates?: Array<WantedPropState> | undefined | null): any
 export function parsePlayerInfo(pathOrBuf: string | Buffer): any
 export function parsePlayerSkins(pathOrBuf: string | Buffer): any
-export declare class JsVariant { }
-export declare class WantedPropState {
+export function listUpdatedFields(pathOrBuf: string | Buffer): any
+export class JsVariant { }
+export class WantedPropState {
   prop: string
   state: JsVariant
 }

@@ -50,6 +50,7 @@ pub struct SecondPassParser<'a> {
     pub rules_entity_id: Option<i32>,
     pub c4_entity_id: Option<i32>,
     pub game_events_counter: AHashSet<String>,
+    pub uniq_prop_names: AHashSet<String>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub projectiles: BTreeSet<i32>,
     pub fullpackets_parsed: u32,
@@ -74,6 +75,7 @@ pub struct SecondPassParser<'a> {
     pub order_by_steamid: bool,
     pub last_tick: i32,
     pub parse_usercmd: bool,
+    pub list_props: bool,
 }
 #[derive(Debug, Clone)]
 pub struct Teams {
@@ -138,14 +140,8 @@ impl<'a> SecondPassParser<'a> {
             header: None,
             player_md: self.player_end_data,
             game_events_counter: self.game_events_counter,
-            prop_info: PropController::new(
-                vec![],
-                vec![],
-                AHashMap::default(),
-                AHashMap::default(),
-                false,
-                &["none".to_string()],
-            ),
+            uniq_prop_names: self.uniq_prop_names,
+            prop_info: PropController::new(vec![], vec![], AHashMap::default(), AHashMap::default(), false, &["none".to_string()]),
             projectiles: self.projectile_records,
             ptr: self.ptr,
             df_per_player: self.df_per_player,
@@ -168,6 +164,7 @@ impl<'a> SecondPassParser<'a> {
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
 
         Ok(SecondPassParser {
+            uniq_prop_names: AHashSet::default(),
             parse_usercmd: contains_usercmd_prop(&first_pass_output.settings.wanted_player_props),
             last_tick: 0,
             start_end_offset: start_end_offset,
@@ -219,6 +216,7 @@ impl<'a> SecondPassParser<'a> {
             player_end_data: vec![],
             huffman_lookup_table: &first_pass_output.settings.huffman_lookup_table,
             header: HashMap::default(),
+            list_props: first_pass_output.list_props,
         })
     }
 }
@@ -281,6 +279,7 @@ pub struct SpecialIDs {
     pub custom_name: Option<u32>,
 
     pub is_airborn: Option<u32>,
+    pub initial_velocity: Option<u32>,
 }
 impl SpecialIDs {
     pub fn new() -> Self {
@@ -329,6 +328,7 @@ impl SpecialIDs {
             in_buy_zone: None,
             custom_name: None,
             is_airborn: None,
+            initial_velocity: None,
         }
     }
 }

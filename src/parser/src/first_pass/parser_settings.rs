@@ -14,8 +14,8 @@ use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use ahash::AHashSet;
 use ahash::RandomState;
-use csgoproto::CDemoSendTables;
 use csgoproto::csvc_msg_game_event_list::DescriptorT;
+use csgoproto::CDemoSendTables;
 use memmap2::Mmap;
 use memmap2::MmapOptions;
 use std::collections::BTreeMap;
@@ -34,10 +34,10 @@ pub struct ParserInputs<'a> {
     pub parse_ents: bool,
     pub parse_projectiles: bool,
     pub only_header: bool,
-    pub count_props: bool,
     pub only_convars: bool,
     pub huffman_lookup_table: &'a Vec<(u8, u8)>,
     pub order_by_steamid: bool,
+    pub list_props: bool,
 }
 
 pub struct FirstPassParser<'a> {
@@ -80,6 +80,7 @@ pub struct FirstPassParser<'a> {
     pub needs_velocity: bool,
     pub sendtable_message: Option<CDemoSendTables>,
     pub order_by_steamid: bool,
+    pub list_props: bool,
 }
 pub fn needs_velocity(props: &[String]) -> bool {
     for prop in props {
@@ -142,6 +143,7 @@ impl<'a> FirstPassParser<'a> {
             wanted_prop_ids: vec![],
             prop_infos: vec![],
             header: AHashMap::default(),
+            list_props: inputs.list_props,
         }
     }
 }
@@ -157,9 +159,10 @@ pub fn check_multithreadability(player_props: &[String]) -> bool {
 pub fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoParserError> {
     let mut real_names = vec![];
     for name in names {
-        match FRIENDLY_NAMES_MAPPING.get(name) {
+        let n = if name.starts_with("Weapon.") { name.split_at(7).1 } else { name };
+        match FRIENDLY_NAMES_MAPPING.get(n) {
             Some(real_name) => real_names.push(real_name.to_string()),
-            None => return Err(DemoParserError::UnknownPropName(name.clone())),
+            None => real_names.push(n.to_string()),
         }
     }
     Ok(real_names)
@@ -168,9 +171,10 @@ pub fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoPa
 pub fn rm_map_user_friendly_names(map: &AHashMap<String, Variant>) -> Result<AHashMap<String, Variant>, DemoParserError> {
     let mut real_names_map: AHashMap<String, Variant> = AHashMap::default();
     for (name, variant) in map {
-        match FRIENDLY_NAMES_MAPPING.get(&name) {
+        let n = if name.starts_with("Weapon.") { name.split_at(7).1 } else { name };
+        match FRIENDLY_NAMES_MAPPING.get(&n) {
             Some(real_name) => real_names_map.insert(real_name.to_string(), variant.clone()),
-            None => return Err(DemoParserError::UnknownPropName(name.to_string())),
+            None => real_names_map.insert(n.to_string(), variant.clone()),
         };
     }
     Ok(real_names_map)
