@@ -71,10 +71,6 @@ jobs:
           target: ${{ matrix.target }}
           args: --no-default-features -i ${{ matrix.python-version }} --no-sdist --skip-existing -m src/python/Cargo.toml
           before-script-linux: |
-            apt-get update
-            apt-get install -y protobuf-compiler
-
-            before-script-linux: |
             case "${{ matrix.target }}" in
               "aarch64")
                 # NOTE: pypa/manylinux docker images are Debian based
