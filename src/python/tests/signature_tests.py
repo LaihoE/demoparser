@@ -152,5 +152,14 @@ class SignatureTest(TestCase):
             parser.parse_ticks(["X", "Y"], prop_states=[{"prop": "is_alive", "state": True}])
 
 
+    def test_list_updated_fields(self):
+        parser = DemoParser(demo_path)
+
+        updated_fields = parser.list_updated_fields()
+        self.assertIsInstance(updated_fields, list)
+        for field in updated_fields:
+            self.assertIsInstance(field, str)
+
+
 if __name__ == "__main__":
     unittest.main()
