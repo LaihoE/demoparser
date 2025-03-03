@@ -36,6 +36,7 @@ use std::sync::Arc;
 use pyo3::create_exception;
 create_exception!(DemoParser, Exception, pyo3::exceptions::PyException);
 
+#[derive(Clone)]
 struct PyVariant(Variant);
 
 impl<'source> FromPyObject<'source> for PyVariant {
@@ -62,10 +63,19 @@ impl<'source> FromPyObject<'source> for PyVariant {
     }
 }
 
-#[derive(FromPyObject)]
+#[pyclass]
+#[derive(Clone)]
 struct WantedPropState {
     prop: String,
     state: PyVariant,
+}
+
+#[pymethods]
+impl WantedPropState {
+    #[new]
+    fn new(prop: String, state: PyVariant) -> Self {
+        Self { prop, state }
+    }
 }
 
 #[pymethods]
@@ -1147,5 +1157,6 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
 #[pymodule]
 fn demoparser2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<DemoParser>()?;
+    m.add_class::<WantedPropState>()?;
     Ok(())
 }
