@@ -1,10 +1,17 @@
 import unittest
 from unittest import TestCase
+from typing import Union
 
 import pandas as pd
 from demoparser2 import DemoParser, WantedPropState
 
 demo_path = "../parser/test_demo.dem"
+
+
+class MyWantedPropState:
+    def __init__(self, prop: str, state: Union[bool, str, int, float]):
+        self.prop = prop
+        self.state = state
 
 
 class SignatureTest(TestCase):
@@ -137,6 +144,14 @@ class SignatureTest(TestCase):
             ],
         )
 
+        parser.parse_ticks(
+            ["X", "Y"],
+            prop_states=[
+                MyWantedPropState("is_alive", True),
+                MyWantedPropState("is_bomb_planted", True),
+            ],
+        )
+
         with self.assertRaises(TypeError):
             parser.parse_ticks(["X", "Y"], players=5, ticks=None)
 
@@ -149,7 +164,7 @@ class SignatureTest(TestCase):
         with self.assertRaises(TypeError):
             parser.parse_ticks(5)
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(AttributeError):
             parser.parse_ticks(
                 ["X", "Y"], prop_states=[{"prop": "is_alive", "state": True}]
             )

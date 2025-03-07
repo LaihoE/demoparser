@@ -1,9 +1,23 @@
 import pandas as pd
-from typing import Dict, Sequence, Optional, List, Tuple, final, Union
+from typing import (
+    Dict,
+    Sequence,
+    Optional,
+    List,
+    Tuple,
+    final,
+    Union,
+    Protocol,
+    type_check_only,
+)
+
+@type_check_only
+class WantedPropStateProtocol(Protocol):
+    prop: str
+    state: Union[bool, str, int, float]
 
 @final
 class WantedPropState:
-
     def __init__(self, prop: str, state: Union[bool, str, int, float]) -> None: ...
 
 @final
@@ -37,7 +51,7 @@ class DemoParser:
         *,
         players: Optional[Sequence[int]] = None,
         ticks: Optional[Sequence[int]] = None,
-        prop_states: Optional[Sequence[WantedPropState]] = None,
+        prop_states: Optional[Sequence[WantedPropStateProtocol | WantedPropState]] = None,
     ) -> pd.DataFrame:
         """Parse the specified props.
 
