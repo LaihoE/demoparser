@@ -962,7 +962,6 @@ impl<'a> SecondPassParser<'a> {
             return Ok(());
         }
         let mut fields = vec![];
-        fields.extend(self.find_non_player_props());
         fields.push(EventField {
             data: self.find_current_round(),
             name: "round".to_string(),
