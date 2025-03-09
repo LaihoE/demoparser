@@ -339,7 +339,6 @@ impl PropController {
 
     fn insert_propinfo(&mut self, prop_name: &str, f: &mut ValueField) {
         let split_at_dot: Vec<&str> = prop_name.split(".").collect();
-        let og = prop_name.to_string();
 
         let grenade_or_weapon = is_grenade_or_weapon(&prop_name);
         let prop_name = split_weapon_prefix_from_prop_name(&prop_name);

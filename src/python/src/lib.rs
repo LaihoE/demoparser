@@ -24,14 +24,14 @@ use polars_arrow::array::{
 use polars_arrow::ffi;
 use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
+use pyo3::impl_::frompyobject::extract_struct_field;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
 use pyo3::types::PyBytes;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
-use pyo3::{Python, intern};
+use pyo3::{intern, Python};
 use pyo3::{PyAny, PyObject, PyResult};
-use pyo3::impl_::frompyobject::extract_struct_field;
 use std::sync::Arc;
 
 use pyo3::create_exception;
@@ -77,7 +77,7 @@ impl WantedPropState {
 impl<'py> FromPyObject<'py> for WantedPropState {
     fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
         // First try to downcast the object
-        if let Ok(bound) = obj.downcast::<Self>(){
+        if let Ok(bound) = obj.downcast::<Self>() {
             // If the downcast succeeds, manually clone the fields
             let inner = bound.try_borrow()?;
             Ok(WantedPropState {
@@ -101,7 +101,6 @@ impl<'py> FromPyObject<'py> for WantedPropState {
         }
     }
 }
-
 
 #[pymethods]
 impl DemoParser {
@@ -210,7 +209,7 @@ impl DemoParser {
     /// 0 -388.875  1295.46875 -5120.0   982              NaN    HeGrenade
     /// 1 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
     /// 2 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
-
+    #[pyo3(signature = (*, extra=None))]
     pub fn parse_grenades(
         &self,
         py: Python<'_>,

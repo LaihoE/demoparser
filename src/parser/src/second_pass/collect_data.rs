@@ -275,7 +275,6 @@ impl<'a> SecondPassParser<'a> {
                     || prop_info.id == NAME_ID
                     || prop_info.id == TICK_ID
                     || prop_info.id == GRENADE_TYPE_ID
-                    || prop_info.id == TICK_ID
                     || prop_info.id == ENTITY_ID_ID
                     || prop_info.id == GRENADE_X
                     || prop_info.id == GRENADE_Y
