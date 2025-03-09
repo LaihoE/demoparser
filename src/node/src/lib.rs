@@ -58,11 +58,11 @@ impl FromNapiValue for JsVariant {
             let num = val.get_double()?;
             if num.fract() == 0.0 {
               if num >= u8::MIN as f64 && num <= u8::MAX as f64 {
-                Ok(JsVariant(Variant::U8(num as u8)))
+                Ok(JsVariant(Variant::I32(num as i32)))
               } else if let Ok(val) = val.get_int32() {
                 let int32_val = val;
                 if int32_val >= i16::MIN as i32 && int32_val <= i16::MAX as i32 {
-                  Ok(JsVariant(Variant::I16(int32_val as i16)))
+                  Ok(JsVariant(Variant::I32(int32_val)))
                 } else {
                   Ok(JsVariant(Variant::I32(int32_val)))
                 }
@@ -204,15 +204,26 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
 }
 
 #[napi]
-pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {
+pub fn parse_grenades(
+  path_or_buf: Either<String, Buffer>,
+  extra: Option<Vec<String>>,
+) -> napi::Result<Value> {
   let bytes = resolve_byte_type(path_or_buf)?;
   let huf = create_huffman_lookup_table();
+  let mut extra_props = match extra {
+    Some(p) => p,
+    None => vec![],
+  };
+  let real_extra_props = match rm_user_friendly_names(&extra_props) {
+    Ok(names) => names,
+    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+  };
 
   let settings = ParserInputs {
     wanted_players: vec![],
     real_name_to_og_name: AHashMap::default(),
     wanted_player_props: vec![],
-    wanted_other_props: vec![],
+    wanted_other_props: real_extra_props.clone(),
     wanted_events: vec![],
     wanted_prop_states: AHashMap::default(),
     parse_ents: true,
@@ -227,11 +238,28 @@ pub fn parse_grenades(path_or_buf: Either<String, Buffer>) -> napi::Result<Value
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
 
-  let s = match serde_json::to_value(&output.projectiles) {
-    Ok(s) => s,
-    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+  let mut real_name_to_og_name = AHashMap::default();
+  for (real_name, user_friendly_name) in real_extra_props.iter().zip(&extra_props) {
+    real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+  }
+
+  extra_props.push("tick".to_owned());
+  extra_props.push("steamid".to_owned());
+  extra_props.push("name".to_owned());
+
+  let mut prop_infos = output.prop_controller.prop_infos.clone();
+  prop_infos.sort_by_key(|x| x.prop_name.clone());
+  extra_props.sort();
+
+  let helper = OutputSerdeHelperStruct {
+    prop_infos: prop_infos.clone(),
+    inner: output.df.clone().into(),
   };
-  Ok(s)
+  let result = soa_to_aos(helper);
+  match serde_json::to_value(&result) {
+    Ok(s) => Ok(s),
+    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+  }
 }
 #[napi]
 pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> {

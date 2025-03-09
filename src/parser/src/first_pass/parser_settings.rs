@@ -112,6 +112,7 @@ impl<'a> FirstPassParser<'a> {
                 inputs.real_name_to_og_name.clone(),
                 false,
                 &vec!["None".to_string()],
+                inputs.parse_projectiles,
             ),
             cls_by_id: None,
             player_md: vec![],
@@ -130,7 +131,7 @@ impl<'a> FirstPassParser<'a> {
             ge_list: AHashMap::default(),
             parse_entities: true,
             serializers: AHashMap::default(),
-            parse_projectiles: false,
+            parse_projectiles: inputs.parse_projectiles,
             wanted_player_props: inputs.wanted_player_props.clone(),
             wanted_events: inputs.wanted_events.clone(),
             wanted_players: AHashSet::from_iter(inputs.wanted_players.iter().cloned()),
@@ -159,7 +160,8 @@ pub fn check_multithreadability(player_props: &[String]) -> bool {
 pub fn rm_user_friendly_names(names: &Vec<String>) -> Result<Vec<String>, DemoParserError> {
     let mut real_names = vec![];
     for name in names {
-        let n = if name.starts_with("Weapon.") { name.split_at(7).1 } else { name };
+        let mut n = if name.starts_with("Weapon.") { name.split_at(7).1 } else { name };
+        n = if name.starts_with("Grenade.") { name.split_at(8).1 } else { n };
         match FRIENDLY_NAMES_MAPPING.get(n) {
             Some(real_name) => real_names.push(real_name.to_string()),
             None => real_names.push(n.to_string()),

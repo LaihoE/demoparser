@@ -281,19 +281,30 @@ pub fn parseTicks(
 }
 
 #[wasm_bindgen]
-pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
+pub fn parseGrenades(file: Vec<u8>, extra: Option<Vec<JsValue>>) -> Result<JsValue, JsError> {
+    let mut extra = match extra {
+        Some(p) => p.iter().map(|s| s.as_string().unwrap()).collect::<Vec<_>>(),
+        None => vec![],
+    };
+    let mut real_names = match rm_user_friendly_names(&extra) {
+        Ok(names) => names,
+        Err(e) => return Err(JsError::new(&format!("{}", e))),
+    };
     let arc_huf = Arc::new(create_huffman_lookup_table());
-
+    let mut real_name_to_og_name = HashMap::default();
+    for (real_name, user_friendly_name) in real_names.iter().zip(&extra) {
+        real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+    }
     let settings = ParserInputs {
         wanted_players: vec![],
-        real_name_to_og_name: HashMap::default().into(),
-        wanted_player_props: vec![],
+        real_name_to_og_name: real_name_to_og_name.into(),
+        wanted_player_props: real_names.clone(),
         wanted_other_props: vec![],
         wanted_events: vec![],
         parse_ents: true,
         wanted_ticks: vec![],
-        parse_projectiles: true,
-        only_header: true,
+        parse_projectiles: false,
+        only_header: false,
         list_props: false,
         only_convars: false,
         huffman_lookup_table: &arc_huf.clone(),
@@ -306,11 +317,18 @@ pub fn parseGrenades(file: Vec<u8>) -> Result<JsValue, JsError> {
         Ok(output) => output,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
-    let v = Vec::from_iter(output.projectiles.iter());
-    match serde_wasm_bindgen::to_value(&v) {
-        Ok(s) => Ok(s),
+    let mut prop_infos = output.prop_controller.prop_infos.clone();
+    prop_infos.sort_by_key(|x| x.prop_name.clone());
+    let helper = OutputSerdeHelperStruct {
+        prop_infos: prop_infos,
+        inner: output.df.into(),
+    };
+    let result = soa_to_aos(helper);
+    let s = match serde_wasm_bindgen::to_value(&result) {
+        Ok(s) => s,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
-    }
+    };
+    Ok(s)
 }
 
 #[wasm_bindgen]

@@ -37,8 +37,6 @@ pub const PLAYER_X_ID: u32 = 100000016;
 pub const PLAYER_Y_ID: u32 = 100000017;
 pub const PLAYER_Z_ID: u32 = 100000018;
 pub const WEAPON_STICKERS_ID: u32 = 100000019;
-pub const INVENTORY_AS_IDS_ID: u32 = 100000020;
-pub const IS_AIRBORNE_ID: u32 = 100000021;
 
 pub const WEAPON_SKIN_ID: u32 = 10000000;
 pub const WEAPON_PAINT_SEED: u32 = 10000001;
@@ -82,6 +80,14 @@ pub const INPUT_HISTORY_RENDER_TICK_FRACTION_OFFSET: u32 = 4;
 pub const INPUT_HISTORY_PLAYER_TICK_COUNT_OFFSET: u32 = 5;
 pub const INPUT_HISTORY_PLAYER_TICK_FRACTION_OFFSET: u32 = 6;
 
+pub const INVENTORY_AS_IDS_ID: u32 = 100100020;
+pub const IS_AIRBORNE_ID: u32 = 100100021;
+pub const GRENADE_TYPE_ID: u32 = 100100022;
+pub const GRENADE_X: u32 = 100100023;
+pub const GRENADE_Y: u32 = 100100024;
+pub const GRENADE_Z: u32 = 100100025;
+pub const INVENTORY_AS_IDS_BITMASK: u32 = 100100026;
+
 #[derive(Clone, Debug)]
 pub struct PropController {
     pub id: u32,
@@ -99,6 +105,7 @@ pub struct PropController {
     pub path_to_name: AHashMap<[i32; 7], String>,
     pub wanted_prop_states: AHashMap<String, Variant>,
     pub wanted_prop_state_infos: Vec<WantedPropStateInfo>,
+    pub parse_projectiles: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -130,6 +137,7 @@ impl PropController {
         real_name_to_og_name: AHashMap<String, String>,
         needs_velocty: bool,
         wanted_events: &[String],
+        parse_projectiles: bool,
     ) -> Self {
         PropController {
             id: NORMAL_PROP_BASEID,
@@ -147,6 +155,7 @@ impl PropController {
             needs_velocity: needs_velocty,
             wanted_prop_states,
             wanted_prop_state_infos: vec![],
+            parse_projectiles: parse_projectiles,
         }
     }
 
@@ -221,6 +230,7 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+
         if let Some(wanted_state) = self.wanted_prop_states.get(&("game_time".to_string())) {
             self.wanted_prop_state_infos.push(WantedPropStateInfo {
                 base: PropInfo {
@@ -233,6 +243,7 @@ impl PropController {
                 wanted_prop_state: wanted_state.clone(),
             });
         }
+
         // Can also be non-player prop
         if self.wanted_other_props.contains(&("game_time".to_string())) {
             self.prop_infos.push(PropInfo {
@@ -241,6 +252,44 @@ impl PropController {
                 prop_name: "game_time".to_string(),
                 prop_friendly_name: "game_time".to_string(),
                 is_player_prop: false,
+            });
+        }
+        // Parse grenades specific
+        if self.parse_projectiles {
+            self.prop_infos.push(PropInfo {
+                id: GRENADE_TYPE_ID,
+                prop_type: PropType::Tick,
+                prop_name: "grenade_type".to_string(),
+                prop_friendly_name: "grenade_type".to_string(),
+                is_player_prop: true,
+            });
+            self.prop_infos.push(PropInfo {
+                id: ENTITY_ID_ID,
+                prop_type: PropType::Custom,
+                prop_name: "grenade_entity_id".to_string(),
+                prop_friendly_name: "grenade_entity_id".to_string(),
+                is_player_prop: true,
+            });
+            self.prop_infos.push(PropInfo {
+                id: GRENADE_X,
+                prop_type: PropType::Custom,
+                prop_name: "x".to_string(),
+                prop_friendly_name: "x".to_string(),
+                is_player_prop: true,
+            });
+            self.prop_infos.push(PropInfo {
+                id: GRENADE_Y,
+                prop_type: PropType::Custom,
+                prop_name: "y".to_string(),
+                prop_friendly_name: "y".to_string(),
+                is_player_prop: true,
+            });
+            self.prop_infos.push(PropInfo {
+                id: GRENADE_Z,
+                prop_type: PropType::Custom,
+                prop_name: "z".to_string(),
+                prop_friendly_name: "z".to_string(),
+                is_player_prop: true,
             });
         }
         self.prop_infos.push(PropInfo {
@@ -291,8 +340,8 @@ impl PropController {
     fn insert_propinfo(&mut self, prop_name: &str, f: &mut ValueField) {
         let split_at_dot: Vec<&str> = prop_name.split(".").collect();
 
-        let prop_name = split_weapon_prefix_from_prop_name(&prop_name);
         let grenade_or_weapon = is_grenade_or_weapon(&prop_name);
+        let prop_name = split_weapon_prefix_from_prop_name(&prop_name);
 
         let prop_name = match grenade_or_weapon {
             true => split_at_dot[1..].join("."),
@@ -305,13 +354,16 @@ impl PropController {
             Some("CCSPlayerController") => Some(PropType::Controller),
             _ => None,
         };
+
         if grenade_or_weapon {
             prefix_type = Some(PropType::Weapon);
         }
+
         // If any custom mapping found use that one
         if let Some(mapping) = TYPEHM.get(&prop_name) {
             prefix_type = Some(*mapping);
         }
+
         if let Some(prop_type) = prefix_type {
             if self.wanted_player_props.contains(&prop_name.to_string()) {
                 self.prop_infos.push(PropInfo {
@@ -359,6 +411,7 @@ impl PropController {
     }
     pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField, path: Vec<i32>) {
         f.full_name = full_name.to_string();
+
         let prop_name = split_weapon_prefix_from_prop_name(full_name);
 
         let mut a = [0, 0, 0, 0, 0, 0, 0];
@@ -370,6 +423,7 @@ impl PropController {
 
         let prop_already_exists = self.name_to_id.contains_key(&(prop_name).to_string());
         self.set_id(&prop_name, f, grenade_or_weapon);
+
         if !prop_already_exists {
             self.insert_propinfo(&full_name, f);
         }

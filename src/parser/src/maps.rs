@@ -197,6 +197,7 @@ pub static CUSTOM_PLAYER_PROP_IDS: phf::Map<&'static str, u32> = phf_map! {
     "agent_skin" => AGENT_SKIN_ID,
     "inventory" => INVENTORY_ID,
     "inventory_as_ids" => INVENTORY_AS_IDS_ID,
+    "inventory_as_bitmask" => INVENTORY_AS_IDS_BITMASK,
     "active_weapon_original_owner" => WEAPON_ORIGINGAL_OWNER_ID,
     "weapon_name" => WEAPON_NAME_ID,
     "weapon_skin" => WEAPON_SKIN_NAME,

@@ -24,14 +24,14 @@ use polars_arrow::array::{
 use polars_arrow::ffi;
 use pyo3::exceptions::PyValueError;
 use pyo3::ffi::Py_uintptr_t;
+use pyo3::impl_::frompyobject::extract_struct_field;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
 use pyo3::types::PyBytes;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
-use pyo3::{Python, intern};
+use pyo3::{intern, Python};
 use pyo3::{PyAny, PyObject, PyResult};
-use pyo3::impl_::frompyobject::extract_struct_field;
 use std::sync::Arc;
 
 use pyo3::create_exception;
@@ -46,10 +46,6 @@ impl<'source> FromPyObject<'source> for PyVariant {
             Ok(PyVariant(Variant::Bool(val)))
         } else if let Ok(val) = obj.extract::<String>() {
             Ok(PyVariant(Variant::String(val)))
-        } else if let Ok(val) = obj.extract::<u8>() {
-            Ok(PyVariant(Variant::U8(val)))
-        } else if let Ok(val) = obj.extract::<i16>() {
-            Ok(PyVariant(Variant::I16(val)))
         } else if let Ok(val) = obj.extract::<i32>() {
             Ok(PyVariant(Variant::I32(val)))
         } else if let Ok(val) = obj.extract::<u32>() {
@@ -81,7 +77,7 @@ impl WantedPropState {
 impl<'py> FromPyObject<'py> for WantedPropState {
     fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
         // First try to downcast the object
-        if let Ok(bound) = obj.downcast::<Self>(){
+        if let Ok(bound) = obj.downcast::<Self>() {
             // If the downcast succeeds, manually clone the fields
             let inner = bound.try_borrow()?;
             Ok(WantedPropState {
@@ -105,7 +101,6 @@ impl<'py> FromPyObject<'py> for WantedPropState {
         }
     }
 }
-
 
 #[pymethods]
 impl DemoParser {
@@ -214,78 +209,117 @@ impl DemoParser {
     /// 0 -388.875  1295.46875 -5120.0   982              NaN    HeGrenade
     /// 1 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
     /// 2 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
-
-    pub fn parse_grenades(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+    #[pyo3(signature = (*, extra=None))]
+    pub fn parse_grenades(
+        &self,
+        py: Python<'_>,
+        extra: Option<Vec<String>>,
+    ) -> PyResult<Py<PyAny>> {
+        // This function works similarly to parse_ticks but collects the props from grenades instead.
+        let wanted_other_props = extra.unwrap_or_default();
+        let real_other_props = match rm_user_friendly_names(&wanted_other_props) {
+            Ok(real_props) => real_props,
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
+        };
+        let mut real_name_to_og_name = AHashMap::default();
+        for (real_name, user_friendly_name) in real_other_props.iter().zip(&wanted_other_props) {
+            real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+        }
         let settings = ParserInputs {
-            real_name_to_og_name: AHashMap::default(),
+            real_name_to_og_name,
             wanted_players: vec![],
             wanted_player_props: vec![],
-            wanted_other_props: vec![],
-            wanted_prop_states: AHashMap::default(),
+            wanted_other_props: real_other_props,
             wanted_events: vec![],
+            wanted_prop_states: AHashMap::default(),
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: true,
-            only_header: true,
+            only_header: false,
             list_props: false,
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
         };
+
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
+        let mut all_series = vec![];
+        let mut all_pyobjects = vec![];
+        let prop_infos = output.prop_controller.prop_infos;
+        let mut df_column_names_arrow = vec![];
+        let mut df_column_names_py = vec![];
 
-        let entity_id: Vec<Option<i32>> = output.projectiles.iter().map(|s| s.entity_id).collect();
-        let xs: Vec<Option<f32>> = output.projectiles.iter().map(|s| s.x).collect();
-        let ys: Vec<Option<f32>> = output.projectiles.iter().map(|s| s.y).collect();
-        let zs: Vec<Option<f32>> = output.projectiles.iter().map(|s| s.z).collect();
-
-        let ticks: Vec<Option<i32>> = output.projectiles.iter().map(|s| s.tick).collect();
-        let steamid: Vec<Option<u64>> = output.projectiles.iter().map(|s| s.steamid).collect();
-        let name: Vec<Option<String>> = output.projectiles.iter().map(|s| s.name.clone()).collect();
-        let grenade_type: Vec<Option<String>> = output
-            .projectiles
-            .iter()
-            .map(|s| s.grenade_type.clone())
-            .collect();
-
-        // SoA form
-        let xs = arr_to_py(Box::new(Float32Array::from(xs))).unwrap();
-        let ys = arr_to_py(Box::new(Float32Array::from(ys))).unwrap();
-        let zs = arr_to_py(Box::new(Float32Array::from(zs))).unwrap();
-        // Actually not sure about Z coordinate. Leave out for now.
-        let ticks = arr_to_py(Box::new(Int32Array::from(ticks))).unwrap();
-        let grenade_type = arr_to_py(Box::new(Utf8Array::<i32>::from(grenade_type))).unwrap();
-        let name = arr_to_py(Box::new(Utf8Array::<i32>::from(name))).unwrap();
-        let steamids = arr_to_py(Box::new(UInt64Array::from(steamid))).unwrap();
-        let entity_ids = arr_to_py(Box::new(Int32Array::from(entity_id))).unwrap();
-
-        let polars = py.import_bound("polars")?;
-        let all_series_py =
-            [xs, ys, zs, ticks, steamids, name, grenade_type, entity_ids].to_object(py);
+        for prop_info in prop_infos {
+            if output.df.contains_key(&prop_info.id) {
+                match &output.df[&prop_info.id].data {
+                    Some(VarVec::F32(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
+                        all_series.push(arr_to_py(Box::new(Float32Array::from(data)))?);
+                    }
+                    Some(VarVec::I32(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
+                        all_series.push(arr_to_py(Box::new(Int32Array::from(data)))?);
+                    }
+                    Some(VarVec::U64(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
+                        all_series.push(arr_to_py(Box::new(UInt64Array::from(data)))?);
+                    }
+                    Some(VarVec::U32(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
+                        all_series.push(arr_to_py(Box::new(UInt32Array::from(data)))?);
+                    }
+                    Some(VarVec::Bool(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
+                        all_series.push(arr_to_py(Box::new(BooleanArray::from(data)))?);
+                    }
+                    Some(VarVec::String(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name.clone());
+                        let s = Series::new(&prop_info.prop_friendly_name.clone(), data);
+                        let py_series = rust_series_to_py_series(&s)?;
+                        all_series.push(py_series);
+                    }
+                    Some(VarVec::StringVec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.to_object(py));
+                    }
+                    Some(VarVec::U64Vec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.to_object(py));
+                    }
+                    Some(VarVec::XYZVec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.to_object(py));
+                    }
+                    Some(VarVec::U32Vec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.to_object(py));
+                    }
+                    _ => {}
+                }
+            }
+        }
         Python::with_gil(|py| {
+            let polars = py.import_bound("polars")?;
+            let all_series_py = all_series.to_object(py);
             let df = polars.call_method1("DataFrame", (all_series_py,))?;
-            // Set column names
-            let column_names = [
-                "X",
-                "Y",
-                "Z",
-                "tick",
-                "thrower_steamid",
-                "name",
-                "grenade_type",
-                "entity_id",
-            ];
-            df.setattr("columns", column_names.to_object(py)).unwrap();
-            // Call to_pandas with use_pyarrow_extension_array = true
-            let kwargs = vec![("use_pyarrow_extension_array", true)].into_py_dict_bound(py);
-            let pandas_df = df.call_method("to_pandas", (), Some(&kwargs)).unwrap();
+            df.setattr("columns", df_column_names_arrow.to_object(py))?;
+            let pandas_df = df.call_method0("to_pandas")?;
+            for (pyobj, col_name) in all_pyobjects.iter().zip(&df_column_names_py) {
+                pandas_df.call_method1("insert", (0, col_name, pyobj))?;
+            }
+            df_column_names_arrow.extend(df_column_names_py);
+            df_column_names_arrow.sort();
+            let kwargs = vec![("axis", 1)].into_py_dict_bound(py);
+            let args = (df_column_names_arrow,);
+            pandas_df.call_method("reindex", args, Some(&kwargs))?;
             Ok(pandas_df.to_object(py))
         })
     }
+
     pub fn parse_player_info(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
@@ -982,6 +1016,7 @@ pub fn series_from_event(events: &[GameEvent], py: Python) -> Result<Py<PyAny>, 
         .iter()
         .map(|(_, name)| (*name).to_string())
         .collect();
+
     if rows == 0 {
         return Err(DemoParserError::NoEvents);
     }
@@ -1099,6 +1134,26 @@ fn to_bool_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     }
     DataFrameColumn::Series(Series::new(name, v))
 }
+fn to_py_xyz_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(Variant::VecXYZ(val)) => v.push(Some(val.clone())),
+            _ => v.push(None),
+        }
+    }
+    DataFrameColumn::Pyany(v.to_object(py))
+}
+fn to_py_xy_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
+    let mut v = vec![];
+    for pair in pairs {
+        match &pair.data {
+            Some(Variant::VecXY(val)) => v.push(Some(val.clone())),
+            _ => v.push(None),
+        }
+    }
+    DataFrameColumn::Pyany(v.to_object(py))
+}
 fn to_py_sticker_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
     let mut v: Vec<Vec<_>> = vec![];
     for pair in pairs {
@@ -1149,11 +1204,14 @@ pub fn column_from_pairs(
         Some(Variant::StringVec(_)) => to_py_string_col(pairs, name, py),
         Some(Variant::U64Vec(_)) => to_py_u64_col(pairs, name, py),
         Some(Variant::U32Vec(_)) => to_py_u32_col(pairs, name, py),
+        Some(Variant::VecXYZ(_)) => to_py_xyz_col(pairs, name, py),
+        Some(Variant::VecXY(_)) => to_py_xy_col(pairs, name, py),
         Some(Variant::Stickers(_)) => to_py_sticker_col(pairs, name, py),
         _ => panic!("unkown ge key: {field_type:?}"),
     };
     Ok(s)
 }
+
 fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoParserError> {
     // Need to find the correct type for outgoing series,
     let mut all_types = vec![];
@@ -1169,6 +1227,8 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
             Some(Variant::U64Vec(_u)) => Some(Variant::U64Vec(vec![])),
             Some(Variant::U32Vec(_u)) => Some(Variant::U64Vec(vec![])),
             Some(Variant::Stickers(_u)) => Some(Variant::Stickers(vec![])),
+            Some(Variant::VecXYZ(_u)) => Some(Variant::VecXYZ([0.0; 3])),
+            Some(Variant::VecXY(_u)) => Some(Variant::VecXY([0.0; 2])),
             None => None,
             _ => {
                 return Err(DemoParserError::UnknownGameEventVariant(pair.name.clone()));
