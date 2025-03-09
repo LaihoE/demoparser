@@ -12,10 +12,8 @@ pub enum Variant {
     Bool(bool),
     U32(u32),
     I32(i32),
-    I16(i16),
     F32(f32),
     U64(u64),
-    U8(u8),
     String(String),
     VecXY([f32; 2]),
     VecXYZ([f32; 3]),
@@ -77,8 +75,6 @@ impl VarVec {
             Variant::VecXY(_) => VarVec::XYVec(vec![]),
             Variant::VecXYZ(_) => VarVec::XYZVec(vec![]),
             Variant::Stickers(_) => VarVec::Stickers(vec![]),
-            Variant::I16(_) => VarVec::I32(vec![]),
-            Variant::U8(_) => VarVec::I32(vec![]),
             Variant::InputHistory(_) => VarVec::InputHistory(vec![]),
         }
     }
@@ -92,10 +88,7 @@ pub struct PropColumn {
 
 impl PropColumn {
     pub fn new() -> Self {
-        PropColumn {
-            data: None,
-            num_nones: 0,
-        }
+        PropColumn { data: None, num_nones: 0 }
     }
     pub fn slice_to_new(&self, indicies: &[usize]) -> Option<PropColumn> {
         let data = match &self.data {
@@ -503,12 +496,10 @@ impl Serialize for Variant {
         match self {
             Variant::Bool(b) => serializer.serialize_bool(*b),
             Variant::F32(f) => serializer.serialize_f32(*f),
-            Variant::I16(i) => serializer.serialize_i16(*i),
             Variant::I32(i) => serializer.serialize_i32(*i),
             Variant::String(s) => serializer.serialize_str(s),
             Variant::U32(u) => serializer.serialize_u32(*u),
             Variant::U64(u) => serializer.serialize_str(&u.to_string()),
-            Variant::U8(u) => serializer.serialize_u8(*u),
             Variant::StringVec(v) => {
                 let mut s = serializer.serialize_seq(Some(v.len()))?;
                 for item in v {
@@ -668,8 +659,7 @@ pub fn soa_to_aos(soa: OutputSerdeHelperStruct) -> Vec<std::collections::HashMap
     }
     let mut v = Vec::with_capacity(total_rows);
     for idx in 0..total_rows {
-        let mut hm: std::collections::HashMap<String, Option<Variant>> =
-            std::collections::HashMap::with_capacity(soa.prop_infos.len());
+        let mut hm: std::collections::HashMap<String, Option<Variant>> = std::collections::HashMap::with_capacity(soa.prop_infos.len());
         for prop_info in &soa.prop_infos {
             if soa.inner.contains_key(&prop_info.id) {
                 match &soa.inner[&prop_info.id].data {

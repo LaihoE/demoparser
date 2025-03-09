@@ -1,5 +1,4 @@
 use crate::first_pass::prop_controller::is_grenade_or_weapon;
-use crate::first_pass::prop_controller::split_weapon_prefix_from_prop_name;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::sendtables::find_field;
@@ -282,7 +281,7 @@ impl<'a> SecondPassParser<'a> {
         _entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
-            if _v.full_name.contains("CKnife") {
+            if _v.full_name.contains("m_vLookTargetPosition") {
                 println!("{:?} {:?} {:?} {:?}", _path, field_info, _v.full_name, _result);
             }
         }
@@ -365,7 +364,9 @@ impl<'a> SecondPassParser<'a> {
             "CC4" => return Ok(EntityType::C4),
             _ => {}
         }
-        if class.name.contains("Projectile") || class.name == "CIncendiaryGrenade" {
+        let is_projectile_prop =
+            (class.name.contains("Projectile") || class.name.contains("Grenade") || class.name.contains("Flash")) && !class.name.contains("Player");
+        if is_projectile_prop {
             return Ok(EntityType::Projectile);
         }
         return Ok(EntityType::Normal);
@@ -380,7 +381,7 @@ fn should_emit_prop_to_listen(prop_name: &str) -> bool {
         Some("CCSPlayerController") => return true,
         _ => {}
     };
-    if is_weapon_prop(prop_name) {
+    if is_weapon_prop(prop_name) || is_grenade_prop(prop_name) {
         return true;
     }
     false
@@ -391,6 +392,9 @@ fn convert_weapon_prefix_to_general(full_name: &str) -> String {
     // Strip first part of name from grenades and weapons.
     // if weapon prop: CAK47.m_iClip1 => m_iClip1
     // if grenade: CSmokeGrenadeProjectile.CBodyComponentBaseAnimGraph.m_cellX => CBodyComponentBaseAnimGraph.m_cellX
+    if is_grenade_prop(full_name) {
+        return "Grenade.".to_owned() + &split_at_dot[1..].join(".");
+    }
     match grenade_or_weapon {
         true => "Weapon.".to_owned() + &split_at_dot[1..].join("."),
         false => full_name.to_string(),
@@ -401,4 +405,16 @@ fn is_weapon_prop(full_name: &str) -> bool {
     let is_weapon_prop =
         (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK")) && !split_at_dot[0].contains("Player") || split_at_dot[0].contains("CDEagle");
     is_weapon_prop
+}
+fn is_grenade_prop(full_name: &str) -> bool {
+    if full_name.contains("CCSPlayer") {
+        return false;
+    }
+    let parts = vec!["Molo", "Inc", "Infer", "Projectile", "Grenade", "Flash"];
+    for part in parts {
+        if full_name.contains(part) {
+            return true;
+        }
+    }
+    false
 }

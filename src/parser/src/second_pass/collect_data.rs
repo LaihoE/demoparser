@@ -4,7 +4,6 @@ use super::variants::Variant;
 use crate::first_pass::prop_controller::*;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::maps::BUTTONMAP;
-use crate::maps::GRENADE_FRIENDLY_NAMES;
 use crate::maps::PLAYER_COLOR;
 use crate::second_pass::entities::EntityType;
 use crate::second_pass::parser_settings::SecondPassParser;
@@ -66,6 +65,7 @@ impl<'a> SecondPassParser<'a> {
         }
         if self.parse_projectiles {
             self.collect_projectiles();
+            return;
         }
         // iterate every player and every wanted prop name
         // if either one is missing then push None to output
@@ -224,22 +224,7 @@ impl<'a> SecondPassParser<'a> {
     fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
         if let Some(Some(ent)) = self.entities.get(*entity_id as usize) {
             if let Some(cls) = self.cls_by_id.get(ent.cls_id as usize) {
-                match GRENADE_FRIENDLY_NAMES.get(&cls.name) {
-                    Some(name) => {
-                        // Seperate between ct and t molotovs
-                        if cls.name == "CMolotovProjectile" {
-                            if let Some(id) = self.prop_controller.special_ids.is_incendiary_grenade {
-                                if let Ok(Variant::Bool(true)) = self.get_prop_from_ent(&id, entity_id) {
-                                    return Some("incendiary_grenade".to_string());
-                                }
-                            }
-                        }
-                        return Some(name.to_string());
-                    }
-                    None => {
-                        return None;
-                    }
-                }
+                return Some(cls.name.to_string());
             }
         }
         None
@@ -251,47 +236,66 @@ impl<'a> SecondPassParser<'a> {
                 Some(t) => t,
                 None => continue,
             };
-            let steamid = self.find_thrower_steamid(projectile_entid);
-            let name = self.find_thrower_name(projectile_entid);
-            let x = self.collect_cell_coordinate_grenade(CoordinateAxis::X, projectile_entid);
-            let y = self.collect_cell_coordinate_grenade(CoordinateAxis::Y, projectile_entid);
-            let z = self.collect_cell_coordinate_grenade(CoordinateAxis::Z, projectile_entid);
-
-            // Watch out with these
-            let float_x = match x {
-                Ok(Variant::F32(p)) => Some(p),
-                Ok(_) => None,
-                Err(_) => None,
+            let steamid = match self.find_thrower_steamid(projectile_entid) {
+                Ok(u) => u,
+                _ => continue,
             };
-            let float_y = match y {
-                Ok(Variant::F32(p)) => Some(p),
-                Ok(_) => None,
-                Err(_) => None,
+            let name = match self.find_thrower_name(projectile_entid) {
+                Ok(x) => x,
+                _ => continue,
             };
-            let float_z = match z {
-                Ok(Variant::F32(p)) => Some(p),
-                Ok(_) => None,
-                Err(_) => None,
-            };
-            let steamid = match steamid {
-                Ok(p) => Some(p),
-                Err(_) => None,
-            };
-            let name = match name {
-                Ok(p) => Some(p),
-                Err(_) => None,
+            // Projectiles are the only ones with coordinates others map to 0.0, map them to None as it is clearer.
+            let (x, y, z) = if grenade_type.contains("Project") {
+                let x = self.collect_cell_coordinate_grenade(CoordinateAxis::X, projectile_entid).ok();
+                let y = self.collect_cell_coordinate_grenade(CoordinateAxis::Y, projectile_entid).ok();
+                let z = self.collect_cell_coordinate_grenade(CoordinateAxis::Z, projectile_entid).ok();
+                (x, y, z)
+            } else {
+                (None, None, None)
             };
 
-            self.projectile_records.push(ProjectileRecord {
-                steamid,
-                name,
-                x: float_x,
-                y: float_y,
-                z: float_z,
-                tick: Some(self.tick),
-                grenade_type: Some(grenade_type),
-                entity_id: Some(*projectile_entid),
-            });
+            // Insert these always
+            let pairs = vec![
+                (GRENADE_TYPE_ID, Some(Variant::String(grenade_type))),
+                (STEAMID_ID, Some(Variant::U64(steamid))),
+                (NAME_ID, Some(Variant::String(name))),
+                (TICK_ID, Some(Variant::I32(self.tick))),
+                (ENTITY_ID_ID, Some(Variant::I32(*projectile_entid))),
+                (GRENADE_X, x),
+                (GRENADE_Y, y),
+                (GRENADE_Z, z),
+            ];
+            for pair in pairs {
+                self.output.entry(pair.0).or_insert_with(|| PropColumn::new()).push(pair.1);
+            }
+
+            for prop_info in &self.prop_controller.prop_infos {
+                // Do these above, props in this loop are from the weapon entity.
+                if prop_info.id == STEAMID_ID
+                    || prop_info.id == NAME_ID
+                    || prop_info.id == TICK_ID
+                    || prop_info.id == GRENADE_TYPE_ID
+                    || prop_info.id == TICK_ID
+                    || prop_info.id == ENTITY_ID_ID
+                    || prop_info.id == GRENADE_X
+                    || prop_info.id == GRENADE_Y
+                    || prop_info.id == GRENADE_Z
+                {
+                    continue;
+                }
+                let prop = match self.get_prop_from_ent(&prop_info.id, &projectile_entid) {
+                    Ok(p) => Some(p),
+                    _ => None,
+                };
+                match prop {
+                    Some(prop) => {
+                        self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(Some(prop));
+                    }
+                    None => {
+                        self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(None);
+                    }
+                }
+            }
         }
     }
 
@@ -431,6 +435,7 @@ impl<'a> SecondPassParser<'a> {
             "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
             "inventory" => self.find_my_inventory(entity_id),
             "inventory_as_ids" => self.find_my_inventory_as_ids(entity_id),
+            "inventory_as_bitmask" => self.find_my_inventory_as_bitmask(entity_id),
             "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
             "entity_id" => return Ok(Variant::I32(*entity_id)),
             "is_alive" => return self.find_is_alive(entity_id),
@@ -733,6 +738,73 @@ impl<'a> SecondPassParser<'a> {
             }
         }
         Ok(Variant::U32Vec(names))
+    }
+    pub fn find_my_inventory_as_bitmask(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        let mut bitmask = 0;
+        let mut unique_eids = vec![];
+
+        match self.find_is_alive(entity_id) {
+            Ok(Variant::Bool(true)) => {}
+            _ => return Ok(Variant::U64(0)),
+        };
+        let inventory_max_len = match self.get_prop_from_ent(&(MY_WEAPONS_OFFSET as u32), entity_id) {
+            Ok(Variant::U32(p)) => p,
+            _ => return Err(PropCollectionError::InventoryMaxNotFound),
+        };
+
+        for i in 1..inventory_max_len + 1 {
+            let prop_id = MY_WEAPONS_OFFSET + i;
+            match self.get_prop_from_ent(&(prop_id as u32), entity_id) {
+                Err(_e) => {}
+                Ok(Variant::U32(x)) => {
+                    let eid = (x & ((1 << 14) - 1)) as i32;
+                    // Sometimes multiple references to same eid?
+                    if unique_eids.contains(&eid) {
+                        continue;
+                    }
+                    unique_eids.push(eid);
+                    if let Some(item_def_id) = &self.prop_controller.special_ids.item_def {
+                        let res = match self.get_prop_from_ent(item_def_id, &eid) {
+                            Err(_e) => continue,
+                            Ok(def) => def,
+                        };
+                        self.insert_equipment_id_bitmask(&mut bitmask, res, entity_id);
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(Variant::U64(bitmask))
+    }
+
+    fn insert_equipment_id_bitmask(&self, bitmask: &mut u64, res: Variant, player_entid: &i32) {
+        if let Variant::U32(def_idx) = res {
+            match WEAPINDICIES.get(&def_idx) {
+                None => return,
+                Some(weap_name) => {
+                    match weap_name {
+                        // Check how many flashbangs player has (only prop that works like this)
+                        &"flashbang" => {
+                            if let Ok(Variant::U32(2)) = self.get_prop_from_ent(&GRENADE_AMMO_ID, player_entid) {
+                                *bitmask |= 1 << def_idx;
+                            }
+                            *bitmask |= 1 << def_idx;
+                        }
+                        // c4 seems bugged. Find c4 entity and check owner from it.
+                        &"c4" => {
+                            if let Some(c4_owner_id) = self.find_c4_owner() {
+                                if *player_entid == c4_owner_id {
+                                    *bitmask |= 1 << def_idx;
+                                }
+                            }
+                        }
+                        _ => {
+                            *bitmask |= 1 << def_idx;
+                        }
+                    }
+                }
+            };
+        }
     }
     fn insert_equipment_id(&self, names: &mut Vec<u32>, res: Variant, player_entid: &i32) {
         if let Variant::U32(def_idx) = res {
