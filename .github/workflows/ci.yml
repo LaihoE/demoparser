@@ -65,7 +65,8 @@ jobs:
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
-          pip install pytest maturin patchelf
+          pip install maturin patchelf mypy pandas-stubs
 
           maturin develop
           python3 tests/signature_tests.py
+          python3 -m mypy.stubtest demoparser2 --allowlist tests/mypy-stubtest-allowlist.txt

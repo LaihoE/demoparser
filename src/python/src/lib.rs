@@ -29,13 +29,15 @@ use pyo3::types::IntoPyDict;
 use pyo3::types::PyBytes;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
-use pyo3::Python;
+use pyo3::{Python, intern};
 use pyo3::{PyAny, PyObject, PyResult};
+use pyo3::impl_::frompyobject::extract_struct_field;
 use std::sync::Arc;
 
 use pyo3::create_exception;
 create_exception!(DemoParser, Exception, pyo3::exceptions::PyException);
 
+#[derive(Clone)]
 struct PyVariant(Variant);
 
 impl<'source> FromPyObject<'source> for PyVariant {
@@ -58,11 +60,48 @@ impl<'source> FromPyObject<'source> for PyVariant {
     }
 }
 
-#[derive(FromPyObject)]
+#[pyclass]
 struct WantedPropState {
     prop: String,
     state: PyVariant,
 }
+
+#[pymethods]
+impl WantedPropState {
+    #[new]
+    fn new(prop: String, state: PyVariant) -> Self {
+        Self { prop, state }
+    }
+}
+
+impl<'py> FromPyObject<'py> for WantedPropState {
+    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
+        // First try to downcast the object
+        if let Ok(bound) = obj.downcast::<Self>(){
+            // If the downcast succeeds, manually clone the fields
+            let inner = bound.try_borrow()?;
+            Ok(WantedPropState {
+                prop: inner.prop.clone(),
+                state: inner.state.clone(),
+            })
+        } else {
+            // If the downcast fails, fall back to extracting via getattr
+            Ok(WantedPropState {
+                prop: extract_struct_field(
+                    &PyAnyMethods::getattr(obj, intern!(obj.py(), "prop"))?,
+                    "WantedPropState",
+                    "prop",
+                )?,
+                state: extract_struct_field(
+                    &PyAnyMethods::getattr(obj, intern!(obj.py(), "state"))?,
+                    "WantedPropState",
+                    "state",
+                )?,
+            })
+        }
+    }
+}
+
 
 #[pymethods]
 impl DemoParser {
@@ -1208,5 +1247,6 @@ fn find_type_of_vals(pairs: &Vec<&EventField>) -> Result<Option<Variant>, DemoPa
 #[pymodule]
 fn demoparser2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<DemoParser>()?;
+    m.add_class::<WantedPropState>()?;
     Ok(())
 }

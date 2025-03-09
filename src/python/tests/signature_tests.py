@@ -1,13 +1,15 @@
 import unittest
 from unittest import TestCase
+from typing import Union
 
 import pandas as pd
-from demoparser2 import DemoParser
+from demoparser2 import DemoParser, WantedPropState
 
 demo_path = "../parser/test_demo.dem"
 
-class WantedPropState:
-    def __init__(self, prop, state):
+
+class MyWantedPropState:
+    def __init__(self, prop: str, state: Union[bool, str, int, float]):
         self.prop = prop
         self.state = state
 
@@ -134,7 +136,21 @@ class SignatureTest(TestCase):
         parser.parse_ticks(["X", "Y"], players=[1, 2, 3], ticks=[1, 2, 3])
         parser.parse_ticks(["X", "Y"], players=None, ticks=None)
         parser.parse_ticks(["X", "Y"], players=[], ticks=[])
-        parser.parse_ticks(["X", "Y"], prop_states=[WantedPropState("is_alive", True), WantedPropState("is_bomb_planted", True)])
+        parser.parse_ticks(
+            ["X", "Y"],
+            prop_states=[
+                WantedPropState("is_alive", True),
+                WantedPropState("is_bomb_planted", True),
+            ],
+        )
+
+        parser.parse_ticks(
+            ["X", "Y"],
+            prop_states=[
+                MyWantedPropState("is_alive", True),
+                MyWantedPropState("is_bomb_planted", True),
+            ],
+        )
 
         with self.assertRaises(TypeError):
             parser.parse_ticks(["X", "Y"], players=5, ticks=None)
@@ -149,8 +165,9 @@ class SignatureTest(TestCase):
             parser.parse_ticks(5)
 
         with self.assertRaises(AttributeError):
-            parser.parse_ticks(["X", "Y"], prop_states=[{"prop": "is_alive", "state": True}])
-
+            parser.parse_ticks(
+                ["X", "Y"], prop_states=[{"prop": "is_alive", "state": True}]
+            )
 
     def test_list_updated_fields(self):
         parser = DemoParser(demo_path)

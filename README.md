@@ -192,7 +192,7 @@ True/Flase if player is pressing button.
 |ZOOM |m_nButtonDownMaskPrev|
 |SCOREBOARD|m_nButtonDownMaskPrev|
 |WALK|m_nButtonDownMaskPrev|
-|button|m_nButtonDownMaskPrev|
+|buttons|m_nButtonDownMaskPrev|
 
 (buttons is the real value of m_nButtonDownMaskPrev and the others are derived from it)
 
