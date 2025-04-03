@@ -157,6 +157,7 @@ pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<HashMap<
     only_convars: false,
     huffman_lookup_table: &vec![],
     order_by_steamid: false,
+    fallback_bytes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -191,6 +192,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
+    fallback_bytes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -234,6 +236,7 @@ pub fn parse_grenades(
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
+    fallback_bytes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -281,6 +284,7 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
+    fallback_bytes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -302,6 +306,7 @@ pub fn parse_event(
   event_name: String,
   player_extra: Option<Vec<String>>,
   other_extra: Option<Vec<String>>,
+  game_event_list_bytes: Option<Vec<String>>,
 ) -> napi::Result<Value> {
   let player_props = match player_extra {
     Some(p) => p,
@@ -346,6 +351,7 @@ pub fn parse_event(
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
+    fallback_bytes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -361,6 +367,7 @@ pub fn parse_events(
   event_names: Option<Vec<String>>,
   player_extra: Option<Vec<String>>,
   other_extra: Option<Vec<String>>,
+  game_event_list_bytes: Option<Vec<String>>,
 ) -> napi::Result<Value> {
   let event_names = match event_names {
     None => return Err(Error::new(Status::InvalidArg, "No events provided!")),
@@ -409,6 +416,7 @@ pub fn parse_events(
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
+    fallback_bytes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -487,6 +495,7 @@ pub fn parse_ticks(
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: order_by_steamid,
+    fallback_bytes: None,
   };
 
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
@@ -560,6 +569,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
+    fallback_bytes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -590,6 +600,7 @@ pub fn parse_player_skins(path_or_buf: Either<String, Buffer>) -> napi::Result<V
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
+    fallback_bytes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -619,6 +630,7 @@ pub fn list_updated_fields(path_or_buf: Either<String, Buffer>) -> napi::Result<
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
+    fallback_bytes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;

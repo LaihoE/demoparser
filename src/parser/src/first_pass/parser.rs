@@ -167,7 +167,11 @@ impl<'a> FirstPassParser<'a> {
         Ok(())
     }
     pub fn parse_fallback_event_list(&mut self) -> Result<(), DemoParserError> {
-        let event_list = match CsvcMsgGameEventList::decode(crate::first_pass::fallbackbytes::GAME_EVENT_LIST_FALLBACK_BYTES) {
+        let bytes = match self.fallback_bytes {
+            Some(b) => b,
+            None => crate::first_pass::fallbackbytes::GAME_EVENT_LIST_FALLBACK_BYTES,
+        };
+        let event_list = match CsvcMsgGameEventList::decode(bytes) {
             Ok(list) => list,
             Err(_) => return Err(DemoParserError::MalformedMessage),
         };

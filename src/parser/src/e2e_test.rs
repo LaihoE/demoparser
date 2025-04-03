@@ -314,6 +314,7 @@ pub fn _create_ge_tests() {
         huffman_lookup_table: &huf,
         order_by_steamid: false,
         wanted_prop_states: AHashMap::default(),
+        fallback_bytes: None,
     };
 
     let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceSingleThreaded);
@@ -688,6 +689,7 @@ pub fn _create_tests() {
         huffman_lookup_table: &huf,
         order_by_steamid: false,
         wanted_prop_states: AHashMap::default(),
+        fallback_bytes: None,
     };
 
     let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceSingleThreaded);
@@ -1044,6 +1046,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
     let huf = create_huffman_lookup_table();
 
     let settings = ParserInputs {
+        fallback_bytes: None,
         wanted_player_props: wanted_props.clone(),
         wanted_events: wanted_events,
         real_name_to_og_name: AHashMap::default(),
@@ -1083,6 +1086,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         huffman_lookup_table: &huf,
         order_by_steamid: false,
         wanted_prop_states: AHashMap::default(),
+        fallback_bytes: None,
     };
     let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceSingleThreaded);
     let file = File::open("test_demo.dem".to_string()).unwrap();
@@ -1193,6 +1197,7 @@ mod tests {
             huffman_lookup_table: &huf,
             order_by_steamid: false,
             wanted_prop_states: AHashMap::default(),
+            fallback_bytes: None,
         };
         let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceSingleThreaded);
         let file = File::open("test_demo.dem").unwrap();
