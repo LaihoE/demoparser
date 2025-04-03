@@ -5,6 +5,7 @@ extern crate napi_derive;
 use ahash::AHashMap;
 use memmap2::MmapOptions;
 use napi::bindgen_prelude::*;
+use napi::threadsafe_function::JsValuesTupleIntoVec;
 use napi::Either;
 use napi::JsBigInt;
 use napi::JsUnknown;
@@ -306,7 +307,7 @@ pub fn parse_event(
   event_name: String,
   player_extra: Option<Vec<String>>,
   other_extra: Option<Vec<String>>,
-  game_event_list_bytes: Option<Vec<String>>,
+  game_event_list_bytes: Option<Buffer>,
 ) -> napi::Result<Value> {
   let player_props = match player_extra {
     Some(p) => p,
@@ -336,6 +337,12 @@ pub fn parse_event(
   let bytes = resolve_byte_type(path_or_buf)?;
   let huf = create_huffman_lookup_table();
 
+  let game_event_list_bytes = if let Some(b) = game_event_list_bytes {
+    Some(b.to_vec())
+  } else {
+    None
+  };
+
   let settings = ParserInputs {
     real_name_to_og_name: real_name_to_og_name,
     wanted_players: vec![],
@@ -351,7 +358,7 @@ pub fn parse_event(
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
-    fallback_bytes: None,
+    fallback_bytes: game_event_list_bytes,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -367,7 +374,7 @@ pub fn parse_events(
   event_names: Option<Vec<String>>,
   player_extra: Option<Vec<String>>,
   other_extra: Option<Vec<String>>,
-  game_event_list_bytes: Option<Vec<String>>,
+  game_event_list_bytes: Option<Buffer>,
 ) -> napi::Result<Value> {
   let event_names = match event_names {
     None => return Err(Error::new(Status::InvalidArg, "No events provided!")),
@@ -401,6 +408,12 @@ pub fn parse_events(
   let bytes = resolve_byte_type(path_or_buf)?;
   let huf = create_huffman_lookup_table();
 
+  let game_event_list_bytes = if let Some(b) = game_event_list_bytes {
+    Some(b.to_vec())
+  } else {
+    None
+  };
+
   let settings = ParserInputs {
     real_name_to_og_name: real_name_to_og_name,
     wanted_players: vec![],
@@ -416,7 +429,7 @@ pub fn parse_events(
     only_convars: false,
     huffman_lookup_table: &huf,
     order_by_steamid: false,
-    fallback_bytes: None,
+    fallback_bytes: game_event_list_bytes,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;

@@ -223,7 +223,7 @@ impl<'a> FirstPassParser<'a> {
         for event_desc in event_list.descriptors {
             hm.insert(event_desc.eventid(), event_desc);
         }
-        self.ge_list = hm;
+        // self.ge_list = hm;
         Ok(())
     }
     pub fn parse_full_packet(&mut self, bytes: &[u8], frame: &Frame) -> Result<(), DemoParserError> {

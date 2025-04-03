@@ -38,7 +38,7 @@ pub struct ParserInputs<'a> {
     pub huffman_lookup_table: &'a Vec<(u8, u8)>,
     pub order_by_steamid: bool,
     pub list_props: bool,
-    pub fallback_bytes: Option<&'a [u8]>,
+    pub fallback_bytes: Option<Vec<u8>>,
 }
 
 pub struct FirstPassParser<'a> {
@@ -96,7 +96,7 @@ pub fn needs_velocity(props: &[String]) -> bool {
 impl<'a> FirstPassParser<'a> {
     pub fn new(inputs: &'a ParserInputs<'a>) -> Self {
         FirstPassParser {
-            fallback_bytes: inputs.fallback_bytes,
+            fallback_bytes: inputs.fallback_bytes.as_deref(),
             order_by_steamid: inputs.order_by_steamid,
             sendtable_message: None,
             needs_velocity: needs_velocity(&inputs.wanted_player_props),
