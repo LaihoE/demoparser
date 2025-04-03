@@ -19,7 +19,7 @@ use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
 use polars_arrow::array::{
-    Array, BooleanArray, Float32Array, Int32Array, UInt32Array, UInt64Array, Utf8Array,
+    Array, BooleanArray, Float32Array, Int32Array, UInt32Array, UInt64Array,
 };
 use polars_arrow::ffi;
 use pyo3::exceptions::PyValueError;
@@ -137,6 +137,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
+            fallback_bytes: None,
         };
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
@@ -165,6 +166,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
+            fallback_bytes: None,
         };
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
@@ -191,6 +193,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
+            fallback_bytes: None,
         };
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
@@ -240,6 +243,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
+            fallback_bytes: None,
         };
 
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
@@ -336,6 +340,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
+            fallback_bytes: None,
         };
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
@@ -381,6 +386,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
+            fallback_bytes: None,
         };
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
@@ -462,6 +468,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
+            fallback_bytes: None,
         };
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
@@ -563,6 +570,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
+            fallback_bytes: None,
         };
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
@@ -622,6 +630,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &self.huf,
             order_by_steamid: false,
+            fallback_bytes: None,
         };
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
@@ -651,6 +660,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &vec![],
             order_by_steamid: false,
+            fallback_bytes: None,
         };
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
@@ -722,6 +732,7 @@ impl DemoParser {
             only_convars: false,
             huffman_lookup_table: &arc_huf,
             order_by_steamid: false,
+            fallback_bytes: None,
         };
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {

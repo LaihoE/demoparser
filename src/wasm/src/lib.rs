@@ -58,6 +58,7 @@ pub fn parseEvent(
         huffman_lookup_table: &arc_huf,
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
+        fallback_bytes: None,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -121,6 +122,7 @@ pub fn parseEvents(
         huffman_lookup_table: &arc_huf,
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
+        fallback_bytes: None,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -152,6 +154,7 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
+        fallback_bytes: None,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -183,6 +186,7 @@ pub fn listUpdatedFields(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
+        fallback_bytes: None,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -244,6 +248,7 @@ pub fn parseTicks(
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
+        fallback_bytes: None,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -310,6 +315,7 @@ pub fn parseGrenades(file: Vec<u8>, extra: Option<Vec<JsValue>>) -> Result<JsVal
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
+        fallback_bytes: None,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -350,6 +356,7 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         huffman_lookup_table: &arc_huf.clone(),
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
+        fallback_bytes: None,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
     let output = match parser.parse_demo(&file) {
