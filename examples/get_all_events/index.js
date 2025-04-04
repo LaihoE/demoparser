@@ -7,4 +7,4 @@ const pathToDemo = "path/to/demo.dem"
 let eventNames = listGameEvents(pathToDemo)
 
 // Currently the event "all" gives you all events. Cursed solution for now
-let allEvents = parseEvents(["all"])
+let allEvents = parseEvents(pathToDemo, ["all"])
