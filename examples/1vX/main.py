@@ -12,10 +12,10 @@ def find_if_1vx(deaths, round_idx, round_ends, df, X):
             ct_alive = subdf[(subdf["team_name"] == "CT") & (subdf["is_alive"] == True)]
             t_alive = subdf[(subdf["team_name"] == "TERRORIST") & (subdf["is_alive"] == True)]
             # 3 = CT
-            if len(ct_alive) == 1 and len(t_alive) == X and round_ends.iloc[round_idx]["winner"] == 3:
+            if len(ct_alive) == 1 and len(t_alive) == X and round_ends.iloc[round_idx]["winner"] == "CT":
                 return ct_alive["name"].iloc[0]
             # 2 = T
-            if len(t_alive) == 1 and len(ct_alive) == X and round_ends.iloc[round_idx]["winner"] == 2:
+            if len(t_alive) == 1 and len(ct_alive) == X and round_ends.iloc[round_idx]["winner"] == "T":
                 return t_alive["name"].iloc[0]
 
 
