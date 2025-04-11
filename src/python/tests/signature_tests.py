@@ -34,6 +34,11 @@ class SignatureTest(TestCase):
         parser = DemoParser(demo_path)
         grenades = parser.parse_grenades()
         self.assertIsInstance(grenades, pd.DataFrame)
+        parser.parse_grenades(extra=["game_time"])
+        with self.assertRaises(TypeError):
+            parser.parse_grenades(extra=[5])
+        with self.assertRaises(TypeError):
+            parser.parse_grenades(extra="game_time")
 
     def test_parse_player_info_signature(self):
         parser = DemoParser(demo_path)
