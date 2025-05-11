@@ -19,6 +19,8 @@ derive_more = "0.99.17"
 itertools = "0.13.0"
 memmap2 = "0.9.4"
 protobuf-support = "3.3.0"
+string-interner = "0.14"
+smallvec = "1.11"
 
 [dependencies.parser]
 path = "../parser"

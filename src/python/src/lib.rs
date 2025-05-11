@@ -1055,11 +1055,28 @@ pub fn series_from_event(events: &[GameEvent], py: Python) -> Result<Py<PyAny>, 
     Ok(dfp)
 }
 fn to_f32_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
-    let mut v = vec![];
-    for pair in pairs {
-        match &pair.data {
-            Some(Variant::F32(val)) => v.push(Some(*val)),
-            _ => v.push(None),
+    let mut v = Vec::with_capacity(pairs.len());
+    
+    #[cfg(target_arch = "x86_64")]
+    if is_x86_feature_detected!("avx2") {
+        use std::arch::x86_64::*;
+        for chunk in pairs.chunks(8) {
+            unsafe {
+                let mut values = _mm256_setzero_ps();
+                for (i, pair) in chunk.iter().enumerate() {
+                    if let Some(Variant::F32(val)) = &pair.data {
+                        values = _mm256_insert_ps(values, _mm_set_ss(*val), i as i32 * 4);
+                    }
+                }
+                v.extend_from_slice(&std::mem::transmute::<__m256, [f32; 8]>(values));
+            }
+        }
+    } else {
+        for pair in pairs {
+            match &pair.data {
+                Some(Variant::F32(val)) => v.push(Some(*val)),
+                _ => v.push(None),
+            }
         }
     }
     DataFrameColumn::Series(Series::new(name, v))
@@ -1125,7 +1142,7 @@ fn to_py_u32_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrame
     DataFrameColumn::Pyany(v.to_object(py))
 }
 fn to_string_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
-    let mut v = vec![];
+    let mut v = Vec::with_capacity(pairs.len());
     for pair in pairs {
         match &pair.data {
             Some(Variant::String(val)) => v.push(Some(val.to_owned())),
@@ -1146,10 +1163,13 @@ fn to_bool_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     DataFrameColumn::Series(Series::new(name, v))
 }
 fn to_py_xyz_col(pairs: &Vec<&EventField>, _name: &str, py: Python) -> DataFrameColumn {
-    let mut v = vec![];
+    let mut v = Vec::with_capacity(pairs.len());
     for pair in pairs {
         match &pair.data {
-            Some(Variant::VecXYZ(val)) => v.push(Some(val.clone())),
+            Some(Variant::VecXYZ(val)) => {
+                let small_vec: SmallVec<[f32; 3]> = SmallVec::from_slice(val);
+                v.push(Some(small_vec.into_vec()))
+            },
             _ => v.push(None),
         }
     }
