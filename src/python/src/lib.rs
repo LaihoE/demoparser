@@ -33,6 +33,9 @@ use pyo3::types::PyList;
 use pyo3::{intern, Python};
 use pyo3::{PyAny, PyObject, PyResult};
 use std::sync::Arc;
+use smallvec::SmallVec;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
 
 use pyo3::create_exception;
 create_exception!(DemoParser, Exception, pyo3::exceptions::PyException);
@@ -1059,16 +1062,10 @@ fn to_f32_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     
     #[cfg(target_arch = "x86_64")]
     if is_x86_feature_detected!("avx2") {
-        use std::arch::x86_64::*;
-        for chunk in pairs.chunks(8) {
-            unsafe {
-                let mut values = _mm256_setzero_ps();
-                for (i, pair) in chunk.iter().enumerate() {
-                    if let Some(Variant::F32(val)) = &pair.data {
-                        values = _mm256_insert_ps(values, _mm_set_ss(*val), i as i32 * 4);
-                    }
-                }
-                v.extend_from_slice(&std::mem::transmute::<__m256, [f32; 8]>(values));
+        for pair in pairs {
+            match &pair.data {
+                Some(Variant::F32(val)) => v.push(Some(*val)),
+                _ => v.push(None),
             }
         }
     } else {
