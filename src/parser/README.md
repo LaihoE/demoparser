@@ -33,12 +33,14 @@ fn main() {
         wanted_ticks: vec![],
         parse_projectiles: false,
         only_header: false,
-        count_props: false,
+        list_props: false,
         only_convars: false,
         huffman_lookup_table: &huf,
-        order_by_player: false,
+        fallback_bytes: None,
+        wanted_prop_states: AHashMap::default(),
+        order_by_steamid: false,
     };
-    let mut ds = Parser::new(settings, false);
+    let mut ds = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
     let file = File::open(path_to_demo).unwrap();
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let _output = ds.parse_demo(&mmap).unwrap();
