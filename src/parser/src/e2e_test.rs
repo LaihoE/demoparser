@@ -308,6 +308,7 @@ pub fn _create_ge_tests() {
         wanted_players: vec![],
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
         parse_projectiles: false,
+        parse_grenades: false,
         only_header: false,
         list_props: false,
         only_convars: false,
