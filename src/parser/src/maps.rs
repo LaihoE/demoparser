@@ -221,6 +221,9 @@ pub static CUSTOM_PLAYER_PROP_IDS: phf::Map<&'static str, u32> = phf_map! {
     "usercmd_left_hand_desired" => USERCMD_SUBTICK_LEFT_HAND_DESIRED,
     "usercmd_weapon_select" => USERCMD_WEAPON_SELECT,
     "usercmd_input_history" => USERCMD_INPUT_HISTORY_BASEID,
+
+
+
 };
 
 pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
@@ -631,6 +634,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "CCSPlayerPawn.m_bRagdollDamageHeadshot"=> PropType::Player,
     "CCSPlayerPawn.m_vRagdollServerOrigin"=> PropType::Player,
     "CCSPlayerPawn.m_qDeathEyeAngles"=> PropType::Player,
+    "CCSPlayerPawn.m_iItemDefinitionIndex" => PropType::Player,
     // Custom
     "X"=> PropType::Custom,
     "user_id"=> PropType::Custom,
@@ -650,8 +654,10 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "weapon_float" => PropType::Custom,
     "weapon_stickers" => PropType::Custom,
     "is_airborne" => PropType::Custom,
+    "glove_paint_id" => PropType::Custom,
+    "glove_paint_seed" => PropType::Custom,
+    "glove_paint_float" => PropType::Custom,
     // Weapon
-
     "m_flAnimTime" => PropType::Weapon,
     "m_flSimulationTime"=> PropType::Weapon,
     "m_hOwnerEntity"=> PropType::Weapon,
@@ -837,6 +843,11 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
 };
 
 pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_map! {
+    "glove_paint_id" => "glove_paint_id",
+    "glove_paint_seed" => "glove_paint_seed",
+    "glove_paint_float" => "glove_paint_float",
+    "glove_item_idx" => "CCSPlayerPawn.m_iItemDefinitionIndex",
+
     "usercmd_viewangle_x" => "usercmd_viewangle_x",
     "usercmd_viewangle_y" => "usercmd_viewangle_y",
     "usercmd_viewangle_z" => "usercmd_viewangle_z",

@@ -175,6 +175,10 @@ Python/JS are rougly as fast.
 | is_airborne  | m_hGroundEntity |
 | aim_punch_angle  | CCSPlayerPawn.m_aimPunchAngle |
 | aim_punch_angle_vel  | CCSPlayerPawn.m_aimPunchAngleVel |
+| glove_paint_id  | - |
+| glove_paint_seed  | - |
+| glove_paint_float  | - |
+| glove_item_idx  | - |
 
 #### Buttons 
 True/Flase if player is pressing button.
