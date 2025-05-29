@@ -1366,6 +1366,14 @@ pub mod player_quest_data {
         pub quest_normal_points_earned: ::core::option::Option<i32>,
         #[prost(int32, optional, tag="3")]
         pub quest_bonus_points_earned: ::core::option::Option<i32>,
+        #[prost(int32, optional, tag="4")]
+        pub quest_normal_points_required: ::core::option::Option<i32>,
+        #[prost(int32, optional, tag="5")]
+        pub quest_reward_xp: ::core::option::Option<i32>,
+        #[prost(int32, optional, tag="6")]
+        pub quest_period: ::core::option::Option<i32>,
+        #[prost(enumeration="super::QuestType", optional, tag="7", default="KEQuestTypeOperation")]
+        pub quest_type: ::core::option::Option<i32>,
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1700,6 +1708,8 @@ pub struct CMsgGccStrike15V2MatchmakingGc2ServerReserve {
     pub socache_control: ::core::option::Option<u32>,
     #[prost(int32, repeated, packed="false", tag="21")]
     pub teammate_colors: ::prost::alloc::vec::Vec<i32>,
+    #[prost(uint32, optional, tag="22")]
+    pub match_id_additional: ::core::option::Option<u32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CMsgGccStrike15V2MatchmakingServerReservationResponse {
@@ -2381,6 +2391,8 @@ pub mod c_econ_item_preview_data_block {
         pub offset_z: ::core::option::Option<f32>,
         #[prost(uint32, optional, tag="10")]
         pub pattern: ::core::option::Option<u32>,
+        #[prost(uint32, optional, tag="11")]
+        pub highlight_reel: ::core::option::Option<u32>,
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -2780,6 +2792,15 @@ pub struct CsoAccountRecurringSubscription {
     pub time_initiated: ::core::option::Option<u32>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct CsoGameAccountSteamChina {
+    #[prost(uint32, optional, tag="1")]
+    pub time_last_update: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag="2")]
+    pub time_comms_ban: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag="3")]
+    pub time_play_ban: ::core::option::Option<u32>,
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct CsoPersonaDataPublic {
     #[prost(int32, optional, tag="1")]
     pub player_level: ::core::option::Option<i32>,
@@ -2791,6 +2812,17 @@ pub struct CsoPersonaDataPublic {
     pub xp_trail_timestamp_refresh: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag="5")]
     pub xp_trail_level: ::core::option::Option<u32>,
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct CsoAccountRecurringMission {
+    #[prost(uint32, optional, tag="1")]
+    pub account_id: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag="2")]
+    pub mission_id: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag="3")]
+    pub period: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag="4")]
+    pub progress: ::core::option::Option<u32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CMsgGccStrike15V2Gc2ClientNotifyXpShop {
@@ -3272,6 +3304,24 @@ pub struct CMsgGccStrike15V2SetPlayerLeaderboardSafeName {
     #[prost(string, optional, tag="1")]
     pub leaderboard_safe_name: ::core::option::Option<::prost::alloc::string::String>,
 }
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct CMsgRequestRecurringMissionSchedule {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CMsgRecurringMissionSchema {
+    #[prost(message, repeated, tag="1")]
+    pub missions: ::prost::alloc::vec::Vec<c_msg_recurring_mission_schema::MissionTemplateList>,
+}
+/// Nested message and enum types in `CMsgRecurringMissionSchema`.
+pub mod c_msg_recurring_mission_schema {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct MissionTemplateList {
+        #[prost(uint32, optional, tag="1")]
+        pub period: ::core::option::Option<u32>,
+        #[prost(bytes="bytes", repeated, tag="2")]
+        pub mission_templates: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
+    }
+}
 #[derive(::strum::EnumIter)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -3382,6 +3432,8 @@ pub enum ECsgoGcMsg {
     KEMsgGccStrike15V2Client2GcAckXpShopTracks = 9222,
     KEMsgGccStrike15V2MatchmakingGc2ClientSearchStats = 9223,
     KEMsgGccStrike15V2PremierSeasonSummary = 9224,
+    KEMsgGccStrike15V2RequestRecurringMissionSchedule = 9225,
+    KEMsgGccStrike15V2RecurringMissionSchema = 9226,
 }
 impl ECsgoGcMsg {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -3496,6 +3548,8 @@ impl ECsgoGcMsg {
             Self::KEMsgGccStrike15V2Client2GcAckXpShopTracks => "k_EMsgGCCStrike15_v2_Client2GcAckXPShopTracks",
             Self::KEMsgGccStrike15V2MatchmakingGc2ClientSearchStats => "k_EMsgGCCStrike15_v2_MatchmakingGC2ClientSearchStats",
             Self::KEMsgGccStrike15V2PremierSeasonSummary => "k_EMsgGCCStrike15_v2_PremierSeasonSummary",
+            Self::KEMsgGccStrike15V2RequestRecurringMissionSchedule => "k_EMsgGCCStrike15_v2_RequestRecurringMissionSchedule",
+            Self::KEMsgGccStrike15V2RecurringMissionSchema => "k_EMsgGCCStrike15_v2_RecurringMissionSchema",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -3607,6 +3661,8 @@ impl ECsgoGcMsg {
             "k_EMsgGCCStrike15_v2_Client2GcAckXPShopTracks" => Some(Self::KEMsgGccStrike15V2Client2GcAckXpShopTracks),
             "k_EMsgGCCStrike15_v2_MatchmakingGC2ClientSearchStats" => Some(Self::KEMsgGccStrike15V2MatchmakingGc2ClientSearchStats),
             "k_EMsgGCCStrike15_v2_PremierSeasonSummary" => Some(Self::KEMsgGccStrike15V2PremierSeasonSummary),
+            "k_EMsgGCCStrike15_v2_RequestRecurringMissionSchedule" => Some(Self::KEMsgGccStrike15V2RequestRecurringMissionSchedule),
+            "k_EMsgGCCStrike15_v2_RecurringMissionSchema" => Some(Self::KEMsgGccStrike15V2RecurringMissionSchema),
             _ => None,
         }
     }
@@ -3637,6 +3693,33 @@ impl ECsgoSteamUserStat {
             "k_ECsgoSteamUserStat_XpEarnedGames" => Some(Self::KECsgoSteamUserStatXpEarnedGames),
             "k_ECsgoSteamUserStat_MatchWinsCompetitive" => Some(Self::KECsgoSteamUserStatMatchWinsCompetitive),
             "k_ECsgoSteamUserStat_SurvivedDangerZone" => Some(Self::KECsgoSteamUserStatSurvivedDangerZone),
+            _ => None,
+        }
+    }
+}
+#[derive(::strum::EnumIter)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum QuestType {
+    KEQuestTypeOperation = 1,
+    KEQuestTypeRecurringMission = 2,
+}
+impl QuestType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::KEQuestTypeOperation => "k_EQuestType_Operation",
+            Self::KEQuestTypeRecurringMission => "k_EQuestType_RecurringMission",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "k_EQuestType_Operation" => Some(Self::KEQuestTypeOperation),
+            "k_EQuestType_RecurringMission" => Some(Self::KEQuestTypeRecurringMission),
             _ => None,
         }
     }
@@ -5400,6 +5483,13 @@ pub struct CcsUsrMsgDamagePrediction {
     #[prost(message, optional, tag="8")]
     pub aim_punch: ::core::option::Option<CMsgQAngle>,
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CcsUsrMsgRecurringMissionSchema {
+    #[prost(uint32, optional, tag="1")]
+    pub period: ::core::option::Option<u32>,
+    #[prost(bytes="bytes", optional, tag="2")]
+    pub mission_schema: ::core::option::Option<::prost::bytes::Bytes>,
+}
 #[derive(::strum::EnumIter)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -5481,6 +5571,7 @@ pub enum ECstrike15UserMessages {
     CsUmShootInfo = 383,
     CsUmCounterStrafe = 385,
     CsUmDamagePrediction = 386,
+    CsUmRecurringMissionSchema = 387,
 }
 impl ECstrike15UserMessages {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -5566,6 +5657,7 @@ impl ECstrike15UserMessages {
             Self::CsUmShootInfo => "CS_UM_ShootInfo",
             Self::CsUmCounterStrafe => "CS_UM_CounterStrafe",
             Self::CsUmDamagePrediction => "CS_UM_DamagePrediction",
+            Self::CsUmRecurringMissionSchema => "CS_UM_RecurringMissionSchema",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -5648,6 +5740,7 @@ impl ECstrike15UserMessages {
             "CS_UM_ShootInfo" => Some(Self::CsUmShootInfo),
             "CS_UM_CounterStrafe" => Some(Self::CsUmCounterStrafe),
             "CS_UM_DamagePrediction" => Some(Self::CsUmDamagePrediction),
+            "CS_UM_RecurringMissionSchema" => Some(Self::CsUmRecurringMissionSchema),
             _ => None,
         }
     }

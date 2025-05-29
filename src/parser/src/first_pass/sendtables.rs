@@ -4,6 +4,7 @@ use crate::first_pass::parser_settings::needs_velocity;
 use crate::first_pass::parser_settings::FirstPassParser;
 use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
+use crate::first_pass::prop_controller::GLOVE_PAINT_ID;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COST;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COUNT;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_DEF_IDX;
@@ -491,6 +492,10 @@ pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
     if fi.prop_id == WEAPON_SKIN_ID {
         fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;
     }
+    if fi.prop_id == GLOVE_PAINT_ID {
+        fi.prop_id = GLOVE_PAINT_ID + path.path[1] as u32;
+    }
+
     if path.path[1] != 1 {
         if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
             fi.prop_id = ITEM_PURCHASE_COUNT + path.path[2] as u32;

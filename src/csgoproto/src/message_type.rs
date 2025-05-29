@@ -189,6 +189,7 @@ pub enum NetMessageType {
     CS_UM_ShootInfo,
     CS_UM_CounterStrafe,
     CS_UM_DamagePrediction,
+    CS_UM_RecurringMissionSchema,
 }
 
 impl From<i32> for NetMessageType {
@@ -380,6 +381,7 @@ impl From<i32> for NetMessageType {
             383 => CS_UM_ShootInfo,
             385 => CS_UM_CounterStrafe,
             386 => CS_UM_DamagePrediction,
+            387 => CS_UM_RecurringMissionSchema,
             _ => Unknown,
         }
     }
