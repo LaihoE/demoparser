@@ -132,6 +132,7 @@ impl DemoParser {
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
+            parse_grenades: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -161,6 +162,7 @@ impl DemoParser {
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
+            parse_grenades: false,
             only_header: false,
             list_props: true,
             only_convars: false,
@@ -188,6 +190,7 @@ impl DemoParser {
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
+            parse_grenades: false,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -212,14 +215,16 @@ impl DemoParser {
     /// 0 -388.875  1295.46875 -5120.0   982              NaN    HeGrenade
     /// 1 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
     /// 2 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
-    #[pyo3(signature = (*, extra=None))]
+    #[pyo3(signature = (*, extra=None, grenades=true))]
     pub fn parse_grenades(
         &self,
         py: Python<'_>,
         extra: Option<Vec<String>>,
+        grenades: Option<bool>,
     ) -> PyResult<Py<PyAny>> {
         // This function works similarly to parse_ticks but collects the props from grenades instead.
         let wanted_other_props = extra.unwrap_or_default();
+        let grenades = grenades.unwrap_or_default();
         let real_other_props = match rm_user_friendly_names(&wanted_other_props) {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
@@ -238,6 +243,7 @@ impl DemoParser {
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: true,
+            parse_grenades: grenades,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -335,6 +341,7 @@ impl DemoParser {
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
+            parse_grenades: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -381,6 +388,7 @@ impl DemoParser {
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
+            parse_grenades: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -463,6 +471,7 @@ impl DemoParser {
             parse_ents: false,
             wanted_ticks: vec![],
             parse_projectiles: false,
+            parse_grenades: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -565,6 +574,7 @@ impl DemoParser {
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
+            parse_grenades: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -625,6 +635,7 @@ impl DemoParser {
             parse_ents: true,
             wanted_ticks: vec![],
             parse_projectiles: false,
+            parse_grenades: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -655,6 +666,7 @@ impl DemoParser {
             real_name_to_og_name: AHashMap::default(),
             parse_ents: false,
             parse_projectiles: false,
+            parse_grenades: false,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -727,6 +739,7 @@ impl DemoParser {
             parse_ents: true,
             wanted_ticks,
             parse_projectiles: false,
+            parse_grenades: false,
             only_header: true,
             list_props: false,
             only_convars: false,

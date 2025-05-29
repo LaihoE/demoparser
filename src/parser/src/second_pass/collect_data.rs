@@ -232,8 +232,8 @@ impl<'a> SecondPassParser<'a> {
 
     pub fn collect_projectiles(&mut self) {
         for projectile_entid in &self.projectiles {
-            let grenade_type = match self.find_grenade_type(projectile_entid) {
-                Some(t) => t,
+            let grenade_type = match self.find_grenade_type(projectile_entid) {              
+                Some(t) => {if !t.contains("Projectile") && !self.parse_grenades{continue}else{t}},
                 None => continue,
             };
             let steamid = match self.find_thrower_steamid(projectile_entid) {
