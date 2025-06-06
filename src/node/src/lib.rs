@@ -11,6 +11,7 @@ use napi::JsBigInt;
 use napi::JsUnknown;
 use parser::first_pass::parser_settings::rm_map_user_friendly_names;
 use parser::first_pass::parser_settings::rm_user_friendly_names;
+use parser::first_pass::parser_settings::FirstPassParser;
 use parser::first_pass::parser_settings::ParserInputs;
 use parser::parse_demo::DemoOutput;
 use parser::parse_demo::Parser;
@@ -291,13 +292,21 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     fallback_bytes: None,
     parse_grenades: false
   };
-  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-  let output = parse_demo(bytes, &mut parser)?;
-  let mut hm: HashMap<String, String> = HashMap::default();
+  let mut parser = FirstPassParser::new(&settings);
+  let output = match bytes {
+    BytesVariant::Mmap(m) => match parser.parse_header_only(&m) {
+      Ok(output) => Ok(output),
+      Err(e) => Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+    },
+    BytesVariant::Vec(v) => match parser.parse_header_only(&v) {
+      Ok(output) => Ok(output),
+      Err(e) => Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+    },
+  }?;
 
-  if let Some(header) = output.header {
-    hm.extend(header);
-  }
+  let mut hm: HashMap<String, String> = HashMap::default();
+  hm.extend(output);
+
   let s = match serde_json::to_value(&hm) {
     Ok(s) => s,
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
