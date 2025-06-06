@@ -59,6 +59,7 @@ pub fn parseEvent(
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -123,6 +124,7 @@ pub fn parseEvents(
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -155,6 +157,7 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -187,6 +190,7 @@ pub fn listUpdatedFields(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -249,6 +253,7 @@ pub fn parseTicks(
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -316,6 +321,7 @@ pub fn parseGrenades(file: Vec<u8>, extra: Option<Vec<JsValue>>) -> Result<JsVal
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -357,6 +363,7 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
     let output = match parser.parse_demo(&file) {
