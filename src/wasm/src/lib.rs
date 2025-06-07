@@ -1,4 +1,5 @@
 use parser::first_pass::parser_settings::rm_user_friendly_names;
+use parser::first_pass::parser_settings::FirstPassParser;
 use parser::first_pass::parser_settings::ParserInputs;
 use parser::parse_demo::Parser;
 use parser::parse_demo::ParsingMode::ForceSingleThreaded;
@@ -59,6 +60,7 @@ pub fn parseEvent(
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -123,6 +125,7 @@ pub fn parseEvents(
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -155,6 +158,7 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -187,6 +191,7 @@ pub fn listUpdatedFields(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -249,6 +254,7 @@ pub fn parseTicks(
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -316,6 +322,7 @@ pub fn parseGrenades(file: Vec<u8>, extra: Option<Vec<JsValue>>) -> Result<JsVal
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -357,16 +364,12 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
+        parse_grenades: false
     };
-    let mut parser = Parser::new(settings, ForceSingleThreaded);
-    let output = match parser.parse_demo(&file) {
-        Ok(output) => output,
-        Err(e) => return Err(JsError::new(&format!("{}", e))),
-    };
+    let mut parser = FirstPassParser::new(&settings);
+    let output = parser.parse_header_only(&file).unwrap();
     let mut hm: HashMap<String, String> = HashMap::default();
-    if let Some(header) = output.header {
-        hm.extend(header);
-    }
+    hm.extend(output);
     match serde_wasm_bindgen::to_value(&hm) {
         Ok(s) => Ok(s),
         Err(e) => return Err(JsError::new(&format!("{}", e))),

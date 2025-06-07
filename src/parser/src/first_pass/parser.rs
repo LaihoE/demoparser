@@ -78,6 +78,16 @@ pub struct Frame {
 }
 
 impl<'a> FirstPassParser<'a> {
+    pub fn parse_header_only(&mut self, demo_bytes: &'a [u8]) -> Result<AHashMap<String, String>, DemoParserError> {
+        self.handle_short_header(demo_bytes.len(), &demo_bytes[..HEADER_ENDS_AT_BYTE])?;
+        let frame = self.read_frame(demo_bytes)?;
+        let bytes = self.slice_packet_bytes(demo_bytes, frame.size)?;
+        if frame.demo_cmd != EDemoCommands::DemFileHeader {
+            return Err(DemoParserError::MalformedMessage)
+        }
+        self.parse_header(bytes)?;
+        Ok(self.header.clone())
+    }
     pub fn parse_demo(&mut self, demo_bytes: &'a [u8], exit_early: bool) -> Result<FirstPassOutput, DemoParserError> {
         self.handle_short_header(demo_bytes.len(), &demo_bytes[..HEADER_ENDS_AT_BYTE])?;
         let mut reuseable_buffer = vec![0_u8; 100_000];

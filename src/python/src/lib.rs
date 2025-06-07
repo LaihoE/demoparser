@@ -4,6 +4,7 @@ use memmap2::Mmap;
 use parser::first_pass::parser_settings::create_mmap;
 use parser::first_pass::parser_settings::rm_map_user_friendly_names;
 use parser::first_pass::parser_settings::rm_user_friendly_names;
+use parser::first_pass::parser_settings::FirstPassParser;
 use parser::first_pass::parser_settings::ParserInputs;
 use parser::first_pass::read_bits::DemoParserError;
 use parser::parse_demo::Parser;
@@ -140,15 +141,12 @@ impl DemoParser {
             order_by_steamid: false,
             fallback_bytes: None,
         };
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        let mut parser = FirstPassParser::new(&settings);
+        let output = match parser.parse_header_only(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
-        Ok(output
-            .header
-            .unwrap_or_else(AHashMap::default)
-            .to_object(py))
+        Ok(output.to_object(py))
     }
     /// Returns the names of game events present in the demo
     pub fn list_updated_fields(&self, _py: Python<'_>) -> PyResult<Py<PyAny>> {
