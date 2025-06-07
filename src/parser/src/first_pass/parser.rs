@@ -83,6 +83,7 @@ impl<'a> FirstPassParser<'a> {
         let mut reuseable_buffer = vec![0_u8; 100_000];
         // Loop that goes trough the entire file
         loop {
+            if demo_bytes.len() < self.ptr { break; }
             if exit_early && self.cls_by_id.is_some() && !self.ge_list.is_empty() {
                 break;
             }
@@ -91,7 +92,13 @@ impl<'a> FirstPassParser<'a> {
                 self.ptr += frame.size;
                 continue;
             }
-            let bytes = self.slice_packet_bytes(demo_bytes, frame.size)?;
+            let bytes = match self.slice_packet_bytes(demo_bytes, frame.size) {
+                Ok(b) => b,
+                Err(_) => {
+                    self.ptr += frame.size;
+                    continue;
+                }
+            };
             let bytes = self.decompress_if_needed(&mut reuseable_buffer, bytes, &frame)?;
             self.ptr += frame.size;
             match frame.demo_cmd {
