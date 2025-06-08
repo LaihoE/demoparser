@@ -160,7 +160,7 @@ pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<HashMap<
     huffman_lookup_table: &vec![],
     order_by_steamid: false,
     fallback_bytes: None,
-    parse_grenades: false
+    parse_grenades: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -196,7 +196,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     huffman_lookup_table: &huf,
     order_by_steamid: false,
     fallback_bytes: None,
-    parse_grenades: false
+    parse_grenades: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -208,11 +208,13 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
   };
   Ok(s)
 }
-
+/// extra: lets you add new fields to grenades. Use list_updated_fields for a full list.
+/// grenades: lets you disable non-projectile grenades. This can have a big difference on memory/speed.
 #[napi]
 pub fn parse_grenades(
   path_or_buf: Either<String, Buffer>,
   extra: Option<Vec<String>>,
+  grenades: Option<bool>,
 ) -> napi::Result<Value> {
   let bytes = resolve_byte_type(path_or_buf)?;
   let huf = create_huffman_lookup_table();
@@ -224,6 +226,7 @@ pub fn parse_grenades(
     Ok(names) => names,
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
   };
+  let grenades = grenades.unwrap_or(true);
 
   let settings = ParserInputs {
     wanted_players: vec![],
@@ -241,7 +244,7 @@ pub fn parse_grenades(
     huffman_lookup_table: &huf,
     order_by_steamid: false,
     fallback_bytes: None,
-    parse_grenades: false
+    parse_grenades: grenades,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -290,7 +293,7 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     huffman_lookup_table: &huf,
     order_by_steamid: false,
     fallback_bytes: None,
-    parse_grenades: false
+    parse_grenades: false,
   };
   let mut parser = FirstPassParser::new(&settings);
   let output = match bytes {
@@ -372,7 +375,7 @@ pub fn parse_event(
     huffman_lookup_table: &huf,
     order_by_steamid: false,
     fallback_bytes: game_event_list_bytes,
-    parse_grenades: false
+    parse_grenades: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -444,7 +447,7 @@ pub fn parse_events(
     huffman_lookup_table: &huf,
     order_by_steamid: false,
     fallback_bytes: game_event_list_bytes,
-    parse_grenades: false
+    parse_grenades: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -524,7 +527,7 @@ pub fn parse_ticks(
     huffman_lookup_table: &huf,
     order_by_steamid: order_by_steamid,
     fallback_bytes: None,
-    parse_grenades: false
+    parse_grenades: false,
   };
 
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
@@ -599,7 +602,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     huffman_lookup_table: &huf,
     order_by_steamid: false,
     fallback_bytes: None,
-    parse_grenades: false
+    parse_grenades: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -631,7 +634,7 @@ pub fn parse_player_skins(path_or_buf: Either<String, Buffer>) -> napi::Result<V
     huffman_lookup_table: &huf,
     order_by_steamid: false,
     fallback_bytes: None,
-    parse_grenades: false
+    parse_grenades: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -662,7 +665,7 @@ pub fn list_updated_fields(path_or_buf: Either<String, Buffer>) -> napi::Result<
     huffman_lookup_table: &huf,
     order_by_steamid: false,
     fallback_bytes: None,
-    parse_grenades: false
+    parse_grenades: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
