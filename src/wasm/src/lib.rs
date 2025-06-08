@@ -60,7 +60,7 @@ pub fn parseEvent(
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
-        parse_grenades: false
+        parse_grenades: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -125,7 +125,7 @@ pub fn parseEvents(
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
-        parse_grenades: false
+        parse_grenades: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -158,7 +158,7 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
-        parse_grenades: false
+        parse_grenades: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -191,7 +191,7 @@ pub fn listUpdatedFields(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
-        parse_grenades: false
+        parse_grenades: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -254,7 +254,7 @@ pub fn parseTicks(
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
-        parse_grenades: false
+        parse_grenades: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -290,9 +290,14 @@ pub fn parseTicks(
         Ok(s)
     }
 }
-
+/// extra: lets you add new fields to grenades. Use list_updated_fields for a full list.
+/// grenades: lets you disable non-projectile grenades. This can have a big difference on memory/speed.
 #[wasm_bindgen]
-pub fn parseGrenades(file: Vec<u8>, extra: Option<Vec<JsValue>>) -> Result<JsValue, JsError> {
+pub fn parseGrenades(
+    file: Vec<u8>,
+    extra: Option<Vec<JsValue>>,
+    grenades: Option<bool>,
+) -> Result<JsValue, JsError> {
     let mut extra = match extra {
         Some(p) => p.iter().map(|s| s.as_string().unwrap()).collect::<Vec<_>>(),
         None => vec![],
@@ -301,6 +306,8 @@ pub fn parseGrenades(file: Vec<u8>, extra: Option<Vec<JsValue>>) -> Result<JsVal
         Ok(names) => names,
         Err(e) => return Err(JsError::new(&format!("{}", e))),
     };
+    let grenades = grenades.unwrap_or(true);
+
     let arc_huf = Arc::new(create_huffman_lookup_table());
     let mut real_name_to_og_name = HashMap::default();
     for (real_name, user_friendly_name) in real_names.iter().zip(&extra) {
@@ -322,7 +329,7 @@ pub fn parseGrenades(file: Vec<u8>, extra: Option<Vec<JsValue>>) -> Result<JsVal
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
-        parse_grenades: false
+        parse_grenades: grenades,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -364,7 +371,7 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         order_by_steamid: false,
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
-        parse_grenades: false
+        parse_grenades: false,
     };
     let mut parser = FirstPassParser::new(&settings);
     let output = parser.parse_header_only(&file).unwrap();
