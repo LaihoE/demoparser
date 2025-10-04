@@ -134,6 +134,12 @@ pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
     "CSPlayerBlockingUseAction_t"=> Unsigned64Decoder,
     "MoveMountingAmount_t"=> Unsigned64Decoder,
     "QuestProgress::Reason"=> Unsigned64Decoder,
+
+    "m_ragPos" => VectorNormalDecoder,
+    "m_ragAngles" => VectorNormalDecoder,
+    //FieldPath { path: [82, 8, 0, 0, 0, 0, 0], last: 1 } Some(FieldInfo { decoder: VectorNormalDecoder, should_parse: false, prop_id: 0 }) "m_ragPos" VecXYZ([-752.6323, 1024.4995, -0.0]) "CRagdollProp"
+    //FieldPath { path: [83, 0, 0, 0, 0, 0, 0], last: 1 } Some(FieldInfo { decoder: VectorNormalDecoder, should_parse: false, prop_id: 0 }) "m_ragAngles" VecXYZ([0.0, -1822.1099, -0.0]) "CRagdollProp"
+
 };
 
 pub fn demo_cmd_type_from_int(value: i32) -> Result<EDemoCommands, DemoParserError> {

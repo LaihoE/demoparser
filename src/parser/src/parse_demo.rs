@@ -59,6 +59,7 @@ impl<'a> Parser<'a> {
         }
     }
     pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
+        println!("{:?}", self.input.huffman_lookup_table.len());
         let mut first_pass_parser = FirstPassParser::new(&self.input);
         let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, false)?;
         if self.parsing_mode == ParsingMode::Normal

@@ -341,6 +341,7 @@ pub fn create_huffman_lookup_table() -> Vec<(u8, u8)> {
     for chunk in buf.chunks_exact(2) {
         huf2.push((chunk[0], chunk[1]));
     }
+    huf2.push((0, 0));
     return huf2;
 }
 

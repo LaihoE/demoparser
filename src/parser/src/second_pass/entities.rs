@@ -86,7 +86,7 @@ impl<'a> SecondPassParser<'a> {
                     self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
                 EntityCmd::Update => {
-                    if msg.has_pvs_vis_bits() > 0 {
+                    if msg.has_pvs_vis_bits_deprecated() > 0 {
                         // Most entities pass trough here. Seems like entities that are not updated.
                         if bitreader.read_nbits(2)? & 0x01 == 1 {
                             continue;
@@ -233,8 +233,33 @@ impl<'a> SecondPassParser<'a> {
         for path in self.paths.iter().take(n_updates) {
             let field = find_field(&path, &class.serializer)?;
             let field_info = get_propinfo(&field, path);
-            let decoder = get_decoder_from_field(field)?;
+            let mut decoder = get_decoder_from_field(field)?;
+
+            if let Field::Value(v) = field {
+                if v.name == "m_ragAnwgles" {
+                    // decoder = super::decoder::Decoder::VectorFloatCoordDecoder;
+
+                    let a = f32::from_bits(bitreader.read_nbits(13)?);
+                    let b = bitreader.read_nbits(13)? as f32;
+                    let c = bitreader.read_nbits(13)? as f32;
+                    println!("{} {} {}", a, b, c);
+                    let c = bitreader.read_nbits(13)? as f32;
+
+                    continue;
+                }
+            }
+
             let result = bitreader.decode(&decoder, self.qf_mapper)?;
+
+            if let Field::Vector(x) = field {
+                println!("X {:?} {:?} {:?} {:?}", result, decoder, x, path);
+                if path.path[path.last] == 0 {
+                    // decoder = super::decoder::Decoder::UnsignedDecoder;
+                }
+            }
+            if let Field::Value(x) = field {
+                println!("V {:?} {:?} {:?} {:?}", result, decoder, x, path);
+            }
 
             // listen_to_props()
             if self.list_props {
@@ -281,9 +306,7 @@ impl<'a> SecondPassParser<'a> {
         _entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
-            if _v.full_name.contains("m_vLookTargetPosition") {
-                println!("{:?} {:?} {:?} {:?}", _path, field_info, _v.full_name, _result);
-            }
+            println!("{:?} {:?} {:?} {:?} {:?}", _path, field_info, _v.full_name, _result, _cls.name);
         }
     }
 
@@ -301,6 +324,10 @@ impl<'a> SecondPassParser<'a> {
             Some(entry) => *entry = *fp_src,
             // need to extend vec (rare)
             None => {
+                // If we have over 100k fields for an entity then something definitely went wrong. Do this to avoid infinite loop/oom
+                if idx > 100_000 {
+                    return Err(DemoParserError::VectorResizeFailure);
+                }
                 self.paths.resize(idx + 1, generate_fp());
                 match self.paths.get_mut(idx) {
                     Some(entry) => *entry = *fp_src,
