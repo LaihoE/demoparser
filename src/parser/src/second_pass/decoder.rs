@@ -65,9 +65,7 @@ impl<'a> Bitreader<'a> {
 
     pub fn decode_poly(&mut self) -> Result<bool, DemoParserError> {
         let b = self.read_boolean()?;
-        let idx = self.read_u_bit_var()?;
-
-        println!("{:?} {:?}", b, idx);
+        let _idx = self.read_u_bit_var()?;
         Ok(b)
     }
     pub fn decode_qangle_variant_pres(&mut self) -> Result<[f32; 3], DemoParserError> {

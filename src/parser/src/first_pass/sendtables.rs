@@ -71,7 +71,6 @@ pub struct ConstructorField {
     pub serializer: Option<Serializer>,
     pub base_decoder: Option<Decoder>,
     pub child_decoder: Option<Decoder>,
-    pub polymorphic: Vec<String>,
 }
 impl<'a> FirstPassParser<'a> {
     pub fn parse_sendtable(&mut self) -> Result<(AHashMap<String, Serializer>, QfMapper, PropController), DemoParserError> {
@@ -221,34 +220,15 @@ impl<'a> FirstPassParser<'a> {
         let mut field = field_from_msg(&msg, &big, ft.clone())?;
 
         field.category = find_category(&mut field);
-
         field.decoder = field.find_decoder(qf_mapper);
-
-        // println!("{:?} {:#?}", name, field);
 
         match field.var_name.as_str() {
             "m_PredFloatVariables" | "m_OwnerOnlyPredNetFloatVariables" => field.decoder = NoscaleDecoder,
             "m_OwnerOnlyPredNetVectorVariables" | "m_PredVectorVariables" => field.decoder = VectorNoscaleDecoder,
             "m_pGameModeRules" => field.decoder = GameModeRulesDecoder,
-
-            //"m_ragAngles" => field.decoder = Decoder::VectorNormalDecoder,
-            //"m_ragPos" => field.decoder = Decoder::VectorNormalDecoder,
-            //"m_ragEnabled" => field.decoder = Decoder::BooleanDecoder,
             _ => {}
         };
-        // CRagdollProp
-
-        // println!("{:?}", field.var_name.as_str());
-
-        if !field.polymorphic.is_empty() {
-            // println!("QQ {:?}", field.polymorphic);
-        }
-        if field.decoder == GameModeRulesDecoder {
-            // println!("X {:#?}", field);
-        }
-
         if field.encoder == "qangle_precise" {
-            println!("Q {:#?} {:?}", field, name);
             field.decoder = QanglePresDecoder;
         }
         field.field_type = ft;
@@ -460,7 +440,6 @@ pub fn field_from_msg(
         child_decoder: None,
 
         category: FieldCategory::Value,
-        polymorphic: poly_fields,
     };
 
     Ok(f)
@@ -563,26 +542,11 @@ fn create_field(
     serializers: &AHashMap<String, Serializer>,
     qf_mapper: &mut QfMapper,
 ) -> Result<Field, DemoParserError> {
-    /*
-    TODO
-    let element_type = match fd.category {
-        FieldCategory::Array => fd.field_type.element_type.as_ref(),
-        FieldCategory::Vector => fd.field_type.generic_type.as_ref(),
-        _ => Box::new(fd.field_type.clone()),
-    };
-    */
     let element_type = match fd.category {
         FieldCategory::Array => fd.field_type.element_type.clone(),
         FieldCategory::Vector => fd.field_type.generic_type.clone(),
         _ => Some(Box::new(fd.field_type.clone())),
     };
-
-    if fd.category == FieldCategory::Vector {
-        // CRagdollProp
-        //println!("");
-        //println!("{:?} {:?} {:?} ", fd.category, _sid, element_type);
-        //println!("{:?} {:?} {:?} ", fd.category, _sid, fd.field_type.element_type);
-    }
 
     let element_field = match fd.serializer_name.as_ref() {
         Some(name) => {
@@ -598,13 +562,6 @@ fn create_field(
         }
         None => Field::Value(ValueField::new(fd.decoder, &fd.var_name)),
     };
-
-    for s in &fd.polymorphic {
-        let ser = match serializers.get(s.as_str()) {
-            Some(ser) => ser,
-            None => return Err(DemoParserError::MalformedMessage),
-        };
-    }
 
     let element_field = match fd.category {
         FieldCategory::Array => Field::Array(ArrayField::new(element_field, fd.field_type.count.unwrap_or(0) as usize)),
@@ -674,7 +631,6 @@ impl ConstructorField {
         if self.var_name == "m_iClip1" {
             return Decoder::AmmoDecoder;
         }
-        // println!("{:?} {:?}", self.field_type.base_type, BASETYPE_DECODERS.get(&self.field_type.base_type));
         let dec = match BASETYPE_DECODERS.get(&self.field_type.base_type) {
             Some(decoder) => decoder.clone(),
             None => {
@@ -700,21 +656,13 @@ impl ConstructorField {
                         } else {
                             &self.field_type.base_type
                         };
-                        // println!("GT {:?} {:?}", self.field_type.generic_type, name);
                         let dec = match BASETYPE_DECODERS.get(name) {
                             Some(d) => d.clone(),
                             None => Decoder::UnsignedDecoder,
                         };
-                        // Decoder::UnsignedDecoder
                         dec
                     }
                 };
-
-                if self.var_name == "m_ragAngles" {
-                    println!("{:#?} {:#?} {:?}", dc, self, name);
-                    //panic!();
-                }
-
                 dc
             }
         };
