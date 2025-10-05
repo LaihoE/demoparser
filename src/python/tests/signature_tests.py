@@ -15,6 +15,11 @@ class MyWantedPropState:
 
 
 class SignatureTest(TestCase):
+    def test_demoparser_creation(self):
+        DemoParser(demo_path)
+        DemoParser(demo_path=demo_path)
+
+
     def test_parse_header_signature(self):
         parser = DemoParser(demo_path)
         header = parser.parse_header()
