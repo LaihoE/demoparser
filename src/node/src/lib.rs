@@ -20,7 +20,6 @@ use parser::second_pass::variants::soa_to_aos;
 use parser::second_pass::variants::BytesVariant;
 use parser::second_pass::variants::OutputSerdeHelperStruct;
 use parser::second_pass::variants::Variant;
-use parser::second_pass::voice_data::convert_voice_data_to_wav;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
@@ -141,8 +140,15 @@ fn parse_demo(bytes: BytesVariant, parser: &mut Parser) -> Result<DemoOutput, Er
     },
   }
 }
+#[napi(object)]
+pub struct VoiceData {
+  pub tick: i32,
+  pub data: Buffer,
+  pub steamid: String,
+}
+
 #[napi]
-pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<HashMap<String, Vec<u8>>> {
+pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<Vec<VoiceData>> {
   let bytes = resolve_byte_type(path_or_buf).unwrap();
   let settings = ParserInputs {
     wanted_players: vec![],
@@ -164,15 +170,18 @@ pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<HashMap<
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
-  let out = match convert_voice_data_to_wav(output.voice_data) {
-    Ok(out) => out,
-    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
-  };
-  let mut out_hm = HashMap::default();
-  for (steamid, bytes) in out {
-    out_hm.insert(steamid, bytes);
+  let mut out = vec![];
+
+  for (tick, packet) in output.voice_data {
+    if let Some(data) = &packet.audio {
+      out.push(VoiceData {
+        data: data.voice_data().into(),
+        steamid: packet.xuid().to_string(),
+        tick: tick,
+      });
+    }
   }
-  Ok(out_hm)
+  return Ok(out);
 }
 
 #[napi]

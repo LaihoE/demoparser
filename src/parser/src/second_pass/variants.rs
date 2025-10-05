@@ -462,7 +462,6 @@ impl VarVec {
                 _ => {}
             },
             None => self.push_none(),
-            _ => {}
         }
     }
     pub fn push_none(&mut self) {

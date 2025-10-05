@@ -58,7 +58,7 @@ pub struct SecondPassParser<'a> {
     pub wanted_ticks: AHashSet<i32>,
     // Output from parsing
     pub projectile_records: Vec<ProjectileRecord>,
-    pub voice_data: Vec<CsvcMsgVoiceData>,
+    pub voice_data: Vec<(i32, CsvcMsgVoiceData)>,
     pub output: AHashMap<u32, PropColumn, RandomState>,
     pub header: HashMap<String, String>,
     pub skins: Vec<EconItem>,

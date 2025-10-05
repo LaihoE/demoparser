@@ -50,7 +50,7 @@ pub struct SecondPassOutput {
     pub prop_info: PropController,
     pub projectiles: Vec<ProjectileRecord>,
     pub ptr: usize,
-    pub voice_data: Vec<CsvcMsgVoiceData>,
+    pub voice_data: Vec<(i32, CsvcMsgVoiceData)>,
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
     pub entities: Vec<Option<Entity>>,
     pub last_tick: i32,
@@ -62,7 +62,9 @@ impl<'a> SecondPassParser<'a> {
         let mut buf = vec![0_u8; INNER_BUF_DEFAULT_LEN];
         let mut buf2 = vec![0_u8; OUTER_BUF_DEFAULT_LEN];
         loop {
-            if demo_bytes.len() < self.ptr { break; }
+            if demo_bytes.len() < self.ptr {
+                break;
+            }
             let frame = self.read_frame(demo_bytes)?;
             if frame.demo_cmd == DemAnimationData || frame.demo_cmd == DemSendTables || frame.demo_cmd == DemStringTables {
                 self.ptr += frame.size as usize;
@@ -289,7 +291,7 @@ impl<'a> SecondPassParser<'a> {
 
     pub fn parse_voice_data(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
         if let Ok(m) = CsvcMsgVoiceData::decode(bytes) {
-            self.voice_data.push(m);
+            self.voice_data.push((self.tick, m));
         }
         Ok(())
     }

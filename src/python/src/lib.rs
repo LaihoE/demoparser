@@ -13,8 +13,6 @@ use parser::second_pass::game_events::GameEvent;
 use parser::second_pass::parser_settings::create_huffman_lookup_table;
 use parser::second_pass::variants::VarVec;
 use parser::second_pass::variants::Variant;
-#[cfg(feature = "voice")]
-use parser::second_pass::voice_data::convert_voice_data_to_wav;
 use polars::prelude::ArrayRef;
 use polars::prelude::ArrowField;
 use polars::prelude::NamedFrom;
@@ -652,7 +650,6 @@ impl DemoParser {
         };
         Ok(event_series)
     }
-    #[cfg(feature = "voice")]
     pub fn parse_voice(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let settings = ParserInputs {
             wanted_players: vec![],
@@ -677,13 +674,19 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
-        let out = convert_voice_data_to_wav(output.voice_data).unwrap();
-        let mut out_hm = AHashMap::default();
-        for (steamid, bytes) in out {
-            let py_bytes = PyBytes::new_bound(py, &bytes);
-            out_hm.insert(steamid, py_bytes);
+        let mut hm: Vec<Bound<'_, PyDict>> = vec![];
+
+        for (tick, packet) in output.voice_data {
+            if let Some(data) = &packet.audio {
+                let d = PyDict::new_bound(py);
+                let bytes = PyBytes::new_bound(py, data.voice_data());
+                d.set_item("tick", tick)?;
+                d.set_item("steamid", packet.xuid())?;
+                d.set_item("bytes", bytes)?;
+                hm.push(d);
+            }
         }
-        Ok(out_hm.to_object(py))
+        return Ok(hm.to_object(py));
     }
 
     #[pyo3(signature = (wanted_props, *, players=None, ticks=None, prop_states=None))]

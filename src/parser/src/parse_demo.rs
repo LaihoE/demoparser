@@ -35,7 +35,7 @@ pub struct DemoOutput {
     pub game_events_counter: AHashSet<String>,
     pub uniq_prop_names: Vec<String>,
     pub projectiles: Vec<ProjectileRecord>,
-    pub voice_data: Vec<CsvcMsgVoiceData>,
+    pub voice_data: Vec<(i32, CsvcMsgVoiceData)>,
     pub prop_controller: PropController,
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
 }
