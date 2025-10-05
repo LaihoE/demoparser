@@ -86,7 +86,7 @@ impl<'a> SecondPassParser<'a> {
                     self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
                 EntityCmd::Update => {
-                    if msg.has_pvs_vis_bits() != 0 {
+                    if msg.has_pvs_vis_bits_deprecated() != 0 {
                         // Most entities pass trough here. Seems like entities that are not updated.
                         if bitreader.read_nbits(2)? & 0x01 == 1 {
                             continue;
@@ -281,7 +281,9 @@ impl<'a> SecondPassParser<'a> {
         _entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
-            println!("{:?} {:?} {:?} {:?} {:?}", _path, field_info, _v.full_name, _result, _cls.name);
+            if _v.full_name.contains("Angl") && _v.full_name != "CCSPlayerPawn.m_angEyeAngles" {
+                println!("{:?} {:?} {:?} {:?} {:?}", _path, field_info, _v.full_name, _result, _cls.name);
+            }
         }
     }
 
