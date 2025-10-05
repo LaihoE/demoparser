@@ -22,7 +22,7 @@ pub enum Decoder {
     FloatSimulationTimeDecoder,
     Fixed64Decoder,
     QanglePitchYawDecoder,
-    Qangle3Decoder,
+    Qangle3Decoder(u8),
     QangleVarDecoder,
     BaseDecoder,
     AmmoDecoder,
@@ -42,7 +42,7 @@ impl<'a> Bitreader<'a> {
             FloatSimulationTimeDecoder => Ok(Variant::F32(self.decode_simul_time()?)),
             UnsignedDecoder => Ok(Variant::U32(self.read_varint()?)),
             QuantalizedFloatDecoder(qf_idx) => Ok(self.decode_qfloat(*qf_idx, qf_map)?),
-            Qangle3Decoder => Ok(Variant::VecXYZ(self.decode_qangle_all_3()?)),
+            Qangle3Decoder(bits) => Ok(Variant::VecXYZ(self.decode_qangle_all_3(*bits)?)),
             SignedDecoder => Ok(Variant::I32(self.read_varint32()?)),
             VectorNoscaleDecoder => Ok(Variant::VecXYZ(self.decode_vector_noscale()?)),
             BooleanDecoder => Ok(Variant::Bool(self.read_boolean()?)),
@@ -59,8 +59,14 @@ impl<'a> Bitreader<'a> {
             VectorFloatCoordDecoder => Ok(Variant::VecXYZ(self.decode_vector_float_coord()?)),
             AmmoDecoder => Ok(Variant::U32(self.decode_ammo()?)),
             QanglePresDecoder => Ok(Variant::VecXYZ(self.decode_qangle_variant_pres()?)),
-            GameModeRulesDecoder => Ok(Variant::U32(self.read_nbits(7)?)),
+            GameModeRulesDecoder => Ok(Variant::Bool(self.decode_poly()?)),
         }
+    }
+
+    pub fn decode_poly(&mut self) -> Result<bool, DemoParserError> {
+        let b = self.read_boolean()?;
+        let _idx = self.read_u_bit_var()?;
+        Ok(b)
     }
     pub fn decode_qangle_variant_pres(&mut self) -> Result<[f32; 3], DemoParserError> {
         let mut v = [0.0; 3];
@@ -176,12 +182,12 @@ impl<'a> Bitreader<'a> {
         v[2] = self.read_angle(32)?;
         Ok(v)
     }
-    pub fn decode_qangle_all_3(&mut self) -> Result<[f32; 3], DemoParserError> {
+    pub fn decode_qangle_all_3(&mut self, bits: u8) -> Result<[f32; 3], DemoParserError> {
         // Used by aimpunch props (not exposed atm) maybe wrong format? correct number of bits anyhow.
         let mut v = [0.0; 3];
-        v[0] = self.decode_noscale()?;
-        v[1] = self.decode_noscale()?;
-        v[2] = self.decode_noscale()?;
+        v[0] = f32::from_le_bytes(self.read_nbits(bits as u32)?.to_le_bytes());
+        v[1] = f32::from_le_bytes(self.read_nbits(bits as u32)?.to_le_bytes());
+        v[2] = f32::from_le_bytes(self.read_nbits(bits as u32)?.to_le_bytes());
         Ok(v)
     }
     pub fn decode_qangle_variant(&mut self) -> Result<[f32; 3], DemoParserError> {

@@ -86,7 +86,7 @@ impl<'a> SecondPassParser<'a> {
                     self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
                 EntityCmd::Update => {
-                    if msg.has_pvs_vis_bits() > 0 {
+                    if msg.has_pvs_vis_bits_deprecated() != 0 {
                         // Most entities pass trough here. Seems like entities that are not updated.
                         if bitreader.read_nbits(2)? & 0x01 == 1 {
                             continue;
@@ -281,8 +281,8 @@ impl<'a> SecondPassParser<'a> {
         _entity_id: &i32,
     ) {
         if let Field::Value(_v) = field {
-            if _v.full_name.contains("m_vLookTargetPosition") {
-                println!("{:?} {:?} {:?} {:?}", _path, field_info, _v.full_name, _result);
+            if _v.full_name.contains("Angl") && _v.full_name != "CCSPlayerPawn.m_angEyeAngles" {
+                println!("{:?} {:?} {:?} {:?} {:?}", _path, field_info, _v.full_name, _result, _cls.name);
             }
         }
     }
@@ -301,6 +301,10 @@ impl<'a> SecondPassParser<'a> {
             Some(entry) => *entry = *fp_src,
             // need to extend vec (rare)
             None => {
+                // If we have over 100k fields for an entity then something definitely went wrong. Do this to avoid infinite loop/oom
+                if idx > 100_000 {
+                    return Err(DemoParserError::VectorResizeFailure);
+                }
                 self.paths.resize(idx + 1, generate_fp());
                 match self.paths.get_mut(idx) {
                     Some(entry) => *entry = *fp_src,
