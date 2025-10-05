@@ -185,9 +185,9 @@ impl<'a> Bitreader<'a> {
     pub fn decode_qangle_all_3(&mut self, bits: u8) -> Result<[f32; 3], DemoParserError> {
         // Used by aimpunch props (not exposed atm) maybe wrong format? correct number of bits anyhow.
         let mut v = [0.0; 3];
-        v[0] = self.read_nbits(bits as u32)? as f32;
-        v[1] = self.read_nbits(bits as u32)? as f32;
-        v[2] = self.read_nbits(bits as u32)? as f32;
+        v[0] = f32::from_le_bytes(self.read_nbits(bits as u32)?.to_le_bytes());
+        v[1] = f32::from_le_bytes(self.read_nbits(bits as u32)?.to_le_bytes());
+        v[2] = f32::from_le_bytes(self.read_nbits(bits as u32)?.to_le_bytes());
         Ok(v)
     }
     pub fn decode_qangle_variant(&mut self) -> Result<[f32; 3], DemoParserError> {
