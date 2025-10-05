@@ -304,7 +304,6 @@ pub struct ArrayField {
 pub struct VectorField {
     pub field_enum: Box<Field>,
     pub decoder: Decoder,
-    pub f: Option<Box<FieldType>>,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValueField {
@@ -365,11 +364,10 @@ impl ValueField {
     }
 }
 impl VectorField {
-    pub fn new(field_enum: Field, f: std::option::Option<Box<FieldType>>, fd: ConstructorField, qf_map: &mut QfMapper) -> VectorField {
+    pub fn new(field_enum: Field, f: std::option::Option<Box<FieldType>>) -> VectorField {
         VectorField {
             field_enum: Box::new(field_enum),
             decoder: UnsignedDecoder,
-            f,
         }
     }
 }
@@ -404,22 +402,6 @@ pub fn field_from_msg(
         Some(entry) => entry.clone(),
         None => return Err(DemoParserError::MalformedMessage),
     };
-    let mut poly_fields = vec![];
-
-    if field.polymorphic_types.len() > 0 {
-        for p in &field.polymorphic_types {
-            let poly = match p.polymorphic_field_serializer_name_sym.is_some() {
-                true => match serializer_msg.symbols.get(p.polymorphic_field_serializer_name_sym() as usize) {
-                    Some(entry) => Some(entry.clone()),
-                    None => return Err(DemoParserError::MalformedMessage),
-                },
-                false => None,
-            };
-            if let Some(pol) = poly {
-                poly_fields.push(pol.clone());
-            }
-        }
-    }
 
     let f = ConstructorField {
         field_enum_type: None,
@@ -565,14 +547,13 @@ fn create_field(
 
     let element_field = match fd.category {
         FieldCategory::Array => Field::Array(ArrayField::new(element_field, fd.field_type.count.unwrap_or(0) as usize)),
-        FieldCategory::Vector => Field::Vector(VectorField::new(element_field, element_type, fd.clone(), qf_mapper)),
+        FieldCategory::Vector => Field::Vector(VectorField::new(element_field, element_type)),
         _ => return Ok(element_field),
     };
     Ok(element_field)
 }
 
 fn find_field_type(name: &str, field_type_map: &mut AHashMap<String, FieldType>) -> Result<FieldType, DemoParserError> {
-    //println!("{:?}", name);
     let captures = match RE.captures(name) {
         Some(captures) => captures,
         None => return Err(DemoParserError::MalformedMessage),
@@ -609,7 +590,6 @@ fn find_field_type(name: &str, field_type_map: &mut AHashMap<String, FieldType>)
         generic_type: None,
         count: None,
         element_type: None,
-        name: name.to_string(),
     };
 
     ft.generic_type = match captures.get(3) {
@@ -801,5 +781,4 @@ pub struct FieldType {
     pub pointer: bool,
     pub count: Option<i32>,
     pub element_type: Option<Box<FieldType>>,
-    pub name: String,
 }
