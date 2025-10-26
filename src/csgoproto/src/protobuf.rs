@@ -1102,8 +1102,6 @@ pub struct GlobalStatistics {
     pub active_survey_id: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag="14")]
     pub rtime32_cur: ::core::option::Option<u32>,
-    #[prost(uint32, optional, tag="15")]
-    pub rtime32_event_start: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag="16")]
     pub required_appid_version2: ::core::option::Option<u32>,
 }
@@ -1358,7 +1356,7 @@ pub struct PlayerQuestData {
 }
 /// Nested message and enum types in `PlayerQuestData`.
 pub mod player_quest_data {
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct QuestItemData {
         #[prost(uint64, optional, tag="1")]
         pub quest_id: ::core::option::Option<u64>,
@@ -1366,10 +1364,10 @@ pub mod player_quest_data {
         pub quest_normal_points_earned: ::core::option::Option<i32>,
         #[prost(int32, optional, tag="3")]
         pub quest_bonus_points_earned: ::core::option::Option<i32>,
-        #[prost(int32, optional, tag="4")]
-        pub quest_normal_points_required: ::core::option::Option<i32>,
-        #[prost(int32, optional, tag="5")]
-        pub quest_reward_xp: ::core::option::Option<i32>,
+        #[prost(int32, repeated, packed="false", tag="4")]
+        pub quest_normal_points_required: ::prost::alloc::vec::Vec<i32>,
+        #[prost(int32, repeated, packed="false", tag="5")]
+        pub quest_reward_xp: ::prost::alloc::vec::Vec<i32>,
         #[prost(int32, optional, tag="6")]
         pub quest_period: ::core::option::Option<i32>,
         #[prost(enumeration="super::QuestType", optional, tag="7", default="KEQuestTypeOperation")]
@@ -1698,8 +1696,6 @@ pub struct CMsgGccStrike15V2MatchmakingGc2ServerReserve {
     pub tv_relay_steamid: ::core::option::Option<u64>,
     #[prost(message, optional, tag="15")]
     pub pre_match_data: ::core::option::Option<CPreMatchInfoData>,
-    #[prost(uint32, optional, tag="16")]
-    pub rtime32_event_start: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag="17")]
     pub tv_control: ::core::option::Option<u32>,
     #[prost(message, repeated, tag="19")]
@@ -2080,13 +2076,6 @@ pub struct CMsgGccStrike15V2ClientRequestJoinServerData {
     pub errormsg: ::core::option::Option<::prost::alloc::string::String>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct CMsgGcCstrike15V2ClientRequestNewMission {
-    #[prost(uint32, optional, tag="2")]
-    pub mission_id: ::core::option::Option<u32>,
-    #[prost(uint32, optional, tag="3")]
-    pub campaign_id: ::core::option::Option<u32>,
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct CMsgGcCstrike15V2ClientRedeemMissionReward {
     #[prost(uint32, optional, tag="1")]
     pub campaign_id: ::core::option::Option<u32>,
@@ -2096,6 +2085,8 @@ pub struct CMsgGcCstrike15V2ClientRedeemMissionReward {
     pub redeemable_balance: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag="4")]
     pub expected_cost: ::core::option::Option<u32>,
+    #[prost(int32, optional, tag="5")]
+    pub bid_control: ::core::option::Option<i32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CMsgGcCstrike15V2ClientRedeemFreeReward {
@@ -2366,6 +2357,12 @@ pub struct CEconItemPreviewDataBlock {
     pub petindex: ::core::option::Option<u32>,
     #[prost(message, repeated, tag="20")]
     pub keychains: ::prost::alloc::vec::Vec<c_econ_item_preview_data_block::Sticker>,
+    #[prost(uint32, optional, tag="21")]
+    pub style: ::core::option::Option<u32>,
+    #[prost(message, repeated, tag="22")]
+    pub variations: ::prost::alloc::vec::Vec<c_econ_item_preview_data_block::Sticker>,
+    #[prost(uint32, optional, tag="23")]
+    pub upgrade_level: ::core::option::Option<u32>,
 }
 /// Nested message and enum types in `CEconItemPreviewDataBlock`.
 pub mod c_econ_item_preview_data_block {
@@ -2752,6 +2749,17 @@ pub struct CsoAccountXpShop {
     pub redeemable_balance: ::core::option::Option<u32>,
     #[prost(uint32, repeated, packed="false", tag="3")]
     pub xp_tracks: ::prost::alloc::vec::Vec<u32>,
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct CsoAccountXpShopBids {
+    #[prost(uint32, optional, tag="1")]
+    pub campaign_id: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag="2")]
+    pub redeem_id: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag="3")]
+    pub expected_cost: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag="4")]
+    pub generation_time: ::core::option::Option<u32>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct CsoAccountKeychainRemoveToolCharges {
@@ -3377,7 +3385,6 @@ pub enum ECsgoGcMsg {
     KEMsgGccStrike15V2DraftSummary = 9162,
     KEMsgGccStrike15V2ClientRequestJoinFriendData = 9163,
     KEMsgGccStrike15V2ClientRequestJoinServerData = 9164,
-    KEMsgGccStrike15V2ClientRequestNewMission = 9165,
     KEMsgGccStrike15V2Gc2ClientTournamentInfo = 9167,
     KEMsgGcGlobalGameSubscribe = 9168,
     KEMsgGcGlobalGameUnsubscribe = 9169,
@@ -3493,7 +3500,6 @@ impl ECsgoGcMsg {
             Self::KEMsgGccStrike15V2DraftSummary => "k_EMsgGCCStrike15_v2_DraftSummary",
             Self::KEMsgGccStrike15V2ClientRequestJoinFriendData => "k_EMsgGCCStrike15_v2_ClientRequestJoinFriendData",
             Self::KEMsgGccStrike15V2ClientRequestJoinServerData => "k_EMsgGCCStrike15_v2_ClientRequestJoinServerData",
-            Self::KEMsgGccStrike15V2ClientRequestNewMission => "k_EMsgGCCStrike15_v2_ClientRequestNewMission",
             Self::KEMsgGccStrike15V2Gc2ClientTournamentInfo => "k_EMsgGCCStrike15_v2_GC2ClientTournamentInfo",
             Self::KEMsgGcGlobalGameSubscribe => "k_EMsgGC_GlobalGame_Subscribe",
             Self::KEMsgGcGlobalGameUnsubscribe => "k_EMsgGC_GlobalGame_Unsubscribe",
@@ -3606,7 +3612,6 @@ impl ECsgoGcMsg {
             "k_EMsgGCCStrike15_v2_DraftSummary" => Some(Self::KEMsgGccStrike15V2DraftSummary),
             "k_EMsgGCCStrike15_v2_ClientRequestJoinFriendData" => Some(Self::KEMsgGccStrike15V2ClientRequestJoinFriendData),
             "k_EMsgGCCStrike15_v2_ClientRequestJoinServerData" => Some(Self::KEMsgGccStrike15V2ClientRequestJoinServerData),
-            "k_EMsgGCCStrike15_v2_ClientRequestNewMission" => Some(Self::KEMsgGccStrike15V2ClientRequestNewMission),
             "k_EMsgGCCStrike15_v2_GC2ClientTournamentInfo" => Some(Self::KEMsgGccStrike15V2Gc2ClientTournamentInfo),
             "k_EMsgGC_GlobalGame_Subscribe" => Some(Self::KEMsgGcGlobalGameSubscribe),
             "k_EMsgGC_GlobalGame_Unsubscribe" => Some(Self::KEMsgGcGlobalGameUnsubscribe),
@@ -6182,6 +6187,12 @@ pub struct CUserMsgParticleManager {
     pub set_vdata: ::core::option::Option<c_user_msg_particle_manager::SetVData>,
     #[prost(message, optional, tag="38")]
     pub set_material_override: ::core::option::Option<c_user_msg_particle_manager::SetMaterialOverride>,
+    #[prost(message, optional, tag="39")]
+    pub add_fan: ::core::option::Option<c_user_msg_particle_manager::AddFan>,
+    #[prost(message, optional, tag="40")]
+    pub update_fan: ::core::option::Option<c_user_msg_particle_manager::UpdateFan>,
+    #[prost(message, optional, tag="41")]
+    pub set_particle_cluster_growth: ::core::option::Option<c_user_msg_particle_manager::SetParticleClusterGrowth>,
 }
 /// Nested message and enum types in `CUserMsg_ParticleManager`.
 pub mod c_user_msg_particle_manager {
@@ -6492,6 +6503,57 @@ pub mod c_user_msg_particle_manager {
         pub material_name: ::core::option::Option<::prost::alloc::string::String>,
         #[prost(bool, optional, tag="2")]
         pub include_children: ::core::option::Option<bool>,
+    }
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AddFan {
+        #[prost(bool, optional, tag="1")]
+        pub active: ::core::option::Option<bool>,
+        #[prost(message, optional, tag="2")]
+        pub bounds_mins: ::core::option::Option<super::CMsgVector>,
+        #[prost(message, optional, tag="3")]
+        pub bounds_maxs: ::core::option::Option<super::CMsgVector>,
+        #[prost(message, optional, tag="4")]
+        pub fan_origin: ::core::option::Option<super::CMsgVector>,
+        #[prost(message, optional, tag="5")]
+        pub fan_origin_offset: ::core::option::Option<super::CMsgVector>,
+        #[prost(message, optional, tag="6")]
+        pub fan_direction: ::core::option::Option<super::CMsgVector>,
+        #[prost(float, optional, tag="7")]
+        pub force: ::core::option::Option<f32>,
+        #[prost(string, optional, tag="8")]
+        pub fan_force_curve: ::core::option::Option<::prost::alloc::string::String>,
+        #[prost(bool, optional, tag="9")]
+        pub falloff: ::core::option::Option<bool>,
+        #[prost(bool, optional, tag="10")]
+        pub pull_towards_point: ::core::option::Option<bool>,
+        #[prost(float, optional, tag="11")]
+        pub curve_min_dist: ::core::option::Option<f32>,
+        #[prost(float, optional, tag="12")]
+        pub curve_max_dist: ::core::option::Option<f32>,
+    }
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct UpdateFan {
+        #[prost(bool, optional, tag="1")]
+        pub active: ::core::option::Option<bool>,
+        #[prost(message, optional, tag="2")]
+        pub fan_origin: ::core::option::Option<super::CMsgVector>,
+        #[prost(message, optional, tag="3")]
+        pub fan_origin_offset: ::core::option::Option<super::CMsgVector>,
+        #[prost(message, optional, tag="4")]
+        pub fan_direction: ::core::option::Option<super::CMsgVector>,
+        #[prost(float, optional, tag="7")]
+        pub fan_ramp_ratio: ::core::option::Option<f32>,
+        #[prost(message, optional, tag="5")]
+        pub bounds_mins: ::core::option::Option<super::CMsgVector>,
+        #[prost(message, optional, tag="6")]
+        pub bounds_maxs: ::core::option::Option<super::CMsgVector>,
+    }
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct SetParticleClusterGrowth {
+        #[prost(float, optional, tag="1")]
+        pub duration: ::core::option::Option<f32>,
+        #[prost(message, optional, tag="2")]
+        pub origin: ::core::option::Option<super::CMsgVector>,
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -6914,7 +6976,6 @@ pub enum EBaseUserMessages {
     UmAnimGraphUpdate = 149,
     UmHapticsManagerPulse = 150,
     UmHapticsManagerEffect = 151,
-    UmCommandQueueState = 152,
     UmUpdateCssClasses = 153,
     UmServerFrameTime = 154,
     UmLagCompensationError = 155,
@@ -6974,7 +7035,6 @@ impl EBaseUserMessages {
             Self::UmAnimGraphUpdate => "UM_AnimGraphUpdate",
             Self::UmHapticsManagerPulse => "UM_HapticsManagerPulse",
             Self::UmHapticsManagerEffect => "UM_HapticsManagerEffect",
-            Self::UmCommandQueueState => "UM_CommandQueueState",
             Self::UmUpdateCssClasses => "UM_UpdateCssClasses",
             Self::UmServerFrameTime => "UM_ServerFrameTime",
             Self::UmLagCompensationError => "UM_LagCompensationError",
@@ -7031,7 +7091,6 @@ impl EBaseUserMessages {
             "UM_AnimGraphUpdate" => Some(Self::UmAnimGraphUpdate),
             "UM_HapticsManagerPulse" => Some(Self::UmHapticsManagerPulse),
             "UM_HapticsManagerEffect" => Some(Self::UmHapticsManagerEffect),
-            "UM_CommandQueueState" => Some(Self::UmCommandQueueState),
             "UM_UpdateCssClasses" => Some(Self::UmUpdateCssClasses),
             "UM_ServerFrameTime" => Some(Self::UmServerFrameTime),
             "UM_LagCompensationError" => Some(Self::UmLagCompensationError),
@@ -7166,6 +7225,9 @@ pub enum ParticleMessage {
     GameParticleManagerEventDestroyPhysicsSim = 33,
     GameParticleManagerEventSetVdata = 34,
     GameParticleManagerEventSetMaterialOverride = 35,
+    GameParticleManagerEventAddFan = 36,
+    GameParticleManagerEventUpdateFan = 37,
+    GameParticleManagerEventSetClusterGrowth = 38,
 }
 impl ParticleMessage {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -7210,6 +7272,9 @@ impl ParticleMessage {
             Self::GameParticleManagerEventDestroyPhysicsSim => "GAME_PARTICLE_MANAGER_EVENT_DESTROY_PHYSICS_SIM",
             Self::GameParticleManagerEventSetVdata => "GAME_PARTICLE_MANAGER_EVENT_SET_VDATA",
             Self::GameParticleManagerEventSetMaterialOverride => "GAME_PARTICLE_MANAGER_EVENT_SET_MATERIAL_OVERRIDE",
+            Self::GameParticleManagerEventAddFan => "GAME_PARTICLE_MANAGER_EVENT_ADD_FAN",
+            Self::GameParticleManagerEventUpdateFan => "GAME_PARTICLE_MANAGER_EVENT_UPDATE_FAN",
+            Self::GameParticleManagerEventSetClusterGrowth => "GAME_PARTICLE_MANAGER_EVENT_SET_CLUSTER_GROWTH",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -7251,6 +7316,9 @@ impl ParticleMessage {
             "GAME_PARTICLE_MANAGER_EVENT_DESTROY_PHYSICS_SIM" => Some(Self::GameParticleManagerEventDestroyPhysicsSim),
             "GAME_PARTICLE_MANAGER_EVENT_SET_VDATA" => Some(Self::GameParticleManagerEventSetVdata),
             "GAME_PARTICLE_MANAGER_EVENT_SET_MATERIAL_OVERRIDE" => Some(Self::GameParticleManagerEventSetMaterialOverride),
+            "GAME_PARTICLE_MANAGER_EVENT_ADD_FAN" => Some(Self::GameParticleManagerEventAddFan),
+            "GAME_PARTICLE_MANAGER_EVENT_UPDATE_FAN" => Some(Self::GameParticleManagerEventUpdateFan),
+            "GAME_PARTICLE_MANAGER_EVENT_SET_CLUSTER_GROWTH" => Some(Self::GameParticleManagerEventSetClusterGrowth),
             _ => None,
         }
     }
@@ -7550,6 +7618,10 @@ pub struct CclcMsgDiagnostic {
     pub system_specs: ::core::option::Option<CMsgSource2SystemSpecs>,
     #[prost(message, optional, tag="2")]
     pub vprof_report: ::core::option::Option<CMsgSource2VProfLiteReport>,
+    #[prost(message, optional, tag="3")]
+    pub downstream_flow: ::core::option::Option<CMsgSource2NetworkFlowQuality>,
+    #[prost(message, optional, tag="4")]
+    pub upstream_flow: ::core::option::Option<CMsgSource2NetworkFlowQuality>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CSource2MetricsMatchPerfSummaryNotification {
@@ -7576,6 +7648,10 @@ pub mod c_source2_metrics_match_perf_summary_notification {
         pub profile: ::core::option::Option<super::CMsgSource2VProfLiteReport>,
         #[prost(uint32, optional, tag="3")]
         pub build_id: ::core::option::Option<u32>,
+        #[prost(message, optional, tag="4")]
+        pub downstream_flow: ::core::option::Option<super::CMsgSource2NetworkFlowQuality>,
+        #[prost(message, optional, tag="5")]
+        pub upstream_flow: ::core::option::Option<super::CMsgSource2NetworkFlowQuality>,
         #[prost(fixed64, optional, tag="10")]
         pub steamid: ::core::option::Option<u64>,
     }
@@ -7865,7 +7941,7 @@ pub struct CsvcMsgPacketEntities {
     #[prost(message, repeated, tag="15")]
     pub alternate_baselines: ::prost::alloc::vec::Vec<csvc_msg_packet_entities::AlternateBaselineT>,
     #[prost(uint32, optional, tag="16")]
-    pub has_pvs_vis_bits: ::core::option::Option<u32>,
+    pub has_pvs_vis_bits_deprecated: ::core::option::Option<u32>,
     #[prost(sint32, repeated, tag="22")]
     pub cmd_recv_status: ::prost::alloc::vec::Vec<i32>,
     #[prost(message, optional, tag="19")]
@@ -7874,6 +7950,8 @@ pub struct CsvcMsgPacketEntities {
     pub cq_starved_command_ticks: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag="21")]
     pub cq_discarded_command_ticks: ::core::option::Option<u32>,
+    #[prost(message, optional, tag="23")]
+    pub outofpvs_entity_updates: ::core::option::Option<csvc_msg_packet_entities::OutofpvsEntityUpdatesT>,
     #[prost(bytes="bytes", optional, tag="999")]
     pub dev_padding: ::core::option::Option<::prost::bytes::Bytes>,
 }
@@ -7890,6 +7968,13 @@ pub mod csvc_msg_packet_entities {
     pub struct NonTransmittedEntitiesT {
         #[prost(int32, optional, tag="1")]
         pub header_count: ::core::option::Option<i32>,
+        #[prost(bytes="bytes", optional, tag="2")]
+        pub data: ::core::option::Option<::prost::bytes::Bytes>,
+    }
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct OutofpvsEntityUpdatesT {
+        #[prost(int32, optional, tag="1")]
+        pub count: ::core::option::Option<i32>,
         #[prost(bytes="bytes", optional, tag="2")]
         pub data: ::core::option::Option<::prost::bytes::Bytes>,
     }
@@ -8109,6 +8194,47 @@ pub struct CBidirMsgRebroadcastGameEvent {
 pub struct CBidirMsgRebroadcastSource {
     #[prost(int32, optional, tag="1")]
     pub eventsource: ::core::option::Option<i32>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CBidirMsgPredictionEvent {
+    #[prost(uint32, required, tag="1")]
+    pub event_id: u32,
+    #[prost(bytes="bytes", required, tag="2")]
+    pub event_data: ::prost::bytes::Bytes,
+    #[prost(uint32, optional, tag="3")]
+    pub sync_type: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag="4")]
+    pub sync_val_uint32: ::core::option::Option<u32>,
+}
+/// Nested message and enum types in `CBidirMsg_PredictionEvent`.
+pub mod c_bidir_msg_prediction_event {
+    #[derive(::strum::EnumIter)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum ESyncType {
+        StTick = 0,
+        StUserCmdNum = 1,
+    }
+    impl ESyncType {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::StTick => "ST_Tick",
+                Self::StUserCmdNum => "ST_UserCmdNum",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "ST_Tick" => Some(Self::StTick),
+                "ST_UserCmdNum" => Some(Self::StUserCmdNum),
+                _ => None,
+            }
+        }
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CMsgServerNetworkStats {
@@ -8661,6 +8787,7 @@ pub enum BidirectionalMessages {
     BiRebroadcastGameEvent = 16,
     BiRebroadcastSource = 17,
     BiGameEvent = 18,
+    BiPredictionEvent = 19,
 }
 impl BidirectionalMessages {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -8672,6 +8799,7 @@ impl BidirectionalMessages {
             Self::BiRebroadcastGameEvent => "bi_RebroadcastGameEvent",
             Self::BiRebroadcastSource => "bi_RebroadcastSource",
             Self::BiGameEvent => "bi_GameEvent",
+            Self::BiPredictionEvent => "bi_PredictionEvent",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -8680,6 +8808,7 @@ impl BidirectionalMessages {
             "bi_RebroadcastGameEvent" => Some(Self::BiRebroadcastGameEvent),
             "bi_RebroadcastSource" => Some(Self::BiRebroadcastSource),
             "bi_GameEvent" => Some(Self::BiGameEvent),
+            "bi_PredictionEvent" => Some(Self::BiPredictionEvent),
             _ => None,
         }
     }
@@ -8768,6 +8897,10 @@ pub struct CSubtickMoveStep {
     pub analog_forward_delta: ::core::option::Option<f32>,
     #[prost(float, optional, tag="5")]
     pub analog_left_delta: ::core::option::Option<f32>,
+    #[prost(float, optional, tag="6")]
+    pub analog_pitch_delta: ::core::option::Option<f32>,
+    #[prost(float, optional, tag="7")]
+    pub analog_yaw_delta: ::core::option::Option<f32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CBaseUserCmdPb {
@@ -8775,6 +8908,8 @@ pub struct CBaseUserCmdPb {
     pub legacy_command_number: ::core::option::Option<i32>,
     #[prost(int32, optional, tag="2")]
     pub client_tick: ::core::option::Option<i32>,
+    #[prost(uint32, optional, tag="17")]
+    pub prediction_offset_ticks_x256: ::core::option::Option<u32>,
     #[prost(message, optional, tag="3")]
     pub buttons_pb: ::core::option::Option<CInButtonStatePb>,
     #[prost(message, optional, tag="4")]

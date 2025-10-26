@@ -135,10 +135,7 @@ class SignatureTest(TestCase):
     def test_parse_voice_signature(self):
         parser = DemoParser(demo_path)
         voice = parser.parse_voice()
-        self.assertIsInstance(voice, dict)
-        for key, value in voice.items():
-            self.assertIsInstance(key, str)
-            self.assertIsInstance(value, bytes)
+        self.assertIsInstance(voice, list)
 
     def test_parse_ticks_signature(self):
         parser = DemoParser(demo_path)

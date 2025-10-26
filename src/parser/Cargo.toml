@@ -21,8 +21,6 @@ libc = "0.2.147"
 rayon = "1.7.0"
 proc-macro2 = "1.0.69"
 rand = "0.8.5"
-opus = { version = "0.3.0", optional = true}
-audiopus_sys = { version = "0.2.2", optional = true}
 bytes = "1.5.0"
 
 [dependencies.csgoproto]
@@ -34,7 +32,3 @@ overflow-checks = false
 
 [profile.release]
 debug = true
-
-[features]
-# default = ["voice"]
-voice = ["opus", "audiopus_sys"]
