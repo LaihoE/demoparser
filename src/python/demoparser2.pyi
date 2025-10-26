@@ -9,7 +9,14 @@ from typing import (
     Union,
     Protocol,
     type_check_only,
+    TypedDict
 )
+
+@type_check_only
+class VoiceData(TypedDict):
+    tick: int
+    steamid: int
+    bytes: bytes
 
 @type_check_only
 class WantedPropStateProtocol(Protocol):
@@ -46,7 +53,7 @@ class DemoParser:
         player: Optional[Sequence[str]] = None,
         other: Optional[Sequence[str]] = None,
     ) -> List[Tuple[str, pd.DataFrame]]: ...
-    def parse_voice(self) -> List[Dict]: ...
+    def parse_voice(self) -> List[VoiceData]: ...
     def parse_ticks(
         self,
         wanted_props: Sequence[str],

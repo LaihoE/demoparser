@@ -136,6 +136,11 @@ class SignatureTest(TestCase):
         parser = DemoParser(demo_path)
         voice = parser.parse_voice()
         self.assertIsInstance(voice, list)
+        for entry in voice:
+            self.assertEqual(set(entry.keys()), {"ticks", "steamid", "bytes"})
+            self.assertIsInstance(entry["tick"], int)
+            self.assertIsInstance(entry["steamid"], int)
+            self.assertIsInstance(entry["bytes"], bytes)
 
     def test_parse_ticks_signature(self):
         parser = DemoParser(demo_path)
