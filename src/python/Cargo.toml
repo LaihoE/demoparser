@@ -1,6 +1,6 @@
 [package]
 name = "demoparser2"
-version = "0.40.1"
+version = "0.40.2"
 edition = "2021"
 
 
