@@ -83,7 +83,7 @@ impl<'a> FirstPassParser<'a> {
         let frame = self.read_frame(demo_bytes)?;
         let bytes = self.slice_packet_bytes(demo_bytes, frame.size)?;
         if frame.demo_cmd != EDemoCommands::DemFileHeader {
-            return Err(DemoParserError::MalformedMessage)
+            return Err(DemoParserError::MalformedMessage);
         }
         self.parse_header(bytes)?;
         Ok(self.header.clone())
@@ -93,7 +93,9 @@ impl<'a> FirstPassParser<'a> {
         let mut reuseable_buffer = vec![0_u8; 100_000];
         // Loop that goes trough the entire file
         loop {
-            if demo_bytes.len() < self.ptr { break; }
+            if demo_bytes.len() < self.ptr {
+                break;
+            }
             if exit_early && self.cls_by_id.is_some() && !self.ge_list.is_empty() {
                 break;
             }
@@ -308,7 +310,7 @@ impl<'a> FirstPassParser<'a> {
         };
         self.header.insert("demo_file_stamp".to_string(), header.demo_file_stamp.to_string());
         self.header.insert("demo_version_guid".to_string(), header.demo_version_guid().to_string());
-        self.header.insert("network_protocol".to_string(), header.network_protocol().to_string());
+        self.header.insert("patch_version".to_string(), header.patch_version().to_string());
         self.header.insert("server_name".to_string(), header.server_name().to_string());
         self.header.insert("client_name".to_string(), header.client_name().to_string());
         self.header.insert("map_name".to_string(), header.map_name().to_string());
