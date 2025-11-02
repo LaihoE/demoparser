@@ -623,6 +623,7 @@ impl ConstructorField {
                     "float32" => self.find_float_decoder(qf_map),
                     "Vector" => self.find_vector_type(3, qf_map),
                     "Vector2D" => self.find_vector_type(2, qf_map),
+                    "VectorWS" => self.find_vector_type(3, qf_map),
                     "Vector4D" => self.find_vector_type(4, qf_map),
                     "uint64" => self.find_uint_decoder(),
                     "QAngle" => self.find_qangle_decoder(),
