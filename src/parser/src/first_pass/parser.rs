@@ -349,6 +349,8 @@ impl<'a> FirstPassParser<'a> {
             Err(_) => return Err(DemoParserError::OutOfBytesError),
             Ok(arr) => u32::from_le_bytes(arr) + 18,
         };
+        /* Remove for now. Seems to cause too many issues.
+
         let missing_percentage = 100.0 - (file_len as f32 / file_length_expected as f32 * 100.0);
         if missing_percentage > 10.0 {
             return Err(DemoParserError::DemoEndsEarly(format!(
@@ -358,6 +360,7 @@ impl<'a> FirstPassParser<'a> {
                 100.0 - (file_len as f32 / file_length_expected as f32 * 100.0),
             )));
         }
+        */
         // seems to be byte offset to where DEM_END command happens. After that comes Spawngroups and fileinfo. odd...
         let _no_clue_what_this_is = match bytes[8..12].try_into() {
             Err(_) => return Err(DemoParserError::OutOfBytesError),
