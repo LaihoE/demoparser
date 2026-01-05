@@ -205,6 +205,7 @@ pub static CUSTOM_PLAYER_PROP_IDS: phf::Map<&'static str, u32> = phf_map! {
     "weapon_paint_seed" => WEAPON_PAINT_SEED,
     "weapon_float" => WEAPON_FLOAT,
     "weapon_stickers" => WEAPON_STICKERS_ID,
+    "glove_skin" => GLOVE_SKIN,
 
     "usercmd_viewangle_x" => USERCMD_VIEWANGLE_X,
     "usercmd_viewangle_y" => USERCMD_VIEWANGLE_Y,
@@ -657,6 +658,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "glove_paint_id" => PropType::Custom,
     "glove_paint_seed" => PropType::Custom,
     "glove_paint_float" => PropType::Custom,
+    "glove_skin" => PropType::Custom,
     // Weapon
     "m_flAnimTime" => PropType::Weapon,
     "m_flSimulationTime"=> PropType::Weapon,
@@ -846,6 +848,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "glove_paint_id" => "glove_paint_id",
     "glove_paint_seed" => "glove_paint_seed",
     "glove_paint_float" => "glove_paint_float",
+    "glove_skin" => "glove_skin",
     "glove_item_idx" => "CCSPlayerPawn.m_iItemDefinitionIndex",
 
     "usercmd_viewangle_x" => "usercmd_viewangle_x",
