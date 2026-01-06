@@ -444,6 +444,7 @@ impl<'a> SecondPassParser<'a> {
             "CCSPlayerController.m_iCompTeammateColor" => return self.find_player_color(player, prop_info),
             "usercmd_input_history" => self.get_prop_from_ent(&USERCMD_INPUT_HISTORY_BASEID, entity_id),
             "glove_paint_id" => self.find_glove_skin_id(entity_id),
+            "glove_skin" => self.find_glove_skin(entity_id),
             "glove_paint_seed" => self.find_glove_paint_seed(entity_id),
             "glove_paint_float" => self.find_glove_paint_float(entity_id),
             _ => Err(PropCollectionError::UnknownCustomPropName),
@@ -975,6 +976,25 @@ impl<'a> SecondPassParser<'a> {
         }
     }
 
+    pub fn find_glove_skin(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
+        match self.get_prop_from_ent(&GLOVE_PAINT_ID, player_entid) {
+            Ok(Variant::F32(f)) => {
+                // The value is stored as a float for some reason
+                if f.fract() == 0.0 && f >= 0.0 {
+                    let idx = f as u32;
+                    match PAINTKITS.get(&idx) {
+                        Some(kit) => Ok(Variant::String(kit.to_string())),
+                        None => Err(PropCollectionError::GloveSkinNoSkinMapping),
+                    }
+                } else {
+                    return Err(PropCollectionError::GloveSkinFloatConvertionError);
+                }
+            }
+            Ok(_) => return Err(PropCollectionError::GloveSkinIdxIncorrectVariant),
+            Err(e) => return Err(e),
+        }
+    }
+
     pub fn find_glove_paint_seed(&self, player_entid: &i32) -> Result<Variant, PropCollectionError> {
         match self.get_prop_from_ent(&GLOVE_PAINT_SEED, player_entid) {
             Ok(p) => Ok(p),
@@ -1208,6 +1228,7 @@ pub enum PropCollectionError {
     InventoryMaxNotFound,
     GloveSkinFloatConvertionError,
     GloveSkinIdxIncorrectVariant,
+    GloveSkinNoSkinMapping,
 }
 impl std::error::Error for PropCollectionError {}
 impl fmt::Display for PropCollectionError {
