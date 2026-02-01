@@ -62,10 +62,15 @@ impl<'a> SecondPassParser<'a> {
         let mut buf = vec![0_u8; INNER_BUF_DEFAULT_LEN];
         let mut buf2 = vec![0_u8; OUTER_BUF_DEFAULT_LEN];
         loop {
-            if demo_bytes.len() < self.ptr {
+            // Need at least a few bytes to read frame header (3 varints, minimum 1 byte each)
+            if self.ptr + 3 > demo_bytes.len() {
                 break;
             }
-            let frame = self.read_frame(demo_bytes)?;
+            let frame = match self.read_frame(demo_bytes) {
+                Ok(f) => f,
+                Err(DemoParserError::OutOfBytesError) => break,
+                Err(e) => return Err(e),
+            };
             if frame.demo_cmd == DemAnimationData || frame.demo_cmd == DemSendTables || frame.demo_cmd == DemStringTables {
                 self.ptr += frame.size as usize;
                 continue;
