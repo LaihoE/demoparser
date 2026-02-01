@@ -93,13 +93,18 @@ impl<'a> FirstPassParser<'a> {
         let mut reuseable_buffer = vec![0_u8; 100_000];
         // Loop that goes trough the entire file
         loop {
-            if demo_bytes.len() < self.ptr {
+            // Need at least a few bytes to read frame header (3 varints, minimum 1 byte each)
+            if self.ptr + 3 > demo_bytes.len() {
                 break;
             }
             if exit_early && self.cls_by_id.is_some() && !self.ge_list.is_empty() {
                 break;
             }
-            let frame = self.read_frame(demo_bytes)?;
+            let frame = match self.read_frame(demo_bytes) {
+                Ok(f) => f,
+                Err(DemoParserError::OutOfBytesError) => break,
+                Err(e) => return Err(e),
+            };
             if self.is_packet_we_skip_on_first_pass(frame.demo_cmd) {
                 self.ptr += frame.size;
                 continue;
