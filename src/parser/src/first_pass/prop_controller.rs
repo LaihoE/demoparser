@@ -17,6 +17,7 @@ pub const WEAPON_SKIN_NAME: u32 = 420420420;
 pub const WEAPON_ORIGINGAL_OWNER_ID: u32 = 6942000;
 pub const MY_WEAPONS_OFFSET: u32 = 500000;
 pub const GRENADE_AMMO_ID: u32 = 1111111;
+pub const FLASHBANG_AMMO_ID: u32 = 2222222;
 pub const INVENTORY_ID: u32 = 100000000;
 pub const IS_ALIVE_ID: u32 = 100000001;
 pub const GAME_TIME_ID: u32 = 100000002;
@@ -485,7 +486,9 @@ impl PropController {
         if full_name.starts_with("CCSPlayerPawn") && prop_name.contains("CEconItemAttribute.m_iRawValue32") {
             f.prop_id = GLOVE_PAINT_ID as u32;
         }
-
+        if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo"{
+            f.prop_id = GRENADE_AMMO_ID;
+        }
         self.id += 1;
     }
 

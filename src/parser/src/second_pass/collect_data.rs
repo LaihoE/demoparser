@@ -787,14 +787,14 @@ impl<'a> SecondPassParser<'a> {
                 Some(weap_name) => {
                     match weap_name {
                         // Check how many flashbangs player has (only prop that works like this)
-                        &"flashbang" => {
+                        &"Flashbang" => {
                             if let Ok(Variant::U32(2)) = self.get_prop_from_ent(&GRENADE_AMMO_ID, player_entid) {
                                 *bitmask |= 1 << def_idx;
                             }
                             *bitmask |= 1 << def_idx;
                         }
                         // c4 seems bugged. Find c4 entity and check owner from it.
-                        &"c4" => {
+                        &"C4 Explosive" => {
                             if let Some(c4_owner_id) = self.find_c4_owner() {
                                 if *player_entid == c4_owner_id {
                                     *bitmask |= 1 << def_idx;
@@ -816,14 +816,14 @@ impl<'a> SecondPassParser<'a> {
                 Some(weap_name) => {
                     match weap_name {
                         // Check how many flashbangs player has (only prop that works like this)
-                        &"flashbang" => {
-                            if let Ok(Variant::U32(2)) = self.get_prop_from_ent(&GRENADE_AMMO_ID, player_entid) {
+                        &"Flashbang" => {
+                            if let Ok(Variant::U32(2)) = self.get_prop_from_ent(&FLASHBANG_AMMO_ID, player_entid) {
                                 names.push(def_idx);
                             }
                             names.push(def_idx);
                         }
                         // c4 seems bugged. Find c4 entity and check owner from it.
-                        &"c4" => {
+                        &"C4 Explosive" => {
                             if let Some(c4_owner_id) = self.find_c4_owner() {
                                 if *player_entid == c4_owner_id {
                                     names.push(def_idx);
@@ -846,14 +846,16 @@ impl<'a> SecondPassParser<'a> {
                 Some(weap_name) => {
                     match weap_name {
                         // Check how many flashbangs player has (only prop that works like this)
-                        &"flashbang" => {
-                            if let Ok(Variant::U32(2)) = self.get_prop_from_ent(&GRENADE_AMMO_ID, player_entid) {
+                        &"Flashbang" => {
+                            // println!("FLASHBANG");
+                            // println!("{:?}", self.get_prop_from_ent(&GRENADE_AMMO_ID, player_entid));
+                            if let Ok(Variant::U32(2)) = self.get_prop_from_ent(&FLASHBANG_AMMO_ID, player_entid) {
                                 names.push(weap_name.to_string());
                             }
                             names.push(weap_name.to_string());
                         }
                         // c4 seems bugged. Find c4 entity and check owner from it.
-                        &"c4" => {
+                        &"C4 Explosive" => {
                             if let Some(c4_owner_id) = self.find_c4_owner() {
                                 if *player_entid == c4_owner_id {
                                     names.push(weap_name.to_string());
