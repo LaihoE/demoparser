@@ -2,6 +2,8 @@ use super::read_bits::Bitreader;
 use super::read_bits::DemoParserError;
 use crate::first_pass::parser_settings::needs_velocity;
 use crate::first_pass::parser_settings::FirstPassParser;
+use crate::first_pass::prop_controller::FLASHBANG_AMMO_ID;
+use crate::first_pass::prop_controller::GRENADE_AMMO_ID;
 use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
 use crate::first_pass::prop_controller::GLOVE_PAINT_ID;
@@ -496,6 +498,10 @@ pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
     }
     if fi.prop_id == GLOVE_PAINT_ID {
         fi.prop_id = GLOVE_PAINT_ID + path.path[1] as u32;
+    }
+    // index 14 seems to be for flashbang ammo...
+    if fi.prop_id == GRENADE_AMMO_ID && path.path[2] == 14{
+        fi.prop_id = FLASHBANG_AMMO_ID;
     }
 
     if path.path[1] != 1 {
