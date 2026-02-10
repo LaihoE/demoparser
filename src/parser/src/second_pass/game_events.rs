@@ -668,8 +668,6 @@ impl<'a> SecondPassParser<'a> {
         }
         let purchases = SecondPassParser::combine_purchase_events(events);
 
-        println!("{:#?}", purchases);
-
         for purchase in purchases {
             let mut fields = vec![];
             if let Some(buy_zone_id) = self.prop_controller.special_ids.in_buy_zone {
