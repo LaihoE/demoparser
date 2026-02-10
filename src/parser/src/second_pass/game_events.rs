@@ -667,6 +667,9 @@ impl<'a> SecondPassParser<'a> {
             return;
         }
         let purchases = SecondPassParser::combine_purchase_events(events);
+
+        println!("{:#?}", purchases);
+
         for purchase in purchases {
             let mut fields = vec![];
             if let Some(buy_zone_id) = self.prop_controller.special_ids.in_buy_zone {
@@ -799,7 +802,7 @@ impl<'a> SecondPassParser<'a> {
             let mut fields = vec![];
             fields.extend(self.find_non_player_props());
             fields.push(EventField {
-                data: Some(Variant::U32(old + 1)),
+                data: Some(Variant::U32(*old)),
                 name: "round".to_string(),
             });
             fields.push(EventField {
