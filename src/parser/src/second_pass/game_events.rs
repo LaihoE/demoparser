@@ -35,6 +35,9 @@ use prost::Message;
 use serde::ser::SerializeMap;
 use serde::Serialize;
 use crate::second_pass::entities::EntityType;
+use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
+use crate::first_pass::prop_controller::ITEM_PURCHASE_HANDLE;
+
 
 static INTERNALEVENTFIELDS: &'static [&str] = &[
     "userid",
@@ -537,7 +540,6 @@ impl<'a> SecondPassParser<'a> {
         for event in events{
             if let GameEventInfo::PlayerConnect(id) = event{
                 let entity_id = &(id & 0x7ff);
-                // println!("eid {}", entity_id);
                 let team_num = match self.prop_controller.special_ids.teamnum {
                     Some(team_num_id) => match self.get_prop_from_ent(&team_num_id, entity_id) {
                         Ok(team_num) => match team_num {
@@ -581,21 +583,24 @@ impl<'a> SecondPassParser<'a> {
                 };
                 if let Some(e) = player_entid {
                     if e != PLAYER_ENTITY_HANDLE_MISSING && steamid != Some(0) && team_num != Some(SPECTATOR_TEAM_NUM) {
-                        match self.should_remove(steamid) {
-                            Some(eid) => {
-                                self.players.remove(&eid);
+                        if self.players.iter().all(|x| x.1.steamid != steamid){
+                            // println!("{:?} {:?}", steamid, self.players.iter().filter_map(|x| x.1.steamid).collect_vec());
+                            match self.should_remove(steamid) {
+                                Some(eid) => {
+                                    self.players.remove(&eid);
+                                }
+                                None => {}
                             }
-                            None => {}
+                            let p = PlayerMetaData {
+                                name,
+                                team_num,
+                                player_entity_id: player_entid,
+                                steamid,
+                                controller_entid: Some(*entity_id),
+                            };
+                            self.players.insert(e,p.clone());
+                            self.create_custom_event_player_connect(&p)?;
                         }
-                        let p = PlayerMetaData {
-                            name,
-                            team_num,
-                            player_entity_id: player_entid,
-                            steamid,
-                            controller_entid: Some(*entity_id),
-                        };
-                        self.create_custom_event_player_connect(&p)?;
-                        self.players.insert(e,p);
                     }
                 }
             }
@@ -1149,8 +1154,8 @@ impl<'a> SecondPassParser<'a> {
         &mut self,
         player_metadata: &PlayerMetaData,
     ) -> Result<(), DemoParserError> {
-        self.game_events_counter.insert("player_connect".to_string());
-        if !self.wanted_events.contains(&"player_connect".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
+        self.game_events_counter.insert("player_first_connect".to_string());
+        if !self.wanted_events.contains(&"player_first_connect".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
             return Ok(());
         }
         let mut fields = vec![];
@@ -1181,8 +1186,11 @@ impl<'a> SecondPassParser<'a> {
             name: "tick".to_string(),
         });
         fields.extend(self.find_non_player_props());
+        let entity_id = player_metadata.player_entity_id.unwrap_or(0);
+        fields.extend(self.find_extra_props_events(entity_id, "user"));
+
         let ge = GameEvent {
-            name: "player_connect".to_string(),
+            name: "player_first_connect".to_string(),
             fields,
             tick: self.tick,
         };
@@ -1331,20 +1339,21 @@ impl<'a> SecondPassParser<'a> {
             name: "player_inair".to_string(),
             data: msg.player_inair.map(Variant::Bool),
         });
-
         fields.push(EventField {
             name: "player_scoped".to_string(),
             data: msg.player_scoped.map(Variant::Bool),
         });
+        let entity_id = (msg.player.unwrap_or(0) & 0x7FF) as i32;
+        fields.push(self.create_player_name_field(entity_id, "user"));
+        fields.push(self.create_player_steamid_field(entity_id, "user"));
+        fields.extend(self.find_extra_props_events(entity_id, "user"));
 
         let ge = GameEvent {
             name: "fire_bullets".to_string(),
             fields,
             tick: self.tick,
         };
-
         self.game_events.push(ge);
-
         Ok(())
     }
 
@@ -1417,7 +1426,12 @@ impl<'a> SecondPassParser<'a> {
         let mut events = vec![];
         if let Some(fi) = field_info {
             if entity.entity_type == EntityType::PlayerController{
-                events.push(GameEventInfo::PlayerConnect(entity.entity_id));
+                if let Some(f) = field_info{
+                    let connect_ids = [special_ids.teamnum,  special_ids.player_name, special_ids.steamid, special_ids.player_pawn];
+                    if connect_ids.contains(&Some(f.prop_id)) {
+                        events.push(GameEventInfo::PlayerConnect(entity.entity_id));
+                    }
+                }
             }
 
             // round end
@@ -1448,8 +1462,6 @@ impl<'a> SecondPassParser<'a> {
                     events.push(GameEventInfo::MatchEnd());
                 }
             }
-            use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
-            use crate::first_pass::prop_controller::ITEM_PURCHASE_HANDLE;
             if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
                 events.push(GameEventInfo::WeaponCreateNCost((result.clone(), entity.entity_id, fi.prop_id)));
             }

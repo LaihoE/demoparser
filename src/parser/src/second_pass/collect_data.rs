@@ -182,7 +182,9 @@ impl<'a> SecondPassParser<'a> {
     }
     pub fn get_controller_prop(&self, prop_id: &u32, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
         match player.controller_entid {
-            Some(entid) => return self.get_prop_from_ent(prop_id, &entid),
+            Some(entid) => {
+                return self.get_prop_from_ent(prop_id, &entid)
+            },
             None => return Err(PropCollectionError::ControllerEntityIdNotSet),
         }
     }
