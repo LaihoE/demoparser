@@ -94,9 +94,32 @@ impl<'a> Parser<'a> {
         if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
             outputs.df = new_df;
         }
+        
+        Parser::remove_duplicate_player_connects(&mut outputs.game_events);
         Parser::add_item_purchase_sell_column(&mut outputs.game_events);
         Parser::remove_item_sold_events(&mut outputs.game_events);
         Ok(outputs)
+    }
+    fn remove_duplicate_player_connects(events: &mut Vec<GameEvent>){
+        let mut v = events.iter().filter(|x| x.name == "player_first_connect").collect_vec();
+        v.sort_by_key(|x| x.tick);
+        let mut ids = AHashMap::default();
+        for x in v{
+            for f in &x.fields{
+                if f.name == "steamid"{
+                    if let Some(Variant::U64(s)) = f.data{
+                        match ids.get(&s) {
+                            Some(_) => {},
+                            None => {
+                                ids.insert(s, x.clone());
+                            }
+                        }
+                    }
+                    }
+                }
+            }
+        events.retain(|x|x.name != "player_first_connect");
+        events.extend(ids.values().map(|x| x.clone()));
     }
 
     fn second_pass_single_threaded(&self, outer_bytes: &[u8], first_pass_output: FirstPassOutput) -> Result<DemoOutput, DemoParserError> {

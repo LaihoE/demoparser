@@ -482,15 +482,15 @@ impl<'a> SecondPassParser<'a> {
                     data: Some(Variant::I32(self.tick)),
                     name: "tick".to_string(),
                 });
+                fields.extend(self.find_non_player_props());
+                let ge = GameEvent {
+                    name: "server_cvar".to_string(),
+                    fields: fields.clone(),
+                    tick: self.tick,
+                };
+                self.game_events.push(ge);
+                self.game_events_counter.insert("server_cvar".to_string());
             }
-            fields.extend(self.find_non_player_props());
-            let ge = GameEvent {
-                name: "server_cvar".to_string(),
-                fields,
-                tick: self.tick,
-            };
-            self.game_events.push(ge);
-            self.game_events_counter.insert("server_cvar".to_string());
         }
         Ok(())
     }
@@ -583,23 +583,24 @@ impl<'a> SecondPassParser<'a> {
                 };
                 if let Some(e) = player_entid {
                     if e != PLAYER_ENTITY_HANDLE_MISSING && steamid != Some(0) && team_num != Some(SPECTATOR_TEAM_NUM) {
-                        if self.players.iter().all(|x| x.1.steamid != steamid){
-                            // println!("{:?} {:?}", steamid, self.players.iter().filter_map(|x| x.1.steamid).collect_vec());
-                            match self.should_remove(steamid) {
-                                Some(eid) => {
-                                    self.players.remove(&eid);
-                                }
-                                None => {}
+                        match self.should_remove(steamid) {
+                            Some(eid) => {
+                                self.players.remove(&eid);
                             }
-                            let p = PlayerMetaData {
-                                name,
-                                team_num,
-                                player_entity_id: player_entid,
-                                steamid,
-                                controller_entid: Some(*entity_id),
-                            };
-                            self.players.insert(e,p.clone());
+                            None => {}
+                        }
+                        let p = PlayerMetaData {
+                            name,
+                            team_num,
+                            player_entity_id: player_entid,
+                            steamid,
+                            controller_entid: Some(*entity_id),
+                        };
+                        if self.players.iter().all(|x| x.1.steamid != steamid){
                             self.create_custom_event_player_connect(&p)?;
+                            self.players.insert(e,p.clone());
+                        }else{
+                            self.players.insert(e,p.clone());
                         }
                     }
                 }
@@ -1171,6 +1172,10 @@ impl<'a> SecondPassParser<'a> {
             data: Some(Variant::String(player_metadata.clone().name.unwrap_or("".to_string()))),
             name: "name".to_string(),
         });
+        fields.push(EventField {
+            data: Some(Variant::I32(player_metadata.controller_entid.unwrap_or(0))),
+            name: "controller_entid".to_string(),
+        });
         let team=  match player_metadata.team_num {
             Some(1) => "spectator",
             Some(2) => "T",
@@ -1420,11 +1425,13 @@ impl<'a> SecondPassParser<'a> {
         _field: &Field,
         field_info: Option<FieldInfo>,
         prop_controller: &PropController,
-        special_ids: &SpecialIDs
+        special_ids: &SpecialIDs,
+        is_fullpacket: bool,
     ) -> Vec<GameEventInfo> {
         // Might want to start splitting this function
         let mut events = vec![];
         if let Some(fi) = field_info {
+
             if entity.entity_type == EntityType::PlayerController{
                 if let Some(f) = field_info{
                     let connect_ids = [special_ids.teamnum,  special_ids.player_name, special_ids.steamid, special_ids.player_pawn];
@@ -1432,8 +1439,12 @@ impl<'a> SecondPassParser<'a> {
                         events.push(GameEventInfo::PlayerConnect(entity.entity_id));
                     }
                 }
+                if fi.prop_id != 3014{
+                }
             }
-
+            if is_fullpacket{
+                return events;
+            }
             // round end
             if let Some(id) = prop_controller.special_ids.round_end_count {
                 if fi.prop_id == id {
