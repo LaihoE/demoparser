@@ -1,4 +1,4 @@
-use csgoproto::{EBaseGameEvents, EBaseUserMessages, ECstrike15UserMessages, NetMessages, SvcMessages};
+use csgoproto::{EBaseGameEvents, EBaseUserMessages, ECstrike15UserMessages, NetMessages, SvcMessages, ECsgoGameEvents};
 use parser::JsonValue::{self, *};
 use parser::{GameItems, Translation};
 use std::collections::{BTreeMap, HashMap};
@@ -46,7 +46,7 @@ fn create_net_message_enum() -> Result<()> {
     merged_enum.extend(EBaseUserMessages::iter().map(|e| (e as i32, e.as_str_name())));
     merged_enum.extend(EBaseGameEvents::iter().map(|e| (e as i32, e.as_str_name())));
     merged_enum.extend(ECstrike15UserMessages::iter().map(|e| (e as i32, e.as_str_name())));
-
+    merged_enum.extend(ECsgoGameEvents::iter().map(|e| (e as i32, e.as_str_name())));
     let enum_values = merged_enum.values().fold(String::new(), |output, value| append_line(output, 4, value));
     file.write_all(ENUM_TEMPLATE.replace("__$$__", &enum_values).as_bytes())?;
 

@@ -61,6 +61,7 @@ impl<'a> SecondPassParser<'a> {
         // re-use these to avoid allocation
         let mut buf = vec![0_u8; INNER_BUF_DEFAULT_LEN];
         let mut buf2 = vec![0_u8; OUTER_BUF_DEFAULT_LEN];
+
         loop {
             // Need at least a few bytes to read frame header (3 varints, minimum 1 byte each)
             if self.ptr + 3 > demo_bytes.len() {
@@ -227,6 +228,8 @@ impl<'a> SecondPassParser<'a> {
                 svc_VoiceData => self.parse_voice_data(msg_bytes),
                 GE_Source1LegacyGameEvent => self.parse_game_event(msg_bytes, &mut wrong_order_events),
                 svc_UserCmds => self.parse_user_cmd(msg_bytes),
+                GE_FireBulletsId => self.create_custom_event_fire_bullets(msg_bytes),
+                GE_PlayerBulletHitId => self.create_custom_event_player_bullet_hit(msg_bytes),
                 _ => Ok(()),
             };
             ok?

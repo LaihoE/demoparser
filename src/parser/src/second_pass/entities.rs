@@ -1,3 +1,4 @@
+use crate::first_pass::prop_controller::ITEM_PURCHASE_DEF_IDX;
 use crate::first_pass::prop_controller::is_grenade_or_weapon;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
@@ -246,7 +247,7 @@ impl<'a> SecondPassParser<'a> {
             }
             // Custom events
             if !is_fullpacket && !is_baseline {
-                events_to_emit.extend(SecondPassParser::listen_for_events(entity, &result, field, field_info, &self.prop_controller));
+                events_to_emit.extend(SecondPassParser::listen_for_events(entity, &result, field, field_info, &self.prop_controller, &self.prop_controller.special_ids));
             }
             // Debug
             if self.is_debug_mode {
@@ -268,6 +269,7 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(n_updates)
     }
+
     pub fn debug_inspect(
         _result: &Variant,
         field: &Field,

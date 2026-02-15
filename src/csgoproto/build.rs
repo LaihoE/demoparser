@@ -25,6 +25,7 @@ fn main() -> Result<()> {
         "GameTracking-CS2/Protobufs/cs_usercmd.proto",
         "GameTracking-CS2/Protobufs/usercmd.proto",
         "GameTracking-CS2/Protobufs/gameevents.proto",
+        "GameTracking-CS2/Protobufs/cs_gameevents.proto",
     ];
 
     prost_build::Config::new()
