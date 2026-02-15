@@ -1,9 +1,11 @@
+use crate::first_pass::prop_controller::PLAYER_ENTITY_HANDLE_MISSING;
 use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::PropInfo;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COST;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_COUNT;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_DEF_IDX;
 use crate::first_pass::prop_controller::ITEM_PURCHASE_NEW_DEF_IDX;
+use crate::first_pass::prop_controller::SPECTATOR_TEAM_NUM;
 use crate::first_pass::prop_controller::WEAPON_FLOAT;
 use crate::first_pass::prop_controller::WEAPON_PAINT_SEED;
 use crate::first_pass::read_bits::DemoParserError;
@@ -17,7 +19,10 @@ use crate::second_pass::collect_data::PropType;
 use crate::second_pass::entities::Entity;
 use crate::second_pass::entities::PlayerMetaData;
 use crate::second_pass::parser_settings::SecondPassParser;
+use crate::second_pass::parser_settings::SpecialIDs;
 use crate::second_pass::variants::*;
+use csgoproto::CMsgPlayerBulletHit;
+use csgoproto::CMsgTeFireBullets;
 use csgoproto::csvc_msg_game_event::KeyT;
 use csgoproto::maps::WEAPINDICIES;
 use csgoproto::CUserMessageSayText;
@@ -29,6 +34,7 @@ use itertools::Itertools;
 use prost::Message;
 use serde::ser::SerializeMap;
 use serde::Serialize;
+use crate::second_pass::entities::EntityType;
 
 static INTERNALEVENTFIELDS: &'static [&str] = &[
     "userid",
@@ -55,14 +61,16 @@ pub enum GameEventInfo {
     RoundWinReason(RoundWinReason),
     FreezePeriodStart(bool),
     MatchEnd(),
-    WeaponCreateHitem((Variant, i32)),
-    WeaponCreateNCost((Variant, i32)),
+    WeaponCreateHitem((Variant, i32, u32)),
+    WeaponCreateNCost((Variant, i32, u32)),
     WeaponCreateDefIdx((Variant, i32, u32)),
     WeaponPurchaseCount((Variant, i32, u32)),
+    WeaponCreateDefIdxNew((Variant, i32, u32)),
+    PlayerConnect(i32)
 }
 
 static ENTITIES_FIRST_EVENTS: &'static [&str] = &["inferno_startburn", "decoy_started", "inferno_expire"];
-static REMOVEDEVENTS: &'static [&str] = &["server_cvar"];
+static REMOVEDEVENTS: &'static [&str] = &["server_cvar", "player_connect"];
 
 const ENTITYIDNONE: i32 = 2047;
 // https://developer.valvesoftware.com/wiki/SteamID
@@ -508,6 +516,7 @@ impl<'a> SecondPassParser<'a> {
         })
     }
     pub fn emit_events(&mut self, events: Vec<GameEventInfo>) -> Result<(), DemoParserError> {
+        self.handle_player_connect(&events)?;
         if SecondPassParser::contains_round_end_event(&events) {
             self.create_custom_event_round_end(&events)?;
         }
@@ -524,6 +533,77 @@ impl<'a> SecondPassParser<'a> {
         self.create_custom_event_weapon_sold(&events);
         Ok(())
     }
+    fn handle_player_connect(&mut self, events: &[GameEventInfo]) -> Result<(), DemoParserError>{
+        for event in events{
+            if let GameEventInfo::PlayerConnect(id) = event{
+                let entity_id = &(id & 0x7ff);
+                // println!("eid {}", entity_id);
+                let team_num = match self.prop_controller.special_ids.teamnum {
+                    Some(team_num_id) => match self.get_prop_from_ent(&team_num_id, entity_id) {
+                        Ok(team_num) => match team_num {
+                            Variant::U32(team_num) => Some(team_num),
+                            _ => return Err(DemoParserError::IncorrectMetaDataProp),
+                        },
+                        Err(_) => None,
+                    },
+                    _ => None,
+                };
+
+                let name = match self.prop_controller.special_ids.player_name {
+                    Some(id) => match self.get_prop_from_ent(&id, entity_id) {
+                        Ok(team_num) => match team_num {
+                            Variant::String(team_num) => Some(team_num),
+                            _ => return Err(DemoParserError::IncorrectMetaDataProp),
+                        },
+                        Err(_) => None,
+                    },
+                    _ => None,
+                };
+                let steamid = match self.prop_controller.special_ids.steamid {
+                    Some(id) => match self.get_prop_from_ent(&id, entity_id) {
+                        Ok(team_num) => match team_num {
+                            Variant::U64(team_num) => Some(team_num),
+                            _ => return Err(DemoParserError::IncorrectMetaDataProp),
+                        },
+                        Err(_) => None,
+                    },
+                    _ => None,
+                };
+                let player_entid = match self.prop_controller.special_ids.player_pawn {
+                    Some(id) => match self.get_prop_from_ent(&id, entity_id) {
+                        Ok(player_entid) => match player_entid {
+                            Variant::U32(handle) => Some((handle & 0x7FF) as i32),
+                            _ => return Err(DemoParserError::IncorrectMetaDataProp),
+                        },
+                        Err(_) => None,
+                    },
+                    _ => None,
+                };
+                if let Some(e) = player_entid {
+                    if e != PLAYER_ENTITY_HANDLE_MISSING && steamid != Some(0) && team_num != Some(SPECTATOR_TEAM_NUM) {
+                        match self.should_remove(steamid) {
+                            Some(eid) => {
+                                self.players.remove(&eid);
+                            }
+                            None => {}
+                        }
+                        let p = PlayerMetaData {
+                            name,
+                            team_num,
+                            player_entity_id: player_entid,
+                            steamid,
+                            controller_entid: Some(*entity_id),
+                        };
+                        self.create_custom_event_player_connect(&p)?;
+                        self.players.insert(e,p);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+
     fn create_custom_event_weapon_sold(&mut self, events: &[GameEventInfo]) {
         // This event is always emitted and is always removed in the end.
         events.iter().for_each(|x| match x {
@@ -604,8 +684,8 @@ impl<'a> SecondPassParser<'a> {
             match (entry_1, entry_2, entry_3) {
                 (
                     Some(GameEventInfo::WeaponCreateDefIdx((Variant::U32(def), entid, prop_id))),
-                    Some(GameEventInfo::WeaponCreateNCost((Variant::I32(cost), _))),
-                    Some(GameEventInfo::WeaponCreateHitem((Variant::U64(handle), _))),
+                    Some(GameEventInfo::WeaponCreateNCost((Variant::I32(cost), _, _))),
+                    Some(GameEventInfo::WeaponCreateHitem((Variant::U64(handle), _, _))),
                 ) => {
                     match WEAPINDICIES.get(&(*def as u32)) {
                         Some(name) => {
@@ -631,7 +711,7 @@ impl<'a> SecondPassParser<'a> {
                 }
                 (
                     Some(GameEventInfo::WeaponCreateDefIdx((Variant::U32(def), entid, prop_id))),
-                    Some(GameEventInfo::WeaponCreateNCost((Variant::I32(cost), _))),
+                    Some(GameEventInfo::WeaponCreateNCost((Variant::I32(cost), _, _))),
                     _,
                 ) => {
                     match WEAPINDICIES.get(&(*def as u32)) {
@@ -670,8 +750,8 @@ impl<'a> SecondPassParser<'a> {
 
         for purchase in purchases {
             let mut fields = vec![];
-            if let Some(buy_zone_id) = self.prop_controller.special_ids.in_buy_zone {
-                if let Ok(Variant::Bool(true)) = self.get_prop_from_ent(&buy_zone_id, &purchase.entid) {
+            //if let Some(buy_zone_id) = self.prop_controller.special_ids.in_buy_zone {
+                // if let Ok(Variant::Bool(true)) = self.get_prop_from_ent(&buy_zone_id, &purchase.entid) {
                     if let Ok(player) = self.find_player_metadata(purchase.entid) {
                         match purchase.name {
                             Some(name) => {
@@ -746,8 +826,6 @@ impl<'a> SecondPassParser<'a> {
                         self.game_events.push(ge);
                         self.game_events_counter.insert("item_purchase".to_string());
                     }
-                }
-            }
         }
     }
     fn extract_win_reason(&self, events: &[GameEventInfo]) -> Option<Variant> {
@@ -981,6 +1059,296 @@ impl<'a> SecondPassParser<'a> {
         Ok(())
     }
 
+    pub fn create_custom_event_player_bullet_hit(
+        &mut self,
+        msg_bytes: &[u8],
+    ) -> Result<(), DemoParserError> {
+
+        self.game_events_counter
+            .insert("player_bullet_hit".to_string());
+
+        if !self.wanted_events.contains(&"player_bullet_hit".to_string())
+            && self.wanted_events.first() != Some(&"all".to_string())
+        {
+            return Ok(());
+        }
+
+        let msg = match CMsgPlayerBulletHit::decode(msg_bytes) {
+            Ok(msg) => msg,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
+
+        let mut fields = vec![];
+
+        fields.push(EventField {
+            name: "tick".to_string(),
+            data: Some(Variant::I32(self.tick)),
+        });
+
+        fields.push(EventField {
+            name: "round".to_string(),
+            data: self.find_current_round(),
+        });
+
+        fields.push(EventField {
+            name: "attacker_slot".to_string(),
+            data: msg.attacker_slot.map(Variant::I32),
+        });
+
+        fields.push(EventField {
+            name: "victim_slot".to_string(),
+            data: msg.victim_slot.map(Variant::I32),
+        });
+
+        fields.push(EventField {
+            name: "victim_pos_x".to_string(),
+            data: msg.victim_pos.as_ref().and_then(|v| v.x).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "victim_pos_y".to_string(),
+            data: msg.victim_pos.as_ref().and_then(|v| v.y).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "victim_pos_z".to_string(),
+            data: msg.victim_pos.as_ref().and_then(|v| v.z).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "hit_group".to_string(),
+            data: msg.hit_group.map(Variant::I32),
+        });
+
+        fields.push(EventField {
+            name: "damage".to_string(),
+            data: msg.damage.map(Variant::I32),
+        });
+
+        fields.push(EventField {
+            name: "penetration_count".to_string(),
+            data: msg.penetration_count.map(Variant::I32),
+        });
+
+        fields.push(EventField {
+            name: "is_kill".to_string(),
+            data: msg.is_kill.map(Variant::Bool),
+        });
+
+        let ge = GameEvent {
+            name: "player_bullet_hit".to_string(),
+            fields,
+            tick: self.tick,
+        };
+
+        self.game_events.push(ge);
+
+        Ok(())
+    }
+    pub fn create_custom_event_player_connect(
+        &mut self,
+        player_metadata: &PlayerMetaData,
+    ) -> Result<(), DemoParserError> {
+        self.game_events_counter.insert("player_connect".to_string());
+        if !self.wanted_events.contains(&"player_connect".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
+            return Ok(());
+        }
+        let mut fields = vec![];
+        fields.push(EventField {
+            data: Some(Variant::I32(player_metadata.player_entity_id.unwrap_or(0))),
+            name: "player_entity_id".to_string(),
+        });
+        fields.push(EventField {
+            data: Some(Variant::U64(player_metadata.steamid.unwrap_or(0))),
+            name: "steamid".to_string(),
+        });
+        fields.push(EventField {
+            data: Some(Variant::String(player_metadata.clone().name.unwrap_or("".to_string()))),
+            name: "name".to_string(),
+        });
+        let team=  match player_metadata.team_num {
+            Some(1) => "spectator",
+            Some(2) => "T",
+            Some(3) => "CT",
+            _ => "unknown team",
+        };
+        fields.push(EventField {
+            data: Some(Variant::String(team.to_string())),
+            name: "team".to_string(),
+        });
+        fields.push(EventField {
+            data: Some(Variant::I32(self.tick)),
+            name: "tick".to_string(),
+        });
+        fields.extend(self.find_non_player_props());
+        let ge = GameEvent {
+            name: "player_connect".to_string(),
+            fields,
+            tick: self.tick,
+        };
+        self.game_events.push(ge);
+    
+        Ok(())
+    }
+
+    pub fn create_custom_event_fire_bullets(
+        &mut self,
+        msg_bytes: &[u8],
+    ) -> Result<(), DemoParserError> {
+
+        self.game_events_counter
+            .insert("fire_bullets".to_string());
+
+        if !self.wanted_events.contains(&"fire_bullets".to_string())
+            && self.wanted_events.first() != Some(&"all".to_string())
+        {
+            return Ok(());
+        }
+
+        let msg = match CMsgTeFireBullets::decode(msg_bytes) {
+            Ok(msg) => msg,
+            Err(_) => return Err(DemoParserError::MalformedMessage),
+        };
+
+        let mut fields = vec![];
+
+        fields.push(EventField {
+            name: "tick".to_string(),
+            data: Some(Variant::I32(self.tick)),
+        });
+
+        fields.push(EventField {
+            name: "round".to_string(),
+            data: self.find_current_round(),
+        });
+
+        fields.push(EventField {
+            name: "origin_x".to_string(),
+            data: msg.origin.as_ref().and_then(|v| v.x).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "origin_y".to_string(),
+            data: msg.origin.as_ref().and_then(|v| v.y).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "origin_z".to_string(),
+            data: msg.origin.as_ref().and_then(|v| v.z).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "angles_x".to_string(),
+            data: msg.angles.as_ref().and_then(|a| a.x).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "angles_y".to_string(),
+            data: msg.angles.as_ref().and_then(|a| a.y).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "angles_z".to_string(),
+            data: msg.angles.as_ref().and_then(|a| a.z).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "ent_origin_x".to_string(),
+            data: msg.ent_origin.as_ref().and_then(|v| v.x).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "ent_origin_y".to_string(),
+            data: msg.ent_origin.as_ref().and_then(|v| v.y).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "ent_origin_z".to_string(),
+            data: msg.ent_origin.as_ref().and_then(|v| v.z).map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "weapon_id".to_string(),
+            data: msg.weapon_id.map(Variant::U32),
+        });
+
+        fields.push(EventField {
+            name: "item_def_index".to_string(),
+            data: msg.item_def_index.map(|v| Variant::U32(v as u32)),
+        });
+
+        fields.push(EventField {
+            name: "player".to_string(),
+            data: msg.player.map(Variant::U32),
+        });
+
+        fields.push(EventField {
+            name: "mode".to_string(),
+            data: msg.mode.map(Variant::U32),
+        });
+
+        fields.push(EventField {
+            name: "attack_type".to_string(),
+            data: msg.attack_type.map(Variant::U32),
+        });
+
+        fields.push(EventField {
+            name: "seed".to_string(),
+            data: msg.seed.map(Variant::U32),
+        });
+
+        fields.push(EventField {
+            name: "inaccuracy".to_string(),
+            data: msg.inaccuracy.map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "recoil_index".to_string(),
+            data: msg.recoil_index.map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "spread".to_string(),
+            data: msg.spread.map(Variant::F32),
+        });
+
+        fields.push(EventField {
+            name: "num_bullets_remaining".to_string(),
+            data: msg.num_bullets_remaining.map(Variant::U32),
+        });
+
+        fields.push(EventField {
+            name: "sound_type".to_string(),
+            data: msg.sound_type.map(Variant::I32),
+        });
+
+        fields.push(EventField {
+            name: "sound_dsp_effect".to_string(),
+            data: msg.sound_dsp_effect.map(Variant::U32),
+        });
+
+        fields.push(EventField {
+            name: "player_inair".to_string(),
+            data: msg.player_inair.map(Variant::Bool),
+        });
+
+        fields.push(EventField {
+            name: "player_scoped".to_string(),
+            data: msg.player_scoped.map(Variant::Bool),
+        });
+
+        let ge = GameEvent {
+            name: "fire_bullets".to_string(),
+            fields,
+            tick: self.tick,
+        };
+
+        self.game_events.push(ge);
+
+        Ok(())
+    }
+
+
     pub fn create_custom_event_rank_update(&mut self, msg_bytes: &[u8]) -> Result<(), DemoParserError> {
         self.game_events_counter.insert("rank_update".to_string());
         if !self.wanted_events.contains(&"rank_update".to_string()) && self.wanted_events.first() != Some(&"all".to_string()) {
@@ -1043,10 +1411,15 @@ impl<'a> SecondPassParser<'a> {
         _field: &Field,
         field_info: Option<FieldInfo>,
         prop_controller: &PropController,
+        special_ids: &SpecialIDs
     ) -> Vec<GameEventInfo> {
         // Might want to start splitting this function
         let mut events = vec![];
         if let Some(fi) = field_info {
+            if entity.entity_type == EntityType::PlayerController{
+                events.push(GameEventInfo::PlayerConnect(entity.entity_id));
+            }
+
             // round end
             if let Some(id) = prop_controller.special_ids.round_end_count {
                 if fi.prop_id == id {
@@ -1078,16 +1451,19 @@ impl<'a> SecondPassParser<'a> {
             use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
             use crate::first_pass::prop_controller::ITEM_PURCHASE_HANDLE;
             if fi.prop_id >= ITEM_PURCHASE_COST && fi.prop_id < ITEM_PURCHASE_COST + FLATTENED_VEC_MAX_LEN {
-                events.push(GameEventInfo::WeaponCreateNCost((result.clone(), entity.entity_id)));
+                events.push(GameEventInfo::WeaponCreateNCost((result.clone(), entity.entity_id, fi.prop_id)));
             }
             if fi.prop_id >= ITEM_PURCHASE_HANDLE && fi.prop_id < ITEM_PURCHASE_HANDLE + FLATTENED_VEC_MAX_LEN {
-                events.push(GameEventInfo::WeaponCreateHitem((result.clone(), entity.entity_id)));
+                events.push(GameEventInfo::WeaponCreateHitem((result.clone(), entity.entity_id, fi.prop_id)));
             }
             if fi.prop_id >= ITEM_PURCHASE_COUNT && fi.prop_id < ITEM_PURCHASE_COUNT + FLATTENED_VEC_MAX_LEN {
                 events.push(GameEventInfo::WeaponPurchaseCount((result.clone(), entity.entity_id, fi.prop_id)));
             }
             if fi.prop_id >= ITEM_PURCHASE_DEF_IDX && fi.prop_id < ITEM_PURCHASE_DEF_IDX + FLATTENED_VEC_MAX_LEN {
                 events.push(GameEventInfo::WeaponCreateDefIdx((result.clone(), entity.entity_id, fi.prop_id)));
+            }
+            if fi.prop_id >= ITEM_PURCHASE_NEW_DEF_IDX && fi.prop_id < ITEM_PURCHASE_NEW_DEF_IDX + FLATTENED_VEC_MAX_LEN {
+                events.push(GameEventInfo::WeaponCreateDefIdxNew((result.clone(), entity.entity_id, fi.prop_id)));
             }
         }
         events
