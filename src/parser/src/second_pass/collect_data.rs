@@ -1079,6 +1079,60 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
         }
+        if entity.entity_type == EntityType::PlayerController {
+            let team_num = match self.prop_controller.special_ids.teamnum {
+                Some(team_num_id) => match self.get_prop_from_ent(&team_num_id, entity_id) {
+                    Ok(Variant::U32(team_num)) => Some(team_num),
+                    Ok(_) => return Err(DemoParserError::IncorrectMetaDataProp),
+                    Err(_) => None,
+                },
+                _ => None,
+            };
+            let name = match self.prop_controller.special_ids.player_name {
+                Some(id) => match self.get_prop_from_ent(&id, entity_id) {
+                    Ok(Variant::String(name)) => Some(name),
+                    Ok(_) => return Err(DemoParserError::IncorrectMetaDataProp),
+                    Err(_) => None,
+                },
+                _ => None,
+            };
+            let steamid = match self.prop_controller.special_ids.steamid {
+                Some(id) => match self.get_prop_from_ent(&id, entity_id) {
+                    Ok(Variant::U64(sid)) => Some(sid),
+                    Ok(_) => return Err(DemoParserError::IncorrectMetaDataProp),
+                    Err(_) => None,
+                },
+                _ => None,
+            };
+            let player_entid = match self.prop_controller.special_ids.player_pawn {
+                Some(id) => match self.get_prop_from_ent(&id, entity_id) {
+                    Ok(Variant::U32(handle)) => Some((handle & 0x7FF) as i32),
+                    Ok(_) => return Err(DemoParserError::IncorrectMetaDataProp),
+                    Err(_) => None,
+                },
+                _ => None,
+            };
+            if let Some(e) = player_entid {
+                if e != PLAYER_ENTITY_HANDLE_MISSING && steamid != Some(0) && team_num != Some(SPECTATOR_TEAM_NUM) {
+                    match self.should_remove(steamid) {
+                        Some(eid) => {
+                            self.players.remove(&eid);
+                        }
+                        None => {}
+                    }
+                    self.players.insert(
+                        e,
+                        PlayerMetaData {
+                            name,
+                            team_num,
+                            player_entity_id: player_entid,
+                            steamid,
+                            controller_entid: Some(*entity_id),
+                        },
+                    );
+                }
+            }
+        }
         Ok(())
     }
     pub fn should_remove(&self, steamid: Option<u64>) -> Option<i32> {
