@@ -28,7 +28,6 @@ use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
 use pyo3::types::PyBytes;
 use pyo3::types::PyDict;
-use pyo3::types::PyList;
 use pyo3::IntoPyObjectExt;
 use pyo3::{intern, Python};
 use pyo3::{PyAny, PyResult};
@@ -37,6 +36,12 @@ use std::sync::Arc;
 
 use pyo3::create_exception;
 create_exception!(DemoParser, Exception, pyo3::exceptions::PyException);
+
+fn empty_pandas_dataframe(py: Python<'_>) -> PyResult<Py<PyAny>> {
+    let pandas = py.import("pandas")?;
+    let df = pandas.call_method0("DataFrame")?;
+    df.into_py_any(py)
+}
 
 #[derive(Clone)]
 struct PyVariant(Variant);
@@ -594,7 +599,8 @@ impl DemoParser {
         };
         let event_series = match series_from_event(&output.game_events, py) {
             Ok(ser) => ser,
-            Err(_e) => return Ok(PyList::empty(py).into()),
+            Err(DemoParserError::NoEvents) => return empty_pandas_dataframe(py),
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         Ok(event_series)
     }

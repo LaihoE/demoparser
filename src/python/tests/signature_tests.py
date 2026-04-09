@@ -94,6 +94,14 @@ class SignatureTest(TestCase):
         with self.assertRaises(TypeError):
             parser.parse_event(5)
 
+    def test_parse_event_without_matching_rows_returns_empty_dataframe(self):
+        parser = DemoParser(demo_path)
+
+        event = parser.parse_event("chat_message")
+
+        self.assertIsInstance(event, pd.DataFrame)
+        self.assertTrue(event.empty)
+
     def test_parse_events_signature(self):
         parser = DemoParser(demo_path)
 
