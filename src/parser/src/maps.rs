@@ -102,6 +102,7 @@ pub static BASETYPE_DECODERS: phf::Map<&'static str, Decoder> = phf_map! {
     "CUtlStringToken" =>      UnsignedDecoder,
     "CUtlSymbolLarge" =>      StringDecoder,
     "CGlobalSymbol" => StringDecoder,
+    "CUtlBinaryBlock" => BinaryBlockDecoder,
     "Quaternion" => NoscaleDecoder,
     "CTransform" => NoscaleDecoder,
     "HSequence" => Unsigned64Decoder,
