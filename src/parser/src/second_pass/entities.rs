@@ -315,7 +315,12 @@ impl<'a> SecondPassParser<'a> {
         Ok(())
     }
     fn create_new_entity(&mut self, bitreader: &mut Bitreader, entity_id: &i32, _events_to_emit: &mut Vec<GameEventInfo>) -> Result<(), DemoParserError> {
-        let cls_id: u32 = bitreader.read_nbits(8)?;
+        // Class id width is dynamic: ceil(log2(num_classes + 1)). Hardcoded 8 bits
+        // capped at 256 classes and broke on patches with more (14154+), causing
+        // bitstream desync and cascading EntityNotFound errors. cls_by_id.len()
+        // already equals num_classes + 1 (see first_pass::parser::parse_class_info).
+        let cls_bits = (self.cls_by_id.len() as f32).log2().ceil() as u32;
+        let cls_id: u32 = bitreader.read_nbits(cls_bits)?;
         // Both of these are not used. Don't think they are interesting for the parser
         let _serial = bitreader.read_nbits(NSERIALBITS)?;
         let _unknown = bitreader.read_varint();
