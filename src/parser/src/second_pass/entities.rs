@@ -1,4 +1,3 @@
-use crate::first_pass::prop_controller::ITEM_PURCHASE_DEF_IDX;
 use crate::first_pass::prop_controller::is_grenade_or_weapon;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
@@ -62,6 +61,7 @@ impl<'a> SecondPassParser<'a> {
         };
 
         let mut bitreader = Bitreader::new(msg.entity_data());
+        let mut offsets_reader = Bitreader::new(msg.serialized_entities());
         let mut entity_id: i32 = -1;
         let mut events_to_emit = vec![];
         for _ in 0..msg.updated_entries() {
@@ -83,6 +83,7 @@ impl<'a> SecondPassParser<'a> {
                     }
                 }
                 EntityCmd::CreateAndUpdate => {
+                    let _ = offsets_reader.read_varint();
                     self.create_new_entity(&mut bitreader, &entity_id, &mut events_to_emit)?;
                     self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
@@ -92,6 +93,17 @@ impl<'a> SecondPassParser<'a> {
                         if bitreader.read_nbits(2)? & 0x01 == 1 {
                             continue;
                         }
+                    }
+                    // Skip n bits if we are not interested in this entity.
+                    let mut bits_this_entity = offsets_reader.read_varint()?;
+                    if entity_id != 494 {
+                        while bits_this_entity > 0 {
+                            bitreader.refill();
+                            let smaller = u32::min(bits_this_entity, 56);
+                            bits_this_entity -= smaller;
+                            bitreader.consume(smaller);
+                        }
+                        continue;
                     }
                     self.update_entity(&mut bitreader, entity_id, false, &mut events_to_emit, is_fullpacket)?;
                 }
@@ -247,7 +259,15 @@ impl<'a> SecondPassParser<'a> {
             }
             // Custom events
             if !is_baseline {
-                events_to_emit.extend(SecondPassParser::listen_for_events(entity, &result, field, field_info, &self.prop_controller, &self.prop_controller.special_ids, is_fullpacket));
+                events_to_emit.extend(SecondPassParser::listen_for_events(
+                    entity,
+                    &result,
+                    field,
+                    field_info,
+                    &self.prop_controller,
+                    &self.prop_controller.special_ids,
+                    is_fullpacket,
+                ));
             }
             // Debug
             if self.is_debug_mode {
