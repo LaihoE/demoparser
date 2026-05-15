@@ -32,6 +32,12 @@ pub(crate) fn read_file(path: &str) -> JsonValue {
     let items = std::fs::read_to_string(path)
         .expect("Input json-like file")
         .trim_start_matches("\u{FEFF}")
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
         .replace(" n\\", "\\n");
     let (_, data) = json_like::<winnow::error::ContextError>.parse_peek(&items).expect("Parsed file data");
     data

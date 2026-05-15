@@ -380,6 +380,18 @@ pub fn _create_ge_tests() {
         let s = s + "use crate::second_pass::variants::Variant::*;";
         let s = s + &format!("let prop = ({:?}, {:#?});", name, v);
         let s = s.replace("[", "vec![");
+// FIX: 安全检查 — 防止目录穿越
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
         let s = s.replace("\")", "\".to_string())");
         let s = s.replace("\",", "\".to_string(),");
 
@@ -722,6 +734,12 @@ pub fn _create_tests() {
     custom.insert(PLAYER_Y_ID, "Y");
     custom.insert(PLAYER_Z_ID, "Z");
     custom.insert(TICK_ID, "tick");
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
     custom.insert(STEAMID_ID, "steamid");
     custom.insert(NAME_ID, "name");
     custom.insert(WEAPON_STICKERS_ID, "weapon_stickers");
@@ -729,6 +747,12 @@ pub fn _create_tests() {
 
     for (k, v) in d.df {
         if let Some(real_name) = d.prop_controller.id_to_name.get(&k) {
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
             let test_name = real_name.replace(".", "_");
             let s = "".to_string();
             let s = s + &format!("fn {}() {{", test_name);
