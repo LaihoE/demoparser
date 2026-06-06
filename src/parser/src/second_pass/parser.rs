@@ -262,14 +262,17 @@ impl<'a> SecondPassParser<'a> {
                 if let Some(Some(ent)) = self.entities.get_mut(entity_id as usize) {
                     let mut history = vec![];
                     for input in user_cmd.input_history {
+                        // view_angles may be absent on some entries; default the angle to (0, 0, 0)
+                        // rather than panicking, matching prost's default accessor behaviour.
+                        let view_angles = input.view_angles.clone().unwrap_or_default();
                         let ih = InputHistory {
                             player_tick_count: input.player_tick_count(),
                             player_tick_fraction: input.player_tick_fraction(),
                             render_tick_count: input.render_tick_count(),
                             render_tick_fraction: input.render_tick_fraction(),
-                            x: input.view_angles.expect("CsgoInputHistoryEntryPb has no CMsgQAngle").x(),
-                            y: input.view_angles.expect("CsgoInputHistoryEntryPb has no CMsgQAngle").y(),
-                            z: input.view_angles.expect("CsgoInputHistoryEntryPb has no CMsgQAngle").z(),
+                            x: view_angles.x(),
+                            y: view_angles.y(),
+                            z: view_angles.z(),
                         };
                         history.push(ih);
                     }
