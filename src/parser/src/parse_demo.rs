@@ -32,6 +32,10 @@ pub struct DemoOutput {
     pub convars: AHashMap<String, String>,
     pub header: Option<AHashMap<String, String>>,
     pub player_md: Vec<PlayerEndMetaData>,
+    /// Live player roster from CCSPlayerController entities (final per-player state,
+    /// deduplicated by steamid). Populated even when the end-of-match scoreboard message
+    /// is absent (community/casual demos). Fallback when `player_md` is empty.
+    pub roster: Vec<PlayerEndMetaData>,
     pub game_events_counter: AHashSet<String>,
     pub uniq_prop_names: Vec<String>,
     pub projectiles: Vec<ProjectileRecord>,
@@ -322,6 +326,22 @@ impl<'a> Parser<'a> {
             chat_messages: second_pass_outputs.iter().flat_map(|x| x.chat_messages.clone()).collect(),
             item_drops: second_pass_outputs.iter().flat_map(|x| x.item_drops.clone()).collect(),
             player_md: second_pass_outputs.iter().flat_map(|x| x.player_md.clone()).collect(),
+            roster: {
+                // Second-pass segments are sorted by ascending tick (sort_by_key(ptr) above);
+                // each captures a player's state at its last tick. Dedup by steamid keeping the
+                // LAST entry -> final name/team (after side swaps / renames).
+                let mut by_sid: std::collections::BTreeMap<u64, PlayerEndMetaData> = std::collections::BTreeMap::new();
+                for o in second_pass_outputs.iter() {
+                    for p in &o.roster {
+                        if let Some(sid) = p.steamid {
+                            if sid != 0 {
+                                by_sid.insert(sid, p.clone());
+                            }
+                        }
+                    }
+                }
+                by_sid.into_values().collect()
+            },
             game_events: second_pass_outputs.iter().flat_map(|x| x.game_events.clone()).collect(),
             skins: second_pass_outputs.iter().flat_map(|x| x.skins.clone()).collect(),
             convars: second_pass_outputs.iter().flat_map(|x| x.convars.clone()).collect(),

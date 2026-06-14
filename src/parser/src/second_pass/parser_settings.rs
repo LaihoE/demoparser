@@ -140,6 +140,15 @@ impl<'a> SecondPassParser<'a> {
             item_drops: self.item_drops,
             header: None,
             player_md: self.player_end_data,
+            roster: self
+                .players
+                .values()
+                .map(|p| PlayerEndMetaData {
+                    steamid: p.steamid,
+                    name: p.name.clone(),
+                    team_number: p.team_num.map(|t| t as i32),
+                })
+                .collect(),
             game_events_counter: self.game_events_counter,
             uniq_prop_names: self.uniq_prop_names,
             prop_info: PropController::new(vec![], vec![], AHashMap::default(), AHashMap::default(), false, &["none".to_string()], false),

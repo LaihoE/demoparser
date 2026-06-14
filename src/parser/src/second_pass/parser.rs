@@ -45,6 +45,10 @@ pub struct SecondPassOutput {
     pub convars: AHashMap<String, String>,
     pub header: Option<AHashMap<String, String>>,
     pub player_md: Vec<PlayerEndMetaData>,
+    /// Live player roster from CCSPlayerController entities (final per-player state).
+    /// Populated even when CCSUsrMsg_EndOfMatchAllPlayersData is absent (community/casual
+    /// demos), where `player_md` ends up empty. Use as a fallback when `player_md` is empty.
+    pub roster: Vec<PlayerEndMetaData>,
     pub game_events_counter: AHashSet<String>,
     pub uniq_prop_names: AHashSet<String>,
     pub prop_info: PropController,
