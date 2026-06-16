@@ -63,8 +63,13 @@ impl<'a> Parser<'a> {
         }
     }
     pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
+        let _prof = std::env::var("CS2_PROF").is_ok();
+        let _t = std::time::Instant::now();
         let mut first_pass_parser = FirstPassParser::new(&self.input);
-        let first_pass_output = first_pass_parser.parse_demo(&demo_bytes, false)?;
+        let first_pass_output = first_pass_parser.parse_demo(demo_bytes, false)?;
+        if _prof {
+            eprintln!("[prof] first_pass: {:.3}s", _t.elapsed().as_secs_f64());
+        }
         if self.parsing_mode == ParsingMode::Normal
             && check_multithreadability(&self.input.wanted_player_props)
             && !(self.parsing_mode == ParsingMode::ForceSingleThreaded)
@@ -125,15 +130,21 @@ impl<'a> Parser<'a> {
         events.extend(ids.values().map(|x| x.clone()));
     }
     fn second_pass_single_threaded(&self, outer_bytes: &[u8], first_pass_output: FirstPassOutput) -> Result<DemoOutput, DemoParserError> {
+        let prof = std::env::var("CS2_PROF").is_ok();
+        let mut t = std::time::Instant::now();
         let mut parser = SecondPassParser::new(first_pass_output.clone(), 16, true, None)?;
         parser.start(outer_bytes)?;
+        if prof { eprintln!("[prof] second_pass start(): {:.3}s", t.elapsed().as_secs_f64()); t = std::time::Instant::now(); }
         let second_pass_output = parser.create_output();
+        if prof { eprintln!("[prof] create_output: {:.3}s", t.elapsed().as_secs_f64()); t = std::time::Instant::now(); }
         let mut outputs = self.combine_outputs(&mut vec![second_pass_output], first_pass_output);
+        if prof { eprintln!("[prof] combine_outputs: {:.3}s", t.elapsed().as_secs_f64()); t = std::time::Instant::now(); }
         if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
             outputs.df = new_df;
         }
         Parser::add_item_purchase_sell_column(&mut outputs.game_events);
         Parser::remove_item_sold_events(&mut outputs.game_events);
+        if prof { eprintln!("[prof] post-proc: {:.3}s", t.elapsed().as_secs_f64()); }
         Ok(outputs)
     }
     fn second_pass_threaded_with_channels(

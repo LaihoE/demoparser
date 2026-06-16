@@ -35,6 +35,17 @@ use super::variants::InputHistory;
 const OUTER_BUF_DEFAULT_LEN: usize = 400_000;
 const INNER_BUF_DEFAULT_LEN: usize = 8192 * 15;
 
+// --- env-gated phase profiling (CS2_PROF=1) ---------------------------------
+#[inline]
+fn prof_on() -> bool {
+    static PROF: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *PROF.get_or_init(|| std::env::var("CS2_PROF").is_ok())
+}
+thread_local! {
+    static PROF_ENTS_NS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    static PROF_COLLECT_NS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
 #[derive(Debug)]
 pub struct SecondPassOutput {
     pub df: AHashMap<u32, PropColumn>,
@@ -104,6 +115,15 @@ impl<'a> SecondPassParser<'a> {
                 _ => Ok(()),
             };
             ok?;
+        }
+        if prof_on() {
+            let ents = PROF_ENTS_NS.with(|c| c.get());
+            let coll = PROF_COLLECT_NS.with(|c| c.get());
+            eprintln!(
+                "[prof] parse_packet_ents: {:.3}s | collect_*: {:.3}s",
+                ents as f64 / 1e9,
+                coll as f64 / 1e9
+            );
         }
         Ok(())
     }
@@ -210,9 +230,16 @@ impl<'a> SecondPassParser<'a> {
             let ok = match NetMessageType::from(msg_type as i32) {
                 svc_PacketEntities => {
                     if should_parse_entities {
-                        self.parse_packet_ents(&msg_bytes, is_fullpacket)?;
+                        let _pt = prof_on().then(std::time::Instant::now);
+                        self.parse_packet_ents(msg_bytes, is_fullpacket)?;
+                        if let Some(t) = _pt { PROF_ENTS_NS.with(|c| c.set(c.get() + t.elapsed().as_nanos() as u64)); }
                         if !is_fullpacket {
+                            let _ct = prof_on().then(std::time::Instant::now);
                             self.collect_entities();
+                            self.collect_infernos();
+                            self.collect_smokes();
+                            self.collect_bones();
+                            if let Some(t) = _ct { PROF_COLLECT_NS.with(|c| c.set(c.get() + t.elapsed().as_nanos() as u64)); }
                         }
                     }
                     Ok(())
