@@ -9,7 +9,6 @@ use crate::second_pass::entities::EntityType;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::PropColumn;
 use crate::second_pass::variants::VarVec;
-use ahash::AHashMap;
 use csgoproto::maps::AGENTSMAP;
 use csgoproto::maps::PAINTKITS;
 use csgoproto::maps::STICKER_ID_TO_NAME;
@@ -91,30 +90,23 @@ impl<'a> SecondPassParser<'a> {
                 continue;
             }
             if self.order_by_steamid {
-                if !self.df_per_player.contains_key(&player_steamid) {
-                    self.df_per_player.insert(player_steamid, AHashMap::default());
-                }
                 for prop_info in &self.prop_controller.prop_infos {
                     // find_prop borrows &self; resolve the value before the &mut df_per_player borrow.
                     let val = self.find_prop(prop_info, entity_id, player).ok();
                     self.df_per_player
-                        .get_mut(&player_steamid)
-                        .unwrap()
+                        .entry(player_steamid)
+                        .or_default()
                         .entry(prop_info.id)
                         .or_insert_with(PropColumn::new)
                         .push(val);
                 }
             } else {
                 for prop_info in &self.prop_controller.prop_infos {
-                    match self.find_prop(prop_info, entity_id, player) {
-                        Ok(prop) => {
-                            self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(Some(prop));
-                        }
-                        Err(_e) => {
-                            // Ultimate debugger is to print this error
-                            self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(None);
-                        }
-                    }
+                    let val = self.find_prop(prop_info, entity_id, player).ok();
+                    self.output
+                        .entry(prop_info.id)
+                        .or_insert_with(PropColumn::new)
+                        .push(val);
                 }
             }
         }
