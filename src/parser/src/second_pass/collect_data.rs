@@ -89,10 +89,11 @@ impl<'a> SecondPassParser<'a> {
             if !self.wanted_players.is_empty() && !self.wanted_players.contains(&player_steamid) {
                 continue;
             }
+            let mut velocity_indicies: Option<Vec<usize>> = None;
             if self.order_by_steamid {
                 for prop_info in &self.prop_controller.prop_infos {
                     // find_prop borrows &self; resolve the value before the &mut df_per_player borrow.
-                    let val = self.find_prop(prop_info, entity_id, player).ok();
+                    let val = self.find_prop_with_velocity_cache(prop_info, entity_id, player, &mut velocity_indicies);
                     self.df_per_player
                         .entry(player_steamid)
                         .or_default()
@@ -102,13 +103,30 @@ impl<'a> SecondPassParser<'a> {
                 }
             } else {
                 for prop_info in &self.prop_controller.prop_infos {
-                    let val = self.find_prop(prop_info, entity_id, player).ok();
+                    let val = self.find_prop_with_velocity_cache(prop_info, entity_id, player, &mut velocity_indicies);
                     self.output
                         .entry(prop_info.id)
                         .or_insert_with(PropColumn::new)
                         .push(val);
                 }
             }
+        }
+    }
+
+    #[inline(always)]
+    fn find_prop_with_velocity_cache(
+        &self,
+        prop_info: &PropInfo,
+        entity_id: &i32,
+        player: &PlayerMetaData,
+        velocity_indicies: &mut Option<Vec<usize>>,
+    ) -> Option<Variant> {
+        match prop_info.id {
+            VELOCITY_ID => self.collect_velocity_cached(player, velocity_indicies).ok(),
+            VELOCITY_X_ID => self.collect_velocity_axis_cached(player, CoordinateAxis::X, velocity_indicies).ok(),
+            VELOCITY_Y_ID => self.collect_velocity_axis_cached(player, CoordinateAxis::Y, velocity_indicies).ok(),
+            VELOCITY_Z_ID => self.collect_velocity_axis_cached(player, CoordinateAxis::Z, velocity_indicies).ok(),
+            _ => self.find_prop(prop_info, entity_id, player).ok(),
         }
     }
 
@@ -566,6 +584,16 @@ impl<'a> SecondPassParser<'a> {
         }
         return Err(PropCollectionError::PlayerNotFound);
     }
+    fn collect_velocity_cached(&self, player: &PlayerMetaData, indicies_cache: &mut Option<Vec<usize>>) -> Result<Variant, PropCollectionError> {
+        let indicies = self.cached_velocity_indicies(player, indicies_cache)?;
+        let x = self.velocity_from_indicies(indicies, CoordinateAxis::X)?;
+        let y = self.velocity_from_indicies(indicies, CoordinateAxis::Y)?;
+
+        if let (Variant::F32(x), Variant::F32(y)) = (x, y) {
+            return Ok(Variant::F32((f32::powi(x, 2) + f32::powi(y, 2)).sqrt()));
+        }
+        Err(PropCollectionError::VelocityNotFound)
+    }
     pub fn collect_velocity_axis(&self, player: &PlayerMetaData, axis: CoordinateAxis) -> Result<Variant, PropCollectionError> {
         if let Some(s) = player.steamid {
             let steamids = self.output.get(&STEAMID_ID);
@@ -573,6 +601,26 @@ impl<'a> SecondPassParser<'a> {
             return Ok(self.velocity_from_indicies(&indicies, axis)?);
         }
         return Err(PropCollectionError::PlayerNotFound);
+    }
+    fn collect_velocity_axis_cached(
+        &self,
+        player: &PlayerMetaData,
+        axis: CoordinateAxis,
+        indicies_cache: &mut Option<Vec<usize>>,
+    ) -> Result<Variant, PropCollectionError> {
+        let indicies = self.cached_velocity_indicies(player, indicies_cache)?;
+        self.velocity_from_indicies(indicies, axis)
+    }
+    fn cached_velocity_indicies<'b>(
+        &self,
+        player: &PlayerMetaData,
+        indicies_cache: &'b mut Option<Vec<usize>>,
+    ) -> Result<&'b [usize], PropCollectionError> {
+        if indicies_cache.is_none() {
+            let steamid = player.steamid.ok_or(PropCollectionError::PlayerNotFound)?;
+            *indicies_cache = Some(self.find_wanted_indicies(self.output.get(&STEAMID_ID), steamid));
+        }
+        Ok(indicies_cache.as_deref().unwrap_or(&[]))
     }
     fn find_most_recent_coordinate_idx(&self, optv: Option<&PropColumn>, wanted_steamid: u64) -> Option<usize> {
         if let Some(v) = optv {
