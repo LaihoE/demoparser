@@ -83,29 +83,29 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
 
-            for prop_info in &self.prop_controller.prop_infos {
-                let player_steamid = match player.steamid {
-                    Some(steamid) => steamid,
-                    None => 0,
-                };
-                if !self.wanted_players.is_empty() && !self.wanted_players.contains(&player_steamid) {
-                    continue;
-                }
-                if self.order_by_steamid && !self.df_per_player.contains_key(&player_steamid) {
+            // Player-constant work hoisted out of the per-prop loop: steamid, the wanted-player
+            // filter (same verdict for every prop -> skip the whole player), and the df_per_player
+            // bucket init. Behaviour-identical to the per-prop version.
+            let player_steamid = player.steamid.unwrap_or(0);
+            if !self.wanted_players.is_empty() && !self.wanted_players.contains(&player_steamid) {
+                continue;
+            }
+            if self.order_by_steamid {
+                if !self.df_per_player.contains_key(&player_steamid) {
                     self.df_per_player.insert(player_steamid, AHashMap::default());
                 }
-                if self.order_by_steamid {
-                    match self.find_prop(prop_info, entity_id, player) {
-                        Ok(prop) => {
-                            let df_this_player = self.df_per_player.get_mut(&player.steamid.unwrap_or(0)).unwrap();
-                            df_this_player.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(Some(prop.clone()));
-                        }
-                        Err(_e) => {
-                            let df_this_player = self.df_per_player.get_mut(&player.steamid.unwrap_or(0)).unwrap();
-                            df_this_player.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(None);
-                        }
-                    }
-                } else {
+                for prop_info in &self.prop_controller.prop_infos {
+                    // find_prop borrows &self; resolve the value before the &mut df_per_player borrow.
+                    let val = self.find_prop(prop_info, entity_id, player).ok();
+                    self.df_per_player
+                        .get_mut(&player_steamid)
+                        .unwrap()
+                        .entry(prop_info.id)
+                        .or_insert_with(PropColumn::new)
+                        .push(val);
+                }
+            } else {
+                for prop_info in &self.prop_controller.prop_infos {
                     match self.find_prop(prop_info, entity_id, player) {
                         Ok(prop) => {
                             self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(Some(prop));

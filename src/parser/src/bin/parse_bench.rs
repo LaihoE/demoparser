@@ -39,11 +39,6 @@ fn settings<'a>(huf: &'a Vec<(u8, u8)>) -> ParserInputs<'a> {
         wanted_ticks: vec![],
         parse_projectiles: false,
         parse_grenades: false,
-        parse_bomb: false,
-        parse_infernos: false,
-        parse_smokes: false,
-        parse_bones: false,
-        parse_poses: false,
         only_header: false,
         list_props: false,
         only_convars: false,
@@ -61,6 +56,18 @@ fn run_once(mmap: &[u8], huf: &Vec<(u8, u8)>, mode: ParsingMode) -> f64 {
     let secs = t.elapsed().as_secs_f64();
     // touch output so the optimizer can't elide the parse
     std::hint::black_box(&out.df);
+    // Deterministic golden checksum of the output DataFrame (CS2_CKSUM=1). DefaultHasher uses
+    // fixed keys, so the hash is stable across runs/builds — used for before/after identity checks.
+    if std::env::var("CS2_CKSUM").is_ok() {
+        use std::collections::BTreeMap;
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        let df: BTreeMap<_, _> = out.df.iter().collect();
+        format!("{:?}", df).hash(&mut h);
+        let dfp: BTreeMap<_, _> = out.df_per_player.iter().map(|(k, v)| (k, v.iter().collect::<BTreeMap<_, _>>())).collect();
+        format!("{:?}", dfp).hash(&mut h);
+        eprintln!("[cksum] df={:016x} cols={} per_player={}", h.finish(), out.df.len(), out.df_per_player.len());
+    }
     secs
 }
 
