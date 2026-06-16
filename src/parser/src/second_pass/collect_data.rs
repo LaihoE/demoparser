@@ -90,10 +90,11 @@ impl<'a> SecondPassParser<'a> {
                 continue;
             }
             let mut velocity_indicies: Option<Vec<usize>> = None;
+            let mut button_mask: Option<Option<u64>> = None;
             if self.order_by_steamid {
                 for prop_info in &self.prop_controller.prop_infos {
                     // find_prop borrows &self; resolve the value before the &mut df_per_player borrow.
-                    let val = self.find_prop_with_velocity_cache(prop_info, entity_id, player, &mut velocity_indicies);
+                    let val = self.find_prop_with_collect_cache(prop_info, entity_id, player, &mut velocity_indicies, &mut button_mask);
                     self.df_per_player
                         .entry(player_steamid)
                         .or_default()
@@ -103,7 +104,7 @@ impl<'a> SecondPassParser<'a> {
                 }
             } else {
                 for prop_info in &self.prop_controller.prop_infos {
-                    let val = self.find_prop_with_velocity_cache(prop_info, entity_id, player, &mut velocity_indicies);
+                    let val = self.find_prop_with_collect_cache(prop_info, entity_id, player, &mut velocity_indicies, &mut button_mask);
                     self.output
                         .entry(prop_info.id)
                         .or_insert_with(PropColumn::new)
@@ -114,18 +115,20 @@ impl<'a> SecondPassParser<'a> {
     }
 
     #[inline(always)]
-    fn find_prop_with_velocity_cache(
+    fn find_prop_with_collect_cache(
         &self,
         prop_info: &PropInfo,
         entity_id: &i32,
         player: &PlayerMetaData,
         velocity_indicies: &mut Option<Vec<usize>>,
+        button_mask: &mut Option<Option<u64>>,
     ) -> Option<Variant> {
         match prop_info.id {
             VELOCITY_ID => self.collect_velocity_cached(player, velocity_indicies).ok(),
             VELOCITY_X_ID => self.collect_velocity_axis_cached(player, CoordinateAxis::X, velocity_indicies).ok(),
             VELOCITY_Y_ID => self.collect_velocity_axis_cached(player, CoordinateAxis::Y, velocity_indicies).ok(),
             VELOCITY_Z_ID => self.collect_velocity_axis_cached(player, CoordinateAxis::Z, velocity_indicies).ok(),
+            _ if prop_info.prop_type == PropType::Button => self.get_button_prop_cached(prop_info, entity_id, button_mask).ok(),
             _ => self.find_prop(prop_info, entity_id, player).ok(),
         }
     }
@@ -182,6 +185,29 @@ impl<'a> SecondPassParser<'a> {
                 Ok(_) => return Err(PropCollectionError::ButtonMaskNotU64Variant),
                 Err(e) => Err(e),
             },
+        }
+    }
+    fn get_button_prop_cached(
+        &self,
+        prop_info: &PropInfo,
+        entity_id: &i32,
+        button_mask_cache: &mut Option<Option<u64>>,
+    ) -> Result<Variant, PropCollectionError> {
+        if button_mask_cache.is_none() {
+            *button_mask_cache = Some(match self.prop_controller.special_ids.buttons {
+                Some(button_id) => match self.get_prop_from_ent(&button_id, entity_id) {
+                    Ok(Variant::U64(mask)) => Some(mask),
+                    _ => None,
+                },
+                None => None,
+            });
+        }
+        match button_mask_cache.unwrap_or(None) {
+            Some(button_mask) => match BUTTONMAP.get(&prop_info.prop_name) {
+                Some(button_flag) => Ok(Variant::Bool(button_mask & button_flag != 0)),
+                None => Err(PropCollectionError::ButtonsMapNoEntryFound),
+            },
+            None => Err(PropCollectionError::ButtonsSpecialIDNone),
         }
     }
     pub fn get_rules_prop(&self, prop_info: &PropInfo) -> Result<Variant, PropCollectionError> {
