@@ -299,12 +299,100 @@ impl<'a> Parser<'a> {
 
     fn combine_outputs(&self, second_pass_outputs: &mut Vec<SecondPassOutput>, first_pass_output: FirstPassOutput) -> DemoOutput {
         // Combines all inner DemoOutputs into one big output
-        second_pass_outputs.sort_by_key(|x| x.ptr);
+        let mut outputs = std::mem::take(second_pass_outputs);
+        outputs.sort_by_key(|x| x.ptr);
 
-        let mut dfs = second_pass_outputs.iter().map(|x| x.df.clone()).collect();
+        if outputs.len() == 1 {
+            let output = outputs.pop().unwrap();
+            let mut prop_controller = first_pass_output.prop_controller.clone();
+            for prop in first_pass_output.added_temp_props {
+                prop_controller.wanted_player_props.retain(|x| x != &prop);
+                prop_controller.prop_infos.retain(|x| &x.prop_name != &prop);
+            }
+
+            let mut pp = AHashMap::default();
+            for (steamid, mut df) in output.df_per_player {
+                df.remove(&STEAMID_ID);
+                df.remove(&NAME_ID);
+                pp.insert(steamid, df);
+            }
+
+            let mut all_prop_names: Vec<String> = output.uniq_prop_names.into_iter().collect();
+            all_prop_names.sort();
+            all_prop_names.dedup();
+
+            let roster = {
+                let mut by_sid: std::collections::BTreeMap<u64, PlayerEndMetaData> = std::collections::BTreeMap::new();
+                for p in output.roster {
+                    if let Some(sid) = p.steamid {
+                        if sid != 0 {
+                            by_sid.insert(sid, p);
+                        }
+                    }
+                }
+                by_sid.into_values().collect()
+            };
+
+            return DemoOutput {
+                prop_controller,
+                chat_messages: output.chat_messages,
+                item_drops: output.item_drops,
+                player_md: output.player_md,
+                roster,
+                game_events: output.game_events,
+                skins: output.skins,
+                convars: output.convars,
+                df: output.df,
+                header: Some(first_pass_output.header),
+                game_events_counter: output.game_events_counter,
+                projectiles: output.projectiles,
+                voice_data: output.voice_data,
+                df_per_player: pp,
+                uniq_prop_names: all_prop_names,
+            };
+        }
+
+        let mut dfs = Vec::with_capacity(outputs.len());
+        let mut per_players: AHashMap<u64, Vec<AHashMap<u32, PropColumn>>> = AHashMap::default();
+        let mut all_game_events = AHashSet::default();
+        let mut all_prop_names = Vec::new();
+        let mut chat_messages = Vec::new();
+        let mut item_drops = Vec::new();
+        let mut player_md = Vec::new();
+        let mut roster_by_sid: std::collections::BTreeMap<u64, PlayerEndMetaData> = std::collections::BTreeMap::new();
+        let mut game_events = Vec::new();
+        let mut skins = Vec::new();
+        let mut convars = AHashMap::default();
+        let mut projectiles = Vec::new();
+        let mut voice_data = Vec::new();
+
+        for output in outputs {
+            dfs.push(output.df);
+            for event_name in output.game_events_counter {
+                all_game_events.insert(event_name);
+            }
+            all_prop_names.extend(output.uniq_prop_names);
+            for (steamid, df) in output.df_per_player {
+                per_players.entry(steamid).or_default().push(df);
+            }
+            chat_messages.extend(output.chat_messages);
+            item_drops.extend(output.item_drops);
+            player_md.extend(output.player_md);
+            for p in output.roster {
+                if let Some(sid) = p.steamid {
+                    if sid != 0 {
+                        roster_by_sid.insert(sid, p);
+                    }
+                }
+            }
+            game_events.extend(output.game_events);
+            skins.extend(output.skins);
+            convars.extend(output.convars);
+            projectiles.extend(output.projectiles);
+            voice_data.extend(output.voice_data);
+        }
+
         let all_dfs_combined = self.combine_dfs(&mut dfs, false);
-        let all_game_events: AHashSet<String> = AHashSet::from_iter(second_pass_outputs.iter().flat_map(|x| x.game_events_counter.iter().cloned()));
-        let mut all_prop_names: Vec<String> = Vec::from_iter(second_pass_outputs.iter().flat_map(|x| x.uniq_prop_names.iter().cloned()));
         all_prop_names.sort();
         all_prop_names.dedup();
         // Remove temp props
@@ -313,54 +401,28 @@ impl<'a> Parser<'a> {
             prop_controller.wanted_player_props.retain(|x| x != &prop);
             prop_controller.prop_infos.retain(|x| &x.prop_name != &prop);
         }
-        let per_players: Vec<AHashMap<u64, AHashMap<u32, PropColumn>>> = second_pass_outputs.iter().map(|x| x.df_per_player.clone()).collect();
-        let mut all_steamids = AHashSet::default();
-        for entry in &per_players {
-            for (k, _) in entry {
-                all_steamids.insert(k);
-            }
-        }
         let mut pp = AHashMap::default();
-        for steamid in all_steamids {
-            let mut v = vec![];
-            for output in &per_players {
-                if let Some(df) = output.get(&steamid) {
-                    v.push(df.clone());
-                }
-            }
+        for (steamid, mut v) in per_players {
             let combined = self.combine_dfs(&mut v, true);
-            pp.insert(*steamid, combined);
+            pp.insert(steamid, combined);
         }
 
         DemoOutput {
             prop_controller: prop_controller,
-            chat_messages: second_pass_outputs.iter().flat_map(|x| x.chat_messages.clone()).collect(),
-            item_drops: second_pass_outputs.iter().flat_map(|x| x.item_drops.clone()).collect(),
-            player_md: second_pass_outputs.iter().flat_map(|x| x.player_md.clone()).collect(),
-            roster: {
-                // Second-pass segments are sorted by ascending tick (sort_by_key(ptr) above);
-                // each captures a player's state at its last tick. Dedup by steamid keeping the
-                // LAST entry -> final name/team (after side swaps / renames).
-                let mut by_sid: std::collections::BTreeMap<u64, PlayerEndMetaData> = std::collections::BTreeMap::new();
-                for o in second_pass_outputs.iter() {
-                    for p in &o.roster {
-                        if let Some(sid) = p.steamid {
-                            if sid != 0 {
-                                by_sid.insert(sid, p.clone());
-                            }
-                        }
-                    }
-                }
-                by_sid.into_values().collect()
-            },
-            game_events: second_pass_outputs.iter().flat_map(|x| x.game_events.clone()).collect(),
-            skins: second_pass_outputs.iter().flat_map(|x| x.skins.clone()).collect(),
-            convars: second_pass_outputs.iter().flat_map(|x| x.convars.clone()).collect(),
+            chat_messages,
+            item_drops,
+            player_md,
+            // Second-pass segments are sorted by ascending tick. Each captures a player's state
+            // at its last tick; dedup by steamid keeping the LAST entry -> final name/team.
+            roster: roster_by_sid.into_values().collect(),
+            game_events,
+            skins,
+            convars,
             df: all_dfs_combined,
             header: Some(first_pass_output.header),
             game_events_counter: all_game_events,
-            projectiles: second_pass_outputs.iter().flat_map(|x| x.projectiles.clone()).collect(),
-            voice_data: second_pass_outputs.iter().flat_map(|x| x.voice_data.clone()).collect_vec(),
+            projectiles,
+            voice_data,
             df_per_player: pp,
             uniq_prop_names: all_prop_names,
         }

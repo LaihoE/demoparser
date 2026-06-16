@@ -74,6 +74,12 @@ pub struct SecondPassOutput {
 }
 impl<'a> SecondPassParser<'a> {
     pub fn start(&mut self, demo_bytes: &'a [u8]) -> Result<(), DemoParserError> {
+        if prof_on() {
+            PROF_ENTS_NS.with(|c| c.set(0));
+            PROF_COLLECT_NS.with(|c| c.set(0));
+            PROF_PATHS_NS.with(|c| c.set(0));
+            PROF_DECODE_NS.with(|c| c.set(0));
+        }
         let started_at = self.ptr;
         // re-use these to avoid allocation
         let mut buf = vec![0_u8; INNER_BUF_DEFAULT_LEN];

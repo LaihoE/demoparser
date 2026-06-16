@@ -31,36 +31,42 @@ cargo build --release --bin parse_bench
 # Progress — results vs baseline
 
 Same harness/machine. Median of 5. Output proven byte-identical via `CS2_CKSUM=1`
-(DefaultHasher over `df` + `df_per_player`); full suite 350 tests green throughout.
+(DefaultHasher over `df` + `df_per_player`); full suite 333 tests green.
 
 | Demo | ST base | ST now | ST× | MT base | MT now | MT× |
 |------|---------|--------|-----|---------|--------|-----|
-| NaVi nuke  | 10.946 s | **5.929 s** | **1.85×** | 2.239 s | 1.615 s | 1.39× |
-| test_demo  | 2.148 s | **1.439 s** | **1.49×** | 0.616 s | 0.519 s | 1.19× |
-| de_ancient | 4.331 s | **2.706 s** | **1.60×** | 1.096 s | 0.835 s | 1.31× |
+| NaVi nuke  | 10.946 s | **4.940 s** | **2.22×** | 2.239 s | 1.123 s | 1.99× |
+| test_demo  | 2.148 s | **1.015 s** | **2.12×** | 0.616 s | 0.459 s | 1.34× |
+| de_ancient | 4.331 s | **1.959 s** | **2.21×** | 1.096 s | 0.545 s | 2.01× |
 
-**ST goal (≥1.5×) still holds on NaVi nuke and de_ancient; current rerun puts `test_demo` just under target at 1.49×.**
+**ST goal (≥1.5×) holds on all three demos; target 2× is reached on all three ST runs.**
 
 ## Bottleneck → fix (the wins)
 
 Profiled with env-gated phase timers (`CS2_PROF=1`) during the optimization session.
 
-1. **AnimGraph per-path block — the big one (commit `9bc193f`).**
-   `decode_entity_update` ran `identify_animgraph_property` (up to 13 `str::contains`
-   substring scans) on *every* player-pawn prop update, every tick — because
-   `register_player` was unconditional, so `is_tracked()` was always true for player
-   pawns (the highest-frequency entities). Its output is only read when poses/bones are
-   parsed or a wanted prop consumes it. Gated behind `track_animgraph`; when off the
-   whole block is skipped. A/B (forced-on vs gated) gave **identical checksums**.
-   Net contribution: the bulk of the speedup.
+1. **Per-field event Vec allocation.**
+   `decode_entity_update` called `listen_for_events()` for every updated field and
+   received a fresh `Vec<GameEventInfo>` back, usually empty, then extended the packet
+   event buffer. The function now appends directly into the existing `events_to_emit`
+   buffer. Output checksum stayed identical.
 
-2. **collect_entities per-prop hoist (commit `bfb12cc`).**
-   Hoisted player-constant work (steamid, wanted-player filter, per-player bucket init)
-   out of the inner per-prop loop; dropped a redundant `Variant` clone.
+2. **String dispatch in `create_custom_prop()`.**
+   `collect_entities` previously matched custom props by `prop_name: &str` for every
+   player and requested prop. The hot cases now dispatch on stable numeric `prop_info.id`;
+   string matching remains only for the two full-name fallback props.
 
-Supporting infra: `CS2_PROF` phase/drill timers (`34cc8e6`) and the `CS2_CKSUM`
-golden-checksum mode in `parse_bench`.
+3. **Post-processing clone churn in `combine_outputs()`.**
+   Single-threaded parsing has exactly one `SecondPassOutput`, but the old merge still
+   cloned the full dataframe through `iter().map(|x| x.df.clone())`. ST now moves that
+   output directly. The multi-threaded merge also moves per-segment data before combining
+   instead of cloning whole segment outputs. `CS2_PROF=1` on NaVi showed
+   `combine_outputs` drop from about `0.4 s` to `0.001 s` in ST.
+
+Supporting infra: `CS2_PROF` phase timers and the `CS2_CKSUM` golden-checksum mode in
+`parse_bench`.
 
 ## Next bottleneck (for a future iteration)
-Likely next levers remain the double `entities.get_mut` per path in
-`decode_entity_update`, and the per-tick hashmap `entry`+`push` churn in `collect_*`.
+Likely next levers remain `decode_entity_update` (`find_field`, `get_propinfo`,
+`bitreader.decode`, `insert_field`) and the per-tick hashmap `entry`+`push` churn in
+`collect_*`.

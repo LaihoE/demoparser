@@ -255,7 +255,7 @@ impl<'a> SecondPassParser<'a> {
             }
             // Custom events
             if !is_baseline {
-                events_to_emit.extend(SecondPassParser::listen_for_events(entity, &result, field, field_info, &self.prop_controller, &self.prop_controller.special_ids, is_fullpacket));
+                SecondPassParser::listen_for_events(entity, &result, field, field_info, &self.prop_controller, &self.prop_controller.special_ids, is_fullpacket, events_to_emit);
             }
             // Debug
             if self.is_debug_mode {
@@ -272,7 +272,6 @@ impl<'a> SecondPassParser<'a> {
                     &entity_id,
                 );
             }
-
             SecondPassParser::insert_field(entity, result, field_info);
         }
         Ok(n_updates)
