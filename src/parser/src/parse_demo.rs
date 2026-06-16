@@ -392,7 +392,7 @@ impl<'a> Parser<'a> {
             voice_data.extend(output.voice_data);
         }
 
-        let all_dfs_combined = self.combine_dfs(&mut dfs, false);
+        let all_dfs_combined = self.combine_dfs(dfs, false);
         all_prop_names.sort();
         all_prop_names.dedup();
         // Remove temp props
@@ -402,8 +402,8 @@ impl<'a> Parser<'a> {
             prop_controller.prop_infos.retain(|x| &x.prop_name != &prop);
         }
         let mut pp = AHashMap::default();
-        for (steamid, mut v) in per_players {
-            let combined = self.combine_dfs(&mut v, true);
+        for (steamid, v) in per_players {
+            let combined = self.combine_dfs(v, true);
             pp.insert(steamid, combined);
         }
 
@@ -428,7 +428,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn combine_dfs(&self, v: &mut Vec<AHashMap<u32, PropColumn>>, remove_name_and_steamid: bool) -> AHashMap<u32, PropColumn> {
+    fn combine_dfs(&self, mut v: Vec<AHashMap<u32, PropColumn>>, remove_name_and_steamid: bool) -> AHashMap<u32, PropColumn> {
         let mut big: AHashMap<u32, PropColumn> = AHashMap::default();
         if v.len() == 1 {
             let mut result = v.remove(0);
@@ -440,19 +440,15 @@ impl<'a> Parser<'a> {
         }
 
         for part_df in v {
-            for (k, v) in part_df {
-                if remove_name_and_steamid {
-                    if k == &STEAMID_ID || k == &NAME_ID {
-                        continue;
-                    }
+            for (k, mut v) in part_df {
+                if remove_name_and_steamid && (k == STEAMID_ID || k == NAME_ID) {
+                    continue;
                 }
 
-                if big.contains_key(k) {
-                    if let Some(inner) = big.get_mut(k) {
-                        inner.extend_from(v)
-                    }
+                if let Some(inner) = big.get_mut(&k) {
+                    inner.extend_from(&mut v);
                 } else {
-                    big.insert(*k, v.clone());
+                    big.insert(k, v);
                 }
             }
         }
