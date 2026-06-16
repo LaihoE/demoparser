@@ -71,9 +71,11 @@ impl FieldPath {
         Ok(())
     }
     pub fn get_entry_mut(&mut self, idx: usize) -> Result<&mut i32, DemoParserError> {
-        match self.path.get_mut(idx) {
-            Some(entry) => Ok(entry),
-            None => return Err(DemoParserError::IllegalPathOp),
+        if idx < self.path.len() {
+            // `idx` was just checked against the fixed field-path length.
+            Ok(unsafe { self.path.get_unchecked_mut(idx) })
+        } else {
+            Err(DemoParserError::IllegalPathOp)
         }
     }
 }
