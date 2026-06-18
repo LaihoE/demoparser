@@ -63,6 +63,17 @@ Profiled with env-gated phase timers (`CS2_PROF=1`) during the optimization sess
    instead of cloning whole segment outputs. `CS2_PROF=1` on NaVi showed
    `combine_outputs` drop from about `0.4 s` to `0.001 s` in ST.
 
+4. **Serial dataframe merge in the multi-threaded path (`combine_dfs`).**
+   With the clone churn removed (#3), the MT merge still concatenated each prop column
+   across all chunks on a single thread — the dominant serial section (~`0.34 s` of
+   ~`0.5 s` serial on the 430 MB reference demo at 16 threads, the Amdahl ceiling behind
+   the MT scaling plateau). The merge now pre-groups columns into per-prop ordered buckets
+   (moving column structs, no row-data copy, offset order preserved) and concatenates each
+   prop's segments in parallel via rayon. `CS2_PROF` on the reference demo showed
+   `combine_dfs` drop from `0.337 s` to `0.226 s`. Columns are independent and per-prop
+   order is preserved, so the result is byte-identical (333 tests, `df` checksum unchanged
+   ST+MT); the ST path is unaffected (single chunk → early return).
+
 Supporting infra: `CS2_PROF` phase timers and the `CS2_CKSUM` golden-checksum mode in
 `parse_bench`.
 
