@@ -9,7 +9,6 @@ use crate::second_pass::entities::EntityType;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::PropColumn;
 use crate::second_pass::variants::VarVec;
-use ahash::AHashMap;
 use csgoproto::maps::AGENTSMAP;
 use csgoproto::maps::PAINTKITS;
 use csgoproto::maps::STICKER_ID_TO_NAME;
@@ -83,40 +82,54 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
 
-            for prop_info in &self.prop_controller.prop_infos {
-                let player_steamid = match player.steamid {
-                    Some(steamid) => steamid,
-                    None => 0,
-                };
-                if !self.wanted_players.is_empty() && !self.wanted_players.contains(&player_steamid) {
-                    continue;
+            // Player-constant work hoisted out of the per-prop loop: steamid, the wanted-player
+            // filter (same verdict for every prop -> skip the whole player), and the df_per_player
+            // bucket init. Behaviour-identical to the per-prop version.
+            let player_steamid = player.steamid.unwrap_or(0);
+            if !self.wanted_players.is_empty() && !self.wanted_players.contains(&player_steamid) {
+                continue;
+            }
+            let mut velocity_indicies: Option<Vec<usize>> = None;
+            let mut button_mask: Option<Option<u64>> = None;
+            if self.order_by_steamid {
+                for prop_info in &self.prop_controller.prop_infos {
+                    // find_prop borrows &self; resolve the value before the &mut df_per_player borrow.
+                    let val = self.find_prop_with_collect_cache(prop_info, entity_id, player, &mut velocity_indicies, &mut button_mask);
+                    self.df_per_player
+                        .entry(player_steamid)
+                        .or_default()
+                        .entry(prop_info.id)
+                        .or_insert_with(PropColumn::new)
+                        .push(val);
                 }
-                if self.order_by_steamid && !self.df_per_player.contains_key(&player_steamid) {
-                    self.df_per_player.insert(player_steamid, AHashMap::default());
-                }
-                if self.order_by_steamid {
-                    match self.find_prop(prop_info, entity_id, player) {
-                        Ok(prop) => {
-                            let df_this_player = self.df_per_player.get_mut(&player.steamid.unwrap_or(0)).unwrap();
-                            df_this_player.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(Some(prop.clone()));
-                        }
-                        Err(_e) => {
-                            let df_this_player = self.df_per_player.get_mut(&player.steamid.unwrap_or(0)).unwrap();
-                            df_this_player.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(None);
-                        }
-                    }
-                } else {
-                    match self.find_prop(prop_info, entity_id, player) {
-                        Ok(prop) => {
-                            self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(Some(prop));
-                        }
-                        Err(_e) => {
-                            // Ultimate debugger is to print this error
-                            self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(None);
-                        }
-                    }
+            } else {
+                for prop_info in &self.prop_controller.prop_infos {
+                    let val = self.find_prop_with_collect_cache(prop_info, entity_id, player, &mut velocity_indicies, &mut button_mask);
+                    self.output
+                        .entry(prop_info.id)
+                        .or_insert_with(PropColumn::new)
+                        .push(val);
                 }
             }
+        }
+    }
+
+    #[inline(always)]
+    fn find_prop_with_collect_cache(
+        &self,
+        prop_info: &PropInfo,
+        entity_id: &i32,
+        player: &PlayerMetaData,
+        velocity_indicies: &mut Option<Vec<usize>>,
+        button_mask: &mut Option<Option<u64>>,
+    ) -> Option<Variant> {
+        match prop_info.id {
+            VELOCITY_ID => self.collect_velocity_cached(player, velocity_indicies).ok(),
+            VELOCITY_X_ID => self.collect_velocity_axis_cached(player, CoordinateAxis::X, velocity_indicies).ok(),
+            VELOCITY_Y_ID => self.collect_velocity_axis_cached(player, CoordinateAxis::Y, velocity_indicies).ok(),
+            VELOCITY_Z_ID => self.collect_velocity_axis_cached(player, CoordinateAxis::Z, velocity_indicies).ok(),
+            _ if prop_info.prop_type == PropType::Button => self.get_button_prop_cached(prop_info, entity_id, button_mask).ok(),
+            _ => self.find_prop(prop_info, entity_id, player).ok(),
         }
     }
 
@@ -127,7 +140,7 @@ impl<'a> SecondPassParser<'a> {
             PropType::Steamid => return self.create_steamid(player),
             PropType::Player => return self.get_prop_from_ent(&prop_info.id, &entity_id),
             PropType::Team => return self.find_team_prop(&prop_info.id, &entity_id),
-            PropType::Custom => self.create_custom_prop(prop_info.prop_name.as_str(), entity_id, prop_info, player),
+            PropType::Custom => self.create_custom_prop(prop_info, entity_id, player),
             PropType::Weapon => return self.find_weapon_prop(&prop_info.id, &entity_id),
             PropType::Button => return self.get_button_prop(&prop_info, &entity_id),
             PropType::Controller => return self.get_controller_prop(&prop_info.id, player),
@@ -172,6 +185,29 @@ impl<'a> SecondPassParser<'a> {
                 Ok(_) => return Err(PropCollectionError::ButtonMaskNotU64Variant),
                 Err(e) => Err(e),
             },
+        }
+    }
+    fn get_button_prop_cached(
+        &self,
+        prop_info: &PropInfo,
+        entity_id: &i32,
+        button_mask_cache: &mut Option<Option<u64>>,
+    ) -> Result<Variant, PropCollectionError> {
+        if button_mask_cache.is_none() {
+            *button_mask_cache = Some(match self.prop_controller.special_ids.buttons {
+                Some(button_id) => match self.get_prop_from_ent(&button_id, entity_id) {
+                    Ok(Variant::U64(mask)) => Some(mask),
+                    _ => None,
+                },
+                None => None,
+            });
+        }
+        match button_mask_cache.unwrap_or(None) {
+            Some(button_mask) => match BUTTONMAP.get(&prop_info.prop_name) {
+                Some(button_flag) => Ok(Variant::Bool(button_mask & button_flag != 0)),
+                None => Err(PropCollectionError::ButtonsMapNoEntryFound),
+            },
+            None => Err(PropCollectionError::ButtonsSpecialIDNone),
         }
     }
     pub fn get_rules_prop(&self, prop_info: &PropInfo) -> Result<Variant, PropCollectionError> {
@@ -416,40 +452,42 @@ impl<'a> SecondPassParser<'a> {
             None => Err(PropCollectionError::SpecialidsEyeAnglesNotSet),
         }
     }
-    pub fn create_custom_prop(&self, prop_name: &str, entity_id: &i32, prop_info: &PropInfo, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
-        match prop_name {
-            "X" => self.collect_cell_coordinate_player(CoordinateAxis::X, entity_id),
-            "Y" => self.collect_cell_coordinate_player(CoordinateAxis::Y, entity_id),
-            "Z" => self.collect_cell_coordinate_player(CoordinateAxis::Z, entity_id),
-            "velocity" => self.collect_velocity(player),
-            "velocity_X" => self.collect_velocity_axis(player, CoordinateAxis::X),
-            "velocity_Y" => self.collect_velocity_axis(player, CoordinateAxis::Y),
-            "velocity_Z" => self.collect_velocity_axis(player, CoordinateAxis::Z),
-            "pitch" => self.find_pitch_or_yaw(entity_id, 0),
-            "yaw" => self.find_pitch_or_yaw(entity_id, 1),
-            "weapon_name" => self.find_weapon_name(entity_id),
-            "weapon_skin" => self.find_weapon_skin_from_player(entity_id),
-            "weapon_skin_id" => self.find_weapon_skin_id_from_player(entity_id),
-            "weapon_paint_seed" => self.find_skin_paint_seed(player),
-            "weapon_float" => self.find_skin_float(player),
-            "weapon_stickers" => self.find_stickers_from_active_weapon(player),
-            "active_weapon_original_owner" => self.find_weapon_original_owner(entity_id),
-            "inventory" => self.find_my_inventory(entity_id),
-            "inventory_as_ids" => self.find_my_inventory_as_ids(entity_id),
-            "inventory_as_bitmask" => self.find_my_inventory_as_bitmask(entity_id),
-            "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
-            "entity_id" => return Ok(Variant::I32(*entity_id)),
-            "is_alive" => return self.find_is_alive(entity_id),
-            "user_id" => return self.get_userid(player),
-            "is_airborne" => self.find_is_airborne(player),
-            "agent_skin" => return self.find_agent_skin(player),
-            "CCSPlayerController.m_iCompTeammateColor" => return self.find_player_color(player, prop_info),
-            "usercmd_input_history" => self.get_prop_from_ent(&USERCMD_INPUT_HISTORY_BASEID, entity_id),
-            "glove_paint_id" => self.find_glove_skin_id(entity_id),
-            "glove_skin" => self.find_glove_skin(entity_id),
-            "glove_paint_seed" => self.find_glove_paint_seed(entity_id),
-            "glove_paint_float" => self.find_glove_paint_float(entity_id),
-            _ => Err(PropCollectionError::UnknownCustomPropName),
+    pub fn create_custom_prop(&self, prop_info: &PropInfo, entity_id: &i32, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
+        match prop_info.id {
+            PLAYER_X_ID => self.collect_cell_coordinate_player(CoordinateAxis::X, entity_id),
+            PLAYER_Y_ID => self.collect_cell_coordinate_player(CoordinateAxis::Y, entity_id),
+            PLAYER_Z_ID => self.collect_cell_coordinate_player(CoordinateAxis::Z, entity_id),
+            VELOCITY_ID => self.collect_velocity(player),
+            VELOCITY_X_ID => self.collect_velocity_axis(player, CoordinateAxis::X),
+            VELOCITY_Y_ID => self.collect_velocity_axis(player, CoordinateAxis::Y),
+            VELOCITY_Z_ID => self.collect_velocity_axis(player, CoordinateAxis::Z),
+            PITCH_ID => self.find_pitch_or_yaw(entity_id, 0),
+            YAW_ID => self.find_pitch_or_yaw(entity_id, 1),
+            WEAPON_NAME_ID => self.find_weapon_name(entity_id),
+            WEAPON_SKIN_NAME => self.find_weapon_skin_from_player(entity_id),
+            WEAPON_SKIN_ID => self.find_weapon_skin_id_from_player(entity_id),
+            WEAPON_PAINT_SEED => self.find_skin_paint_seed(player),
+            WEAPON_FLOAT => self.find_skin_float(player),
+            WEAPON_STICKERS_ID => self.find_stickers_from_active_weapon(player),
+            WEAPON_ORIGINGAL_OWNER_ID => self.find_weapon_original_owner(entity_id),
+            INVENTORY_ID => self.find_my_inventory(entity_id),
+            INVENTORY_AS_IDS_ID => self.find_my_inventory_as_ids(entity_id),
+            INVENTORY_AS_IDS_BITMASK => self.find_my_inventory_as_bitmask(entity_id),
+            ENTITY_ID_ID => Ok(Variant::I32(*entity_id)),
+            IS_ALIVE_ID => self.find_is_alive(entity_id),
+            USERID_ID => self.get_userid(player),
+            IS_AIRBORNE_ID => self.find_is_airborne(player),
+            AGENT_SKIN_ID => self.find_agent_skin(player),
+            USERCMD_INPUT_HISTORY_BASEID => self.get_prop_from_ent(&USERCMD_INPUT_HISTORY_BASEID, entity_id),
+            GLOVE_PAINT_ID => self.find_glove_skin_id(entity_id),
+            GLOVE_SKIN => self.find_glove_skin(entity_id),
+            GLOVE_PAINT_SEED => self.find_glove_paint_seed(entity_id),
+            GLOVE_PAINT_FLOAT => self.find_glove_paint_float(entity_id),
+            _ => match prop_info.prop_name.as_str() {
+                "CCSPlayerPawn.m_bSpottedByMask" => self.find_spotted(entity_id, prop_info),
+                "CCSPlayerController.m_iCompTeammateColor" => self.find_player_color(player, prop_info),
+                _ => Err(PropCollectionError::UnknownCustomPropName),
+            },
         }
     }
     pub fn get_userid(&self, player: &PlayerMetaData) -> Result<Variant, PropCollectionError> {
@@ -572,6 +610,16 @@ impl<'a> SecondPassParser<'a> {
         }
         return Err(PropCollectionError::PlayerNotFound);
     }
+    fn collect_velocity_cached(&self, player: &PlayerMetaData, indicies_cache: &mut Option<Vec<usize>>) -> Result<Variant, PropCollectionError> {
+        let indicies = self.cached_velocity_indicies(player, indicies_cache)?;
+        let x = self.velocity_from_indicies(indicies, CoordinateAxis::X)?;
+        let y = self.velocity_from_indicies(indicies, CoordinateAxis::Y)?;
+
+        if let (Variant::F32(x), Variant::F32(y)) = (x, y) {
+            return Ok(Variant::F32((f32::powi(x, 2) + f32::powi(y, 2)).sqrt()));
+        }
+        Err(PropCollectionError::VelocityNotFound)
+    }
     pub fn collect_velocity_axis(&self, player: &PlayerMetaData, axis: CoordinateAxis) -> Result<Variant, PropCollectionError> {
         if let Some(s) = player.steamid {
             let steamids = self.output.get(&STEAMID_ID);
@@ -579,6 +627,26 @@ impl<'a> SecondPassParser<'a> {
             return Ok(self.velocity_from_indicies(&indicies, axis)?);
         }
         return Err(PropCollectionError::PlayerNotFound);
+    }
+    fn collect_velocity_axis_cached(
+        &self,
+        player: &PlayerMetaData,
+        axis: CoordinateAxis,
+        indicies_cache: &mut Option<Vec<usize>>,
+    ) -> Result<Variant, PropCollectionError> {
+        let indicies = self.cached_velocity_indicies(player, indicies_cache)?;
+        self.velocity_from_indicies(indicies, axis)
+    }
+    fn cached_velocity_indicies<'b>(
+        &self,
+        player: &PlayerMetaData,
+        indicies_cache: &'b mut Option<Vec<usize>>,
+    ) -> Result<&'b [usize], PropCollectionError> {
+        if indicies_cache.is_none() {
+            let steamid = player.steamid.ok_or(PropCollectionError::PlayerNotFound)?;
+            *indicies_cache = Some(self.find_wanted_indicies(self.output.get(&STEAMID_ID), steamid));
+        }
+        Ok(indicies_cache.as_deref().unwrap_or(&[]))
     }
     fn find_most_recent_coordinate_idx(&self, optv: Option<&PropColumn>, wanted_steamid: u64) -> Option<usize> {
         if let Some(v) = optv {

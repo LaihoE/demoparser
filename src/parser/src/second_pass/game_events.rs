@@ -1421,9 +1421,9 @@ impl<'a> SecondPassParser<'a> {
         prop_controller: &PropController,
         special_ids: &SpecialIDs,
         is_fullpacket:bool,
-    ) -> Vec<GameEventInfo> {
+        events: &mut Vec<GameEventInfo>,
+    ) {
         // Might want to start splitting this function
-        let mut events = vec![];
         if let Some(fi) = field_info {
             if entity.entity_type == EntityType::PlayerController{
                 if let Some(f) = field_info{
@@ -1434,7 +1434,7 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
             if is_fullpacket{
-                return events;
+                return;
             }
 
             // round end
@@ -1481,7 +1481,6 @@ impl<'a> SecondPassParser<'a> {
                 events.push(GameEventInfo::WeaponCreateDefIdxNew((result.clone(), entity.entity_id, fi.prop_id)));
             }
         }
-        events
     }
 }
 // what is this shit

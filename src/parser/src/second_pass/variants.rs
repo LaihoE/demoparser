@@ -385,9 +385,9 @@ impl PropColumn {
     }
     #[inline(always)]
     pub fn push(&mut self, item: Option<Variant>) {
-        match &self.data {
-            Some(_) => {}
-            None => match &item {
+        match &mut self.data {
+            Some(v) => v.push_variant(item),
+            None => match item {
                 None => self.num_nones += 1,
                 Some(p) => {
                     let mut var_vec = VarVec::new(&p);
@@ -395,12 +395,10 @@ impl PropColumn {
                         var_vec.push_variant(None);
                     }
                     self.num_nones = 0;
+                    var_vec.push_variant(Some(p));
                     self.data = Some(var_vec);
                 }
             },
-        };
-        if let Some(v) = &mut self.data {
-            v.push_variant(item.clone());
         }
     }
 }
