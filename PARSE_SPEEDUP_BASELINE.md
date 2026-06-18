@@ -35,11 +35,16 @@ Same harness/machine. Median of 5. Output proven byte-identical via `CS2_CKSUM=1
 
 | Demo | ST base | ST now | ST× | MT base | MT now | MT× |
 |------|---------|--------|-----|---------|--------|-----|
-| NaVi nuke  | 10.946 s | **4.940 s** | **2.22×** | 2.239 s | 1.123 s | 1.99× |
-| test_demo  | 2.148 s | **1.015 s** | **2.12×** | 0.616 s | 0.459 s | 1.34× |
-| de_ancient | 4.331 s | **1.959 s** | **2.21×** | 1.096 s | 0.545 s | 2.01× |
+| NaVi nuke  | 10.946 s | **4.940 s** | **2.22×** | 2.239 s | **0.823 s** | **2.72×** |
+| test_demo  | 2.148 s | **1.015 s** | **2.12×** | 0.616 s | **0.284 s** | **2.17×** |
+| de_ancient | 4.331 s | **1.959 s** | **2.21×** | 1.096 s | **0.425 s** | **2.58×** |
 
-**ST goal (≥1.5×) holds on all three demos; target 2× is reached on all three ST runs.**
+**ST goal (≥1.5×) holds on all three demos; target 2× is reached on all three ST runs;
+MT now also clears 2× on all three.**
+
+> MT `now` column re-measured after the parallel `combine_dfs` win (#4 below); ST is
+> unchanged because `combine_dfs` only affects the multi-threaded merge (the single-thread
+> path early-returns). Output verified byte-identical (`CS2_CKSUM`).
 
 ## Bottleneck → fix (the wins)
 
