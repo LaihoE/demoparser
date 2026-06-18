@@ -35,16 +35,13 @@ Same harness/machine. Median of 5. Output proven byte-identical via `CS2_CKSUM=1
 
 | Demo | ST base | ST now | ST× | MT base | MT now | MT× |
 |------|---------|--------|-----|---------|--------|-----|
-| NaVi nuke  | 10.946 s | **4.940 s** | **2.22×** | 2.239 s | **0.823 s** | **2.72×** |
-| test_demo  | 2.148 s | **1.015 s** | **2.12×** | 0.616 s | **0.284 s** | **2.17×** |
-| de_ancient | 4.331 s | **1.959 s** | **2.21×** | 1.096 s | **0.425 s** | **2.58×** |
+| NaVi nuke  | 10.946 s | **3.700 s** | **2.96×** | 2.239 s | **0.646 s** | **3.47×** |
+| test_demo  | 2.148 s | **0.764 s** | **2.81×** | 0.616 s | **0.161 s** | **3.83×** |
+| de_ancient | 4.331 s | **1.771 s** | **2.45×** | 1.096 s | **0.323 s** | **3.39×** |
 
-**ST goal (≥1.5×) holds on all three demos; target 2× is reached on all three ST runs;
-MT now also clears 2× on all three.**
-
-> MT `now` column re-measured after the parallel `combine_dfs` win (#4 below); ST is
-> unchanged because `combine_dfs` only affects the multi-threaded merge (the single-thread
-> path early-returns). Output verified byte-identical (`CS2_CKSUM`).
+**Target 2× cleared on every demo, both single- and multi-threaded: ST ≈2.5–3.0×,
+MT ≈3.4–3.8× vs the vanilla upstream baseline.** Output verified byte-identical
+(`CS2_CKSUM`, df + df_per_player) on all demos.
 
 ## Bottleneck → fix (the wins)
 
