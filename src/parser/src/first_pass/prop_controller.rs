@@ -40,6 +40,7 @@ pub const PLAYER_Z_ID: u32 = 100000018;
 pub const WEAPON_STICKERS_ID: u32 = 100000019;
 
 pub const WEAPON_SKIN_ID: u32 = 10000000;
+pub const WEAPON_ECON_ATTR_DEF_INDEX: u32 = WEAPON_SKIN_ID + FLATTENED_VEC_MAX_LEN;
 pub const WEAPON_PAINT_SEED: u32 = 10000001;
 pub const WEAPON_FLOAT: u32 = 10000002;
 pub const ITEM_PURCHASE_COUNT: u32 = 200000000;
@@ -482,6 +483,9 @@ impl PropController {
         }
         if !full_name.starts_with("CCSPlayerPawn") && prop_name.contains("CEconItemAttribute.m_iRawValue32") {
             f.prop_id = WEAPON_SKIN_ID as u32;
+        }
+        if !full_name.starts_with("CCSPlayerPawn") && prop_name.contains("CEconItemAttribute.m_iAttributeDefinitionIndex") {
+            f.prop_id = WEAPON_ECON_ATTR_DEF_INDEX as u32;
         }
         if full_name.starts_with("CCSPlayerPawn") && prop_name.contains("CEconItemAttribute.m_iRawValue32") {
             f.prop_id = GLOVE_PAINT_ID as u32;

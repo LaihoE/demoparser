@@ -36,6 +36,82 @@ const CELL_BITS: i32 = 9;
 const MAX_COORD: f32 = (1 << 14) as f32;
 // https://github.com/markus-wa/demoinfocs-golang/blob/master/pkg/demoinfocs/constants/constants.go#L11
 const IS_AIRBORNE_CONST: u32 = 0xFFFFFF;
+const MAX_WEAPON_ECON_ATTRIBUTES: u32 = 64;
+
+#[derive(Debug, Clone, Copy, Default)]
+struct StickerState {
+    id: Option<u32>,
+    wear: Option<f32>,
+    x: Option<f32>,
+    y: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct OrderedEconAttr {
+    definition_index: u32,
+    raw_value: f32,
+}
+
+impl StickerState {
+    fn into_sticker(self) -> Option<Sticker> {
+        let id = self.id?;
+        let name = STICKER_ID_TO_NAME.get(&id).unwrap_or(&"unknown").to_string();
+        Some(Sticker {
+            id,
+            name,
+            wear: self.wear.unwrap_or(0.0).max(0.0),
+            x: self.x.unwrap_or(0.0),
+            y: self.y.unwrap_or(0.0),
+        })
+    }
+}
+
+fn stickers_from_ordered_econ_attrs(attrs: &[OrderedEconAttr]) -> Vec<Sticker> {
+    let mut layers = vec![[
+        StickerState::default(),
+        StickerState::default(),
+        StickerState::default(),
+        StickerState::default(),
+        StickerState::default(),
+    ]];
+
+    for attr in attrs {
+        match attr.definition_index {
+            113 | 117 | 121 | 125 | 129 => {
+                let slot = ((attr.definition_index - 113) / 4) as usize;
+                if layers.last().is_some_and(|layer| layer[slot].id.is_some()) {
+                    layers.push([
+                        StickerState::default(),
+                        StickerState::default(),
+                        StickerState::default(),
+                        StickerState::default(),
+                        StickerState::default(),
+                    ]);
+                }
+                layers.last_mut().expect("at least one sticker layer")[slot].id = Some(attr.raw_value.to_bits());
+            }
+            114 | 118 | 122 | 126 | 130 => {
+                let slot = ((attr.definition_index - 114) / 4) as usize;
+                layers.last_mut().expect("at least one sticker layer")[slot].wear = Some(attr.raw_value);
+            }
+            278..=287 => {
+                let slot = ((attr.definition_index - 278) / 2) as usize;
+                if slot >= 5 {
+                    continue;
+                }
+                let current = &mut layers.last_mut().expect("at least one sticker layer")[slot];
+                if (attr.definition_index - 278) % 2 == 0 {
+                    current.x = Some(attr.raw_value);
+                } else {
+                    current.y = Some(attr.raw_value);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    (0..5).filter_map(|slot| layers.iter().find_map(|layer| layer[slot].into_sticker())).collect()
+}
 
 #[derive(Debug, Clone)]
 pub struct ProjectileRecord {
@@ -507,6 +583,28 @@ impl<'a> SecondPassParser<'a> {
     }
 
     pub fn find_stickers(&self, weapon_entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        let attrs = self.ordered_weapon_econ_attrs(weapon_entity_id);
+        if !attrs.is_empty() {
+            return Ok(Variant::Stickers(stickers_from_ordered_econ_attrs(&attrs)));
+        }
+        Ok(Variant::Stickers(self.find_stickers_fixed_layout(weapon_entity_id)))
+    }
+
+    fn ordered_weapon_econ_attrs(&self, weapon_entity_id: &i32) -> Vec<OrderedEconAttr> {
+        let mut attrs = vec![];
+        for idx in 0..MAX_WEAPON_ECON_ATTRIBUTES {
+            let Ok(Variant::U32(definition_index)) = self.get_prop_from_ent(&(WEAPON_ECON_ATTR_DEF_INDEX + idx), weapon_entity_id) else {
+                continue;
+            };
+            let Ok(Variant::F32(raw_value)) = self.get_prop_from_ent(&(WEAPON_SKIN_ID + idx), weapon_entity_id) else {
+                continue;
+            };
+            attrs.push(OrderedEconAttr { definition_index, raw_value });
+        }
+        attrs
+    }
+
+    fn find_stickers_fixed_layout(&self, weapon_entity_id: &i32) -> Vec<Sticker> {
         let mut stickers = vec![];
         // indicies 0..4 info about skin. 4..24 info about stickers. 5 MAX STICKERS (4 idx per sticker),
         for idx in (4..25).step_by(4) {
@@ -518,8 +616,9 @@ impl<'a> SecondPassParser<'a> {
                 stickers.push(sticker);
             }
         }
-        return Ok(Variant::Stickers(stickers));
+        stickers
     }
+
     fn find_sticker(&self, entity_id: &i32, sticker_id_id: u32, sticker_wear_id: u32, sticker_x: u32, sticker_y: u32) -> Option<Sticker> {
         let id = self.get_prop_from_ent(&sticker_id_id, entity_id);
         let wear = self.get_prop_from_ent(&sticker_wear_id, entity_id);
@@ -1158,6 +1257,71 @@ fn coord_from_cell(cell: Result<Variant, PropCollectionError>, offset: Result<Va
         (_, _) => Err(PropCollectionError::CoordinateIncorrectTypes),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{stickers_from_ordered_econ_attrs, OrderedEconAttr};
+
+    #[test]
+    fn mixed_legacy_and_custom_stickers_do_not_cross_pollute_layers() {
+        let stickers = stickers_from_ordered_econ_attrs(&[
+            attr(113, sticker_id(60)),
+            attr(117, sticker_id(76)),
+            attr(125, sticker_id(103)),
+            attr(117, sticker_id(5946)),
+            attr(118, 0.995967),
+            attr(120, 24.0),
+            attr(121, sticker_id(4885)),
+            attr(122, 1.0),
+            attr(124, 105.0),
+            attr(125, sticker_id(4885)),
+            attr(126, 1.0),
+            attr(128, 102.0),
+            attr(129, sticker_id(4893)),
+            attr(130, 1.0),
+            attr(132, 141.0),
+            attr(278, -0.116377234),
+            attr(279, 0.007121563),
+            attr(280, -0.30349553),
+            attr(281, 0.011387974),
+            attr(282, -0.28971416),
+            attr(283, -0.0014955997),
+            attr(284, -0.2608658),
+            attr(285, -0.00951612),
+            attr(286, 0.043130986),
+            attr(287, 0.03563851),
+        ]);
+
+        assert_eq!(stickers.iter().map(|sticker| sticker.id).collect::<Vec<_>>(), vec![60, 76, 4885, 103, 4893]);
+
+        assert_sticker(&stickers[0], 60, "kat2014_ibuypower_holo", 0.0, 0.0, 0.0);
+        assert_sticker(&stickers[1], 76, "kat2014_titan_holo", 0.0, 0.0, 0.0);
+        assert_sticker(&stickers[2], 4885, "community2021_fast_banana_paper", 1.0, -0.28971416, -0.0014955997);
+        assert_sticker(&stickers[3], 103, "comm01_howling_dawn", 0.0, 0.0, 0.0);
+        assert_sticker(&stickers[4], 4893, "community2021_war_paper", 1.0, 0.043130986, 0.03563851);
+    }
+
+    fn attr(definition_index: u32, raw_value: f32) -> OrderedEconAttr {
+        OrderedEconAttr { definition_index, raw_value }
+    }
+
+    fn sticker_id(id: u32) -> f32 {
+        f32::from_bits(id)
+    }
+
+    fn assert_sticker(sticker: &super::Sticker, id: u32, name: &str, wear: f32, x: f32, y: f32) {
+        assert_eq!(sticker.id, id);
+        assert_eq!(sticker.name, name);
+        assert_f32(sticker.wear, wear);
+        assert_f32(sticker.x, x);
+        assert_f32(sticker.y, y);
+    }
+
+    fn assert_f32(actual: f32, expected: f32) {
+        assert!((actual - expected).abs() < 1e-6, "actual={actual}, expected={expected}");
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum PropCollectionError {
     PlayerSpecialIDCellXMissing,
