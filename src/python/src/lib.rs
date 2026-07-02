@@ -154,7 +154,7 @@ impl DemoParser {
     }
 
     /// Returns the names of game events present in the demo
-    pub fn list_updated_fields(&self, _py: Python<'_>) -> PyResult<Vec<String>> {
+    pub fn list_updated_fields(&self, py: Python<'_>) -> PyResult<Vec<String>> {
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
@@ -173,14 +173,19 @@ impl DemoParser {
             order_by_steamid: false,
             fallback_bytes: None,
         };
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        // Release the GIL for the pure-Rust demo parse: the heavy work touches no
+        // Python objects, so holding the GIL here only prevents callers from
+        // overlapping e.g. parse_ticks / parse_events / parse_grenades in threads.
+        let output = match py.allow_threads(|| {
+            let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+            parser.parse_demo(&self.mmap)
+        }) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
         Ok(output.uniq_prop_names)
     }
-    pub fn list_game_events(&self, _py: Python<'_>) -> PyResult<Vec<String>> {
+    pub fn list_game_events(&self, py: Python<'_>) -> PyResult<Vec<String>> {
         let settings = ParserInputs {
             real_name_to_og_name: AHashMap::default(),
             wanted_players: vec![],
@@ -199,8 +204,13 @@ impl DemoParser {
             order_by_steamid: false,
             fallback_bytes: None,
         };
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        // Release the GIL for the pure-Rust demo parse: the heavy work touches no
+        // Python objects, so holding the GIL here only prevents callers from
+        // overlapping e.g. parse_ticks / parse_events / parse_grenades in threads.
+        let output = match py.allow_threads(|| {
+            let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+            parser.parse_demo(&self.mmap)
+        }) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -251,8 +261,13 @@ impl DemoParser {
             fallback_bytes: None,
         };
 
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        // Release the GIL for the pure-Rust demo parse: the heavy work touches no
+        // Python objects, so holding the GIL here only prevents callers from
+        // overlapping e.g. parse_ticks / parse_events / parse_grenades in threads.
+        let output = match py.allow_threads(|| {
+            let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+            parser.parse_demo(&self.mmap)
+        }) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -348,8 +363,13 @@ impl DemoParser {
             order_by_steamid: false,
             fallback_bytes: None,
         };
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        // Release the GIL for the pure-Rust demo parse: the heavy work touches no
+        // Python objects, so holding the GIL here only prevents callers from
+        // overlapping e.g. parse_ticks / parse_events / parse_grenades in threads.
+        let output = match py.allow_threads(|| {
+            let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+            parser.parse_demo(&self.mmap)
+        }) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -397,8 +417,13 @@ impl DemoParser {
             order_by_steamid: false,
             fallback_bytes: None,
         };
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        // Release the GIL for the pure-Rust demo parse: the heavy work touches no
+        // Python objects, so holding the GIL here only prevents callers from
+        // overlapping e.g. parse_ticks / parse_events / parse_grenades in threads.
+        let output = match py.allow_threads(|| {
+            let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+            parser.parse_demo(&self.mmap)
+        }) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -482,8 +507,13 @@ impl DemoParser {
             order_by_steamid: false,
             fallback_bytes: None,
         };
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        // Release the GIL for the pure-Rust demo parse: the heavy work touches no
+        // Python objects, so holding the GIL here only prevents callers from
+        // overlapping e.g. parse_ticks / parse_events / parse_grenades in threads.
+        let output = match py.allow_threads(|| {
+            let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+            parser.parse_demo(&self.mmap)
+        }) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -587,8 +617,13 @@ impl DemoParser {
             order_by_steamid: false,
             fallback_bytes: None,
         };
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        // Release the GIL for the pure-Rust demo parse: the heavy work touches no
+        // Python objects, so holding the GIL here only prevents callers from
+        // overlapping e.g. parse_ticks / parse_events / parse_grenades in threads.
+        let output = match py.allow_threads(|| {
+            let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+            parser.parse_demo(&self.mmap)
+        }) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -648,8 +683,13 @@ impl DemoParser {
             order_by_steamid: false,
             fallback_bytes: None,
         };
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        // Release the GIL for the pure-Rust demo parse: the heavy work touches no
+        // Python objects, so holding the GIL here only prevents callers from
+        // overlapping e.g. parse_ticks / parse_events / parse_grenades in threads.
+        let output = match py.allow_threads(|| {
+            let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+            parser.parse_demo(&self.mmap)
+        }) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
@@ -678,8 +718,13 @@ impl DemoParser {
             order_by_steamid: false,
             fallback_bytes: None,
         };
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        // Release the GIL for the pure-Rust demo parse: the heavy work touches no
+        // Python objects, so holding the GIL here only prevents callers from
+        // overlapping e.g. parse_ticks / parse_events / parse_grenades in threads.
+        let output = match py.allow_threads(|| {
+            let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+            parser.parse_demo(&self.mmap)
+        }) {
             Ok(output) => output,
             Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
         };
@@ -757,8 +802,13 @@ impl DemoParser {
             order_by_steamid: false,
             fallback_bytes: None,
         };
-        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
-        let output = match parser.parse_demo(&self.mmap) {
+        // Release the GIL for the pure-Rust demo parse: the heavy work touches no
+        // Python objects, so holding the GIL here only prevents callers from
+        // overlapping e.g. parse_ticks / parse_events / parse_grenades in threads.
+        let output = match py.allow_threads(|| {
+            let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+            parser.parse_demo(&self.mmap)
+        }) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
