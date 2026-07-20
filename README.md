@@ -336,6 +336,7 @@ True/Flase if player is pressing button.
 | usercmd_left_hand_desired | - |
 | usercmd_weapon_select | - |
 | usercmd_input_history | - |
+| usercmd_subtick_moves | - |
 
 #### Aggregate stats (updates one time per round)
 |         Name          | Real name                                                                                                                               |

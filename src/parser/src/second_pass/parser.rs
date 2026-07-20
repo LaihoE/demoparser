@@ -30,7 +30,8 @@ use prost::Message;
 use snap::raw::decompress_len;
 use snap::raw::Decoder as SnapDecoder;
 
-use super::variants::InputHistory;
+use super::variants::{InputHistory, UserCmdSubtickMove};
+use super::usercmd_delta::apply_delta;
 
 const OUTER_BUF_DEFAULT_LEN: usize = 400_000;
 const INNER_BUF_DEFAULT_LEN: usize = 8192 * 15;
@@ -295,52 +296,95 @@ impl<'a> SecondPassParser<'a> {
             _ => return Ok(()),
         };
         for cmd in msg.commands {
-            let user_cmd = match CsgoUserCmdPb::decode(cmd.data()) {
-                Ok(m) => m,
-                _ => return Ok(()),
+            let player_slot = cmd.player_slot();
+            if player_slot < 0 {
+                continue;
+            }
+            let data = cmd.data.as_ref().filter(|data| !data.is_empty());
+            let delta_data = cmd.delta_data.as_ref().filter(|data| !data.is_empty());
+            let mut next = if let Some(data) = data {
+                match CsgoUserCmdPb::decode(data.as_ref()) {
+                    Ok(command) => Some(command),
+                    Err(_) => continue,
+                }
+            } else if delta_data.is_some() {
+                self.usercmd_baselines.get(&player_slot).cloned()
+            } else {
+                continue;
             };
 
-            if let Some(base) = user_cmd.base {
-                let entity_id = base.pawn_entity_handle() & 0x7FF;
-                if let Some(Some(ent)) = self.entities.get_mut(entity_id as usize) {
-                    let mut history = vec![];
-                    for input in user_cmd.input_history {
-                        // view_angles may be absent on some entries; default the angle to (0, 0, 0)
-                        // rather than panicking, matching prost's default accessor behaviour.
-                        let view_angles = input.view_angles.clone().unwrap_or_default();
-                        let ih = InputHistory {
-                            player_tick_count: input.player_tick_count(),
-                            player_tick_fraction: input.player_tick_fraction(),
-                            render_tick_count: input.render_tick_count(),
-                            render_tick_fraction: input.render_tick_fraction(),
-                            x: view_angles.x(),
-                            y: view_angles.y(),
-                            z: view_angles.z(),
-                        };
-                        history.push(ih);
-                    }
-                    ent.props.insert(USERCMD_INPUT_HISTORY_BASEID, Variant::InputHistory(history));
-                    ent.props.insert(USERCMD_LEFTMOVE, Variant::F32(base.leftmove()));
-                    ent.props.insert(USERCMD_FORWARDMOVE, Variant::F32(base.forwardmove()));
-                    ent.props.insert(USERCMD_IMPULSE, Variant::I32(base.impulse()));
-                    ent.props.insert(USERCMD_MOUSE_DX, Variant::I32(base.mousedx()));
-                    ent.props.insert(USERCMD_MOUSE_DY, Variant::I32(base.mousedy()));
-                    if let Some(viewangles) = base.viewangles {
-                        ent.props.insert(USERCMD_VIEWANGLE_X, Variant::F32(viewangles.x()));
-                        ent.props.insert(USERCMD_VIEWANGLE_Y, Variant::F32(viewangles.y()));
-                        ent.props.insert(USERCMD_VIEWANGLE_Z, Variant::F32(viewangles.z()));
-                    }
-                    if let Some(buttons_pb) = base.buttons_pb {
-                        ent.props.insert(USERCMD_BUTTONSTATE_1, Variant::U64(buttons_pb.buttonstate1()));
-                        ent.props.insert(USERCMD_BUTTONSTATE_2, Variant::U64(buttons_pb.buttonstate2()));
-                        ent.props.insert(USERCMD_BUTTONSTATE_3, Variant::U64(buttons_pb.buttonstate3()));
-                    }
-                    ent.props
-                        .insert(USERCMD_CONSUMED_SERVER_ANGLE_CHANGES, Variant::U32(base.consumed_server_angle_changes()));
-                }
+            if let Some(delta_data) = delta_data {
+                next = next.as_ref().and_then(|baseline| apply_delta(baseline, delta_data.as_ref()));
             }
+            let Some(next) = next else {
+                continue;
+            };
+            self.usercmd_baselines.insert(player_slot, next.clone());
+            self.apply_user_cmd(&next);
         }
         Ok(())
+    }
+
+    fn apply_user_cmd(&mut self, user_cmd: &CsgoUserCmdPb) {
+        let Some(base) = user_cmd.base.as_ref() else {
+            return;
+        };
+        let entity_id = base.pawn_entity_handle() & 0x7ff;
+        let Some(Some(ent)) = self.entities.get_mut(entity_id as usize) else {
+            return;
+        };
+
+        let history = user_cmd
+            .input_history
+            .iter()
+            .map(|input| {
+                let view_angles = input.view_angles.clone().unwrap_or_default();
+                InputHistory {
+                    player_tick_count: input.player_tick_count(),
+                    player_tick_fraction: input.player_tick_fraction(),
+                    render_tick_count: input.render_tick_count(),
+                    render_tick_fraction: input.render_tick_fraction(),
+                    x: view_angles.x(),
+                    y: view_angles.y(),
+                    z: view_angles.z(),
+                }
+            })
+            .collect();
+        ent.props.insert(USERCMD_INPUT_HISTORY_BASEID, Variant::InputHistory(history));
+        let subtick_moves = base
+            .subtick_moves
+            .iter()
+            .map(|subtick| UserCmdSubtickMove {
+                when: subtick.when(),
+                button: subtick.button(),
+                pressed: subtick.pressed(),
+                analog_forward: subtick.analog_forward_delta(),
+                analog_left: subtick.analog_left_delta(),
+                pitch_delta: subtick.pitch_delta(),
+                yaw_delta: subtick.yaw_delta(),
+            })
+            .collect();
+        ent.props
+            .insert(USERCMD_SUBTICK_MOVES_BASEID, Variant::UserCmdSubtickMoves(subtick_moves));
+        ent.props.insert(USERCMD_LEFTMOVE, Variant::F32(base.leftmove()));
+        ent.props.insert(USERCMD_FORWARDMOVE, Variant::F32(base.forwardmove()));
+        ent.props.insert(USERCMD_IMPULSE, Variant::I32(base.impulse()));
+        ent.props.insert(USERCMD_MOUSE_DX, Variant::I32(base.mousedx()));
+        ent.props.insert(USERCMD_MOUSE_DY, Variant::I32(base.mousedy()));
+        ent.props.insert(USERCMD_WEAPON_SELECT, Variant::I32(base.weaponselect()));
+        ent.props.insert(USERCMD_SUBTICK_LEFT_HAND_DESIRED, Variant::Bool(user_cmd.left_hand_desired()));
+        if let Some(viewangles) = base.viewangles.as_ref() {
+            ent.props.insert(USERCMD_VIEWANGLE_X, Variant::F32(viewangles.x()));
+            ent.props.insert(USERCMD_VIEWANGLE_Y, Variant::F32(viewangles.y()));
+            ent.props.insert(USERCMD_VIEWANGLE_Z, Variant::F32(viewangles.z()));
+        }
+        if let Some(buttons_pb) = base.buttons_pb.as_ref() {
+            ent.props.insert(USERCMD_BUTTONSTATE_1, Variant::U64(buttons_pb.buttonstate1()));
+            ent.props.insert(USERCMD_BUTTONSTATE_2, Variant::U64(buttons_pb.buttonstate2()));
+            ent.props.insert(USERCMD_BUTTONSTATE_3, Variant::U64(buttons_pb.buttonstate3()));
+        }
+        ent.props
+            .insert(USERCMD_CONSUMED_SERVER_ANGLE_CHANGES, Variant::U32(base.consumed_server_angle_changes()));
     }
 
     pub fn parse_voice_data(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {

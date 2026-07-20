@@ -859,6 +859,26 @@ impl DemoParser {
                         df_column_names_py.push(prop_info.prop_friendly_name);
                         all_pyobjects.push(dicts.into_py_any(py)?);
                     }
+                    Some(VarVec::UserCmdSubtickMoves(data)) => {
+                        let mut dicts = vec![];
+                        for moves in data {
+                            let mut values = vec![];
+                            for subtick in moves {
+                                let dict = PyDict::new(py);
+                                dict.set_item("when", subtick.when)?;
+                                dict.set_item("button", subtick.button)?;
+                                dict.set_item("pressed", subtick.pressed)?;
+                                dict.set_item("analog_forward", subtick.analog_forward)?;
+                                dict.set_item("analog_left", subtick.analog_left)?;
+                                dict.set_item("pitch_delta", subtick.pitch_delta)?;
+                                dict.set_item("yaw_delta", subtick.yaw_delta)?;
+                                values.push(dict);
+                            }
+                            dicts.push(values);
+                        }
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(dicts.into_py_any(py)?);
+                    }
                     _ => {}
                 }
             }

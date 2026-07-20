@@ -6,4 +6,5 @@ pub mod other_netmessages;
 pub mod parser;
 pub mod parser_settings;
 pub mod path_ops;
+mod usercmd_delta;
 pub mod variants;

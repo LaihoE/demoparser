@@ -8619,6 +8619,8 @@ pub struct CMsgServerUserCmd {
     pub server_tick_executed: ::core::option::Option<i32>,
     #[prost(int32, optional, tag="5")]
     pub client_tick: ::core::option::Option<i32>,
+    #[prost(bytes="bytes", optional, tag="6")]
+    pub delta_data: ::core::option::Option<::prost::bytes::Bytes>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CsvcMsgUserCommands {

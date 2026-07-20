@@ -23,6 +23,7 @@ pub enum Variant {
     U64Vec(Vec<u64>),
     Stickers(Vec<Sticker>),
     InputHistory(Vec<InputHistory>),
+    UserCmdSubtickMoves(Vec<UserCmdSubtickMove>),
 }
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Sticker {
@@ -43,6 +44,17 @@ pub struct InputHistory {
     pub player_tick_fraction: f32,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct UserCmdSubtickMove {
+    pub when: f32,
+    pub button: u64,
+    pub pressed: bool,
+    pub analog_forward: f32,
+    pub analog_left: f32,
+    pub pitch_delta: f32,
+    pub yaw_delta: f32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum VarVec {
     U32(Vec<Option<u32>>),
@@ -58,6 +70,7 @@ pub enum VarVec {
     XYZVec(Vec<Option<[f32; 3]>>),
     Stickers(Vec<Vec<Sticker>>),
     InputHistory(Vec<Vec<InputHistory>>),
+    UserCmdSubtickMoves(Vec<Vec<UserCmdSubtickMove>>),
 }
 
 impl VarVec {
@@ -76,6 +89,7 @@ impl VarVec {
             Variant::VecXYZ(_) => VarVec::XYZVec(vec![]),
             Variant::Stickers(_) => VarVec::Stickers(vec![]),
             Variant::InputHistory(_) => VarVec::InputHistory(vec![]),
+            Variant::UserCmdSubtickMoves(_) => VarVec::UserCmdSubtickMoves(vec![]),
         }
     }
 }
@@ -105,6 +119,7 @@ impl PropColumn {
             Some(VarVec::XYZVec(b)) => VarVec::XYZVec(indicies.iter().map(|x| b[*x]).collect_vec()),
             Some(VarVec::Stickers(b)) => VarVec::Stickers(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
             Some(VarVec::InputHistory(b)) => VarVec::InputHistory(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
+            Some(VarVec::UserCmdSubtickMoves(b)) => VarVec::UserCmdSubtickMoves(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
             None => {
                 return Some(PropColumn {
                     data: None,
@@ -132,6 +147,7 @@ impl PropColumn {
             Some(VarVec::XYZVec(b)) => b.len(),
             Some(VarVec::Stickers(b)) => b.len(),
             Some(VarVec::InputHistory(b)) => b.len(),
+            Some(VarVec::UserCmdSubtickMoves(b)) => b.len(),
             None => self.num_nones,
         }
     }
@@ -269,6 +285,17 @@ impl PropColumn {
                 }
                 _ => {}
             },
+            Some(VarVec::UserCmdSubtickMoves(v)) => match &other.data {
+                Some(VarVec::UserCmdSubtickMoves(v_other)) => {
+                    v.extend_from_slice(&v_other);
+                }
+                None => {
+                    for _ in 0..other.num_nones {
+                        v.push(vec![]);
+                    }
+                }
+                _ => {}
+            },
             Some(VarVec::U32Vec(v)) => match &other.data {
                 Some(VarVec::U32Vec(v_other)) => {
                     v.extend_from_slice(&v_other);
@@ -333,6 +360,10 @@ impl PropColumn {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
                 }
+                Some(VarVec::UserCmdSubtickMoves(_inner)) => {
+                    self.resolve_vec_type(PropColumn::get_type(&other.data));
+                    self.extend_from(other);
+                }
                 None => {
                     self.num_nones += other.num_nones;
                 }
@@ -355,6 +386,7 @@ impl PropColumn {
             Some(VarVec::Stickers(_)) => Some(10),
             Some(VarVec::U32Vec(_)) => Some(11),
             Some(VarVec::InputHistory(_)) => Some(12),
+            Some(VarVec::UserCmdSubtickMoves(_)) => Some(13),
 
             None => None,
         }
@@ -377,6 +409,7 @@ impl PropColumn {
             Some(10) => self.data = Some(VarVec::Stickers(vec![])),
             Some(11) => self.data = Some(VarVec::U32Vec(vec![])),
             Some(12) => self.data = Some(VarVec::InputHistory(vec![])),
+            Some(13) => self.data = Some(VarVec::UserCmdSubtickMoves(vec![])),
             _ => {}
         }
         for _ in 0..self.num_nones {
@@ -459,6 +492,10 @@ impl VarVec {
                 VarVec::InputHistory(f) => f.push(p),
                 _ => {}
             },
+            Some(Variant::UserCmdSubtickMoves(p)) => match self {
+                VarVec::UserCmdSubtickMoves(f) => f.push(p),
+                _ => {}
+            },
             None => self.push_none(),
         }
     }
@@ -477,6 +514,7 @@ impl VarVec {
             VarVec::U32Vec(f) => f.push(vec![]),
             VarVec::Stickers(f) => f.push(vec![]),
             VarVec::InputHistory(f) => f.push(vec![]),
+            VarVec::UserCmdSubtickMoves(f) => f.push(vec![]),
         }
     }
 }
@@ -540,6 +578,13 @@ impl Serialize for Variant {
                 s.end()
             }
             Variant::InputHistory(v) => {
+                let mut s = serializer.serialize_seq(Some(v.len()))?;
+                for item in v {
+                    s.serialize_element(&item)?;
+                }
+                s.end()
+            }
+            Variant::UserCmdSubtickMoves(v) => {
                 let mut s = serializer.serialize_seq(Some(v.len()))?;
                 for item in v {
                     s.serialize_element(&item)?;
@@ -713,6 +758,10 @@ pub fn soa_to_aos(soa: OutputSerdeHelperStruct) -> Vec<std::collections::HashMap
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::InputHistory(f.clone()))),
                         _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
+                    Some(VarVec::UserCmdSubtickMoves(val)) => match val.get(idx) {
+                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::UserCmdSubtickMoves(f.clone()))),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                    },
                 };
             }
         }
@@ -773,6 +822,9 @@ impl Serialize for OutputSerdeHelperStruct {
                         map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::InputHistory(val)) => {
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
+                    }
+                    Some(VarVec::UserCmdSubtickMoves(val)) => {
                         map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                     Some(VarVec::U64Vec(val)) => {

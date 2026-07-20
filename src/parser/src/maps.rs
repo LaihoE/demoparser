@@ -224,6 +224,7 @@ pub static CUSTOM_PLAYER_PROP_IDS: phf::Map<&'static str, u32> = phf_map! {
     "usercmd_left_hand_desired" => USERCMD_SUBTICK_LEFT_HAND_DESIRED,
     "usercmd_weapon_select" => USERCMD_WEAPON_SELECT,
     "usercmd_input_history" => USERCMD_INPUT_HISTORY_BASEID,
+    "usercmd_subtick_moves" => USERCMD_SUBTICK_MOVES_BASEID,
 
 
 
@@ -258,6 +259,7 @@ pub static TYPEHM: phf::Map<&'static str, PropType> = phf_map! {
     "usercmd_left_hand_desired" => PropType::Player,
     "usercmd_consumed_server_angle_changes" => PropType::Player,
     "usercmd_input_history" => PropType::Custom,
+    "usercmd_subtick_moves" => PropType::Custom,
 
 
     "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => PropType::Player,
@@ -868,6 +870,7 @@ pub static FRIENDLY_NAMES_MAPPING: phf::Map<&'static str, &'static str> = phf_ma
     "usercmd_left_hand_desired" => "usercmd_left_hand_desired",
     "usercmd_consumed_server_angle_changes" => "usercmd_consumed_server_angle_changes",
     "usercmd_input_history" => "usercmd_input_history",
+    "usercmd_subtick_moves" => "usercmd_subtick_moves",
 
     "active_weapon_skin" => "weapon_skin",
     "weapon_skin_id" => "weapon_skin_id",
