@@ -195,7 +195,10 @@ impl MessageSchema {
             }
             1 => out.extend_from_slice(&[0; 8]),
             2 => {
-                let nested = self.child(field).map(Self::explicit_defaults).unwrap_or_default();
+                let nested = match self.child(field) {
+                    Some(child) => child.explicit_defaults()?,
+                    None => Vec::new(),
+                };
                 write_varint(nested.len() as u64, out);
                 out.extend_from_slice(&nested);
             }
@@ -205,13 +208,13 @@ impl MessageSchema {
         Some(())
     }
 
-    fn explicit_defaults(self) -> Vec<u8> {
+    fn explicit_defaults(self) -> Option<Vec<u8>> {
         let mut out = Vec::new();
         for &(field, wire_type) in self.reset_fields() {
             write_varint((field << 3) | u64::from(wire_type), &mut out);
-            self.write_default(field, wire_type, &mut out).expect("reset fields use protobuf wire types");
+            self.write_default(field, wire_type, &mut out)?;
         }
-        out
+        Some(out)
     }
 }
 
