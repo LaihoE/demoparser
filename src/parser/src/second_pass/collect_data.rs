@@ -175,18 +175,30 @@ impl<'a> SecondPassParser<'a> {
         }
     }
     pub fn get_button_prop(&self, prop_info: &PropInfo, entity_id: &i32) -> Result<Variant, PropCollectionError> {
-        match self.prop_controller.special_ids.buttons {
-            None => Err(PropCollectionError::ButtonsSpecialIDNone),
-            Some(button_id) => match self.get_prop_from_ent(&button_id, &entity_id) {
-                Ok(Variant::U64(button_mask)) => match BUTTONMAP.get(&prop_info.prop_name) {
-                    Some(button_flag) => Ok(Variant::Bool(button_mask & button_flag != 0)),
-                    None => return Err(PropCollectionError::ButtonsMapNoEntryFound),
-                },
-                Ok(_) => return Err(PropCollectionError::ButtonMaskNotU64Variant),
-                Err(e) => Err(e),
+        match self.get_button_mask(entity_id) {
+            Some(button_mask) => match BUTTONMAP.get(&prop_info.prop_name) {
+                Some(button_flag) => Ok(Variant::Bool(button_mask & button_flag != 0)),
+                None => Err(PropCollectionError::ButtonsMapNoEntryFound),
             },
+            None => Err(PropCollectionError::ButtonsSpecialIDNone),
         }
     }
+
+    fn get_button_mask(&self, entity_id: &i32) -> Option<u64> {
+        if let Some(button_id) = self.prop_controller.special_ids.buttons {
+            if let Ok(Variant::U64(button_mask)) = self.get_prop_from_ent(&button_id, entity_id) {
+                return Some(button_mask);
+            }
+        }
+
+        self.get_prop_from_ent(&USERCMD_BUTTONSTATE_1, entity_id)
+            .ok()
+            .and_then(|value| match value {
+                Variant::U64(button_mask) => Some(button_mask),
+                _ => None,
+            })
+    }
+
     fn get_button_prop_cached(
         &self,
         prop_info: &PropInfo,
@@ -194,13 +206,7 @@ impl<'a> SecondPassParser<'a> {
         button_mask_cache: &mut Option<Option<u64>>,
     ) -> Result<Variant, PropCollectionError> {
         if button_mask_cache.is_none() {
-            *button_mask_cache = Some(match self.prop_controller.special_ids.buttons {
-                Some(button_id) => match self.get_prop_from_ent(&button_id, entity_id) {
-                    Ok(Variant::U64(mask)) => Some(mask),
-                    _ => None,
-                },
-                None => None,
-            });
+            *button_mask_cache = Some(self.get_button_mask(entity_id));
         }
         match button_mask_cache.unwrap_or(None) {
             Some(button_mask) => match BUTTONMAP.get(&prop_info.prop_name) {

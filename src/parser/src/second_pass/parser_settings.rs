@@ -5,6 +5,7 @@ use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::sendtables::Serializer;
 use crate::first_pass::stringtables::StringTable;
 use crate::first_pass::stringtables::UserInfo;
+use crate::maps::BUTTONMAP;
 use crate::second_pass::collect_data::ProjectileRecord;
 use crate::second_pass::decoder::QfMapper;
 use crate::second_pass::entities::Entity;
@@ -358,5 +359,5 @@ pub fn create_huffman_lookup_table() -> Vec<(u8, u8)> {
 }
 
 fn contains_usercmd_prop(names: &[String]) -> bool {
-    names.iter().any(|name| name.contains("usercmd"))
+    names.iter().any(|name| name.contains("usercmd") || BUTTONMAP.get(name.as_str()).is_some())
 }
