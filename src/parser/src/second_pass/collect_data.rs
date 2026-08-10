@@ -485,6 +485,7 @@ impl<'a> SecondPassParser<'a> {
             IS_AIRBORNE_ID => self.find_is_airborne(player),
             AGENT_SKIN_ID => self.find_agent_skin(player),
             USERCMD_INPUT_HISTORY_BASEID => self.get_prop_from_ent(&USERCMD_INPUT_HISTORY_BASEID, entity_id),
+            USERCMD_SUBTICK_MOVES_BASEID => self.get_prop_from_ent(&USERCMD_SUBTICK_MOVES_BASEID, entity_id),
             GLOVE_PAINT_ID => self.find_glove_skin_id(entity_id),
             GLOVE_SKIN => self.find_glove_skin(entity_id),
             GLOVE_PAINT_SEED => self.find_glove_paint_seed(entity_id),
