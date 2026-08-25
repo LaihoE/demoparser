@@ -43,6 +43,7 @@ pub struct DemoOutput {
     pub voice_data: Vec<(i32, CsvcMsgVoiceData)>,
     pub prop_controller: PropController,
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
+    pub usercmd_stats: UserCmdDecodeStats,
 }
 
 pub struct Parser<'a> {
@@ -73,6 +74,7 @@ impl<'a> Parser<'a> {
         }
         if self.parsing_mode == ParsingMode::Normal
             && check_multithreadability(&self.input.wanted_player_props)
+            && !wants_usercmd_props(&self.input.wanted_player_props)
             && !(self.parsing_mode == ParsingMode::ForceSingleThreaded)
             || self.parsing_mode == ParsingMode::ForceMultiThreaded
         {
@@ -109,25 +111,25 @@ impl<'a> Parser<'a> {
         Parser::remove_item_sold_events(&mut outputs.game_events);
         Ok(outputs)
     }
-    fn remove_duplicate_player_connects(events: &mut Vec<GameEvent>){
+    fn remove_duplicate_player_connects(events: &mut Vec<GameEvent>) {
         let mut v = events.iter().filter(|x| x.name == "player_first_connect").collect_vec();
         v.sort_by_key(|x| x.tick);
         let mut ids = AHashMap::default();
-        for x in v{
-            for f in &x.fields{
-                if f.name == "steamid"{
-                    if let Some(Variant::U64(s)) = f.data{
+        for x in v {
+            for f in &x.fields {
+                if f.name == "steamid" {
+                    if let Some(Variant::U64(s)) = f.data {
                         match ids.get(&s) {
-                            Some(_) => {},
+                            Some(_) => {}
                             None => {
                                 ids.insert(s, x.clone());
                             }
                         }
                     }
-                    }
                 }
             }
-        events.retain(|x|x.name != "player_first_connect");
+        }
+        events.retain(|x| x.name != "player_first_connect");
         events.extend(ids.values().map(|x| x.clone()));
     }
     fn second_pass_single_threaded(&self, outer_bytes: &[u8], first_pass_output: FirstPassOutput) -> Result<DemoOutput, DemoParserError> {
@@ -135,17 +137,28 @@ impl<'a> Parser<'a> {
         let mut t = std::time::Instant::now();
         let mut parser = SecondPassParser::new(first_pass_output.clone(), 16, true, None)?;
         parser.start(outer_bytes)?;
-        if prof { eprintln!("[prof] second_pass start(): {:.3}s", t.elapsed().as_secs_f64()); t = std::time::Instant::now(); }
+        if prof {
+            eprintln!("[prof] second_pass start(): {:.3}s", t.elapsed().as_secs_f64());
+            t = std::time::Instant::now();
+        }
         let second_pass_output = parser.create_output();
-        if prof { eprintln!("[prof] create_output: {:.3}s", t.elapsed().as_secs_f64()); t = std::time::Instant::now(); }
+        if prof {
+            eprintln!("[prof] create_output: {:.3}s", t.elapsed().as_secs_f64());
+            t = std::time::Instant::now();
+        }
         let mut outputs = self.combine_outputs(&mut vec![second_pass_output], first_pass_output);
-        if prof { eprintln!("[prof] combine_outputs: {:.3}s", t.elapsed().as_secs_f64()); t = std::time::Instant::now(); }
+        if prof {
+            eprintln!("[prof] combine_outputs: {:.3}s", t.elapsed().as_secs_f64());
+            t = std::time::Instant::now();
+        }
         if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
             outputs.df = new_df;
         }
         Parser::add_item_purchase_sell_column(&mut outputs.game_events);
         Parser::remove_item_sold_events(&mut outputs.game_events);
-        if prof { eprintln!("[prof] post-proc: {:.3}s", t.elapsed().as_secs_f64()); }
+        if prof {
+            eprintln!("[prof] post-proc: {:.3}s", t.elapsed().as_secs_f64());
+        }
         Ok(outputs)
     }
     fn second_pass_threaded_with_channels(
@@ -350,6 +363,7 @@ impl<'a> Parser<'a> {
                 voice_data: output.voice_data,
                 df_per_player: pp,
                 uniq_prop_names: all_prop_names,
+                usercmd_stats: output.usercmd_stats,
             };
         }
 
@@ -366,6 +380,7 @@ impl<'a> Parser<'a> {
         let mut convars = AHashMap::default();
         let mut projectiles = Vec::new();
         let mut voice_data = Vec::new();
+        let mut usercmd_stats = UserCmdDecodeStats::default();
 
         for output in outputs {
             dfs.push(output.df);
@@ -391,6 +406,7 @@ impl<'a> Parser<'a> {
             convars.extend(output.convars);
             projectiles.extend(output.projectiles);
             voice_data.extend(output.voice_data);
+            usercmd_stats.merge(&output.usercmd_stats);
         }
 
         let all_dfs_combined = self.combine_dfs(dfs, false);
@@ -426,6 +442,7 @@ impl<'a> Parser<'a> {
             voice_data,
             df_per_player: pp,
             uniq_prop_names: all_prop_names,
+            usercmd_stats,
         }
     }
 

@@ -17,6 +17,7 @@ pub enum Variant {
     String(String),
     VecXY([f32; 2]),
     VecXYZ([f32; 3]),
+    F32Vec(Vec<f32>),
     // Todo change to Vec<T>
     StringVec(Vec<String>),
     U32Vec(Vec<u32>),
@@ -34,6 +35,13 @@ pub struct Sticker {
     pub y: f32,
 }
 #[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct InterpolationInfo {
+    pub src_tick: Option<i32>,
+    pub dst_tick: Option<i32>,
+    pub frac: Option<f32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct InputHistory {
     pub x: f32,
     pub y: f32,
@@ -42,6 +50,16 @@ pub struct InputHistory {
     pub render_tick_fraction: f32,
     pub player_tick_count: i32,
     pub player_tick_fraction: f32,
+    pub cl_interp: Option<InterpolationInfo>,
+    pub sv_interp0: Option<InterpolationInfo>,
+    pub sv_interp1: Option<InterpolationInfo>,
+    pub player_interp: Option<InterpolationInfo>,
+    pub frame_number: Option<i32>,
+    pub target_ent_index: Option<i32>,
+    pub shoot_position: Option<[f32; 3]>,
+    pub target_head_pos_check: Option<[f32; 3]>,
+    pub target_abs_pos_check: Option<[f32; 3]>,
+    pub target_abs_ang_check: Option<[f32; 3]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -65,6 +83,7 @@ pub enum VarVec {
     String(Vec<Option<String>>),
     StringVec(Vec<Vec<String>>),
     U64Vec(Vec<Vec<u64>>),
+    F32Vec(Vec<Vec<f32>>),
     U32Vec(Vec<Vec<u32>>),
     XYVec(Vec<Option<[f32; 2]>>),
     XYZVec(Vec<Option<[f32; 3]>>),
@@ -84,6 +103,7 @@ impl VarVec {
             Variant::U32(_) => VarVec::U32(vec![]),
             Variant::StringVec(_) => VarVec::StringVec(vec![]),
             Variant::U64Vec(_) => VarVec::U64Vec(vec![]),
+            Variant::F32Vec(_) => VarVec::F32Vec(vec![]),
             Variant::U32Vec(_) => VarVec::U32Vec(vec![]),
             Variant::VecXY(_) => VarVec::XYVec(vec![]),
             Variant::VecXYZ(_) => VarVec::XYZVec(vec![]),
@@ -114,6 +134,7 @@ impl PropColumn {
             Some(VarVec::U64(b)) => VarVec::U64(indicies.iter().map(|x| b[*x]).collect_vec()),
             Some(VarVec::StringVec(b)) => VarVec::StringVec(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
             Some(VarVec::U64Vec(b)) => VarVec::U64Vec(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
+            Some(VarVec::F32Vec(b)) => VarVec::F32Vec(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
             Some(VarVec::U32Vec(b)) => VarVec::U32Vec(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
             Some(VarVec::XYVec(b)) => VarVec::XYVec(indicies.iter().map(|x| b[*x]).collect_vec()),
             Some(VarVec::XYZVec(b)) => VarVec::XYZVec(indicies.iter().map(|x| b[*x]).collect_vec()),
@@ -142,6 +163,7 @@ impl PropColumn {
             Some(VarVec::U64(b)) => b.len(),
             Some(VarVec::StringVec(b)) => b.len(),
             Some(VarVec::U64Vec(b)) => b.len(),
+            Some(VarVec::F32Vec(b)) => b.len(),
             Some(VarVec::U32Vec(b)) => b.len(),
             Some(VarVec::XYVec(b)) => b.len(),
             Some(VarVec::XYZVec(b)) => b.len(),
@@ -232,6 +254,17 @@ impl PropColumn {
             },
             Some(VarVec::U64Vec(v)) => match &other.data {
                 Some(VarVec::U64Vec(v_other)) => {
+                    v.extend_from_slice(&v_other);
+                }
+                None => {
+                    for _ in 0..other.num_nones {
+                        v.push(vec![]);
+                    }
+                }
+                _ => {}
+            },
+            Some(VarVec::F32Vec(v)) => match &other.data {
+                Some(VarVec::F32Vec(v_other)) => {
                     v.extend_from_slice(&v_other);
                 }
                 None => {
@@ -340,6 +373,10 @@ impl PropColumn {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
                 }
+                Some(VarVec::F32Vec(_inner)) => {
+                    self.resolve_vec_type(PropColumn::get_type(&other.data));
+                    self.extend_from(other);
+                }
                 Some(VarVec::XYVec(_inner)) => {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
@@ -381,6 +418,7 @@ impl PropColumn {
             Some(VarVec::U64(_)) => Some(5),
             Some(VarVec::StringVec(_)) => Some(6),
             Some(VarVec::U64Vec(_)) => Some(7),
+            Some(VarVec::F32Vec(_)) => Some(14),
             Some(VarVec::XYVec(_)) => Some(8),
             Some(VarVec::XYZVec(_)) => Some(9),
             Some(VarVec::Stickers(_)) => Some(10),
@@ -410,6 +448,7 @@ impl PropColumn {
             Some(11) => self.data = Some(VarVec::U32Vec(vec![])),
             Some(12) => self.data = Some(VarVec::InputHistory(vec![])),
             Some(13) => self.data = Some(VarVec::UserCmdSubtickMoves(vec![])),
+            Some(14) => self.data = Some(VarVec::F32Vec(vec![])),
             _ => {}
         }
         for _ in 0..self.num_nones {
@@ -472,6 +511,10 @@ impl VarVec {
                 VarVec::U64Vec(f) => f.push(p),
                 _ => {}
             },
+            Some(Variant::F32Vec(p)) => match self {
+                VarVec::F32Vec(f) => f.push(p),
+                _ => {}
+            },
             Some(Variant::U32Vec(p)) => match self {
                 VarVec::U32Vec(f) => f.push(p),
                 _ => {}
@@ -509,6 +552,7 @@ impl VarVec {
             VarVec::Bool(f) => f.push(None),
             VarVec::StringVec(f) => f.push(vec![]),
             VarVec::U64Vec(f) => f.push(vec![]),
+            VarVec::F32Vec(f) => f.push(vec![]),
             VarVec::XYVec(f) => f.push(None),
             VarVec::XYZVec(f) => f.push(None),
             VarVec::U32Vec(f) => f.push(vec![]),
@@ -567,6 +611,13 @@ impl Serialize for Variant {
                 let mut s = serializer.serialize_seq(Some(v.len()))?;
                 for item in v {
                     s.serialize_element(&item.to_string())?;
+                }
+                s.end()
+            }
+            Variant::F32Vec(v) => {
+                let mut s = serializer.serialize_seq(Some(v.len()))?;
+                for item in v {
+                    s.serialize_element(item)?;
                 }
                 s.end()
             }
@@ -738,6 +789,10 @@ pub fn soa_to_aos(soa: OutputSerdeHelperStruct) -> Vec<std::collections::HashMap
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::U64Vec(f.clone()))),
                         _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
+                    Some(VarVec::F32Vec(val)) => match val.get(idx) {
+                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::F32Vec(f.clone()))),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                    },
                     Some(VarVec::U32Vec(val)) => match val.get(idx) {
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::U32Vec(f.clone()))),
                         _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
@@ -836,6 +891,9 @@ impl Serialize for OutputSerdeHelperStruct {
                             })
                             .collect_vec();
                         map.serialize_entry(&prop_info.prop_friendly_name, &string_sid)?;
+                    }
+                    Some(VarVec::F32Vec(val)) => {
+                        map.serialize_entry(&prop_info.prop_friendly_name, val)?;
                     }
                 }
             }

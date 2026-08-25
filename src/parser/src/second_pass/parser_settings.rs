@@ -1,6 +1,6 @@
 use crate::first_pass::frameparser::StartEndOffset;
 use crate::first_pass::parser::FirstPassOutput;
-use crate::first_pass::prop_controller::PropController;
+use crate::first_pass::prop_controller::{PropController, BUTTONS_PROP_NAME};
 use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::sendtables::Serializer;
 use crate::first_pass::stringtables::StringTable;
@@ -27,6 +27,189 @@ use std::collections::BTreeSet;
 use std::env;
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 const DEFAULT_MAX_ENTITY_ID: usize = 1024;
+pub const USER_CMD_RING_SIZE: usize = 150;
+
+#[derive(Debug, Clone)]
+pub struct UserCmdRingEntry {
+    pub command_number: i32,
+    pub command: CsgoUserCmdPb,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UserCmdBaselineSource {
+    ExactCommandNumber,
+    RingSlotMismatch,
+    CurrentCommandFallback,
+}
+
+#[derive(Debug, Clone)]
+pub struct UserCmdRing {
+    entries: Vec<Option<UserCmdRingEntry>>,
+}
+
+impl Default for UserCmdRing {
+    fn default() -> Self {
+        Self {
+            entries: (0..USER_CMD_RING_SIZE).map(|_| None).collect(),
+        }
+    }
+}
+
+impl UserCmdRing {
+    fn index(command_number: i32) -> usize {
+        command_number.rem_euclid(USER_CMD_RING_SIZE as i32) as usize
+    }
+
+    pub fn insert(&mut self, command_number: i32, command: CsgoUserCmdPb) {
+        self.entries[Self::index(command_number)] = Some(UserCmdRingEntry { command_number, command });
+    }
+
+    pub fn get(&self, command_number: i32) -> Option<&CsgoUserCmdPb> {
+        self.entries[Self::index(command_number)]
+            .as_ref()
+            .filter(|entry| entry.command_number == command_number)
+            .map(|entry| &entry.command)
+    }
+
+    pub fn contains(&self, command_number: i32) -> bool {
+        self.get(command_number).is_some()
+    }
+
+    pub fn slot_command_number(&self, command_number: i32) -> Option<i32> {
+        self.entries[Self::index(command_number)].as_ref().map(|entry| entry.command_number)
+    }
+
+    pub fn get_slot(&self, command_number: i32) -> Option<&CsgoUserCmdPb> {
+        self.entries[Self::index(command_number)].as_ref().map(|entry| &entry.command)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct UserCmdPlayerState {
+    pub ring: UserCmdRing,
+    pub current_command_number: Option<i32>,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone)]
+pub(crate) struct UserCmdTestRecord {
+    pub player_slot: i32,
+    pub command_number: i32,
+    pub server_tick_executed: i32,
+    pub client_tick: i32,
+    pub baseline_command_number: Option<i32>,
+    pub baseline_source: Option<UserCmdBaselineSource>,
+    pub delta_data: Option<Vec<u8>>,
+    pub command: CsgoUserCmdPb,
+}
+
+#[cfg(test)]
+pub(crate) struct UserCmdTestRecordRef<'a> {
+    pub player_slot: i32,
+    pub command_number: i32,
+    pub server_tick_executed: i32,
+    pub client_tick: i32,
+    pub baseline_command_number: Option<i32>,
+    pub baseline_source: Option<UserCmdBaselineSource>,
+    pub delta_data: Option<&'a [u8]>,
+    pub command: &'a CsgoUserCmdPb,
+}
+
+#[cfg(test)]
+pub(crate) type UserCmdTestSink = Box<dyn for<'record> FnMut(UserCmdTestRecordRef<'record>)>;
+
+#[cfg(test)]
+pub(crate) struct UserCmdTransportTestRecord {
+    pub player_slot: i32,
+    pub command_number: i32,
+    pub server_tick_executed: i32,
+    pub client_tick: i32,
+    pub server_cmd_has_bits: u32,
+}
+
+#[cfg(test)]
+pub(crate) type UserCmdTransportTestSink = Box<dyn FnMut(UserCmdTransportTestRecord)>;
+
+impl UserCmdPlayerState {
+    pub fn resolve_baseline(&self, requested_command_number: i32) -> Option<(&CsgoUserCmdPb, UserCmdBaselineSource)> {
+        self.ring
+            .get(requested_command_number)
+            .map(|command| (command, UserCmdBaselineSource::ExactCommandNumber))
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct UserCmdDecodeStats {
+    pub full_data: u64,
+    pub full_decode_failures: u64,
+    pub delta_data: u64,
+    pub delta_applied: u64,
+    pub baseline_missing: u64,
+    pub baseline_mismatch: u64,
+    pub baseline_fallbacks: u64,
+    pub delta_decode_failures: u64,
+    pub delta_sanitize_failures: u64,
+    pub delta_proto_failures: u64,
+    pub delta_repeated_failures: u64,
+    pub delta_input_history_failures: u64,
+    pub delta_subtick_failures: u64,
+    pub delta_repeated_malformed: u64,
+    pub delta_repeated_truncated: u64,
+    pub delta_repeated_invalid_index: u64,
+    pub delta_repeated_out_of_bounds: u64,
+    pub delta_repeated_invalid_message: u64,
+    pub delta_repeated_invalid_nested: u64,
+    pub delta_nested_failures: u64,
+    pub decoded_usercmds: u64,
+    pub decoded_full_usercmds: u64,
+    pub decoded_delta_usercmds: u64,
+    pub decoded_nonzero_buttons: u64,
+    pub decoded_mouse_movement: u64,
+    pub decoded_weapon_selection: u64,
+    pub decoded_subtick_moves: u64,
+    pub max_subtick_moves: u64,
+    pub max_input_history: u64,
+    pub decoded_cannot_move: u64,
+    pub decoded_dead: u64,
+    pub player_slot_mask: u64,
+}
+
+impl UserCmdDecodeStats {
+    pub fn merge(&mut self, other: &Self) {
+        self.full_data += other.full_data;
+        self.full_decode_failures += other.full_decode_failures;
+        self.delta_data += other.delta_data;
+        self.delta_applied += other.delta_applied;
+        self.baseline_missing += other.baseline_missing;
+        self.baseline_mismatch += other.baseline_mismatch;
+        self.baseline_fallbacks += other.baseline_fallbacks;
+        self.delta_decode_failures += other.delta_decode_failures;
+        self.delta_sanitize_failures += other.delta_sanitize_failures;
+        self.delta_proto_failures += other.delta_proto_failures;
+        self.delta_repeated_failures += other.delta_repeated_failures;
+        self.delta_input_history_failures += other.delta_input_history_failures;
+        self.delta_subtick_failures += other.delta_subtick_failures;
+        self.delta_repeated_malformed += other.delta_repeated_malformed;
+        self.delta_repeated_truncated += other.delta_repeated_truncated;
+        self.delta_repeated_invalid_index += other.delta_repeated_invalid_index;
+        self.delta_repeated_out_of_bounds += other.delta_repeated_out_of_bounds;
+        self.delta_repeated_invalid_message += other.delta_repeated_invalid_message;
+        self.delta_repeated_invalid_nested += other.delta_repeated_invalid_nested;
+        self.delta_nested_failures += other.delta_nested_failures;
+        self.decoded_usercmds += other.decoded_usercmds;
+        self.decoded_full_usercmds += other.decoded_full_usercmds;
+        self.decoded_delta_usercmds += other.decoded_delta_usercmds;
+        self.decoded_nonzero_buttons += other.decoded_nonzero_buttons;
+        self.decoded_mouse_movement += other.decoded_mouse_movement;
+        self.decoded_weapon_selection += other.decoded_weapon_selection;
+        self.decoded_subtick_moves += other.decoded_subtick_moves;
+        self.max_subtick_moves = self.max_subtick_moves.max(other.max_subtick_moves);
+        self.max_input_history = self.max_input_history.max(other.max_input_history);
+        self.decoded_cannot_move += other.decoded_cannot_move;
+        self.decoded_dead += other.decoded_dead;
+        self.player_slot_mask |= other.player_slot_mask;
+    }
+}
 
 pub struct SecondPassParser<'a> {
     pub start_end_offset: Option<StartEndOffset>,
@@ -78,7 +261,19 @@ pub struct SecondPassParser<'a> {
     pub order_by_steamid: bool,
     pub last_tick: i32,
     pub parse_usercmd: bool,
-    pub usercmd_baselines: AHashMap<i32, CsgoUserCmdPb>,
+    pub usercmd_states: AHashMap<i32, UserCmdPlayerState>,
+    pub usercmd_seen: AHashSet<(i32, i32)>,
+    pub usercmd_stats: UserCmdDecodeStats,
+    #[cfg(test)]
+    pub(crate) usercmd_capture_counts: Option<AHashMap<(i32, i32, i32, i32), usize>>,
+    #[cfg(test)]
+    pub(crate) usercmd_captured_counts: AHashMap<(i32, i32, i32, i32), usize>,
+    #[cfg(test)]
+    pub(crate) usercmd_records: Vec<UserCmdTestRecord>,
+    #[cfg(test)]
+    pub(crate) usercmd_record_sink: Option<UserCmdTestSink>,
+    #[cfg(test)]
+    pub(crate) usercmd_transport_sink: Option<UserCmdTransportTestSink>,
     pub list_props: bool,
 }
 #[derive(Debug, Clone)]
@@ -160,6 +355,7 @@ impl<'a> SecondPassParser<'a> {
             df_per_player: self.df_per_player,
             entities: self.entities,
             last_tick: self.tick,
+            usercmd_stats: self.usercmd_stats,
         }
     }
     pub fn new(
@@ -178,8 +374,20 @@ impl<'a> SecondPassParser<'a> {
 
         Ok(SecondPassParser {
             uniq_prop_names: AHashSet::default(),
-            parse_usercmd: contains_usercmd_prop(&first_pass_output.settings.wanted_player_props),
-            usercmd_baselines: AHashMap::default(),
+            parse_usercmd: wants_usercmd_props(&first_pass_output.settings.wanted_player_props),
+            usercmd_states: AHashMap::default(),
+            usercmd_seen: AHashSet::default(),
+            usercmd_stats: UserCmdDecodeStats::default(),
+            #[cfg(test)]
+            usercmd_capture_counts: None,
+            #[cfg(test)]
+            usercmd_captured_counts: AHashMap::default(),
+            #[cfg(test)]
+            usercmd_records: Vec::new(),
+            #[cfg(test)]
+            usercmd_record_sink: None,
+            #[cfg(test)]
+            usercmd_transport_sink: None,
             last_tick: 0,
             start_end_offset: start_end_offset,
             order_by_steamid: first_pass_output.order_by_steamid,
@@ -358,6 +566,54 @@ pub fn create_huffman_lookup_table() -> Vec<(u8, u8)> {
     return huf2;
 }
 
-fn contains_usercmd_prop(names: &[String]) -> bool {
-    names.iter().any(|name| name.contains("usercmd") || BUTTONMAP.get(name.as_str()).is_some())
+pub fn wants_usercmd_props(names: &[String]) -> bool {
+    names
+        .iter()
+        .any(|name| name.contains("usercmd") || BUTTONMAP.get(name.as_str()).is_some() || name == BUTTONS_PROP_NAME)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::first_pass::parser_settings::rm_user_friendly_names;
+
+    #[test]
+    fn ring_requires_an_exact_command_number_match() {
+        let mut ring = UserCmdRing::default();
+        ring.insert(1, CsgoUserCmdPb::default());
+        assert!(ring.contains(1));
+        assert!(!ring.contains(151));
+
+        ring.insert(151, CsgoUserCmdPb::default());
+        assert!(!ring.contains(1));
+        assert!(ring.contains(151));
+        assert_eq!(ring.slot_command_number(1), Some(151));
+    }
+
+    #[test]
+    fn baseline_resolution_rejects_missing_or_mismatched_ring_entries() {
+        let mut state = UserCmdPlayerState::default();
+        state.ring.insert(100, CsgoUserCmdPb::default());
+        state.current_command_number = Some(100);
+
+        assert!(state.resolve_baseline(99).is_none());
+
+        state.ring.insert(249, CsgoUserCmdPb::default());
+        assert!(state.resolve_baseline(99).is_none());
+    }
+
+    #[test]
+    fn buttons_request_enables_usercmd_decode() {
+        assert!(wants_usercmd_props(&[BUTTONS_PROP_NAME.to_string()]));
+        assert!(wants_usercmd_props(&["usercmd_mouse_dx".to_string()]));
+        assert!(!wants_usercmd_props(&["CCSPlayerPawn.m_iHealth".to_string()]));
+    }
+
+    #[test]
+    fn buttons_friendly_name_resolves_to_the_legacy_mask_prop() {
+        assert_eq!(
+            rm_user_friendly_names(&vec!["buttons".to_string()]).unwrap(),
+            vec![BUTTONS_PROP_NAME.to_string()]
+        );
+    }
 }

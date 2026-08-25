@@ -12,6 +12,7 @@ use ahash::AHashMap;
 pub const PLAYER_ENTITY_HANDLE_MISSING: i32 = 2047;
 pub const SPECTATOR_TEAM_NUM: u32 = 1;
 pub const BUTTONS_BASEID: u32 = 100000;
+pub const BUTTONS_PROP_NAME: &str = "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev";
 pub const NORMAL_PROP_BASEID: u32 = 1000;
 pub const WEAPON_SKIN_NAME: u32 = 420420420;
 pub const WEAPON_ORIGINGAL_OWNER_ID: u32 = 6942000;
@@ -76,6 +77,24 @@ pub const USERCMD_SUBTICK_LEFT_HAND_DESIRED: u32 = 100000039;
 pub const USERCMD_ATTACK_START_HISTORY_INDEX_1: u32 = 100000040;
 pub const USERCMD_ATTACK_START_HISTORY_INDEX_2: u32 = 100000041;
 pub const USERCMD_ATTACK_START_HISTORY_INDEX_3: u32 = 100000042;
+pub const USERCMD_COMMAND_NUMBER: u32 = 100000043;
+pub const USERCMD_SERVER_TICK_EXECUTED: u32 = 100000044;
+pub const USERCMD_LEGACY_COMMAND_NUMBER: u32 = 100000045;
+pub const USERCMD_BASE_CLIENT_TICK: u32 = 100000046;
+pub const USERCMD_PREDICTION_OFFSET_TICKS_X256: u32 = 100000047;
+pub const USERCMD_UPMOVE: u32 = 100000048;
+pub const USERCMD_RANDOM_SEED: u32 = 100000049;
+pub const USERCMD_MOVE_CRC: u32 = 100000050;
+pub const USERCMD_CMD_FLAGS: u32 = 100000051;
+pub const USERCMD_EXECUTION_NOTES: u32 = 100000052;
+pub const USERCMD_IS_PREDICTING_BODY_SHOT_FX: u32 = 100000053;
+pub const USERCMD_IS_PREDICTING_HEAD_SHOT_FX: u32 = 100000054;
+pub const USERCMD_IS_PREDICTING_KILL_RAGDOLLS: u32 = 100000055;
+pub const USERCMD_TRANSPORT_CLIENT_TICK: u32 = 100000056;
+pub const USERCMD_PAWN_ENTITY_HANDLE: u32 = 100000057;
+pub const USERCMD_SUBTICK_MOVE_PITCH_DELTA: u32 = 100000058;
+pub const USERCMD_SUBTICK_MOVE_YAW_DELTA: u32 = 100000059;
+pub const USERCMD_PLAYER_SLOT: u32 = 100000060;
 
 pub const USERCMD_INPUT_HISTORY_BASEID: u32 = 100001000;
 pub const USERCMD_SUBTICK_MOVES_BASEID: u32 = 100001001;
@@ -487,7 +506,7 @@ impl PropController {
         if full_name.starts_with("CCSPlayerPawn") && prop_name.contains("CEconItemAttribute.m_iRawValue32") {
             f.prop_id = GLOVE_PAINT_ID as u32;
         }
-        if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo"{
+        if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo" {
             f.prop_id = GRENADE_AMMO_ID;
         }
         self.id += 1;

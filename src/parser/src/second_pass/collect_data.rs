@@ -138,6 +138,12 @@ impl<'a> SecondPassParser<'a> {
             PropType::Tick => return self.create_tick(),
             PropType::Name => return self.create_name(player),
             PropType::Steamid => return self.create_steamid(player),
+            PropType::Player if prop_info.prop_name == BUTTONS_PROP_NAME => {
+                return self
+                    .get_button_mask(entity_id)
+                    .map(Variant::U64)
+                    .ok_or(PropCollectionError::ButtonsSpecialIDNone);
+            }
             PropType::Player => return self.get_prop_from_ent(&prop_info.id, &entity_id),
             PropType::Team => return self.find_team_prop(&prop_info.id, &entity_id),
             PropType::Custom => self.create_custom_prop(prop_info, entity_id, player),
@@ -185,18 +191,13 @@ impl<'a> SecondPassParser<'a> {
     }
 
     fn get_button_mask(&self, entity_id: &i32) -> Option<u64> {
-        if let Some(button_id) = self.prop_controller.special_ids.buttons {
-            if let Ok(Variant::U64(button_mask)) = self.get_prop_from_ent(&button_id, entity_id) {
-                return Some(button_mask);
-            }
-        }
-
-        self.get_prop_from_ent(&USERCMD_BUTTONSTATE_1, entity_id)
-            .ok()
-            .and_then(|value| match value {
-                Variant::U64(button_mask) => Some(button_mask),
-                _ => None,
-            })
+        let legacy_mask = self
+            .prop_controller
+            .special_ids
+            .buttons
+            .and_then(|button_id| self.get_prop_from_ent(&button_id, entity_id).ok());
+        let usercmd_mask = self.get_prop_from_ent(&USERCMD_BUTTONSTATE_1, entity_id).ok();
+        select_button_mask(legacy_mask.as_ref(), usercmd_mask.as_ref())
     }
 
     fn get_button_prop_cached(
@@ -1217,6 +1218,29 @@ impl<'a> SecondPassParser<'a> {
             }
         }
         None
+    }
+}
+
+fn select_button_mask(legacy: Option<&Variant>, usercmd: Option<&Variant>) -> Option<u64> {
+    match legacy {
+        Some(Variant::U64(button_mask)) => Some(*button_mask),
+        _ => match usercmd {
+            Some(Variant::U64(button_mask)) => Some(*button_mask),
+            _ => None,
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn aggregate_buttons_prefers_legacy_mask_and_falls_back_to_usercmd() {
+        assert_eq!(select_button_mask(None, Some(&Variant::U64(0x20))), Some(0x20));
+        assert_eq!(select_button_mask(Some(&Variant::U64(0x40)), Some(&Variant::U64(0x20))), Some(0x40));
+        assert_eq!(select_button_mask(Some(&Variant::I32(1)), Some(&Variant::U64(0x20))), Some(0x20));
+        assert_eq!(select_button_mask(None, Some(&Variant::I32(1))), None);
     }
 }
 
