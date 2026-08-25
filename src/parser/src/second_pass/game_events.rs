@@ -111,7 +111,9 @@ impl<'a> SecondPassParser<'a> {
         // Parsing game events is this easy, the complexity comes from adding "extra" fields into events.
         for i in 0..event.keys.len() {
             let ge = &event.keys[i];
-            let desc = &event_desc.keys[i];
+            let Some(desc) = event_desc.keys.get(i) else {
+                return Err(DemoParserError::MalformedMessage);
+            };
             let val = parse_key(ge);
             event_fields.push(EventField {
                 name: desc.name().to_owned(),
