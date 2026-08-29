@@ -269,16 +269,29 @@ fn sanitize_message(mut bytes: &[u8], schema: MessageSchema) -> Option<Vec<u8>> 
     Some(out)
 }
 
-fn decode_repeated<M>(payloads: &[prost::bytes::Bytes], schema: MessageSchema) -> Option<Vec<M>>
+/// Reconstructs the codegen-delta list from its per-player-slot baseline.
+/// The leading wire-type 7 key declares the target length; following field
+/// numbers are zero-based element indices and may be sparse.
+fn decode_repeated<M>(payloads: &[prost::bytes::Bytes], schema: MessageSchema, previous: &[M]) -> Option<Vec<M>>
 where
-    M: Message + Default,
+    M: Message + Default + Clone,
 {
-    let mut messages = Vec::new();
+    let mut messages = previous.to_vec();
+    let mut declared_count = None;
     for payload in payloads {
         let mut bytes = payload.as_ref();
-        if bytes.first() == Some(&0x0f) {
-            messages.clear();
-            bytes = &bytes[1..];
+        if !bytes.is_empty() {
+            let mut after_marker = bytes;
+            let marker = read_varint(&mut after_marker)?;
+            if marker & 0x07 == 7 {
+                if declared_count.is_some() {
+                    return None;
+                }
+                let count = usize::try_from(marker >> 3).ok()?;
+                messages.resize(count, M::default());
+                declared_count = Some(count);
+                bytes = after_marker;
+            }
         }
         while !bytes.is_empty() {
             let key = read_varint(&mut bytes)?;
@@ -286,13 +299,10 @@ where
                 return None;
             }
             let index = usize::try_from(key >> 3).ok()?;
-            if index != messages.len() {
-                return None;
-            }
             let length = usize::try_from(read_varint(&mut bytes)?).ok()?;
             let (message, rest) = bytes.split_at_checked(length)?;
             let message = sanitize_message(message, schema)?;
-            messages.push(M::decode(message.as_slice()).ok()?);
+            messages.get_mut(index)?.merge(message.as_slice()).ok()?;
             bytes = rest;
         }
     }
@@ -325,7 +335,7 @@ pub(super) fn apply_delta(baseline: &CsgoUserCmdPb, delta_data: &[u8]) -> Option
     let mut next = baseline.clone();
 
     if !delta.input_history_delta.is_empty() {
-        next.input_history = decode_repeated(&delta.input_history_delta, MessageSchema::InputHistory)?;
+        next.input_history = decode_repeated(&delta.input_history_delta, MessageSchema::InputHistory, &next.input_history)?;
     }
     replace_if_some(&mut next.attack1_start_history_index, delta.attack1_start_history_index);
     replace_if_some(&mut next.attack2_start_history_index, delta.attack2_start_history_index);
@@ -361,7 +371,7 @@ pub(super) fn apply_delta(baseline: &CsgoUserCmdPb, delta_data: &[u8]) -> Option
             base.execution_notes = Some(CBaseUserCmdExecutionNotes::decode(notes).ok()?);
         }
         if !delta_base.subtick_moves_delta.is_empty() {
-            base.subtick_moves = decode_repeated(&delta_base.subtick_moves_delta, MessageSchema::SubtickMove)?;
+            base.subtick_moves = decode_repeated(&delta_base.subtick_moves_delta, MessageSchema::SubtickMove, &base.subtick_moves)?;
         }
     }
 
@@ -402,11 +412,38 @@ mod tests {
     }
 
     #[test]
-    fn rejects_nonsequential_repeated_entries_without_mutating_baseline() {
-        let baseline = CsgoUserCmdPb::default();
-        let delta = [0x12, 0x02, 0x0a, 0x00];
-        assert!(apply_delta(&baseline, &delta).is_none());
-        assert_eq!(baseline, CsgoUserCmdPb::default());
+    fn repeated_marker_declares_multiple_elements() {
+        let payload = prost::bytes::Bytes::from_static(&[
+            0x17, 0x02, 0x09, 0x08, 0x01, 0x10, 0x01, 0x1d, 0x00, 0x00, 0xb0, 0x3e, 0x0a, 0x0a, 0x08, 0x80, 0x10, 0x10, 0x01, 0x1d, 0x00, 0x00, 0xb0, 0x3e,
+        ]);
+
+        let decoded = decode_repeated::<csgoproto::CSubtickMoveStep>(&[payload], MessageSchema::SubtickMove, &[]).unwrap();
+
+        assert_eq!(decoded.len(), 2);
+        assert_eq!(decoded[0].button, Some(1));
+        assert_eq!(decoded[1].button, Some(2048));
+    }
+
+    #[test]
+    fn repeated_delta_allows_sparse_indices_and_merges_element_baselines() {
+        let previous = vec![
+            csgoproto::CSubtickMoveStep::default(),
+            csgoproto::CSubtickMoveStep {
+                button: Some(2),
+                pressed: Some(true),
+                when: Some(0.25),
+                ..Default::default()
+            },
+        ];
+        let payload = prost::bytes::Bytes::from_static(&[0x17, 0x0a, 0x02, 0x08, 0x04]);
+
+        let decoded = decode_repeated(&[payload], MessageSchema::SubtickMove, &previous).unwrap();
+
+        assert_eq!(decoded.len(), 2);
+        assert_eq!(decoded[0], csgoproto::CSubtickMoveStep::default());
+        assert_eq!(decoded[1].button, Some(4));
+        assert_eq!(decoded[1].pressed, Some(true));
+        assert_eq!(decoded[1].when, Some(0.25));
     }
 
     #[test]
