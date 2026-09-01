@@ -28,7 +28,32 @@ use std::env;
 const HUF_LOOKUPTABLE_MAXVALUE: u32 = (1 << 17) - 1;
 const DEFAULT_MAX_ENTITY_ID: usize = 1024;
 
+/// Two most recent sampled positions of a player, used to derive velocity.
+///
+/// Upstream read these two rows back out of the accumulated `output` columns.
+/// To make sure they were adjacent ticks, `event_with_velocity` disabled tick
+/// filtering entirely in `collect_entities`, so asking for velocity on any event
+/// materialised the whole tick table. Measured on a 492 MB demo: one
+/// `parseEvents` call went from 645 MB to 1634 MB peak RSS purely because three
+/// velocity props were requested, and the cost did not depend on how many events
+/// were asked for. Keeping just the two rows removes that.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct VelocitySample {
+    pub prev: Option<[f32; 3]>,
+    pub last: Option<[f32; 3]>,
+}
+
+impl VelocitySample {
+    #[inline]
+    pub fn push(&mut self, xyz: Option<[f32; 3]>) {
+        self.prev = self.last;
+        self.last = xyz;
+    }
+}
+
 pub struct SecondPassParser<'a> {
+    /// Per-player position history used by `collect_velocity`.
+    pub velocity_history: AHashMap<u64, VelocitySample>,
     pub start_end_offset: Option<StartEndOffset>,
     pub qf_mapper: &'a QfMapper,
     pub prop_controller: &'a PropController,
@@ -177,6 +202,7 @@ impl<'a> SecondPassParser<'a> {
         let debug = if args.len() > 2 { args[2] == "true" } else { false };
 
         Ok(SecondPassParser {
+            velocity_history: AHashMap::default(),
             uniq_prop_names: AHashSet::default(),
             parse_usercmd: contains_usercmd_prop(&first_pass_output.settings.wanted_player_props),
             usercmd_baselines: AHashMap::default(),
