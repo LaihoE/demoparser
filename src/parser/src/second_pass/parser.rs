@@ -36,6 +36,10 @@ use super::usercmd_delta::apply_delta;
 const OUTER_BUF_DEFAULT_LEN: usize = 400_000;
 const INNER_BUF_DEFAULT_LEN: usize = 8192 * 15;
 
+fn button_state_masks(state1: u64, state2: u64, state3: u64) -> (u64, u64, u64) {
+    (state1, state3 | (state1 & state2), state3 | (!state1 & state2))
+}
+
 // --- env-gated phase profiling (CS2_PROF=1) ---------------------------------
 #[inline]
 pub(crate) fn prof_on() -> bool {
@@ -379,9 +383,16 @@ impl<'a> SecondPassParser<'a> {
             ent.props.insert(USERCMD_VIEWANGLE_Z, Variant::F32(viewangles.z()));
         }
         if let Some(buttons_pb) = base.buttons_pb.as_ref() {
-            ent.props.insert(USERCMD_BUTTONSTATE_1, Variant::U64(buttons_pb.buttonstate1()));
-            ent.props.insert(USERCMD_BUTTONSTATE_2, Variant::U64(buttons_pb.buttonstate2()));
-            ent.props.insert(USERCMD_BUTTONSTATE_3, Variant::U64(buttons_pb.buttonstate3()));
+            let state1 = buttons_pb.buttonstate1();
+            let state2 = buttons_pb.buttonstate2();
+            let state3 = buttons_pb.buttonstate3();
+            let (held, pressed, released) = button_state_masks(state1, state2, state3);
+            ent.props.insert(USERCMD_BUTTONSTATE_1, Variant::U64(state1));
+            ent.props.insert(USERCMD_BUTTONSTATE_2, Variant::U64(state2));
+            ent.props.insert(USERCMD_BUTTONSTATE_3, Variant::U64(state3));
+            ent.props.insert(USERCMD_BUTTONS_HELD, Variant::U64(held));
+            ent.props.insert(USERCMD_BUTTONS_PRESSED, Variant::U64(pressed));
+            ent.props.insert(USERCMD_BUTTONS_RELEASED, Variant::U64(released));
         }
         ent.props
             .insert(USERCMD_CONSUMED_SERVER_ANGLE_CHANGES, Variant::U32(base.consumed_server_angle_changes()));
@@ -465,5 +476,33 @@ impl<'a> SecondPassParser<'a> {
     pub fn parse_user_command_cmd(&mut self, _data: &[u8]) -> Result<(), DemoParserError> {
         // Only in pov demos. Maybe implement sometime. Includes buttons etc.
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::button_state_masks;
+
+    #[test]
+    fn reconstructs_all_button_state_sequences() {
+        let expected = [
+            (false, false, false),
+            (true, false, false),
+            (false, false, true),
+            (true, true, false),
+            (false, true, true),
+            (true, true, true),
+            (false, true, true),
+            (true, true, true),
+        ];
+        let bit = 1 << 5;
+
+        for (code, expected) in expected.into_iter().enumerate() {
+            let state1 = u64::from(code & 1 != 0) * bit;
+            let state2 = u64::from(code & 2 != 0) * bit;
+            let state3 = u64::from(code & 4 != 0) * bit;
+            let (held, pressed, released) = button_state_masks(state1, state2, state3);
+            assert_eq!((held != 0, pressed != 0, released != 0), expected, "button state {code}");
+        }
     }
 }
