@@ -20,18 +20,14 @@ jobs:
       run:
         working-directory: ./src/python
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
 
       - if: matrix.python-version == '3.13'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: 3.13
           architecture: ${{ matrix.target }}
@@ -55,12 +51,8 @@ jobs:
       run:
         working-directory: ./src/python
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
@@ -99,12 +91,8 @@ jobs:
       run:
         working-directory: ./src/python
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Install Protoc
         run: |
