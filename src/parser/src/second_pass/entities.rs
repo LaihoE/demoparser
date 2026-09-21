@@ -195,7 +195,7 @@ impl<'a> SecondPassParser<'a> {
         */
 
         // Create an "empty" path ([-1, 0, 0, 0, 0, 0, 0])
-        // For perfomance reasons have them always the same len
+        // For performance reasons have them always the same len
         let mut fp = generate_fp();
         let mut idx = 0;
         // Do huffman decoding with a lookup table instead of reading one bit at a time

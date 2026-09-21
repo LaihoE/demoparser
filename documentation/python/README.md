@@ -103,7 +103,7 @@ def list_game_events(): -> List[str]
 output along these lines:
 ['announce_phase_end', 'cs_round_start_beep', 'hltv_message', 'weapon_fire', 'hltv_chase', 'round_end' ... ]
 
-Notice that this function is rougly as slow as a call to parse_event/parse_events.
+Notice that this function is roughly as slow as a call to parse_event/parse_events.
 
 <br/><br/>
 ```Python

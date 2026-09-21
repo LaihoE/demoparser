@@ -141,21 +141,21 @@ There are also some rare other message types that can be found in parsing/parser
 
 
 #### Stringtables (both create and update)
-Stringtables are messages that contains suprise surprise string data. Most of this data is not interesting for demo parsing, but baselines for entities pass trough here. These are the "default" values for entities. For example a players default health is 100?. 
+Stringtables are messages that contains surprise surprise string data. Most of this data is not interesting for demo parsing, but baselines for entities pass trough here. These are the "default" values for entities. For example a players default health is 100?. 
 "Userinfo" Also comes trough here, but with the source2 format it seems to be included in packet-entities and doesn't seem interesting anymore.
 
 #### GE_Source1LegacyGameEventList
 Includes needed data for parsing game events. This message should come before the first game event. It tells you how the game events should be decoded. If this message is lost then I think decoding game events is not possible?
 
 #### GE_Source1LegacyGameEvent
-Typical game events. Triggered when interesting things happen in the game, like when a weapon is fired or a round is over. Events are just key value pairs. These events can be parsed seperately from packet_entities (assuming you dont want to add extra custom values into the events).
+Typical game events. Triggered when interesting things happen in the game, like when a weapon is fired or a round is over. Events are just key value pairs. These events can be parsed separately from packet_entities (assuming you dont want to add extra custom values into the events).
 
 #### svc_PacketEntities
 The majority of data in the demo. All the data relating to entities. For example every players every coordinate, health, viewangles and you name it. If you can see a value in a replay then it probably comes from here.  
 
 Something to note is that packet entities only send changes in values. If a player is standing still then the players coordinates are not updated during that tick. This means that a value at tick 5000 may have been set at tick 3542 (when the player last moved) so you can't just parse the ticks that you are interested in, but also ticks before that. In theory it is possible to start a tick and parse ticks backwards until you find the most recent update, but this idea is very messy to implement.
 
-This part combined with command "DEM_SendTables" are by far the most comlicated parts of the demo. Getting these right is way harder than the rest of the demo parsing. If you want to try parsing the demo I would recommend by starting with game events and then move on to these.
+This part combined with command "DEM_SendTables" are by far the most complicated parts of the demo. Getting these right is way harder than the rest of the demo parsing. If you want to try parsing the demo I would recommend by starting with game events and then move on to these.
 
 
 

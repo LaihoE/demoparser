@@ -1253,7 +1253,7 @@ pub fn column_from_pairs(
         Some(Variant::VecXYZ(_)) => to_py_xyz_col(pairs, name, py),
         Some(Variant::VecXY(_)) => to_py_xy_col(pairs, name, py),
         Some(Variant::Stickers(_)) => to_py_sticker_col(pairs, name, py),
-        _ => panic!("unkown ge key: {field_type:?}"),
+        _ => panic!("unknown ge key: {field_type:?}"),
     };
     Ok(s)
 }

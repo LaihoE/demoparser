@@ -35,7 +35,7 @@ let ticks_json = parseTicks("path_to_demo.dem", ["X", "Y"])
 ### Examples in Python and JavaScript
 - [Examples](./examples)
 
-### Scuffed Documentaion
+### Scuffed Documentation
 - [Documentaion](./documentation)
 
 
@@ -51,7 +51,7 @@ ThinkPad T14 gen 2|4|14.00s|328|
 Gaming pc specs: CPU: Ryzen 5900x, SSD: Samsung 980 pro NVME  
 Thinkpad specs: CPU: i5-1335g7, SSD: Toshiba XG6 NVME  
 Both devices run Ubuntu 20.04  
-Python/JS are rougly as fast.
+Python/JS are roughly as fast.
 
 ### List of fields the parser supports:
 

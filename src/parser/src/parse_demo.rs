@@ -152,13 +152,13 @@ impl<'a> Parser<'a> {
         &self,
         outer_bytes: &[u8],
         first_pass_output: FirstPassOutput,
-        reciever: Receiver<StartEndOffset>,
+        receiver: Receiver<StartEndOffset>,
     ) -> Result<DemoOutput, DemoParserError> {
         thread::scope(|s| {
             let mut handles = vec![];
             let mut channel_threading_was_ok = true;
             loop {
-                if let Ok(start_end_offset) = reciever.recv_timeout(Duration::from_secs(3)) {
+                if let Ok(start_end_offset) = receiver.recv_timeout(Duration::from_secs(3)) {
                     match start_end_offset.msg_type {
                         StartEndType::EndOfMessages => break,
                         StartEndType::OK => {}

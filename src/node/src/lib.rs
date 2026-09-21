@@ -42,7 +42,7 @@ impl FromNapiValue for JsVariant {
           } else {
             Err(Error::new(
               Status::InvalidArg,
-              "Unspported Boolean type for Variant".to_owned(),
+              "Unsupported Boolean type for Variant".to_owned(),
             ))
           }
         } else if js_unknown_type == ValueType::String {
@@ -96,13 +96,13 @@ impl FromNapiValue for JsVariant {
         } else {
           Err(Error::new(
             Status::InvalidArg,
-            "Unspported type for Variant".to_owned(),
+            "Unsupported type for Variant".to_owned(),
           ))
         }
       }
       _ => Err(Error::new(
         Status::InvalidArg,
-        "Unspported type for Variant".to_owned(),
+        "Unsupported type for Variant".to_owned(),
       )),
     }
   }

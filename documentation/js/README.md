@@ -96,7 +96,7 @@ Will get you the output:
     },
 ]
 ```
-(inlcuded only 2 players in the example to make it shorter but should be 10 players each tick)
+(included only 2 players in the example to make it shorter but should be 10 players each tick)
     
 
 "ticks" argument lets you choose which ticks to parse.  
@@ -160,7 +160,7 @@ def list_game_events(): -> List[str]
 
 
 
-Notice that this function is rougly as slow as a call to parse_event/parse_events.
+Notice that this function is roughly as slow as a call to parse_event/parse_events.
 
 <br/><br/>
 ```Python

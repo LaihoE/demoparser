@@ -359,7 +359,7 @@ impl<'a> FirstPassParser<'a> {
         let missing_percentage = 100.0 - (file_len as f32 / file_length_expected as f32 * 100.0);
         if missing_percentage > 10.0 {
             return Err(DemoParserError::DemoEndsEarly(format!(
-                "demo ends early. Expected legth: {}, file lenght: {}. Missing: {:.2}%",
+                "demo ends early. Expected length: {}, file length: {}. Missing: {:.2}%",
                 file_length_expected,
                 file_len,
                 100.0 - (file_len as f32 / file_length_expected as f32 * 100.0),

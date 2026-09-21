@@ -143,7 +143,7 @@ impl<'a> SecondPassParser<'a> {
         Ok(None)
     }
     fn cleanups(&self, event: &mut GameEvent) {
-        // Contains some fixed like renaming weapons to be consitent.
+        // Contains some fixed like renaming weapons to be consistent.
         for field in &mut event.fields {
             if field.name == "hitgroup" {
                 if let Some(Variant::I32(i)) = field.data {
