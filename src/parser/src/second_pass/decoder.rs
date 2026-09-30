@@ -126,11 +126,9 @@ impl<'a> Bitreader<'a> {
         Ok(v)
     }
     pub fn decode_uint64(&mut self) -> Result<u64, DemoParserError> {
-        let bytes = self.read_n_bytes(8)?;
-        match bytes.try_into() {
-            Err(_) => Err(DemoParserError::OutOfBytesError),
-            Ok(arr) => Ok(u64::from_ne_bytes(arr)),
-        }
+        let mut bytes = [0_u8; 8];
+        self.read_n_bytes_mut(bytes.len(), &mut bytes)?;
+        Ok(u64::from_ne_bytes(bytes))
     }
     pub fn decode_noscale(&mut self) -> Result<f32, DemoParserError> {
         Ok(f32::from_le_bytes(self.read_nbits(32)?.to_le_bytes()))
@@ -412,6 +410,29 @@ impl QuantalizedFloat {
 #[cfg(test)]
 mod tests {
     use crate::second_pass::decoder::*;
+
+    #[test]
+    fn fixed64_matches_byte_reader_at_all_alignments() {
+        let bytes = [0x53, 0xc8, 0x91, 0xf2, 0x77, 0x04, 0xa5, 0x32, 0xe9, 0x88, 0x20, 0x3a];
+        for len in 0..=bytes.len() {
+            for offset in 0..8 {
+                if len == 0 && offset != 0 {
+                    continue;
+                }
+                let mut decoded = Bitreader::new(&bytes[..len]);
+                let mut reference = Bitreader::new(&bytes[..len]);
+                decoded.read_nbits(offset).unwrap();
+                reference.read_nbits(offset).unwrap();
+                let expected = reference.read_n_bytes(8)
+                    .map(|bytes| u64::from_ne_bytes(bytes.try_into().unwrap()));
+                assert_eq!(decoded.decode_uint64(), expected, "len={len}, offset={offset}");
+                assert_eq!(decoded.bits_remaining(), reference.bits_remaining());
+                if reference.bits_remaining().unwrap_or(0) > 0 {
+                    assert_eq!(decoded.read_nbits(1), reference.read_nbits(1));
+                }
+            }
+        }
+    }
 
     #[test]
     fn test_qfloat_new() {
