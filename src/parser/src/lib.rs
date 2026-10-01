@@ -1,5 +1,6 @@
 #[cfg(test)]
 pub mod e2e_test;
+mod entity_handle;
 pub mod first_pass;
 pub mod maps;
 pub mod parse_demo;

@@ -1,3 +1,4 @@
+use crate::entity_handle::entity_handle_index;
 use crate::first_pass::parser::Frame;
 use crate::first_pass::parser::HEADER_ENDS_AT_BYTE;
 use crate::first_pass::parser_settings::FirstPassParser;
@@ -333,7 +334,7 @@ impl<'a> SecondPassParser<'a> {
         let Some(base) = user_cmd.base.as_ref() else {
             return;
         };
-        let entity_id = base.pawn_entity_handle() & 0x7ff;
+        let entity_id = entity_handle_index(base.pawn_entity_handle());
         let Some(Some(ent)) = self.entities.get_mut(entity_id as usize) else {
             return;
         };
