@@ -78,6 +78,64 @@ static REMOVEDEVENTS: &'static [&str] = &["server_cvar", "player_connect"];
 const ENTITYIDNONE: i32 = 2047;
 // https://developer.valvesoftware.com/wiki/SteamID
 const STEAMID64INDIVIDUALIDENTIFIER: u64 = 0x0110000100000000;
+const MAX_GAME_EVENT_FALLBACK_BYTES: usize = 1024 * 1024;
+
+#[derive(Clone, PartialEq, prost::Message)]
+struct GameEventRawStrings {
+    #[prost(string, optional, tag = "1")]
+    event_name: Option<String>,
+    #[prost(int32, optional, tag = "2")]
+    eventid: Option<i32>,
+    #[prost(message, repeated, tag = "3")]
+    keys: Vec<GameEventRawKey>,
+}
+
+#[derive(Clone, PartialEq, prost::Message)]
+struct GameEventRawKey {
+    #[prost(int32, optional, tag = "1")]
+    r#type: Option<i32>,
+    #[prost(bytes = "vec", optional, tag = "2")]
+    val_string: Option<Vec<u8>>,
+    #[prost(float, optional, tag = "3")]
+    val_float: Option<f32>,
+    #[prost(int32, optional, tag = "4")]
+    val_long: Option<i32>,
+    #[prost(int32, optional, tag = "5")]
+    val_short: Option<i32>,
+    #[prost(int32, optional, tag = "6")]
+    val_byte: Option<i32>,
+    #[prost(bool, optional, tag = "7")]
+    val_bool: Option<bool>,
+    #[prost(uint64, optional, tag = "8")]
+    val_uint64: Option<u64>,
+}
+
+fn decode_game_event(bytes: &[u8]) -> Result<CsvcMsgGameEvent, DemoParserError> {
+    match CsvcMsgGameEvent::decode(bytes) {
+        Ok(event) => Ok(event),
+        Err(_) => {
+            if bytes.len() > MAX_GAME_EVENT_FALLBACK_BYTES {
+                return Err(DemoParserError::MalformedMessage);
+            }
+            // Only val_string changes type here; other invalid fields still fail decoding.
+            let raw = GameEventRawStrings::decode(bytes).map_err(|_| DemoParserError::MalformedMessage)?;
+            Ok(CsvcMsgGameEvent {
+                event_name: raw.event_name,
+                eventid: raw.eventid,
+                keys: raw.keys.into_iter().map(|key| KeyT {
+                    r#type: key.r#type,
+                    val_string: key.val_string.map(|value| String::from_utf8_lossy(&value).into_owned()),
+                    val_float: key.val_float,
+                    val_long: key.val_long,
+                    val_short: key.val_short,
+                    val_byte: key.val_byte,
+                    val_bool: key.val_bool,
+                    val_uint64: key.val_uint64,
+                }).collect(),
+            })
+        }
+    }
+}
 
 impl<'a> SecondPassParser<'a> {
     pub fn parse_event(&mut self, bytes: &[u8]) -> Result<Option<GameEvent>, DemoParserError> {
@@ -85,10 +143,7 @@ impl<'a> SecondPassParser<'a> {
             return Ok(None);
         }
 
-        let event = match CsvcMsgGameEvent::decode(bytes) {
-            Ok(event) => event,
-            Err(_) => return Err(DemoParserError::MalformedMessage),
-        };
+        let event = decode_game_event(bytes)?;
         // Check if this events id is found in our game event list
         let event_desc = match self.ge_list.get(&event.eventid()) {
             Some(desc) => desc,
@@ -1483,6 +1538,78 @@ impl<'a> SecondPassParser<'a> {
                 events.push(GameEventInfo::WeaponCreateDefIdxNew((result.clone(), entity.entity_id, fi.prop_id)));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod game_event_raw_string_tests {
+    use super::{decode_game_event, GameEventRawKey, GameEventRawStrings, MAX_GAME_EVENT_FALLBACK_BYTES};
+    use crate::first_pass::read_bits::DemoParserError;
+    use csgoproto::{csvc_msg_game_event::KeyT, CsvcMsgGameEvent};
+    use prost::Message;
+
+    #[test]
+    fn valid_game_event_is_unchanged() {
+        let event = CsvcMsgGameEvent {
+            event_name: Some("player_connect".into()),
+            eventid: Some(7),
+            keys: vec![KeyT {
+                r#type: Some(1),
+                val_string: Some("valid name".into()),
+                val_long: Some(42),
+                ..Default::default()
+            }],
+        };
+        assert_eq!(decode_game_event(&event.encode_to_vec()).unwrap(), event);
+    }
+
+    #[test]
+    fn invalid_utf8_in_string_key_preserves_the_event() {
+        let event = GameEventRawStrings {
+            event_name: Some("player_connect".into()),
+            eventid: Some(7),
+            keys: vec![GameEventRawKey {
+                r#type: Some(1),
+                val_string: Some(vec![b'A', 0xff, b'B']),
+                val_long: Some(42),
+                ..Default::default()
+            }],
+        };
+        let decoded = decode_game_event(&event.encode_to_vec()).unwrap();
+        assert_eq!(decoded.eventid, Some(7));
+        assert_eq!(decoded.keys[0].val_string.as_deref(), Some("A\u{fffd}B"));
+        assert_eq!(decoded.keys[0].val_long, Some(42));
+    }
+
+    #[test]
+    fn malformed_wire_data_is_still_rejected() {
+        assert!(matches!(
+            decode_game_event(&[0x1a, 0x05, 0x12]),
+            Err(DemoParserError::MalformedMessage)
+        ));
+    }
+
+    #[test]
+    fn invalid_event_name_is_still_rejected() {
+        assert!(matches!(
+            decode_game_event(&[0x0a, 0x01, 0xff]),
+            Err(DemoParserError::MalformedMessage)
+        ));
+    }
+
+    #[test]
+    fn oversized_invalid_utf8_event_is_rejected() {
+        let event = GameEventRawStrings {
+            keys: vec![GameEventRawKey {
+                val_string: Some(vec![0xff; MAX_GAME_EVENT_FALLBACK_BYTES]),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        assert!(matches!(
+            decode_game_event(&event.encode_to_vec()),
+            Err(DemoParserError::MalformedMessage)
+        ));
     }
 }
 // what is this shit
