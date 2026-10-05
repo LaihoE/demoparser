@@ -386,7 +386,9 @@ impl<'a> SecondPassParser<'a> {
         }
         let is_projectile_prop =
             (class.name.contains("Projectile") || class.name.contains("Grenade") || class.name.contains("Flash")) && !class.name.contains("Player");
-        if is_projectile_prop {
+        // CInferno flame entities carry grenade data without matching the
+        // name patterns above; track them for grenade output too.
+        if is_projectile_prop || class.name.contains("Inferno") {
             return Ok(EntityType::Projectile);
         }
         return Ok(EntityType::Normal);

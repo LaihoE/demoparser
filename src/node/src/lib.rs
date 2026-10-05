@@ -167,6 +167,7 @@ pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<Vec<Voic
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    grenade_classes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -206,6 +207,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    grenade_classes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -219,11 +221,19 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
 }
 /// extra: lets you add new fields to grenades. Use list_updated_fields for a full list.
 /// grenades: lets you disable non-projectile grenades. This can have a big difference on memory/speed.
+/// grenade_classes: when grenades is enabled, only emit rows for these non-projectile
+/// grenade classes (e.g. inferno flames). Omit to emit every non-projectile class.
+/// skip_nones: when true, omit missing props from rows instead of emitting explicit nulls.
+/// Grenade rows are heterogeneous (projectiles have no fire props, burns have no
+/// coordinates), so with wide extras like the 64 CInferno fire nodes explicit nulls
+/// multiply every row. Defaults to false to preserve legacy null behavior.
 #[napi]
 pub fn parse_grenades(
   path_or_buf: Either<String, Buffer>,
   extra: Option<Vec<String>>,
   grenades: Option<bool>,
+  grenade_classes: Option<Vec<String>>,
+  skip_nones: Option<bool>,
 ) -> napi::Result<Value> {
   let bytes = resolve_byte_type(path_or_buf)?;
   let huf = create_huffman_lookup_table();
@@ -236,10 +246,16 @@ pub fn parse_grenades(
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
   };
   let grenades = grenades.unwrap_or(true);
+  let skip_nones = skip_nones.unwrap_or(false);
+
+  let mut real_name_to_og_name = AHashMap::default();
+  for (real_name, user_friendly_name) in real_extra_props.iter().zip(&extra_props) {
+    real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+  }
 
   let settings = ParserInputs {
     wanted_players: vec![],
-    real_name_to_og_name: AHashMap::default(),
+    real_name_to_og_name,
     wanted_player_props: vec![],
     wanted_other_props: real_extra_props.clone(),
     wanted_events: vec![],
@@ -254,14 +270,10 @@ pub fn parse_grenades(
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: grenades,
+    grenade_classes: grenade_classes,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
-
-  let mut real_name_to_og_name = AHashMap::default();
-  for (real_name, user_friendly_name) in real_extra_props.iter().zip(&extra_props) {
-    real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
-  }
 
   extra_props.push("tick".to_owned());
   extra_props.push("steamid".to_owned());
@@ -275,7 +287,7 @@ pub fn parse_grenades(
     prop_infos: prop_infos.clone(),
     inner: output.df.clone().into(),
   };
-  let result = soa_to_aos(helper);
+  let result = soa_to_aos(helper, skip_nones);
   match serde_json::to_value(&result) {
     Ok(s) => Ok(s),
     Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
@@ -303,6 +315,7 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    grenade_classes: None,
   };
   let mut parser = FirstPassParser::new(&settings);
   let output = match bytes {
@@ -385,6 +398,7 @@ pub fn parse_event(
     order_by_steamid: false,
     fallback_bytes: game_event_list_bytes,
     parse_grenades: false,
+    grenade_classes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -457,6 +471,7 @@ pub fn parse_events(
     order_by_steamid: false,
     fallback_bytes: game_event_list_bytes,
     parse_grenades: false,
+    grenade_classes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -537,6 +552,7 @@ pub fn parse_ticks(
     order_by_steamid: order_by_steamid,
     fallback_bytes: None,
     parse_grenades: false,
+    grenade_classes: None,
   };
 
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
@@ -581,7 +597,7 @@ pub fn parse_ticks(
     };
     return Ok(s);
   } else {
-    let result = soa_to_aos(helper);
+    let result = soa_to_aos(helper, false);
     let s = match serde_json::to_value(&result) {
       Ok(s) => s,
       Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
@@ -612,6 +628,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    grenade_classes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -644,6 +661,7 @@ pub fn parse_player_skins(path_or_buf: Either<String, Buffer>) -> napi::Result<V
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    grenade_classes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -675,6 +693,7 @@ pub fn list_updated_fields(path_or_buf: Either<String, Buffer>) -> napi::Result<
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    grenade_classes: None,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;

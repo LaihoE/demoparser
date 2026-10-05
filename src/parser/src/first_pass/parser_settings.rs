@@ -34,6 +34,11 @@ pub struct ParserInputs<'a> {
     pub parse_ents: bool,
     pub parse_projectiles: bool,
     pub parse_grenades: bool,
+    /// Non-projectile grenade classes to emit rows for when `parse_grenades`
+    /// is set (e.g. smoke clouds, inferno flames). Projectile classes are
+    /// always emitted. `None` preserves the legacy behavior of emitting
+    /// every non-projectile class.
+    pub grenade_classes: Option<Vec<String>>,
     pub only_header: bool,
     pub only_convars: bool,
     pub huffman_lookup_table: &'a Vec<(u8, u8)>,
