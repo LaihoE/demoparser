@@ -2350,8 +2350,8 @@ pub struct CEconItemPreviewDataBlock {
     pub killeaterscoretype: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag="10")]
     pub killeatervalue: ::core::option::Option<u32>,
-    #[prost(string, optional, tag="11")]
-    pub customname: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag="11")]
+    pub customnames: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(message, repeated, tag="12")]
     pub stickers: ::prost::alloc::vec::Vec<c_econ_item_preview_data_block::Sticker>,
     #[prost(uint32, optional, tag="13")]
