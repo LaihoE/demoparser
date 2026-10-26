@@ -309,6 +309,7 @@ pub fn _create_ge_tests() {
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
         parse_projectiles: false,
         parse_grenades: false,
+        grenade_classes: None,
         only_header: false,
         list_props: false,
         only_convars: false,
@@ -685,6 +686,7 @@ pub fn _create_tests() {
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
         parse_projectiles: false,
         parse_grenades: false,
+        grenade_classes: None,
         only_header: false,
         list_props: false,
         only_convars: false,
@@ -1058,6 +1060,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
         parse_projectiles: false,
         parse_grenades: false,
+        grenade_classes: None,
         only_header: false,
         list_props: false,
         only_convars: false,
@@ -1084,6 +1087,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         wanted_ticks: (0..5).into_iter().map(|x| x * 10000).collect_vec(),
         parse_projectiles: false,
         parse_grenades: false,
+        grenade_classes: None,
         only_header: false,
         list_props: false,
         only_convars: false,
@@ -1196,6 +1200,7 @@ mod tests {
             wanted_ticks: vec![10000, 10001],
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -18058,5 +18063,54 @@ mod tests {
             ],
         );
         assert_eq!(out.2["hegrenade_detonate"], prop.1);
+    }
+
+    #[test]
+    fn grenade_class_filter_restricts_non_projectile_rows() {
+        use crate::first_pass::prop_controller::GRENADE_TYPE_ID;
+        use crate::second_pass::variants::VarVec;
+        use std::string::String;
+        fn grenade_types(mmap: &[u8], classes: Option<Vec<String>>) -> Vec<String> {
+            let huf = create_huffman_lookup_table();
+            let settings = ParserInputs {
+                wanted_players: vec![],
+                real_name_to_og_name: AHashMap::default(),
+                wanted_player_props: vec![],
+                wanted_other_props: vec![],
+                parse_ents: true,
+                wanted_ticks: vec![],
+                wanted_events: vec![],
+                parse_projectiles: true,
+                parse_grenades: true,
+                grenade_classes: classes,
+                only_header: false,
+                only_convars: false,
+                huffman_lookup_table: &huf,
+                order_by_steamid: false,
+                list_props: false,
+                wanted_prop_states: AHashMap::default(),
+                fallback_bytes: None,
+            };
+            let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceSingleThreaded);
+            let parsed = ds.parse_demo(mmap).unwrap();
+            let col = parsed.df.get(&GRENADE_TYPE_ID).expect("grenade type column");
+            match col.data.as_ref().expect("column data") {
+                VarVec::String(v) => v.iter().map(|x| x.clone().unwrap_or_default()).collect(),
+                _ => panic!("unexpected grenade type column"),
+            }
+        }
+        let file = File::open("test_demo.dem".to_string()).unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+        let all = grenade_types(&mmap, None);
+        let filtered = grenade_types(&mmap, Some(vec!["CInferno".to_string()]));
+        assert!(!all.is_empty() && all.len() > filtered.len());
+        for t in &filtered {
+            assert!(t.contains("Projectile") || t == "CInferno", "unexpected class {t}");
+        }
+        let expected = all
+            .iter()
+            .filter(|t| t.contains("Projectile") || *t == "CInferno")
+            .count();
+        assert_eq!(filtered.len(), expected);
     }
 }

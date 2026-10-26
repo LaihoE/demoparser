@@ -39,6 +39,7 @@ fn settings<'a>(huf: &'a Vec<(u8, u8)>) -> ParserInputs<'a> {
         wanted_ticks: vec![],
         parse_projectiles: false,
         parse_grenades: false,
+        grenade_classes: None,
         only_header: false,
         list_props: false,
         only_convars: false,

@@ -107,6 +107,24 @@ impl<'py> FromPyObject<'_, 'py> for WantedPropState {
     }
 }
 
+/// Columnar analogue of `soa_to_aos(..., skip_nones = true)`: a DataFrame cannot
+/// omit keys per row, so columns that hold no values at all are dropped instead.
+/// Vec-per-row columns always carry a value and are never dropped.
+fn column_is_empty(data: &Option<VarVec>) -> bool {
+    match data {
+        None => true,
+        Some(VarVec::U32(v)) => v.iter().all(|x| x.is_none()),
+        Some(VarVec::Bool(v)) => v.iter().all(|x| x.is_none()),
+        Some(VarVec::U64(v)) => v.iter().all(|x| x.is_none()),
+        Some(VarVec::F32(v)) => v.iter().all(|x| x.is_none()),
+        Some(VarVec::I32(v)) => v.iter().all(|x| x.is_none()),
+        Some(VarVec::String(v)) => v.iter().all(|x| x.is_none()),
+        Some(VarVec::XYVec(v)) => v.iter().all(|x| x.is_none()),
+        Some(VarVec::XYZVec(v)) => v.iter().all(|x| x.is_none()),
+        _ => false,
+    }
+}
+
 #[pymethods]
 impl DemoParser {
     #[new]
@@ -138,6 +156,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -166,6 +185,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: false,
             list_props: true,
             only_convars: false,
@@ -192,6 +212,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -214,16 +235,24 @@ impl DemoParser {
     /// 0 -388.875  1295.46875 -5120.0   982              NaN    HeGrenade
     /// 1 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
     /// 2 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
-    #[pyo3(signature = (*, extra=None, grenades=true))]
+    ///
+    /// skip_nones: when true, drop columns that hold no values instead of
+    /// including them all-null. With wide extras like the 64 CInferno fire
+    /// nodes this avoids 64 empty columns on demos without infernos.
+    /// Defaults to false to preserve legacy output.
+    #[pyo3(signature = (*, extra=None, grenades=true, grenade_classes=None, skip_nones=false))]
     pub fn parse_grenades(
         &self,
         py: Python<'_>,
         extra: Option<Vec<String>>,
         grenades: Option<bool>,
+        grenade_classes: Option<Vec<String>>,
+        skip_nones: Option<bool>,
     ) -> PyResult<Py<PyAny>> {
         // This function works similarly to parse_ticks but collects the props from grenades instead.
         let wanted_other_props = extra.unwrap_or_default();
         let grenades = grenades.unwrap_or_default();
+        let skip_nones = skip_nones.unwrap_or_default();
         let real_other_props = match rm_user_friendly_names(&wanted_other_props) {
             Ok(real_props) => real_props,
             Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
@@ -243,6 +272,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: true,
             parse_grenades: grenades,
+            grenade_classes: grenade_classes,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -264,6 +294,9 @@ impl DemoParser {
 
         for prop_info in prop_infos {
             if output.df.contains_key(&prop_info.id) {
+                if skip_nones && column_is_empty(&output.df[&prop_info.id].data) {
+                    continue;
+                }
                 match &output.df[&prop_info.id].data {
                     Some(VarVec::F32(data)) => {
                         df_column_names_arrow.push(prop_info.prop_friendly_name);
@@ -341,6 +374,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -390,6 +424,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -475,6 +510,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -580,6 +616,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -641,6 +678,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -671,6 +709,7 @@ impl DemoParser {
             parse_ents: false,
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -750,6 +789,7 @@ impl DemoParser {
             wanted_ticks,
             parse_projectiles: false,
             parse_grenades: false,
+            grenade_classes: None,
             only_header: true,
             list_props: false,
             only_convars: false,
