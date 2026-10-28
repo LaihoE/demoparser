@@ -1,4 +1,4 @@
-use std::{io::Result, process::Command};
+use std::{io::Result, path::PathBuf, process::Command};
 
 fn main() -> Result<()> {
     println!("cargo::rerun-if-changed=GameTracking-CS2/Protobufs/demo.proto");
@@ -11,7 +11,7 @@ fn main() -> Result<()> {
         ])
         .status()?;
 
-    let protos = vec![
+    let protos: Vec<PathBuf> = [
         "GameTracking-CS2/Protobufs/steammessages.proto",
         "GameTracking-CS2/Protobufs/gcsdk_gcmessages.proto",
         "GameTracking-CS2/Protobufs/demo.proto",
@@ -26,7 +26,19 @@ fn main() -> Result<()> {
         "GameTracking-CS2/Protobufs/usercmd.proto",
         "GameTracking-CS2/Protobufs/gameevents.proto",
         "GameTracking-CS2/Protobufs/cs_gameevents.proto",
-    ];
+    ]
+    .into_iter()
+    .map(PathBuf::from)
+    .collect();
+
+    // Compile with protox (a pure-Rust protobuf compiler) instead of protoc. Valve's
+    // protos ship their own google/protobuf/descriptor.proto with custom options
+    // (boxed_type, synthetic_default, additional_includes, ...) whose field numbers
+    // collide with fields in the descriptor.proto that is compiled into protoc, so
+    // recent protoc versions refuse to compile them. protox uses the descriptor.proto
+    // from the include path, and it also means no protoc install is needed to build.
+    let file_descriptor_set = protox::compile(&protos, ["GameTracking-CS2/Protobufs/"])
+        .map_err(|e| std::io::Error::other(e.to_string()))?;
 
     prost_build::Config::new()
         .format(false)
@@ -34,5 +46,6 @@ fn main() -> Result<()> {
         .default_package_filename("protobuf")
         .bytes(["."])
         .enum_attribute(".", "#[derive(::strum::EnumIter)]")
-        .compile_protos(&protos, &["GameTracking-CS2/Protobufs/"])
+        .skip_protoc_run()
+        .compile_fds(file_descriptor_set)
 }
