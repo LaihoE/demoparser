@@ -27,7 +27,9 @@ jobs:
 
   test_python_bindings:
     name: Test Python Bindings
-    runs-on: ubuntu-latest
+    # ubuntu-latest is now 26.04, for which actions/setup-python has no
+    # Python 3.8 or 3.9 builds. 24.04 has builds for every version below.
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
