@@ -23,9 +23,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v3
-
       - if: matrix.python-version == '3.13'
         uses: actions/setup-python@v7
         with:
@@ -62,24 +59,6 @@ jobs:
           command: publish
           target: ${{ matrix.target }}
           args: --no-default-features -i ${{ matrix.python-version }} --no-sdist --skip-existing -m src/python/Cargo.toml
-          before-script-linux: |
-            case "${{ matrix.target }}" in
-              "aarch64")
-                # NOTE: pypa/manylinux docker images are Debian based
-                apt-get update
-                apt-get install -y protobuf-compiler
-                ;;
-              "x86" | "x86_64")
-                # NOTE: rust-cross/manylinux docker images are CentOS based
-                yum install -y wget unzip
-                wget https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip
-                unzip protoc-36.2-linux-x86_64.zip -d $HOME/protoc
-                mv $HOME/protoc/bin/protoc /usr/local/bin/
-                cp -r $HOME/protoc/include/* /usr/local/include/
-                chmod 755 /usr/local/bin/protoc
-                protoc --version
-                ;;
-            esac
 
   macos:
     runs-on: macos-latest
@@ -93,11 +72,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Protoc
-        run: |
-          brew update
-          brew install protobuf
 
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
