@@ -72,8 +72,8 @@ jobs:
               "x86" | "x86_64")
                 # NOTE: rust-cross/manylinux docker images are CentOS based
                 yum install -y wget unzip
-                wget https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip
-                unzip protoc-36.2-linux-x86_64.zip -d $HOME/protoc
+                wget https://github.com/protocolbuffers/protobuf/releases/download/v23.4/protoc-23.4-linux-x86_64.zip
+                unzip protoc-23.4-linux-x86_64.zip -d $HOME/protoc
                 mv $HOME/protoc/bin/protoc /usr/local/bin/
                 cp -r $HOME/protoc/include/* /usr/local/include/
                 chmod 755 /usr/local/bin/protoc
@@ -95,9 +95,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Install Protoc
-        run: |
-          brew update
-          brew install protobuf
+        uses: arduino/setup-protoc@v3
 
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
