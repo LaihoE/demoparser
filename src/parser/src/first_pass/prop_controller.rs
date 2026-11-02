@@ -80,6 +80,15 @@ pub const USERCMD_BUTTONS_HELD: u32 = 100000043;
 pub const USERCMD_BUTTONS_PRESSED: u32 = 100000044;
 pub const USERCMD_BUTTONS_RELEASED: u32 = 100000045;
 
+// Per-element CInferno.m_firePositions columns decode to
+// FIRE_POSITIONS_BASE + i, mirroring MY_WEAPONS_OFFSET. Chosen clear of
+// existing id ranges.
+pub const FIRE_POSITIONS_BASE: u32 = 700000000;
+// Cap for the sendtable-recorded array length below: the length comes from
+// untrusted demo bytes, and each element becomes an output column, so an
+// unbounded length would let a corrupt demo force unbounded allocation.
+pub const FIRE_POSITIONS_MAX: usize = 64;
+
 pub const USERCMD_INPUT_HISTORY_BASEID: u32 = 100001000;
 pub const USERCMD_SUBTICK_MOVES_BASEID: u32 = 100001001;
 pub const INPUT_HISTORY_X_OFFSET: u32 = 0;
@@ -116,6 +125,9 @@ pub struct PropController {
     pub wanted_prop_states: AHashMap<String, Variant>,
     pub wanted_prop_state_infos: Vec<WantedPropStateInfo>,
     pub parse_projectiles: bool,
+    // Sendtable-declared CInferno.m_firePositions length, recorded during
+    // traversal (0 = unseen).
+    pub fire_positions_len: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -166,6 +178,7 @@ impl PropController {
             wanted_prop_states,
             wanted_prop_state_infos: vec![],
             parse_projectiles: parse_projectiles,
+            fire_positions_len: 0,
         }
     }
 
@@ -329,6 +342,25 @@ impl PropController {
                 is_player_prop: true,
             });
         }
+        // One output column per fire array element; decode flattens element
+        // i to FIRE_POSITIONS_BASE + i (see get_propinfo).
+        if self.wanted_other_props.contains(&("m_firePositions".to_string())) {
+            let base = self
+                .real_name_to_og_name
+                .get("m_firePositions")
+                .cloned()
+                .unwrap_or_else(|| "m_firePositions".to_string());
+            let n = self.fire_positions_len.min(FIRE_POSITIONS_MAX);
+            for i in 0..n {
+                self.prop_infos.push(PropInfo {
+                    id: FIRE_POSITIONS_BASE + i as u32,
+                    prop_type: PropType::Weapon,
+                    prop_name: "m_firePositions".to_string(),
+                    prop_friendly_name: format!("{base}.{i}"),
+                    is_player_prop: false,
+                });
+            }
+        }
         self.prop_infos.push(PropInfo {
             id: TICK_ID,
             prop_type: PropType::Tick,
@@ -375,6 +407,11 @@ impl PropController {
     }
 
     fn insert_propinfo(&mut self, prop_name: &str, f: &mut ValueField) {
+        // The fire array expands to per-element columns below; skip the
+        // single-column info so the base id is registered once.
+        if prop_name == "CInferno.m_firePositions" {
+            return;
+        }
         let split_at_dot: Vec<&str> = prop_name.split(".").collect();
 
         let grenade_or_weapon = is_grenade_or_weapon(&prop_name);
@@ -493,6 +530,11 @@ impl PropController {
         if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo"{
             f.prop_id = GRENADE_AMMO_ID;
         }
+        // Bake a constant base id so decode-time get_propinfo can flatten
+        // array elements to per-element columns.
+        if full_name == "CInferno.m_firePositions" {
+            f.prop_id = FIRE_POSITIONS_BASE;
+        }
         self.id += 1;
     }
 
@@ -558,7 +600,11 @@ impl PropController {
                 Field::Pointer(ser) => self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name, path.clone()),
                 Field::Array(ser) => match &mut ser.field_enum.as_mut() {
                     Field::Value(v) => {
-                        self.handle_prop(&(ser_name.clone() + "." + &v.name), v, path);
+                        let full = ser_name.clone() + "." + &v.name;
+                        if full == "CInferno.m_firePositions" {
+                            self.fire_positions_len = self.fire_positions_len.max(ser.length);
+                        }
+                        self.handle_prop(&full, v, path);
                     }
                     _ => {}
                 },
@@ -617,4 +663,55 @@ pub fn is_grenade_or_weapon(full_name: &str) -> bool {
     let is_projectile_prop = (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
         && !split_at_dot[0].contains("Player");
     is_weapon_prop || is_projectile_prop
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn controller_with_fire_mapping(og: Option<&str>) -> PropController {
+        let mut real_name_to_og_name = AHashMap::default();
+        if let Some(og) = og {
+            real_name_to_og_name.insert("m_firePositions".to_string(), og.to_string());
+        }
+        let mut c = PropController::new(
+            vec![],
+            vec!["m_firePositions".to_string()],
+            AHashMap::default(),
+            real_name_to_og_name,
+            false,
+            &[],
+            false,
+        );
+        c.fire_positions_len = 2;
+        c
+    }
+
+    #[test]
+    fn fire_positions_use_caller_friendly_name() {
+        let mut c = controller_with_fire_mapping(Some("Grenade.m_firePositions"));
+        c.set_custom_propinfos();
+        let fire: Vec<_> = c
+            .prop_infos
+            .iter()
+            .filter(|p| p.prop_name == "m_firePositions")
+            .collect();
+        assert_eq!(fire.len(), 2);
+        assert_eq!(fire[0].prop_friendly_name, "Grenade.m_firePositions.0");
+        assert_eq!(fire[1].prop_friendly_name, "Grenade.m_firePositions.1");
+    }
+
+    #[test]
+    fn fire_positions_fall_back_without_mapping() {
+        let mut c = controller_with_fire_mapping(None);
+        c.set_custom_propinfos();
+        let fire: Vec<_> = c
+            .prop_infos
+            .iter()
+            .filter(|p| p.prop_name == "m_firePositions")
+            .collect();
+        assert_eq!(fire.len(), 2);
+        assert_eq!(fire[0].prop_friendly_name, "m_firePositions.0");
+        assert_eq!(fire[1].prop_friendly_name, "m_firePositions.1");
+    }
 }

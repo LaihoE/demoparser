@@ -3,6 +3,7 @@ use super::read_bits::DemoParserError;
 use crate::first_pass::parser_settings::needs_velocity;
 use crate::first_pass::parser_settings::FirstPassParser;
 use crate::first_pass::prop_controller::FLASHBANG_AMMO_ID;
+use crate::first_pass::prop_controller::FIRE_POSITIONS_BASE;
 use crate::first_pass::prop_controller::GRENADE_AMMO_ID;
 use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::prop_controller::FLATTENED_VEC_MAX_LEN;
@@ -492,6 +493,11 @@ pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
         } else {
             fi.prop_id = MY_WEAPONS_OFFSET + path.path[2] as u32 + 1;
         }
+    }
+    // Fire array elements flatten to per-element columns; the element index
+    // is path.path[1].
+    if fi.prop_id == FIRE_POSITIONS_BASE {
+        fi.prop_id = FIRE_POSITIONS_BASE + path.path[1] as u32;
     }
     if fi.prop_id == WEAPON_SKIN_ID {
         fi.prop_id = WEAPON_SKIN_ID + path.path[1] as u32;

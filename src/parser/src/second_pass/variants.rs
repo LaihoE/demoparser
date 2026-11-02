@@ -694,7 +694,15 @@ pub struct OutputSerdeHelperStruct {
     pub prop_infos: Vec<PropInfo>,
     pub inner: HashMap<u32, PropColumn>,
 }
-pub fn soa_to_aos(soa: OutputSerdeHelperStruct) -> Vec<std::collections::HashMap<String, Option<Variant>>> {
+/// When `skip_nones` is set, props with no value are omitted from rows
+/// instead of emitted as explicit nulls. Grenade rows are heterogeneous
+/// (projectiles have no fire props, burns have no coordinates), so nulls
+/// would multiply every row by the extra count; readers observe a missing
+/// key exactly as they observed a null.
+pub fn soa_to_aos(
+    soa: OutputSerdeHelperStruct,
+    skip_nones: bool,
+) -> Vec<std::collections::HashMap<String, Option<Variant>>> {
     let mut total_rows = 0;
     for (_, v) in &soa.inner {
         total_rows = v.len();
@@ -708,59 +716,143 @@ pub fn soa_to_aos(soa: OutputSerdeHelperStruct) -> Vec<std::collections::HashMap
                     None => continue,
                     Some(VarVec::F32(val)) => match val.get(idx) {
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::F32(*f))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::I32(val)) => match val.get(idx) {
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::I32(*f))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::String(val)) => match val.get(idx) {
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::U64(val)) => match val.get(idx) {
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::Bool(val)) => match val.get(idx) {
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::Bool(*f))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::U32(val)) => match val.get(idx) {
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::U32(*f))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::StringVec(val)) => match val.get(idx) {
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::StringVec(f.clone()))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::U64Vec(val)) => match val.get(idx) {
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::U64Vec(f.clone()))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::U32Vec(val)) => match val.get(idx) {
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::U32Vec(f.clone()))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::XYVec(val)) => match val.get(idx) {
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::VecXY(f.clone()))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::XYZVec(val)) => match val.get(idx) {
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::VecXYZ(f.clone()))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::Stickers(val)) => match val.get(idx) {
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::Stickers(f.clone()))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::InputHistory(val)) => match val.get(idx) {
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::InputHistory(f.clone()))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                     Some(VarVec::UserCmdSubtickMoves(val)) => match val.get(idx) {
                         Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::UserCmdSubtickMoves(f.clone()))),
-                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                        _ => {
+                            if skip_nones {
+                                None
+                            } else {
+                                hm.insert(prop_info.prop_friendly_name.clone(), None)
+                            }
+                        },
                     },
                 };
             }
@@ -841,5 +933,49 @@ impl Serialize for OutputSerdeHelperStruct {
             }
         }
         map.end()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::second_pass::collect_data::PropType;
+
+    fn single_col_helper() -> OutputSerdeHelperStruct {
+        let mut inner = HashMap::default();
+        inner.insert(
+            1,
+            PropColumn {
+                data: Some(VarVec::I32(vec![Some(1), None])),
+                num_nones: 0,
+            },
+        );
+        OutputSerdeHelperStruct {
+            prop_infos: vec![PropInfo {
+                id: 1,
+                prop_type: PropType::Custom,
+                prop_name: "x".to_string(),
+                prop_friendly_name: "x".to_string(),
+                is_player_prop: false,
+            }],
+            inner,
+        }
+    }
+
+    #[test]
+    fn soa_to_aos_legacy_emits_nulls_by_default() {
+        let rows = soa_to_aos(single_col_helper(), false);
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].get("x"), Some(&Some(Variant::I32(1))));
+        assert!(rows[1].contains_key("x"));
+        assert_eq!(rows[1].get("x"), Some(&None));
+    }
+
+    #[test]
+    fn soa_to_aos_skip_nones_omits_missing_keys() {
+        let rows = soa_to_aos(single_col_helper(), true);
+        assert_eq!(rows.len(), 2);
+        assert!(rows[0].contains_key("x"));
+        assert!(!rows[1].contains_key("x"));
     }
 }
