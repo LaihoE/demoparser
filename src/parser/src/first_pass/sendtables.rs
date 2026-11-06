@@ -106,6 +106,7 @@ impl<'a> FirstPassParser<'a> {
             needs_velocity(&self.wanted_player_props),
             &self.wanted_events,
             self.parse_projectiles,
+            self.parse_weapons,
         );
         // Quantalized floats have their own helper struct
         let mut qf_mapper = QfMapper {

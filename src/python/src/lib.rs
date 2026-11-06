@@ -138,6 +138,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -166,6 +167,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: false,
             list_props: true,
             only_convars: false,
@@ -192,6 +194,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -243,6 +246,123 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: true,
             parse_grenades: grenades,
+            parse_weapons: false,
+            only_header: false,
+            list_props: false,
+            only_convars: false,
+            huffman_lookup_table: &self.huf,
+            order_by_steamid: false,
+            fallback_bytes: None,
+        };
+
+        let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+        let output = match parser.parse_demo(&self.mmap) {
+            Ok(output) => output,
+            Err(e) => return Err(Exception::new_err(format!("{e}"))),
+        };
+        let mut all_series = vec![];
+        let mut all_pyobjects = vec![];
+        let prop_infos = output.prop_controller.prop_infos;
+        let mut df_column_names_arrow = vec![];
+        let mut df_column_names_py = vec![];
+
+        for prop_info in prop_infos {
+            if output.df.contains_key(&prop_info.id) {
+                match &output.df[&prop_info.id].data {
+                    Some(VarVec::F32(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
+                        all_series.push(arr_to_py(Box::new(Float32Array::from(data)))?);
+                    }
+                    Some(VarVec::I32(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
+                        all_series.push(arr_to_py(Box::new(Int32Array::from(data)))?);
+                    }
+                    Some(VarVec::U64(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
+                        all_series.push(arr_to_py(Box::new(UInt64Array::from(data)))?);
+                    }
+                    Some(VarVec::U32(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
+                        all_series.push(arr_to_py(Box::new(UInt32Array::from(data)))?);
+                    }
+                    Some(VarVec::Bool(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name);
+                        all_series.push(arr_to_py(Box::new(BooleanArray::from(data)))?);
+                    }
+                    Some(VarVec::String(data)) => {
+                        df_column_names_arrow.push(prop_info.prop_friendly_name.clone());
+                        let s = Series::new(&prop_info.prop_friendly_name.clone(), data);
+                        let py_series = rust_series_to_py_series(&s)?;
+                        all_series.push(py_series);
+                    }
+                    Some(VarVec::StringVec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.into_py_any(py)?);
+                    }
+                    Some(VarVec::U64Vec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.into_py_any(py)?);
+                    }
+                    Some(VarVec::XYZVec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.into_py_any(py)?);
+                    }
+                    Some(VarVec::U32Vec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.into_py_any(py)?);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Python::attach(|py| {
+            let polars = py.import("polars")?;
+            let all_series_py = all_series.into_py_any(py)?;
+            let df = polars.call_method1("DataFrame", (all_series_py,))?;
+            df.setattr("columns", df_column_names_arrow.clone())?;
+            let pandas_df = df.call_method0("to_pandas")?;
+            for (pyobj, col_name) in all_pyobjects.iter().zip(&df_column_names_py) {
+                pandas_df.call_method1("insert", (0, col_name, pyobj))?;
+            }
+            df_column_names_arrow.extend(df_column_names_py);
+            df_column_names_arrow.sort();
+            let kwargs = vec![("axis", 1)].into_py_dict(py).unwrap();
+            let args = (df_column_names_arrow,);
+            pandas_df.call_method("reindex", args, Some(&kwargs))?;
+            pandas_df.into_py_any(py)
+        })
+    }
+
+    /// Weapons lying on the ground (no owner): dropped on death, thrown with the drop key or
+    /// never picked up. One row per weapon per tick; steamid/name refer to the player who dropped it.
+    #[pyo3(signature = (*, extra=None, ticks=None))]
+    pub fn parse_weapons(
+        &self,
+        py: Python<'_>,
+        extra: Option<Vec<String>>,
+        ticks: Option<Vec<i32>>,
+    ) -> PyResult<Py<PyAny>> {
+        let wanted_other_props = extra.unwrap_or_default();
+        let real_other_props = match rm_user_friendly_names(&wanted_other_props) {
+            Ok(real_props) => real_props,
+            Err(e) => return Err(PyValueError::new_err(format!("{e}"))),
+        };
+        let mut real_name_to_og_name = AHashMap::default();
+        for (real_name, user_friendly_name) in real_other_props.iter().zip(&wanted_other_props) {
+            real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+        }
+        let settings = ParserInputs {
+            real_name_to_og_name,
+            wanted_players: vec![],
+            wanted_player_props: vec![],
+            wanted_other_props: real_other_props,
+            wanted_events: vec![],
+            wanted_prop_states: AHashMap::default(),
+            parse_ents: true,
+            wanted_ticks: ticks.unwrap_or_default(),
+            parse_projectiles: false,
+            parse_grenades: false,
+            parse_weapons: true,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -341,6 +461,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -390,6 +511,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -475,6 +597,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -580,6 +703,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -641,6 +765,7 @@ impl DemoParser {
             wanted_ticks: vec![],
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -671,6 +796,7 @@ impl DemoParser {
             parse_ents: false,
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -750,6 +876,7 @@ impl DemoParser {
             wanted_ticks,
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: true,
             list_props: false,
             only_convars: false,

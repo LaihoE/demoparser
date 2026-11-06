@@ -55,6 +55,7 @@ mod tests {
             parse_ents: true,
             parse_projectiles: false,
             parse_grenades: false,
+            parse_weapons: false,
             only_header: false,
             only_convars: false,
             huffman_lookup_table: &huffman,

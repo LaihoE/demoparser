@@ -61,6 +61,7 @@ pub fn parseEvent(
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
         parse_grenades: false,
+        parse_weapons: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -126,6 +127,7 @@ pub fn parseEvents(
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
         parse_grenades: false,
+        parse_weapons: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -159,6 +161,7 @@ pub fn listGameEvents(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
         parse_grenades: false,
+        parse_weapons: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -192,6 +195,7 @@ pub fn listUpdatedFields(fileBytes: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
         parse_grenades: false,
+        parse_weapons: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -255,6 +259,7 @@ pub fn parseTicks(
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
         parse_grenades: false,
+        parse_weapons: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -330,6 +335,7 @@ pub fn parseGrenades(
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
         parse_grenades: grenades,
+        parse_weapons: false,
     };
     let mut parser = Parser::new(settings, ForceSingleThreaded);
 
@@ -372,6 +378,7 @@ pub fn parseHeader(file: Vec<u8>) -> Result<JsValue, JsError> {
         wanted_prop_states: HashMap::default().into(),
         fallback_bytes: None,
         parse_grenades: false,
+        parse_weapons: false,
     };
     let mut parser = FirstPassParser::new(&settings);
     let output = parser.parse_header_only(&file).unwrap();

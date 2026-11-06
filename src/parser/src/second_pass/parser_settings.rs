@@ -80,6 +80,8 @@ pub struct SecondPassParser<'a> {
     pub uniq_prop_names: AHashSet<String>,
     pub baselines: AHashMap<u32, Vec<u8>, RandomState>,
     pub projectiles: BTreeSet<i32>,
+    /// Entity ids of every weapon entity (guns, knives, grenades as items, c4). parse_weapons only.
+    pub weapons: BTreeSet<i32>,
     pub fullpackets_parsed: u32,
     pub wanted_players: AHashSet<u64>,
     pub wanted_ticks: AHashSet<i32>,
@@ -98,6 +100,7 @@ pub struct SecondPassParser<'a> {
     pub parse_entities: bool,
     pub parse_projectiles: bool,
     pub parse_grenades: bool,
+    pub parse_weapons: bool,
     pub is_debug_mode: bool,
     pub df_per_player: AHashMap<u64, AHashMap<u32, PropColumn>>,
     pub order_by_steamid: bool,
@@ -179,7 +182,7 @@ impl<'a> SecondPassParser<'a> {
                 .collect(),
             game_events_counter: self.game_events_counter,
             uniq_prop_names: self.uniq_prop_names,
-            prop_info: PropController::new(vec![], vec![], AHashMap::default(), AHashMap::default(), false, &["none".to_string()], false),
+            prop_info: PropController::new(vec![], vec![], AHashMap::default(), AHashMap::default(), false, &["none".to_string()], false, false),
             projectiles: self.projectile_records,
             ptr: self.ptr,
             df_per_player: self.df_per_player,
@@ -243,12 +246,14 @@ impl<'a> SecondPassParser<'a> {
             wanted_events: first_pass_output.settings.wanted_events.clone(),
             parse_entities: first_pass_output.settings.parse_ents,
             projectiles: BTreeSet::default(),
+            weapons: BTreeSet::default(),
             baselines: first_pass_output.baselines.clone(),
             string_tables: first_pass_output.string_tables.clone(),
             teams: Teams::new(),
             game_events_counter: AHashSet::default(),
             parse_projectiles: first_pass_output.settings.parse_projectiles,
             parse_grenades: first_pass_output.settings.parse_grenades,
+            parse_weapons: first_pass_output.settings.parse_weapons,
             rules_entity_id: None,
             convars: AHashMap::default(),
             chat_messages: vec![],
@@ -300,6 +305,7 @@ pub struct SpecialIDs {
     pub life_state: Option<u32>,
 
     pub h_owner_entity: Option<u32>,
+    pub weapon_prev_owner: Option<u32>,
     pub agent_skin_idx: Option<u32>,
     pub total_rounds_played: Option<u32>,
 
@@ -325,6 +331,7 @@ pub struct SpecialIDs {
 impl SpecialIDs {
     pub fn new() -> Self {
         SpecialIDs {
+            weapon_prev_owner: None,
             round_start_count: None,
             round_end_count: None,
             match_end_count: None,

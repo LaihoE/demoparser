@@ -2,6 +2,7 @@ use super::entities::PlayerMetaData;
 use super::variants::Sticker;
 use super::variants::Variant;
 use crate::entity_handle::entity_handle_index;
+use crate::entity_handle::INVALID_ENTITY_ID;
 use crate::first_pass::prop_controller::*;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::maps::BUTTONMAP;
@@ -67,6 +68,10 @@ impl<'a> SecondPassParser<'a> {
             if self.prop_controller.event_with_velocity && !self.parse_projectiles {
                 self.update_velocity_history();
             }
+            return;
+        }
+        if self.parse_weapons {
+            self.collect_weapons();
             return;
         }
         if self.parse_projectiles {
@@ -356,6 +361,94 @@ impl<'a> SecondPassParser<'a> {
         }
     }
 
+    /// Weapons lying on the ground this tick: dropped on death, thrown with the drop key
+    /// or never picked up. A weapon with an owner is held (parented to the player, its
+    /// coordinates are relative) and is skipped. steamid/name refer to the previous owner
+    /// (m_hPrevOwner): the player who dropped it, None if it never had one.
+    pub fn collect_weapons(&mut self) {
+        let owner_id = match self.prop_controller.special_ids.h_owner_entity {
+            Some(id) => id,
+            None => return,
+        };
+        for weapon_entid in &self.weapons {
+            match self.get_prop_from_ent(&owner_id, weapon_entid) {
+                Ok(Variant::U32(handle)) => {
+                    if entity_handle_index(handle) != INVALID_ENTITY_ID {
+                        continue;
+                    }
+                }
+                Ok(_) => continue,
+                // Owner never sent: the entity has been ownerless since it was created
+                Err(_) => {}
+            }
+            let (steamid, name) = self.find_weapon_prev_owner(weapon_entid);
+            let weapon_name = self.find_weapon_name_from_weapon_entity(weapon_entid).ok();
+            let x = self.collect_cell_coordinate_grenade(CoordinateAxis::X, weapon_entid).ok();
+            let y = self.collect_cell_coordinate_grenade(CoordinateAxis::Y, weapon_entid).ok();
+            let z = self.collect_cell_coordinate_grenade(CoordinateAxis::Z, weapon_entid).ok();
+
+            // Insert these always
+            let pairs = vec![
+                (WEAPON_ENTITY_NAME_ID, weapon_name),
+                (STEAMID_ID, steamid.map(Variant::U64)),
+                (NAME_ID, name.map(Variant::String)),
+                (TICK_ID, Some(Variant::I32(self.tick))),
+                (ENTITY_ID_ID, Some(Variant::I32(*weapon_entid))),
+                (GRENADE_X, x),
+                (GRENADE_Y, y),
+                (GRENADE_Z, z),
+            ];
+            for pair in pairs {
+                self.output.entry(pair.0).or_insert_with(|| PropColumn::new()).push(pair.1);
+            }
+            // Extra props are read from the weapon entity itself
+            for prop_info in &self.prop_controller.prop_infos {
+                if prop_info.id == STEAMID_ID
+                    || prop_info.id == NAME_ID
+                    || prop_info.id == TICK_ID
+                    || prop_info.id == WEAPON_ENTITY_NAME_ID
+                    || prop_info.id == ENTITY_ID_ID
+                    || prop_info.id == GRENADE_X
+                    || prop_info.id == GRENADE_Y
+                    || prop_info.id == GRENADE_Z
+                {
+                    continue;
+                }
+                let prop = self.get_prop_from_ent(&prop_info.id, weapon_entid).ok();
+                self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(prop);
+            }
+        }
+    }
+    /// Player who held the weapon last (m_hPrevOwner), if it maps to a known player
+    fn find_weapon_prev_owner(&self, entity_id: &i32) -> (Option<u64>, Option<String>) {
+        let prev_owner_id = match self.prop_controller.special_ids.weapon_prev_owner {
+            Some(id) => id,
+            None => return (None, None),
+        };
+        let pawn_entid = match self.get_prop_from_ent(&prev_owner_id, entity_id) {
+            Ok(Variant::U32(handle)) => entity_handle_index(handle),
+            _ => return (None, None),
+        };
+        match self.find_player_metadata(pawn_entid) {
+            Ok(metadata) => (metadata.steamid, metadata.name.clone()),
+            Err(_) => (None, None),
+        }
+    }
+    /// Weapon name read directly from a weapon entity (find_weapon_name goes through a player)
+    fn find_weapon_name_from_weapon_entity(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
+        let item_def_id = match self.prop_controller.special_ids.item_def {
+            Some(x) => x,
+            None => return Err(PropCollectionError::SpecialidsItemDefNotSet),
+        };
+        match self.get_prop_from_ent(&item_def_id, entity_id) {
+            Ok(Variant::U32(def_idx)) => match WEAPINDICIES.get(&def_idx) {
+                Some(v) => Ok(Variant::String(v.to_string())),
+                None => Err(PropCollectionError::WeaponIdxMappingNotFound),
+            },
+            Ok(_) => Err(PropCollectionError::WeaponDefVariantWrongType),
+            Err(e) => Err(e),
+        }
+    }
     fn find_weapon_name(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
         let item_def_id = match self.prop_controller.special_ids.item_def {
             Some(x) => x,
