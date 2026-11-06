@@ -17,6 +17,11 @@ def parse_grenades(
    extra: Optional[Sequence[str]] = None, 
    grenades: bool = True,
 ) -> pd.DataFrame: ...
+def parse_weapons(
+   self,
+   extra: Optional[Sequence[str]] = None,
+   ticks: Optional[Sequence[int]] = None,
+) -> pd.DataFrame: ...
 def parse_event(
    self,
    event_name: str,
@@ -140,3 +145,15 @@ Returns all coordinates of all grenades along with info about thrower. entity_id
     0 -388.875  1295.46875 -5120.0   982     76561111111111111    HeGrenade        522
     1 -388.875  1295.46875 -5120.0   983     76561111111111111    HeGrenade        522
     2 -388.875  1295.46875 -5120.0   983     76561111111111111    HeGrenade        522
+<br/><br/>
+```Python
+def parse_weapons(extra=None, ticks=None): -> DataFrame
+```
+Returns the weapons lying on the ground: dropped on death, thrown with the drop key or never picked up. One row per weapon per tick (pass "ticks" to sample). A weapon that somebody holds is not included, use "inventory" or "active_weapon_name" in parse_ticks for those. "name"/"steamid" refer to the player who held the weapon last (NaN if nobody did). "extra" adds fields of the weapon entity, for example "m_nDropTick" or "m_bWasActiveWeaponWhenDropped" (see list_updated_fields).
+
+    Example: parser.parse_weapons(extra=["m_nDropTick"], ticks=[60000])
+       entity_id  m_nDropTick     name            steamid   tick    weapon          x          y        z
+    0        101       112290  player1  76561111111111111  60000     AK-47  439.71875  345.71875  2.90625
+    1         66       105142  player2  76561111111111112  60000  Glock-18 -315.46875 -752.78125  70.1875
+
+Weapon names are the same as in "active_weapon_name". m_nDropTick is a server tick (demo tick + a constant offset), compare it with other m_n*Tick props, not with "tick".

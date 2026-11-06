@@ -78,6 +78,7 @@ impl<'a> SecondPassParser<'a> {
             match cmd {
                 EntityCmd::Delete => {
                     self.projectiles.remove(&entity_id);
+                    self.weapons.remove(&entity_id);
                     if let Some(entry) = self.entities.get_mut(entity_id as usize) {
                         *entry = None;
                     }
@@ -336,6 +337,9 @@ impl<'a> SecondPassParser<'a> {
         let _serial = bitreader.read_nbits(NSERIALBITS)?;
         let _unknown = bitreader.read_varint();
         let entity_type = self.check_entity_type(&cls_id)?;
+        if self.parse_weapons && self.is_weapon_class(&cls_id) {
+            self.weapons.insert(*entity_id);
+        }
         match entity_type {
             EntityType::Projectile => {
                 self.projectiles.insert(*entity_id);
@@ -370,6 +374,16 @@ impl<'a> SecondPassParser<'a> {
         Ok(())
     }
 
+    /// Weapon entities: guns, knives, the c4 and grenades held as items. Projectiles in
+    /// flight, the planted bomb and fire (CInferno) are not weapons.
+    pub fn is_weapon_class(&self, cls_id: &u32) -> bool {
+        let class = match self.cls_by_id.get(*cls_id as usize) {
+            Some(cls) => cls,
+            None => return false,
+        };
+        let name = class.name.as_str();
+        is_grenade_or_weapon(name) && !name.contains("Projectile") && !name.contains("Planted") && !name.contains("Infer")
+    }
     pub fn check_entity_type(&self, cls_id: &u32) -> Result<EntityType, DemoParserError> {
         let class = match self.cls_by_id.get(*cls_id as usize) {
             Some(cls) => cls,

@@ -97,6 +97,8 @@ pub const GRENADE_X: u32 = 100100023;
 pub const GRENADE_Y: u32 = 100100024;
 pub const GRENADE_Z: u32 = 100100025;
 pub const INVENTORY_AS_IDS_BITMASK: u32 = 100100026;
+/// Name of a weapon lying on the ground (parse_weapons)
+pub const WEAPON_ENTITY_NAME_ID: u32 = 100100027;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -116,6 +118,7 @@ pub struct PropController {
     pub wanted_prop_states: AHashMap<String, Variant>,
     pub wanted_prop_state_infos: Vec<WantedPropStateInfo>,
     pub parse_projectiles: bool,
+    pub parse_weapons: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -148,6 +151,7 @@ impl PropController {
         needs_velocty: bool,
         wanted_events: &[String],
         parse_projectiles: bool,
+        parse_weapons: bool,
     ) -> Self {
         PropController {
             id: NORMAL_PROP_BASEID,
@@ -166,6 +170,7 @@ impl PropController {
             wanted_prop_states,
             wanted_prop_state_infos: vec![],
             parse_projectiles: parse_projectiles,
+            parse_weapons: parse_weapons,
         }
     }
 
@@ -328,6 +333,32 @@ impl PropController {
                 prop_friendly_name: "z".to_string(),
                 is_player_prop: true,
             });
+        }
+        // Weapons on the ground specific
+        if self.parse_weapons {
+            self.prop_infos.push(PropInfo {
+                id: ENTITY_ID_ID,
+                prop_type: PropType::Custom,
+                prop_name: "entity_id".to_string(),
+                prop_friendly_name: "entity_id".to_string(),
+                is_player_prop: true,
+            });
+            self.prop_infos.push(PropInfo {
+                id: WEAPON_ENTITY_NAME_ID,
+                prop_type: PropType::Custom,
+                prop_name: "weapon".to_string(),
+                prop_friendly_name: "weapon".to_string(),
+                is_player_prop: true,
+            });
+            for (id, name) in [(GRENADE_X, "x"), (GRENADE_Y, "y"), (GRENADE_Z, "z")] {
+                self.prop_infos.push(PropInfo {
+                    id,
+                    prop_type: PropType::Custom,
+                    prop_name: name.to_string(),
+                    prop_friendly_name: name.to_string(),
+                    is_player_prop: true,
+                });
+            }
         }
         self.prop_infos.push(PropInfo {
             id: TICK_ID,
@@ -501,6 +532,7 @@ impl PropController {
             match name {
                 "m_bIsIncGrenade" => self.special_ids.is_incendiary_grenade = Some(id),
                 "m_hOwnerEntity" => self.special_ids.h_owner_entity = Some(id),
+                "m_hPrevOwner" => self.special_ids.weapon_prev_owner = Some(id),
                 "m_nOwnerId" => self.special_ids.grenade_owner_id = Some(id),
                 "CBodyComponentBaseAnimGraph.m_vecX" => self.special_ids.m_vec_x_grenade = Some(id),
                 "CBodyComponentBaseAnimGraph.m_vecY" => self.special_ids.m_vec_y_grenade = Some(id),

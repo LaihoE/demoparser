@@ -6,6 +6,7 @@ function parseHeader(path: string): any
 function parsePlayerInfo(path: string): any
 
 function parseGrenades(path: string, extra?: Array<string> | undefined | null, grenades?: boolean): any
+function parseWeapons(path: string, extra?: Array<string> | undefined | null, ticks?: Array<number> | undefined | null): any
 function parseEvent(path: string, eventName: string, extraPlayer?: Array<string> | undefined | null, extraOther?: Array<string> | undefined | null): any
 function parseEvents(path: string, eventNames?: Array<string> | undefined | null, extraPlayer?: Array<string> | undefined | null, extraOther?: Array<string> | undefined | null): any
 function parseTicks(path: string, wantedProps: Array<string>, wantedTicks?: Array<number> | undefined | null): any
@@ -227,3 +228,27 @@ Returns all coordinates of all grenades along with info about thrower.
 ]
 ```
 entity_id refers to the id of the grenade and can be used to identify grenades when multiple grenades with the same name are thrown by a player.
+<br/><br/>
+```JavaScript
+function parseWeapons(path: string, extra?: Array<string> | undefined | null, ticks?: Array<number> | undefined | null) -> JSON
+```
+Returns the weapons lying on the ground: dropped on death, thrown with the drop key or never picked up. One row per weapon per tick (pass "ticks" to sample). A weapon that somebody holds is not included, use "inventory" or "active_weapon_name" in parseTicks for those. "name"/"steamid" refer to the player who held the weapon last (null if nobody did). "extra" adds fields of the weapon entity, for example "m_nDropTick" or "m_bWasActiveWeaponWhenDropped" (see listUpdatedFields).
+
+Output from: ```parseWeapons("path_to_demo.dem", ["m_nDropTick"], [60000])```
+```
+[
+  {
+    entity_id: 101,
+    m_nDropTick: 112290,
+    name: 'player1',
+    steamid: '76561111111111111',
+    tick: 60000,
+    weapon: 'AK-47',
+    x: 439.71875,
+    y: 345.71875,
+    z: 2.90625
+  },
+  ...
+]
+```
+Weapon names are the same as in "active_weapon_name". m_nDropTick is a server tick (demo tick + a constant offset), compare it with other m_n*Tick props, not with "tick".

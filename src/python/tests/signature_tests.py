@@ -35,6 +35,18 @@ class SignatureTest(TestCase):
         for event in game_events:
             self.assertIsInstance(event, str)
 
+    def test_parse_weapons_signature(self):
+        parser = DemoParser(demo_path)
+        weapons = parser.parse_weapons()
+        self.assertIsInstance(weapons, pd.DataFrame)
+        for col in ["tick", "entity_id", "weapon", "x", "y", "z", "steamid", "name"]:
+            self.assertIn(col, weapons.columns)
+        parser.parse_weapons(extra=["m_nDropTick"], ticks=[100, 200])
+        with self.assertRaises(TypeError):
+            parser.parse_weapons(extra=[5])
+        with self.assertRaises(TypeError):
+            parser.parse_weapons(ticks="wrong")
+
     def test_parse_grenades_signature(self):
         parser = DemoParser(demo_path)
         grenades = parser.parse_grenades()

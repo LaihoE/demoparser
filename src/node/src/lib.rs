@@ -167,6 +167,7 @@ pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<Vec<Voic
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    parse_weapons: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -206,6 +207,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    parse_weapons: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -254,6 +256,75 @@ pub fn parse_grenades(
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: grenades,
+    parse_weapons: false,
+  };
+  let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
+  let output = parse_demo(bytes, &mut parser)?;
+
+  let mut real_name_to_og_name = AHashMap::default();
+  for (real_name, user_friendly_name) in real_extra_props.iter().zip(&extra_props) {
+    real_name_to_og_name.insert(real_name.clone(), user_friendly_name.clone());
+  }
+
+  extra_props.push("tick".to_owned());
+  extra_props.push("steamid".to_owned());
+  extra_props.push("name".to_owned());
+
+  let mut prop_infos = output.prop_controller.prop_infos.clone();
+  prop_infos.sort_by_key(|x| x.prop_name.clone());
+  extra_props.sort();
+
+  let helper = OutputSerdeHelperStruct {
+    prop_infos: prop_infos.clone(),
+    inner: output.df.clone().into(),
+  };
+  let result = soa_to_aos(helper);
+  match serde_json::to_value(&result) {
+    Ok(s) => Ok(s),
+    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+  }
+}
+/**
+ * Weapons lying on the ground (no owner): dropped on death, thrown with the drop key or never
+ * picked up. One row per weapon per tick. steamid/name refer to the player who dropped it.
+ * extra: lets you add fields of the weapon entity, for example m_nDropTick. Use list_updated_fields for a full list.
+ * ticks: restricts the output to these ticks.
+ */
+#[napi]
+pub fn parse_weapons(
+  path_or_buf: Either<String, Buffer>,
+  extra: Option<Vec<String>>,
+  ticks: Option<Vec<i32>>,
+) -> napi::Result<Value> {
+  let bytes = resolve_byte_type(path_or_buf)?;
+  let huf = create_huffman_lookup_table();
+  let mut extra_props = match extra {
+    Some(p) => p,
+    None => vec![],
+  };
+  let real_extra_props = match rm_user_friendly_names(&extra_props) {
+    Ok(names) => names,
+    Err(e) => return Err(Error::new(Status::InvalidArg, format!("{}", e).to_owned())),
+  };
+
+  let settings = ParserInputs {
+    wanted_players: vec![],
+    real_name_to_og_name: AHashMap::default(),
+    wanted_player_props: vec![],
+    wanted_other_props: real_extra_props.clone(),
+    wanted_events: vec![],
+    wanted_prop_states: AHashMap::default(),
+    parse_ents: true,
+    wanted_ticks: ticks.unwrap_or_default(),
+    parse_projectiles: false,
+    only_header: false,
+    list_props: false,
+    only_convars: false,
+    huffman_lookup_table: &huf,
+    order_by_steamid: false,
+    fallback_bytes: None,
+    parse_grenades: false,
+    parse_weapons: true,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -303,6 +374,7 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    parse_weapons: false,
   };
   let mut parser = FirstPassParser::new(&settings);
   let output = match bytes {
@@ -385,6 +457,7 @@ pub fn parse_event(
     order_by_steamid: false,
     fallback_bytes: game_event_list_bytes,
     parse_grenades: false,
+    parse_weapons: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -457,6 +530,7 @@ pub fn parse_events(
     order_by_steamid: false,
     fallback_bytes: game_event_list_bytes,
     parse_grenades: false,
+    parse_weapons: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -537,6 +611,7 @@ pub fn parse_ticks(
     order_by_steamid: order_by_steamid,
     fallback_bytes: None,
     parse_grenades: false,
+    parse_weapons: false,
   };
 
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
@@ -612,6 +687,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    parse_weapons: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -644,6 +720,7 @@ pub fn parse_player_skins(path_or_buf: Either<String, Buffer>) -> napi::Result<V
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    parse_weapons: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -675,6 +752,7 @@ pub fn list_updated_fields(path_or_buf: Either<String, Buffer>) -> napi::Result<
     order_by_steamid: false,
     fallback_bytes: None,
     parse_grenades: false,
+    parse_weapons: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
