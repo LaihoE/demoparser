@@ -590,6 +590,10 @@ impl<'a> SecondPassParser<'a> {
             IS_ALIVE_ID => self.find_is_alive(entity_id),
             USERID_ID => self.get_userid(player),
             IS_AIRBORNE_ID => self.find_is_airborne(player),
+            STAMINA_ID => {
+                let id = self.prop_controller.special_ids.stamina.ok_or(PropCollectionError::GetPropFromEntPropNotFound)?;
+                self.get_prop_from_ent(&id, entity_id)
+            }
             AGENT_SKIN_ID => self.find_agent_skin(player),
             USERCMD_INPUT_HISTORY_BASEID => self.get_prop_from_ent(&USERCMD_INPUT_HISTORY_BASEID, entity_id),
             USERCMD_SUBTICK_MOVES_BASEID => self.get_prop_from_ent(&USERCMD_SUBTICK_MOVES_BASEID, entity_id),

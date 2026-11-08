@@ -326,6 +326,7 @@ pub struct SpecialIDs {
     pub custom_name: Option<u32>,
 
     pub is_airborn: Option<u32>,
+    pub stamina: Option<u32>,
     pub initial_velocity: Option<u32>,
 }
 impl SpecialIDs {
@@ -376,6 +377,7 @@ impl SpecialIDs {
             in_buy_zone: None,
             custom_name: None,
             is_airborn: None,
+            stamina: None,
             initial_velocity: None,
         }
     }
