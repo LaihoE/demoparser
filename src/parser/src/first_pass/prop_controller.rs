@@ -99,6 +99,7 @@ pub const GRENADE_Z: u32 = 100100025;
 pub const INVENTORY_AS_IDS_BITMASK: u32 = 100100026;
 /// Name of a weapon lying on the ground (parse_weapons)
 pub const WEAPON_ENTITY_NAME_ID: u32 = 100100027;
+pub const STAMINA_ID: u32 = 100100028;
 
 #[derive(Clone, Debug)]
 pub struct PropController {
@@ -175,6 +176,11 @@ impl PropController {
     }
 
     pub fn set_custom_propinfos(&mut self) {
+        // Early demos stored stamina directly on the pawn.
+        self.special_ids.stamina = self.name_to_id
+            .get("CCSPlayerPawn.CCSPlayer_MovementServices.m_flStamina")
+            .or_else(|| self.name_to_id.get("CCSPlayerPawn.m_flStamina"))
+            .copied();
         let button_names = BUTTONMAP.keys();
         let mut someid = BUTTONS_BASEID;
         let mut someid2 = BUTTONS_BASEID;

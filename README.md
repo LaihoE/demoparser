@@ -115,7 +115,7 @@ Python/JS are roughly as fast.
 | max_fall_velo  | m_flMaxFallVelocity |
 | duck_amount  | m_flDuckAmount |
 | duck_speed  | m_flDuckSpeed |
-| duck_overrdie  | m_bDuckOverride |
+| duck_override  | m_bDuckOverride |
 | old_jump_pressed  | m_bOldJumpPressed |
 | jump_until  | m_flJumpUntil |
 | jump_velo  | m_flJumpVel |
