@@ -95,6 +95,11 @@ Python/JS are roughly as fast.
 | player_name | m_iszPlayerName |
 | player_steamid | m_steamID |
 | fov | m_iDesiredFOV |
+| viewmodel_fov | m_flViewmodelFOV |
+| viewmodel_offset_x | m_flViewmodelOffsetX |
+| viewmodel_offset_y | m_flViewmodelOffsetY |
+| viewmodel_offset_z | m_flViewmodelOffsetZ |
+| viewmodel_left_handed | m_bLeftHanded |
 | start_balance | m_iStartAccount |
 | total_cash_spent | m_iTotalCashSpent |
 | cash_spent_this_round | m_iCashSpentThisRound |
