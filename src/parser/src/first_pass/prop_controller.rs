@@ -120,6 +120,8 @@ pub struct PropController {
     pub wanted_prop_state_infos: Vec<WantedPropStateInfo>,
     pub parse_projectiles: bool,
     pub parse_weapons: bool,
+    /// Keep whole arrays/vectors for wanted props (see ParserInputs::vector_props_as_lists)
+    pub vector_props_as_lists: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -153,6 +155,7 @@ impl PropController {
         wanted_events: &[String],
         parse_projectiles: bool,
         parse_weapons: bool,
+        vector_props_as_lists: bool,
     ) -> Self {
         PropController {
             id: NORMAL_PROP_BASEID,
@@ -172,6 +175,7 @@ impl PropController {
             wanted_prop_state_infos: vec![],
             parse_projectiles: parse_projectiles,
             parse_weapons: parse_weapons,
+            vector_props_as_lists,
         }
     }
 
@@ -502,6 +506,13 @@ impl PropController {
             self.insert_propinfo(&full_name, f);
         }
         f.should_parse = true;
+        // Elements of an array/vector share one prop id and overwrite each other, so by
+        // default only the last written element survives. For props the user asked for keep
+        // the whole list (Variant::List). Props with their own flattening below are excluded.
+        let id_before_overrides = f.prop_id;
+        f.collect_vec = self.vector_props_as_lists
+            && f.vec_depth.is_some()
+            && (self.wanted_other_props.contains(&prop_name) || self.wanted_player_props.contains(&prop_name));
 
         if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {
             f.prop_id = MY_WEAPONS_OFFSET as u32;
@@ -529,6 +540,9 @@ impl PropController {
         }
         if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo"{
             f.prop_id = GRENADE_AMMO_ID;
+        }
+        if f.prop_id != id_before_overrides {
+            f.collect_vec = false;
         }
         self.id += 1;
     }
@@ -594,13 +608,20 @@ impl PropController {
                 }
                 Field::Serializer(ser) => self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name, path.clone()),
                 Field::Pointer(ser) => self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name, path.clone()),
-                Field::Array(ser) => match &mut ser.field_enum.as_mut() {
-                    Field::Value(v) => {
-                        self.handle_prop(&(ser_name.clone() + "." + &v.name), v, path);
+                Field::Array(ser) => {
+                    let is_bytes = ser.element_base == "uint8";
+                    match &mut ser.field_enum.as_mut() {
+                        Field::Value(v) => {
+                            // Element index sits right after the array field in the path
+                            v.vec_depth = Some(path.len() as u8);
+                            v.vec_bytes = is_bytes;
+                            self.handle_prop(&(ser_name.clone() + "." + &v.name), v, path);
+                        }
+                        _ => {}
                     }
-                    _ => {}
-                },
-                Field::Vector(_x) => {
+                }
+                Field::Vector(x) => {
+                    let is_bytes = x.element_base == "uint8";
                     let vec_path = path.clone();
                     if let Ok(inner) = f.get_inner_mut(0) {
                         match inner {
@@ -618,6 +639,8 @@ impl PropController {
                                 self.traverse_fields(&mut s.serializer.fields, ser_name.clone() + "." + &s.serializer.name, path_og.clone())
                             }
                             Field::Value(x) => {
+                                x.vec_depth = Some(path.len() as u8);
+                                x.vec_bytes = is_bytes;
                                 self.handle_prop(&(ser_name.clone() + "." + &x.name), x, path.clone());
                             }
                             _ => {}

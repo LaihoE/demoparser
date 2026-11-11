@@ -5,7 +5,7 @@ function listGameEvents(path: string): any
 function parseHeader(path: string): any
 function parsePlayerInfo(path: string): any
 
-function parseGrenades(path: string, extra?: Array<string> | undefined | null, grenades?: boolean): any
+function parseGrenades(path: string, extra?: Array<string> | undefined | null, grenades?: boolean, ticks?: Array<number> | undefined | null): any
 function parseWeapons(path: string, extra?: Array<string> | undefined | null, ticks?: Array<number> | undefined | null): any
 function parseEvent(path: string, eventName: string, extraPlayer?: Array<string> | undefined | null, extraOther?: Array<string> | undefined | null): any
 function parseEvents(path: string, eventNames?: Array<string> | undefined | null, extraPlayer?: Array<string> | undefined | null, extraOther?: Array<string> | undefined | null): any
@@ -228,6 +228,29 @@ Returns all coordinates of all grenades along with info about thrower.
 ]
 ```
 entity_id refers to the id of the grenade and can be used to identify grenades when multiple grenades with the same name are thrown by a player.
+
+The fire of a molotov/incendiary is its own entity (CInferno) that lives on after the projectile; it is included with grenade_type "CInferno". Array and vector fields requested with "extra" come back whole, as lists, for example the fire spots and the smoke volume:
+
+Output from: ```parseGrenades("path_to_demo.dem", ["m_firePositions", "m_bFireIsBurning", "m_fireCount"], false)```
+```JavaScript
+[
+  {
+    entity_id: 371,
+    grenade_type: 'CInferno',
+    m_bFireIsBurning: [ true, true, false, ... ],
+    m_fireCount: 23,
+    m_firePositions: [ [ -1232.5, 356.1, -165.2 ], [ -1201.8, 350.4, -165.2 ], ... ],
+    name: 'player1',
+    steamid: '76561111111111111',
+    tick: 42010,
+    x: null,
+    y: null,
+    z: null
+  },
+  ...
+]
+```
+m_firePositions has one slot per possible flame (64) in world coordinates; only the first m_fireCount entries with m_bFireIsBurning are alight. The fire entity has no position of its own (x/y/z are null), use the flames. "m_VoxelFrameData" of a smoke (CSmokeGrenadeProjectile) is the raw byte list of the smoke volume. Big fields like that are repeated on every tick the entity exists, so pass "ticks" to sample them: ```parseGrenades(path, ["m_VoxelFrameData"], false, [60000, 60064])```.
 <br/><br/>
 ```JavaScript
 function parseWeapons(path: string, extra?: Array<string> | undefined | null, ticks?: Array<number> | undefined | null) -> JSON

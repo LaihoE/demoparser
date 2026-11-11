@@ -182,7 +182,7 @@ impl<'a> SecondPassParser<'a> {
                 .collect(),
             game_events_counter: self.game_events_counter,
             uniq_prop_names: self.uniq_prop_names,
-            prop_info: PropController::new(vec![], vec![], AHashMap::default(), AHashMap::default(), false, &["none".to_string()], false, false),
+            prop_info: PropController::new(vec![], vec![], AHashMap::default(), AHashMap::default(), false, &["none".to_string()], false, false, false),
             projectiles: self.projectile_records,
             ptr: self.ptr,
             df_per_player: self.df_per_player,

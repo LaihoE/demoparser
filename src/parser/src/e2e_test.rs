@@ -310,6 +310,7 @@ pub fn _create_ge_tests() {
         parse_projectiles: false,
         parse_grenades: false,
         parse_weapons: false,
+        vector_props_as_lists: false,
         only_header: false,
         list_props: false,
         only_convars: false,
@@ -687,6 +688,7 @@ pub fn _create_tests() {
         parse_projectiles: false,
         parse_grenades: false,
         parse_weapons: false,
+        vector_props_as_lists: false,
         only_header: false,
         list_props: false,
         only_convars: false,
@@ -1061,6 +1063,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         parse_projectiles: false,
         parse_grenades: false,
         parse_weapons: false,
+        vector_props_as_lists: false,
         only_header: false,
         list_props: false,
         only_convars: false,
@@ -1088,6 +1091,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
         parse_projectiles: false,
         parse_grenades: false,
         parse_weapons: false,
+        vector_props_as_lists: false,
         only_header: false,
         list_props: false,
         only_convars: false,
@@ -1201,6 +1205,7 @@ mod tests {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -1217,6 +1222,77 @@ mod tests {
         let steamids = output.df.get(&STEAMID_ID).unwrap();
 
         assert_eq!(steamids.data, Some(VarVec::U64(vec![Some(76561198244754626), Some(76561198244754626)])));
+    }
+
+    /// Array/vector props requested as extras come back whole: m_firePositions of the fire
+    /// (CInferno, 64 slots of Vector) as a list, m_VoxelFrameData of a smoke as bytes.
+    #[test]
+    fn vector_props_as_lists() {
+        use crate::second_pass::variants::Variant;
+        let huf = create_huffman_lookup_table();
+        let settings = ParserInputs {
+            wanted_players: vec![],
+            real_name_to_og_name: AHashMap::default(),
+            wanted_player_props: vec![],
+            wanted_events: vec![],
+            wanted_other_props: vec!["m_firePositions".to_string(), "m_VoxelFrameData".to_string()],
+            parse_ents: true,
+            wanted_ticks: vec![17408, 43520],
+            parse_projectiles: true,
+            parse_grenades: false,
+            parse_weapons: false,
+            vector_props_as_lists: true,
+            only_header: false,
+            list_props: false,
+            only_convars: false,
+            huffman_lookup_table: &huf,
+            order_by_steamid: false,
+            wanted_prop_states: AHashMap::default(),
+            fallback_bytes: None,
+        };
+        let mut ds = Parser::new(settings, crate::parse_demo::ParsingMode::ForceSingleThreaded);
+        let file = File::open("test_demo.dem").unwrap();
+        let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+        let output = ds.parse_demo(&mmap).unwrap();
+
+        let fire_id = output.prop_controller.name_to_id["m_firePositions"];
+        let voxel_id = output.prop_controller.name_to_id["m_VoxelFrameData"];
+        let types = match &output.df[&GRENADE_TYPE_ID].data {
+            Some(VarVec::String(t)) => t.clone(),
+            other => panic!("grenade_type column: {:?}", other),
+        };
+        let fires = match &output.df[&fire_id].data {
+            Some(VarVec::List(f)) => f.clone(),
+            other => panic!("m_firePositions column: {:?}", other),
+        };
+        let voxels = match &output.df[&voxel_id].data {
+            Some(VarVec::Bytes(v)) => v.clone(),
+            other => panic!("m_VoxelFrameData column: {:?}", other),
+        };
+        assert_eq!(types.len(), fires.len());
+        assert_eq!(types.len(), voxels.len());
+        let mut infernos = 0;
+        let mut smokes_with_voxels = 0;
+        for (i, t) in types.iter().enumerate() {
+            match t.as_deref() {
+                Some("CInferno") => {
+                    infernos += 1;
+                    assert_eq!(fires[i].len(), 64, "one slot per possible flame");
+                    assert!(matches!(fires[i][0], Variant::VecXYZ(_)));
+                    assert!(voxels[i].is_empty());
+                }
+                Some("CSmokeGrenadeProjectile") => {
+                    if !voxels[i].is_empty() {
+                        smokes_with_voxels += 1;
+                        assert!(voxels[i].len() > 100);
+                    }
+                    assert!(fires[i].is_empty());
+                }
+                _ => {}
+            }
+        }
+        assert!(infernos > 0, "the demo has molotov fire at tick 17408");
+        assert!(smokes_with_voxels > 0, "the demo has a smoke with voxel data at tick 43520");
     }
 
     #[test]
