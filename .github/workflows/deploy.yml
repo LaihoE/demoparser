@@ -25,6 +25,8 @@ jobs:
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - if: matrix.python-version == '3.13'
         uses: actions/setup-python@v7
@@ -96,6 +98,8 @@ jobs:
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Wheels
         uses: PyO3/maturin-action@v1
