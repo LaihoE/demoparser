@@ -21,6 +21,9 @@ pub enum Decoder {
     FloatCoordDecoder,
     FloatSimulationTimeDecoder,
     Fixed64Decoder,
+    Fixed8Decoder,
+    Fixed8SignedDecoder,
+    Fixed8Unsigned64Decoder,
     QanglePitchYawDecoder,
     Qangle3Decoder(u8),
     QangleVarDecoder,
@@ -57,6 +60,11 @@ impl<'a> Bitreader<'a> {
             VectorNormalDecoder => Ok(Variant::VecXYZ(self.decode_normal_vec()?)),
             Unsigned64Decoder => Ok(Variant::U64(self.read_varint_u_64()?)),
             Fixed64Decoder => Ok(Variant::U64(self.decode_uint64()?)),
+            // "fixed8" encoder: one raw byte instead of a varint. Each variant keeps the
+            // Variant type the field had before it got the encoder.
+            Fixed8Decoder => Ok(Variant::U32(self.read_nbits(8)?)),
+            Fixed8SignedDecoder => Ok(Variant::I32(self.read_nbits(8)? as u8 as i8 as i32)),
+            Fixed8Unsigned64Decoder => Ok(Variant::U64(self.read_nbits(8)? as u64)),
             VectorFloatCoordDecoder => Ok(Variant::VecXYZ(self.decode_vector_float_coord()?)),
             AmmoDecoder => Ok(Variant::U32(self.decode_ammo()?)),
             QanglePresDecoder => Ok(Variant::VecXYZ(self.decode_qangle_variant_pres()?)),
@@ -432,6 +440,21 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn fixed8_reads_one_raw_byte() {
+        let qf_map = QfMapper {
+            idx: 0,
+            map: AHashMap::default(),
+        };
+        // 0x85 as a varint would also consume the next byte. fixed8 must not.
+        let bytes = [0x85, 0x01, 0xff, 0x7f];
+        let mut bitreader = Bitreader::new(&bytes);
+        assert_eq!(bitreader.decode(&Fixed8Decoder, &qf_map), Ok(Variant::U32(0x85)));
+        assert_eq!(bitreader.decode(&Fixed8Unsigned64Decoder, &qf_map), Ok(Variant::U64(1)));
+        assert_eq!(bitreader.decode(&Fixed8SignedDecoder, &qf_map), Ok(Variant::I32(-1)));
+        assert_eq!(bitreader.decode(&Fixed8SignedDecoder, &qf_map), Ok(Variant::I32(127)));
     }
 
     #[test]
