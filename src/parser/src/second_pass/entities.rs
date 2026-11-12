@@ -300,11 +300,67 @@ impl<'a> SecondPassParser<'a> {
     }
 
     pub fn insert_field(entity: &mut Entity, result: Variant, field_info: Option<FieldInfo>) {
-        if let Some(fi) = field_info {
-            if fi.should_parse {
-                entity.props.insert(fi.prop_id, result);
+        let fi = match field_info {
+            Some(fi) if fi.should_parse => fi,
+            _ => return,
+        };
+        if fi.vec_size {
+            // Element count of a collected vector: shrink (elements past the count are stale)
+            // or make room. Elements arrive as separate updates below.
+            let n = match result {
+                Variant::U32(n) => n as usize,
+                _ => return,
+            };
+            match entity.props.get_mut(&fi.prop_id) {
+                Some(Variant::List(list)) => list.truncate(n),
+                Some(Variant::Bytes(bytes)) => bytes.truncate(n),
+                _ => {
+                    entity.props.insert(
+                        fi.prop_id,
+                        if fi.vec_bytes { Variant::Bytes(Vec::with_capacity(n)) } else { Variant::List(Vec::with_capacity(n)) },
+                    );
+                }
             }
+            return;
         }
+        if let Some(idx) = fi.vec_index {
+            let idx = idx as usize;
+            // Arrays are fixed size (e.g. Vector[64]); vectors are bounded by their count.
+            if idx > 65536 {
+                return;
+            }
+            if fi.vec_bytes {
+                let byte = match result {
+                    Variant::U32(b) => b as u8,
+                    Variant::I32(b) => b as u8,
+                    _ => return,
+                };
+                let entry = entity.props.entry(fi.prop_id).or_insert_with(|| Variant::Bytes(vec![]));
+                if !matches!(entry, Variant::Bytes(_)) {
+                    *entry = Variant::Bytes(vec![]);
+                }
+                if let Variant::Bytes(bytes) = entry {
+                    if bytes.len() <= idx {
+                        bytes.resize(idx + 1, 0);
+                    }
+                    bytes[idx] = byte;
+                }
+                return;
+            }
+            let entry = entity.props.entry(fi.prop_id).or_insert_with(|| Variant::List(vec![]));
+            if !matches!(entry, Variant::List(_)) {
+                *entry = Variant::List(vec![]);
+            }
+            if let Variant::List(list) = entry {
+                if list.len() <= idx {
+                    let filler = zero_like(&result);
+                    list.resize(idx + 1, filler);
+                }
+                list[idx] = result;
+            }
+            return;
+        }
+        entity.props.insert(fi.prop_id, result);
     }
 
     #[inline]
@@ -396,6 +452,9 @@ impl<'a> SecondPassParser<'a> {
             "CCSGameRulesProxy" => return Ok(EntityType::Rules),
             "CCSTeam" => return Ok(EntityType::Team),
             "CC4" => return Ok(EntityType::C4),
+            // Fire of a molotov/incendiary: lives on after the projectile, carries
+            // m_firePositions/m_bFireIsBurning. Reported by parse_grenades like a projectile.
+            "CInferno" => return Ok(EntityType::Projectile),
             _ => {}
         }
         let is_projectile_prop =
@@ -404,6 +463,21 @@ impl<'a> SecondPassParser<'a> {
             return Ok(EntityType::Projectile);
         }
         return Ok(EntityType::Normal);
+    }
+}
+
+/// Filler for list slots that have not been updated yet (same kind as the element).
+fn zero_like(v: &Variant) -> Variant {
+    match v {
+        Variant::Bool(_) => Variant::Bool(false),
+        Variant::U32(_) => Variant::U32(0),
+        Variant::I32(_) => Variant::I32(0),
+        Variant::F32(_) => Variant::F32(0.0),
+        Variant::U64(_) => Variant::U64(0),
+        Variant::String(_) => Variant::String(String::new()),
+        Variant::VecXY(_) => Variant::VecXY([0.0; 2]),
+        Variant::VecXYZ(_) => Variant::VecXYZ([0.0; 3]),
+        _ => Variant::U32(0),
     }
 }
 

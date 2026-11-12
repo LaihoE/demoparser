@@ -139,6 +139,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -168,6 +169,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: false,
             list_props: true,
             only_convars: false,
@@ -195,6 +197,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -217,12 +220,15 @@ impl DemoParser {
     /// 0 -388.875  1295.46875 -5120.0   982              NaN    HeGrenade
     /// 1 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
     /// 2 -388.875  1295.46875 -5120.0   983              NaN    HeGrenade
-    #[pyo3(signature = (*, extra=None, grenades=true))]
+    /// Array/vector fields (e.g. m_firePositions of the fire, m_VoxelFrameData of a smoke) come back whole, as lists.
+    /// ticks: restricts the output to these ticks (sample big fields like m_VoxelFrameData instead of every tick).
+    #[pyo3(signature = (*, extra=None, grenades=true, ticks=None))]
     pub fn parse_grenades(
         &self,
         py: Python<'_>,
         extra: Option<Vec<String>>,
         grenades: Option<bool>,
+        ticks: Option<Vec<i32>>,
     ) -> PyResult<Py<PyAny>> {
         // This function works similarly to parse_ticks but collects the props from grenades instead.
         let wanted_other_props = extra.unwrap_or_default();
@@ -243,10 +249,11 @@ impl DemoParser {
             wanted_events: vec![],
             wanted_prop_states: AHashMap::default(),
             parse_ents: true,
-            wanted_ticks: vec![],
+            wanted_ticks: ticks.unwrap_or_default(),
             parse_projectiles: true,
             parse_grenades: grenades,
             parse_weapons: false,
+            vector_props_as_lists: true,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -308,6 +315,14 @@ impl DemoParser {
                         all_pyobjects.push(data.into_py_any(py)?);
                     }
                     Some(VarVec::U32Vec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.into_py_any(py)?);
+                    }
+                    Some(VarVec::List(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(list_col_to_py(&data, py)?);
+                    }
+                    Some(VarVec::Bytes(data)) => {
                         df_column_names_py.push(prop_info.prop_friendly_name);
                         all_pyobjects.push(data.into_py_any(py)?);
                     }
@@ -363,6 +378,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: true,
+            vector_props_as_lists: true,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -427,6 +443,14 @@ impl DemoParser {
                         df_column_names_py.push(prop_info.prop_friendly_name);
                         all_pyobjects.push(data.into_py_any(py)?);
                     }
+                    Some(VarVec::List(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(list_col_to_py(&data, py)?);
+                    }
+                    Some(VarVec::Bytes(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.into_py_any(py)?);
+                    }
                     _ => {}
                 }
             }
@@ -462,6 +486,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -512,6 +537,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -598,6 +624,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -704,6 +731,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -766,6 +794,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -797,6 +826,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: false,
             list_props: false,
             only_convars: false,
@@ -877,6 +907,7 @@ impl DemoParser {
             parse_projectiles: false,
             parse_grenades: false,
             parse_weapons: false,
+            vector_props_as_lists: false,
             only_header: true,
             list_props: false,
             only_convars: false,
@@ -937,6 +968,14 @@ impl DemoParser {
                         all_pyobjects.push(data.into_py_any(py)?);
                     }
                     Some(VarVec::U32Vec(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(data.into_py_any(py)?);
+                    }
+                    Some(VarVec::List(data)) => {
+                        df_column_names_py.push(prop_info.prop_friendly_name);
+                        all_pyobjects.push(list_col_to_py(&data, py)?);
+                    }
+                    Some(VarVec::Bytes(data)) => {
                         df_column_names_py.push(prop_info.prop_friendly_name);
                         all_pyobjects.push(data.into_py_any(py)?);
                     }
@@ -1216,6 +1255,34 @@ pub fn series_from_event(events: &[GameEvent], py: Python) -> Result<Py<PyAny>, 
     });
     Ok(dfp)
 }
+/// One value of a Variant::List (array/vector prop element) as a Python object
+fn variant_to_py(v: &Variant, py: Python) -> PyResult<Py<PyAny>> {
+    match v {
+        Variant::Bool(b) => b.into_py_any(py),
+        Variant::U32(x) => x.into_py_any(py),
+        Variant::I32(x) => x.into_py_any(py),
+        Variant::F32(x) => x.into_py_any(py),
+        Variant::U64(x) => x.into_py_any(py),
+        Variant::String(s) => s.clone().into_py_any(py),
+        Variant::VecXY(a) => a.to_vec().into_py_any(py),
+        Variant::VecXYZ(a) => a.to_vec().into_py_any(py),
+        Variant::List(l) => list_to_py(l, py),
+        Variant::Bytes(b) => b.clone().into_py_any(py),
+        _ => Ok(py.None()),
+    }
+}
+
+fn list_to_py(list: &[Variant], py: Python) -> PyResult<Py<PyAny>> {
+    let items = list.iter().map(|v| variant_to_py(v, py)).collect::<PyResult<Vec<_>>>()?;
+    items.into_py_any(py)
+}
+
+/// Column of Variant::List values (one list per row) as a Python list of lists
+fn list_col_to_py(data: &[Vec<Variant>], py: Python) -> PyResult<Py<PyAny>> {
+    let rows = data.iter().map(|row| list_to_py(row, py)).collect::<PyResult<Vec<_>>>()?;
+    rows.into_py_any(py)
+}
+
 fn to_f32_series(pairs: &Vec<&EventField>, name: &str) -> DataFrameColumn {
     let mut v = vec![];
     for pair in pairs {

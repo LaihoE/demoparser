@@ -53,6 +53,7 @@ class SignatureTest(TestCase):
         self.assertIsInstance(grenades, pd.DataFrame)
         parser.parse_grenades(extra=["game_time"], grenades=True)
         parser.parse_grenades(extra=["game_time"], grenades=False)
+        parser.parse_grenades(extra=["game_time"], grenades=False, ticks=[100, 200])
         with self.assertRaises(TypeError):
             parser.parse_grenades(extra=[5])
         with self.assertRaises(TypeError):

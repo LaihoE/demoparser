@@ -295,8 +295,14 @@ impl<'a> SecondPassParser<'a> {
 
     pub fn collect_projectiles(&mut self) {
         for projectile_entid in &self.projectiles {
-            let grenade_type = match self.find_grenade_type(projectile_entid) {              
-                Some(t) => {if !t.contains("Projectile") && !self.parse_grenades{continue}else{t}},
+            let grenade_type = match self.find_grenade_type(projectile_entid) {
+                Some(t) => {
+                    if !t.contains("Projectile") && t != "CInferno" && !self.parse_grenades {
+                        continue;
+                    } else {
+                        t
+                    }
+                }
                 None => continue,
             };
             let steamid = match self.find_thrower_steamid(projectile_entid) {
@@ -307,8 +313,8 @@ impl<'a> SecondPassParser<'a> {
                 Ok(x) => x,
                 _ => continue,
             };
-            // Projectiles are the only ones with coordinates others map to 0.0, map them to None as it is clearer.
-            let (x, y, z) = if grenade_type.contains("Project") {
+            // Projectiles (and the fire) are the only ones with coordinates, others map to 0.0, map them to None as it is clearer.
+            let (x, y, z) = if grenade_type.contains("Project") || grenade_type == "CInferno" {
                 let x = self.collect_cell_coordinate_grenade(CoordinateAxis::X, projectile_entid).ok();
                 let y = self.collect_cell_coordinate_grenade(CoordinateAxis::Y, projectile_entid).ok();
                 let z = self.collect_cell_coordinate_grenade(CoordinateAxis::Z, projectile_entid).ok();

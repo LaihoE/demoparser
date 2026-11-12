@@ -45,6 +45,13 @@ pub struct FieldInfo {
     pub decoder: Decoder,
     pub should_parse: bool,
     pub prop_id: u32,
+    /// Element index when the update is one element of a collected array/vector
+    /// (see ValueField::collect_vec); the whole list is kept under prop_id.
+    pub vec_index: Option<u32>,
+    /// The update is the element count of a collected vector.
+    pub vec_size: bool,
+    /// Collected elements are uint8 (Variant::Bytes).
+    pub vec_bytes: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -107,6 +114,7 @@ impl<'a> FirstPassParser<'a> {
             &self.wanted_events,
             self.parse_projectiles,
             self.parse_weapons,
+            self.vector_props_as_lists,
         );
         // Quantalized floats have their own helper struct
         let mut qf_mapper = QfMapper {
@@ -312,11 +320,15 @@ impl Field {
 pub struct ArrayField {
     pub field_enum: Box<Field>,
     pub length: usize,
+    /// Base type of the elements ("uint8", "Vector", ...)
+    pub element_base: String,
 }
 #[derive(Debug, Clone)]
 pub struct VectorField {
     pub field_enum: Box<Field>,
     pub decoder: Decoder,
+    /// Base type of the elements ("uint8", "CHandle", ...)
+    pub element_base: String,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValueField {
@@ -325,6 +337,14 @@ pub struct ValueField {
     pub should_parse: bool,
     pub prop_id: u32,
     pub full_name: String,
+    /// Position in the field path that holds the element index when this value is an
+    /// element of an array or vector (None for plain values).
+    pub vec_depth: Option<u8>,
+    /// Keep every element of the array/vector as Variant::List instead of letting the
+    /// elements overwrite each other. Only set for props the user asked for.
+    pub collect_vec: bool,
+    /// The collected elements are uint8: keep them as Variant::Bytes (compact) instead of a List.
+    pub vec_bytes: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -338,10 +358,11 @@ pub struct PointerField {
 }
 
 impl ArrayField {
-    pub fn new(field_enum: Field, length: usize) -> ArrayField {
+    pub fn new(field_enum: Field, length: usize, element_base: String) -> ArrayField {
         ArrayField {
             field_enum: Box::new(field_enum),
             length,
+            element_base,
         }
     }
 }
@@ -373,14 +394,18 @@ impl ValueField {
             prop_id: 0,
             should_parse: false,
             full_name: "".to_string() + name,
+            vec_depth: None,
+            collect_vec: false,
+            vec_bytes: false,
         }
     }
 }
 impl VectorField {
-    pub fn new(field_enum: Field, f: std::option::Option<Box<FieldType>>) -> VectorField {
+    pub fn new(field_enum: Field, element_base: String) -> VectorField {
         VectorField {
             field_enum: Box::new(field_enum),
             decoder: UnsignedDecoder,
+            element_base,
         }
     }
 }
@@ -483,12 +508,23 @@ pub fn get_propinfo(field: &Field, path: &FieldPath) -> Option<FieldInfo> {
             decoder: v.decoder,
             should_parse: v.should_parse,
             prop_id: v.prop_id,
+            // Element of a collected array/vector: the path reaches the index position
+            vec_index: match (v.collect_vec, v.vec_depth) {
+                (true, Some(d)) if (d as usize) <= path.last => Some(path.path[d as usize] as u32),
+                _ => None,
+            },
+            vec_size: false,
+            vec_bytes: v.vec_bytes,
         },
         Field::Vector(v) => match field.get_inner(0) {
             Ok(Field::Value(inner)) => FieldInfo {
                 decoder: v.decoder,
                 should_parse: inner.should_parse,
                 prop_id: inner.prop_id,
+                vec_index: None,
+                // Path stops at the vector itself: this update is its element count
+                vec_size: inner.collect_vec && inner.vec_depth.map_or(false, |d| path.last + 1 == d as usize),
+                vec_bytes: inner.vec_bytes,
             },
             _ => return None,
         },
@@ -562,9 +598,10 @@ fn create_field(
         None => Field::Value(ValueField::new(fd.decoder, &fd.var_name)),
     };
 
+    let element_base = element_type.as_ref().map(|t| t.base_type.clone()).unwrap_or_default();
     let element_field = match fd.category {
-        FieldCategory::Array => Field::Array(ArrayField::new(element_field, fd.field_type.count.unwrap_or(0) as usize)),
-        FieldCategory::Vector => Field::Vector(VectorField::new(element_field, element_type)),
+        FieldCategory::Array => Field::Array(ArrayField::new(element_field, fd.field_type.count.unwrap_or(0) as usize, element_base)),
+        FieldCategory::Vector => Field::Vector(VectorField::new(element_field, element_base)),
         _ => return Ok(element_field),
     };
     Ok(element_field)
