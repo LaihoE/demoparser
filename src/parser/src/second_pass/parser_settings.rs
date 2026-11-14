@@ -41,13 +41,16 @@ const DEFAULT_MAX_ENTITY_ID: usize = 1024;
 pub struct VelocitySample {
     pub prev: Option<[f32; 3]>,
     pub last: Option<[f32; 3]>,
+    pawn_lifetime_start: Option<i32>,
 }
 
 impl VelocitySample {
     #[inline]
-    pub fn push(&mut self, xyz: Option<[f32; 3]>) {
-        self.prev = self.last;
+    pub fn push(&mut self, xyz: Option<[f32; 3]>, pawn_lifetime_start: Option<i32>) {
+        // A respawn can move the player across the map between two samples.
+        self.prev = if self.pawn_lifetime_start == pawn_lifetime_start { self.last } else { None };
         self.last = xyz;
+        self.pawn_lifetime_start = pawn_lifetime_start;
     }
 }
 
@@ -303,6 +306,7 @@ pub struct SpecialIDs {
     pub orig_own_low: Option<u32>,
     pub orig_own_high: Option<u32>,
     pub life_state: Option<u32>,
+    pub pawn_lifetime_start: Option<u32>,
 
     pub h_owner_entity: Option<u32>,
     pub weapon_prev_owner: Option<u32>,
@@ -366,6 +370,7 @@ impl SpecialIDs {
             orig_own_high: None,
             orig_own_low: None,
             life_state: None,
+            pawn_lifetime_start: None,
             agent_skin_idx: None,
             is_incendiary_grenade: None,
             sellback_entry_def_idx: None,

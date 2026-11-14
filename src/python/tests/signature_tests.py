@@ -196,6 +196,16 @@ class SignatureTest(TestCase):
                 ["X", "Y"], prop_states=[{"prop": "is_alive", "state": True}]
             )
 
+    def test_velocity_across_respawn(self):
+        # In test_demo.dem this player drops over 230 units from their death
+        # position to their next spawn. The first movement after spawning is real.
+        rows = DemoParser(demo_path).parse_ticks(
+            ["Z", "velocity_Z"], players=[76561198324843075], ticks=list(range(9416, 9424))
+        ).set_index("tick")
+        self.assertLess(rows.at[9419, "Z"] - rows.at[9418, "Z"], -230)
+        self.assertTrue(pd.isna(rows.at[9422, "velocity_Z"]))
+        self.assertEqual(rows.at[9423, "velocity_Z"], 64 * (rows.at[9422, "Z"] - rows.at[9419, "Z"]))
+
     def test_list_updated_fields(self):
         parser = DemoParser(demo_path)
 

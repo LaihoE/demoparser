@@ -4133,56 +4133,12 @@ mod tests {
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
     #[test]
-    fn velocity() {
-        let prop = (
-            "velocity",
-            PropColumn {
-                data: Some(F32(vec![
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    Some(207854.4),
-                    Some(150870.27),
-                    Some(114379.734),
-                    Some(139744.61),
-                    Some(89762.07),
-                    Some(73647.7),
-                    Some(54650.164),
-                    Some(123902.43),
-                    Some(73827.75),
-                    Some(56149.902),
-                    Some(180225.58),
-                    Some(85360.7),
-                    Some(50693.67),
-                    Some(65602.23),
-                    Some(45387.305),
-                    Some(68026.805),
-                    Some(82963.77),
-                    Some(30966.63),
-                    Some(103496.87),
-                    Some(144571.95),
-                ])),
-                num_nones: 0,
-            },
-        );
-        assert_eq!(out.0.df[&VELOCITY_ID], prop.1);
+    fn velocity_across_sampled_lives() {
+        // These rows are sampled 10,000 ticks apart. The two previous
+        // positions, when present, belong to different pawn lifetimes.
+        for id in [VELOCITY_ID, VELOCITY_X_ID, VELOCITY_Y_ID, VELOCITY_Z_ID] {
+            assert_eq!(out.0.df[&id], PropColumn { data: None, num_nones: 40 });
+        }
     }
     #[test]
     fn CCSPlayerPawn_CCSPlayer_MovementServices_m_fStashGrenadeParameterWhen() {
@@ -11769,58 +11725,6 @@ mod tests {
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
     #[test]
-    fn velocity_Z() {
-        let prop = (
-            "velocity_Z",
-            PropColumn {
-                data: Some(F32(vec![
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    Some(7680.0),
-                    Some(10370.121),
-                    Some(0.0),
-                    Some(-6400.0),
-                    Some(13372.109),
-                    Some(7616.789),
-                    Some(6351.211),
-                    Some(2937.4727),
-                    Some(6248.375),
-                    Some(-96.0),
-                    Some(-7680.0),
-                    Some(-2700.1367),
-                    Some(0.0),
-                    Some(6144.0),
-                    Some(-4935.7656),
-                    Some(0.0),
-                    Some(0.0),
-                    Some(-2937.4727),
-                    Some(8192.0),
-                    Some(8032.0),
-                ])),
-                num_nones: 0,
-            },
-        );
-        assert_eq!(out.0.df[&VELOCITY_Z_ID], prop.1);
-    }
-    #[test]
     fn m_vDecalPosition() {
         let prop = (
             "m_vDecalPosition",
@@ -14269,58 +14173,6 @@ mod tests {
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
     #[test]
-    fn velocity_X() {
-        let prop = (
-            "velocity_X",
-            PropColumn {
-                data: Some(F32(vec![
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    Some(-198492.28),
-                    Some(69036.05),
-                    Some(-107930.39),
-                    Some(-138242.02),
-                    Some(26296.227),
-                    Some(69851.5),
-                    Some(31605.508),
-                    Some(-65021.93),
-                    Some(64556.79),
-                    Some(-55933.93),
-                    Some(94498.24),
-                    Some(-30509.914),
-                    Some(-24216.84),
-                    Some(1152.9727),
-                    Some(45093.332),
-                    Some(17212.98),
-                    Some(6746.297),
-                    Some(-26937.25),
-                    Some(83371.805),
-                    Some(-18019.363),
-                ])),
-                num_nones: 0,
-            },
-        );
-        assert_eq!(out.0.df[&VELOCITY_X_ID], prop.1);
-    }
-    #[test]
     fn CCSPlayerController_CCSPlayerController_ActionTrackingServices_CSPerRoundStats_t_m_iUtilityDamage() {
         let prop = (
             "CCSPlayerController.CCSPlayerController_ActionTrackingServices.CSPerRoundStats_t.m_iUtilityDamage",
@@ -15166,58 +15018,6 @@ mod tests {
         );
         let prop_id = out.1.name_to_id[prop.0];
         assert_eq!(out.0.df[&prop_id], prop.1);
-    }
-    #[test]
-    fn velocity_Y() {
-        let prop = (
-            "velocity_Y",
-            PropColumn {
-                data: Some(F32(vec![
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    Some(61678.75),
-                    Some(134148.66),
-                    Some(-37864.934),
-                    Some(-20437.688),
-                    Some(85823.875),
-                    Some(-23339.938),
-                    Some(44583.992),
-                    Some(-105470.19),
-                    Some(35818.4),
-                    Some(4920.0703),
-                    Some(-153464.47),
-                    Some(-79721.984),
-                    Some(-44535.3),
-                    Some(-65592.09),
-                    Some(-5157.4023),
-                    Some(65813.06),
-                    Some(-82689.02),
-                    Some(-15274.711),
-                    Some(-61324.9),
-                    Some(-143444.6),
-                ])),
-                num_nones: 0,
-            },
-        );
-        assert_eq!(out.0.df[&VELOCITY_Y_ID], prop.1);
     }
     #[test]
     fn CCSPlayerPawn_m_bClientRagdoll() {
