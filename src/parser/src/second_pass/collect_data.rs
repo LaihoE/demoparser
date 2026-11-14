@@ -65,7 +65,7 @@ impl<'a> SecondPassParser<'a> {
         // rows are now kept per player, so the filter always applies and the
         // history is updated on skipped ticks too.
         if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_events.len() != 0 {
-            if self.prop_controller.event_with_velocity && !self.parse_projectiles {
+            if self.prop_controller.needs_velocity && !self.parse_projectiles && !self.parse_weapons {
                 self.update_velocity_history();
             }
             return;
@@ -766,7 +766,7 @@ impl<'a> SecondPassParser<'a> {
                 }
             }
         }
-        let mut updates: Vec<(u64, Option<[f32; 3]>)> = Vec::with_capacity(self.players.len());
+        let mut updates = Vec::with_capacity(self.players.len());
         for (entity_id, player) in &self.players {
             let steamid = player.steamid.unwrap_or(0);
             if !self.wanted_players.is_empty() && !self.wanted_players.contains(&steamid) {
@@ -779,10 +779,14 @@ impl<'a> SecondPassParser<'a> {
                 (Ok(Variant::F32(x)), Ok(Variant::F32(y)), Ok(Variant::F32(z))) => Some([x, y, z]),
                 _ => None,
             };
-            updates.push((steamid, xyz));
+            let pawn_lifetime_start = self.prop_controller.special_ids.pawn_lifetime_start.and_then(|id| match self.get_controller_prop(&id, player) {
+                Ok(Variant::I32(start)) => Some(start),
+                _ => None,
+            });
+            updates.push((steamid, xyz, pawn_lifetime_start));
         }
-        for (steamid, xyz) in updates {
-            self.velocity_history.entry(steamid).or_default().push(xyz);
+        for (steamid, xyz, pawn_lifetime_start) in updates {
+            self.velocity_history.entry(steamid).or_default().push(self.tick, xyz, pawn_lifetime_start);
         }
     }
     fn collect_velocity_cached(&self, player: &PlayerMetaData, _indicies_cache: &mut Option<Vec<usize>>) -> Result<Variant, PropCollectionError> {
