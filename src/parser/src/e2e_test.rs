@@ -4133,11 +4133,17 @@ mod tests {
         assert_eq!(out.0.df[&prop_id], prop.1);
     }
     #[test]
-    fn velocity_across_sampled_lives() {
-        // These rows are sampled 10,000 ticks apart. The two previous
-        // positions, when present, belong to different pawn lifetimes.
-        for id in [VELOCITY_ID, VELOCITY_X_ID, VELOCITY_Y_ID, VELOCITY_Z_ID] {
-            assert_eq!(out.0.df[&id], PropColumn { data: None, num_nones: 40 });
+    fn velocity_at_sparse_ticks() {
+        // Row 11 is the second player at tick 20000. The previous output
+        // tick was 10000, but velocity still comes from ticks 19998 and 19999.
+        for (id, expected) in [
+            (VELOCITY_X_ID, 222.609375),
+            (VELOCITY_Y_ID, 79.828125),
+            (VELOCITY_Z_ID, -103.890625),
+            (VELOCITY_ID, 236.48987),
+        ] {
+            let col = out.0.df[&id].slice_to_new(&[11]).unwrap();
+            assert_eq!(col.data, Some(F32(vec![Some(expected)])));
         }
     }
     #[test]

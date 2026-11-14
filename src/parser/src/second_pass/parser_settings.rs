@@ -42,13 +42,19 @@ pub struct VelocitySample {
     pub prev: Option<[f32; 3]>,
     pub last: Option<[f32; 3]>,
     pawn_lifetime_start: Option<i32>,
+    last_tick: Option<i32>,
 }
 
 impl VelocitySample {
     #[inline]
-    pub fn push(&mut self, xyz: Option<[f32; 3]>, pawn_lifetime_start: Option<i32>) {
-        // A respawn can move the player across the map between two samples.
-        self.prev = if self.pawn_lifetime_start == pawn_lifetime_start { self.last } else { None };
+    pub fn push(&mut self, tick: i32, xyz: Option<[f32; 3]>, pawn_lifetime_start: Option<i32>) {
+        // Only consecutive ticks in the same life give a one-tick velocity.
+        self.prev = if self.last_tick == tick.checked_sub(1) && self.pawn_lifetime_start == pawn_lifetime_start {
+            self.last
+        } else {
+            None
+        };
+        self.last_tick = Some(tick);
         self.last = xyz;
         self.pawn_lifetime_start = pawn_lifetime_start;
     }

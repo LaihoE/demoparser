@@ -65,7 +65,7 @@ impl<'a> SecondPassParser<'a> {
         // rows are now kept per player, so the filter always applies and the
         // history is updated on skipped ticks too.
         if !self.wanted_ticks.contains(&self.tick) && self.wanted_ticks.len() != 0 || self.wanted_events.len() != 0 {
-            if self.prop_controller.event_with_velocity && !self.parse_projectiles {
+            if self.prop_controller.needs_velocity && !self.parse_projectiles && !self.parse_weapons {
                 self.update_velocity_history();
             }
             return;
@@ -786,7 +786,7 @@ impl<'a> SecondPassParser<'a> {
             updates.push((steamid, xyz, pawn_lifetime_start));
         }
         for (steamid, xyz, pawn_lifetime_start) in updates {
-            self.velocity_history.entry(steamid).or_default().push(xyz, pawn_lifetime_start);
+            self.velocity_history.entry(steamid).or_default().push(self.tick, xyz, pawn_lifetime_start);
         }
     }
     fn collect_velocity_cached(&self, player: &PlayerMetaData, _indicies_cache: &mut Option<Vec<usize>>) -> Result<Variant, PropCollectionError> {

@@ -198,13 +198,26 @@ class SignatureTest(TestCase):
 
     def test_velocity_across_respawn(self):
         # In test_demo.dem this player drops over 230 units from their death
-        # position to their next spawn. The first movement after spawning is real.
+        # position to their next spawn. Ticks 9420 and 9421 are missing.
         rows = DemoParser(demo_path).parse_ticks(
-            ["Z", "velocity_Z"], players=[76561198324843075], ticks=list(range(9416, 9424))
+            ["Z", "velocity_Z"], players=[76561198324843075], ticks=list(range(9416, 9425))
         ).set_index("tick")
         self.assertLess(rows.at[9419, "Z"] - rows.at[9418, "Z"], -230)
         self.assertTrue(pd.isna(rows.at[9422, "velocity_Z"]))
-        self.assertEqual(rows.at[9423, "velocity_Z"], 64 * (rows.at[9422, "Z"] - rows.at[9419, "Z"]))
+        self.assertTrue(pd.isna(rows.at[9423, "velocity_Z"]))
+        self.assertEqual(rows.at[9424, "velocity_Z"], 64 * (rows.at[9423, "Z"] - rows.at[9422, "Z"]))
+
+    def test_sparse_ticks_preserve_velocity(self):
+        parser = DemoParser(demo_path)
+        players = [76561198324843075]
+        props = ["velocity_X", "velocity_Y", "velocity_Z", "velocity"]
+        ticks = [10695, 10759, 10823]
+        full = parser.parse_ticks(props, players=players).set_index("tick")
+        sparse = parser.parse_ticks(props, players=players, ticks=ticks).set_index("tick")
+        self.assertEqual(sparse.index.tolist(), ticks)
+        for prop in props:
+            self.assertEqual(sparse[prop].tolist(), full.loc[ticks, prop].tolist())
+        self.assertEqual(sparse.at[10823, "velocity_Z"], -1.34375)
 
     def test_list_updated_fields(self):
         parser = DemoParser(demo_path)
