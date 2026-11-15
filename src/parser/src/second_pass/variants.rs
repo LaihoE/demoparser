@@ -163,10 +163,22 @@ impl VarVec {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct PropColumn {
     pub data: Option<VarVec>,
     pub num_nones: usize,
+}
+
+/// A String column and a StrDict column holding the same values are the same column.
+impl PartialEq for PropColumn {
+    fn eq(&self, other: &Self) -> bool {
+        match (&self.data, &other.data) {
+            (Some(VarVec::StrDict(d)), Some(VarVec::String(v))) | (Some(VarVec::String(v)), Some(VarVec::StrDict(d))) => {
+                d.codes.len() == v.len() && d.iter().eq(v.iter().map(|x| x.as_deref()))
+            }
+            (a, b) => a == b && self.num_nones == other.num_nones,
+        }
+    }
 }
 
 impl PropColumn {
@@ -265,6 +277,7 @@ impl PropColumn {
                 Some(VarVec::String(v_other)) => {
                     v.extend_from_slice(&v_other);
                 }
+                Some(VarVec::StrDict(d)) => v.extend(d.iter().map(|x| x.map(|x| x.to_string()))),
                 None => {
                     for _ in 0..other.num_nones {
                         v.push(None);
@@ -406,6 +419,14 @@ impl PropColumn {
             },
             Some(VarVec::StrDict(v)) => match &other.data {
                 Some(VarVec::StrDict(v_other)) => v.append(v_other),
+                Some(VarVec::String(v_other)) => {
+                    for x in v_other {
+                        match x {
+                            Some(x) => v.push_str(x),
+                            None => v.push_none(),
+                        }
+                    }
+                }
                 None => {
                     for _ in 0..other.num_nones {
                         v.push_none();
@@ -550,6 +571,17 @@ impl PropColumn {
         match (&mut self.data, s) {
             (Some(VarVec::StrDict(d)), Some(s)) => d.push_str(s),
             (Some(VarVec::StrDict(d)), None) => d.push_none(),
+            (None, None) => self.num_nones += 1,
+            // First value of an untyped column: start a dictionary column.
+            (None, Some(s)) => {
+                let mut d = StrDict::default();
+                for _ in 0..self.num_nones {
+                    d.push_none();
+                }
+                self.num_nones = 0;
+                d.push_str(s);
+                self.data = Some(VarVec::StrDict(d));
+            }
             (_, s) => self.push(s.map(|s| Variant::String(s.to_string()))),
         }
     }

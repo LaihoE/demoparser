@@ -849,151 +849,13 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
-        let mut all_series = vec![];
-        let mut all_pyobjects = vec![];
-        let prop_infos = output.prop_controller.prop_infos;
-        let mut df_column_names_arrow = vec![];
-        let mut df_column_names_py = vec![];
-
-        for prop_info in prop_infos {
-            if output.df.contains_key(&prop_info.id) {
-                match &output.df[&prop_info.id].data {
-                    Some(VarVec::F32(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(Float32Array::from(data)))?);
-                    }
-                    Some(VarVec::I32(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(Int32Array::from(data)))?);
-                    }
-                    Some(VarVec::U64(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(UInt64Array::from(data)))?);
-                    }
-                    Some(VarVec::U32(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(UInt32Array::from(data)))?);
-                    }
-                    Some(VarVec::Bool(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(BooleanArray::from(data)))?);
-                    }
-                    Some(VarVec::String(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name.clone());
-                        let s = Series::new(&prop_info.prop_friendly_name.clone(), data);
-                        let py_series = rust_series_to_py_series(&s)?;
-                        all_series.push(py_series);
-                    }
-                    Some(VarVec::StringVec(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.into_py_any(py)?);
-                    }
-                    Some(VarVec::U64Vec(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.into_py_any(py)?);
-                    }
-                    Some(VarVec::XYZVec(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.into_py_any(py)?);
-                    }
-                    Some(VarVec::U32Vec(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.into_py_any(py)?);
-                    }
-                    Some(VarVec::List(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(list_col_to_py(&data, py)?);
-                    }
-                    Some(VarVec::Bytes(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.into_py_any(py)?);
-                    }
-
-                    Some(VarVec::Stickers(data)) => {
-                        let mut dicts = vec![];
-                        for weapon in data {
-                            let mut v = vec![];
-                            for sticker in weapon {
-                                let dict = PyDict::new(py);
-                                dict.set_item("id", sticker.id)?;
-                                dict.set_item("name", sticker.name.clone())?;
-                                dict.set_item("wear", sticker.wear)?;
-                                dict.set_item("x", sticker.x)?;
-                                dict.set_item("y", sticker.y)?;
-                                v.push(dict);
-                            }
-                            dicts.push(v);
-                        }
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(dicts.into_py_any(py)?);
-                    }
-
-                    Some(VarVec::InputHistory(data)) => {
-                        let mut dicts = vec![];
-                        for input in data {
-                            let mut v = vec![];
-                            for sticker in input {
-                                let dict = PyDict::new(py);
-                                dict.set_item("x", sticker.x)?;
-                                dict.set_item("y", sticker.y)?;
-                                dict.set_item("z", sticker.z)?;
-                                dict.set_item("render_tick_count", sticker.render_tick_count)?;
-                                dict.set_item(
-                                    "render_tick_fraction",
-                                    sticker.render_tick_fraction,
-                                )?;
-                                dict.set_item("player_tick_count", sticker.player_tick_count)?;
-                                dict.set_item(
-                                    "player_tick_fraction",
-                                    sticker.player_tick_fraction,
-                                )?;
-                                v.push(dict);
-                            }
-                            dicts.push(v);
-                        }
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(dicts.into_py_any(py)?);
-                    }
-                    Some(VarVec::UserCmdSubtickMoves(data)) => {
-                        let mut dicts = vec![];
-                        for moves in data {
-                            let mut values = vec![];
-                            for subtick in moves {
-                                let dict = PyDict::new(py);
-                                dict.set_item("when", subtick.when)?;
-                                dict.set_item("button", subtick.button)?;
-                                dict.set_item("pressed", subtick.pressed)?;
-                                dict.set_item("analog_forward", subtick.analog_forward)?;
-                                dict.set_item("analog_left", subtick.analog_left)?;
-                                dict.set_item("pitch_delta", subtick.pitch_delta)?;
-                                dict.set_item("yaw_delta", subtick.yaw_delta)?;
-                                values.push(dict);
-                            }
-                            dicts.push(values);
-                        }
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(dicts.into_py_any(py)?);
-                    }
-                    _ => {}
-                }
+        let mut columns: Vec<(String, &VarVec)> = vec![];
+        for prop_info in &output.prop_controller.prop_infos {
+            if let Some(Some(data)) = output.df.get(&prop_info.id).map(|c| c.data.as_ref()) {
+                columns.push((prop_info.prop_friendly_name.clone(), data));
             }
         }
-        Python::attach(|py| {
-            let polars = py.import("polars")?;
-            let all_series_py = all_series.into_py_any(py)?;
-            let df = polars.call_method1("DataFrame", (all_series_py,))?;
-            df.setattr("columns", df_column_names_arrow.clone())?;
-            let pandas_df = df.call_method0("to_pandas")?;
-            for (pyobj, col_name) in all_pyobjects.iter().zip(&df_column_names_py) {
-                pandas_df.call_method1("insert", (0, col_name, pyobj))?;
-            }
-            df_column_names_arrow.extend(df_column_names_py);
-            df_column_names_arrow.sort();
-            let kwargs = vec![("axis", 1)].into_py_dict(py).unwrap();
-            let args = (df_column_names_arrow,);
-            pandas_df.call_method("reindex", args, Some(&kwargs))?;
-            pandas_df.into_py_any(py)
-        })
+        build_pandas_df(py, &columns)
     }
 }
 
@@ -1053,6 +915,70 @@ pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<Py<PyAny>> {
         out.into_py_any(py)
     })
 }
+fn stickers_col_to_py(data: &[Vec<parser::second_pass::variants::Sticker>], py: Python) -> PyResult<Py<PyAny>> {
+    let mut dicts = vec![];
+    for weapon in data {
+        let mut v = vec![];
+        for sticker in weapon {
+            let dict = PyDict::new(py);
+            dict.set_item("id", sticker.id)?;
+            dict.set_item("name", sticker.name.clone())?;
+            dict.set_item("wear", sticker.wear)?;
+            dict.set_item("x", sticker.x)?;
+            dict.set_item("y", sticker.y)?;
+            v.push(dict);
+        }
+        dicts.push(v);
+    }
+    dicts.into_py_any(py)
+}
+
+fn input_history_col_to_py(data: &[Vec<parser::second_pass::variants::InputHistory>], py: Python) -> PyResult<Py<PyAny>> {
+    let mut dicts = vec![];
+    for input in data {
+        let mut v = vec![];
+        for sticker in input {
+            let dict = PyDict::new(py);
+            dict.set_item("x", sticker.x)?;
+            dict.set_item("y", sticker.y)?;
+            dict.set_item("z", sticker.z)?;
+            dict.set_item("render_tick_count", sticker.render_tick_count)?;
+            dict.set_item(
+                "render_tick_fraction",
+                sticker.render_tick_fraction,
+            )?;
+            dict.set_item("player_tick_count", sticker.player_tick_count)?;
+            dict.set_item(
+                "player_tick_fraction",
+                sticker.player_tick_fraction,
+            )?;
+            v.push(dict);
+        }
+        dicts.push(v);
+    }
+    dicts.into_py_any(py)
+}
+
+fn subtick_moves_col_to_py(data: &[Vec<parser::second_pass::variants::UserCmdSubtickMove>], py: Python) -> PyResult<Py<PyAny>> {
+    let mut dicts = vec![];
+    for moves in data {
+        let mut values = vec![];
+        for subtick in moves {
+            let dict = PyDict::new(py);
+            dict.set_item("when", subtick.when)?;
+            dict.set_item("button", subtick.button)?;
+            dict.set_item("pressed", subtick.pressed)?;
+            dict.set_item("analog_forward", subtick.analog_forward)?;
+            dict.set_item("analog_left", subtick.analog_left)?;
+            dict.set_item("pitch_delta", subtick.pitch_delta)?;
+            dict.set_item("yaw_delta", subtick.yaw_delta)?;
+            values.push(dict);
+        }
+        dicts.push(values);
+    }
+    dicts.into_py_any(py)
+}
+
 /// Build a pandas DataFrame from output columns (in the given order) without going through polars.
 /// - Numeric/bool/string columns: one pyarrow Table, converted with Table.to_pandas().
 /// - Dictionary string columns: an object array where every row points at one shared str per
@@ -1115,6 +1041,18 @@ fn build_pandas_df<'py>(py: Python<'py>, columns: &[(String, &VarVec)]) -> PyRes
             }
             VarVec::Bytes(v) => {
                 list_cols.push((name.clone(), v.into_py_any(py)?));
+                None
+            }
+            VarVec::Stickers(v) => {
+                list_cols.push((name.clone(), stickers_col_to_py(v, py)?));
+                None
+            }
+            VarVec::InputHistory(v) => {
+                list_cols.push((name.clone(), input_history_col_to_py(v, py)?));
+                None
+            }
+            VarVec::UserCmdSubtickMoves(v) => {
+                list_cols.push((name.clone(), subtick_moves_col_to_py(v, py)?));
                 None
             }
             _ => None,

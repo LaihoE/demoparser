@@ -7,6 +7,7 @@ use crate::first_pass::prop_controller::*;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::maps::BUTTONMAP;
 use crate::maps::PLAYER_COLOR;
+use crate::second_pass::entities::Entity;
 use crate::second_pass::entities::EntityType;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::PropColumn;
@@ -123,11 +124,18 @@ impl<'a> SecondPassParser<'a> {
                 }
             } else {
                 for prop_info in &self.prop_controller.prop_infos {
+                    // Strings (names, places, weapon names, ...) repeat over many rows: they go into
+                    // dictionary columns, borrowed where possible so no String is allocated per row.
+                    if let Some(s) = Self::find_prop_str(&self.entities, prop_info, entity_id, player) {
+                        self.output.entry(prop_info.id).or_insert_with(PropColumn::new).push_str(s);
+                        continue;
+                    }
                     let val = self.find_prop_with_collect_cache(prop_info, entity_id, player, &mut velocity_indicies, &mut button_mask);
-                    self.output
-                        .entry(prop_info.id)
-                        .or_insert_with(PropColumn::new)
-                        .push(val);
+                    let col = self.output.entry(prop_info.id).or_insert_with(PropColumn::new);
+                    match val {
+                        Some(Variant::String(s)) => col.push_str(Some(&s)),
+                        val => col.push(val),
+                    }
                 }
             }
         }
@@ -137,6 +145,28 @@ impl<'a> SecondPassParser<'a> {
         // PREVIOUS rows. Preserve that.
         if self.prop_controller.needs_velocity {
             self.update_velocity_history();
+        }
+    }
+
+    /// Borrowed string value of a prop, for props that are plain strings read straight from the
+    /// player metadata or an entity: Some(value) if it is such a prop holding a string (or missing),
+    /// None to go through find_prop.
+    #[inline(always)]
+    fn find_prop_str<'s>(entities: &'s [Option<Entity>], prop_info: &PropInfo, entity_id: &i32, player: &'s PlayerMetaData) -> Option<Option<&'s str>> {
+        let ent_id = match prop_info.prop_type {
+            PropType::Name => return Some(player.name.as_deref()),
+            PropType::Player => *entity_id,
+            PropType::Controller => player.controller_entid?,
+            _ => return None,
+        };
+        match entities.get(ent_id as usize) {
+            Some(Some(e)) => match e.props.get(&prop_info.id) {
+                Some(Variant::String(s)) => Some(Some(s.as_str())),
+                // Not a string: the normal path.
+                Some(_) => None,
+                None => Some(None),
+            },
+            _ => Some(None),
         }
     }
 
