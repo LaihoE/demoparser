@@ -566,6 +566,7 @@ impl PropController {
                 "CCSPlayerController.m_iszPlayerName" => self.special_ids.player_name = Some(id),
                 "CCSPlayerController.m_steamID" => self.special_ids.steamid = Some(id),
                 "CCSPlayerController.m_hPlayerPawn" => self.special_ids.player_pawn = Some(id),
+                "CCSPlayerController.m_iPawnLifetimeStart" => self.special_ids.pawn_lifetime_start = Some(id),
                 "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_cellX" => self.special_ids.cell_x_player = Some(id),
                 "CCSPlayerPawn.CCSPlayer_MovementServices.m_nButtonDownMaskPrev" => self.special_ids.buttons = Some(id),
                 "CCSPlayerPawn.CBodyComponentBaseAnimGraph.m_vecX" => self.special_ids.cell_x_offset_player = Some(id),
