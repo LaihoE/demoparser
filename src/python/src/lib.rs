@@ -267,85 +267,14 @@ impl DemoParser {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
-        let mut all_series = vec![];
-        let mut all_pyobjects = vec![];
-        let prop_infos = output.prop_controller.prop_infos;
-        let mut df_column_names_arrow = vec![];
-        let mut df_column_names_py = vec![];
-
-        for prop_info in prop_infos {
-            if output.df.contains_key(&prop_info.id) {
-                match &output.df[&prop_info.id].data {
-                    Some(VarVec::F32(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(Float32Array::from(data)))?);
-                    }
-                    Some(VarVec::I32(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(Int32Array::from(data)))?);
-                    }
-                    Some(VarVec::U64(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(UInt64Array::from(data)))?);
-                    }
-                    Some(VarVec::U32(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(UInt32Array::from(data)))?);
-                    }
-                    Some(VarVec::Bool(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name);
-                        all_series.push(arr_to_py(Box::new(BooleanArray::from(data)))?);
-                    }
-                    Some(VarVec::String(data)) => {
-                        df_column_names_arrow.push(prop_info.prop_friendly_name.clone());
-                        let s = Series::new(&prop_info.prop_friendly_name.clone(), data);
-                        let py_series = rust_series_to_py_series(&s)?;
-                        all_series.push(py_series);
-                    }
-                    Some(VarVec::StringVec(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.into_py_any(py)?);
-                    }
-                    Some(VarVec::U64Vec(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.into_py_any(py)?);
-                    }
-                    Some(VarVec::XYZVec(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.into_py_any(py)?);
-                    }
-                    Some(VarVec::U32Vec(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.into_py_any(py)?);
-                    }
-                    Some(VarVec::List(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(list_col_to_py(&data, py)?);
-                    }
-                    Some(VarVec::Bytes(data)) => {
-                        df_column_names_py.push(prop_info.prop_friendly_name);
-                        all_pyobjects.push(data.into_py_any(py)?);
-                    }
-                    _ => {}
-                }
+        let mut columns: Vec<(String, &VarVec)> = vec![];
+        for prop_info in &output.prop_controller.prop_infos {
+            if let Some(Some(data)) = output.df.get(&prop_info.id).map(|c| c.data.as_ref()) {
+                columns.push((prop_info.prop_friendly_name.clone(), data));
             }
         }
-        Python::attach(|py| {
-            let polars = py.import("polars")?;
-            let all_series_py = all_series.into_py_any(py)?;
-            let df = polars.call_method1("DataFrame", (all_series_py,))?;
-            df.setattr("columns", df_column_names_arrow.clone())?;
-            let pandas_df = df.call_method0("to_pandas")?;
-            for (pyobj, col_name) in all_pyobjects.iter().zip(&df_column_names_py) {
-                pandas_df.call_method1("insert", (0, col_name, pyobj))?;
-            }
-            df_column_names_arrow.extend(df_column_names_py);
-            df_column_names_arrow.sort();
-            let kwargs = vec![("axis", 1)].into_py_dict(py).unwrap();
-            let args = (df_column_names_arrow,);
-            pandas_df.call_method("reindex", args, Some(&kwargs))?;
-            pandas_df.into_py_any(py)
-        })
+        let df = build_pandas_df(py, &columns)?;
+        Ok(df)
     }
 
     /// Weapons lying on the ground (no owner): dropped on death, thrown with the drop key or
@@ -1124,6 +1053,89 @@ pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<Py<PyAny>> {
         out.into_py_any(py)
     })
 }
+/// Build a pandas DataFrame from output columns (in the given order) without going through polars.
+/// - Numeric/bool/string columns: one pyarrow Table, converted with Table.to_pandas().
+/// - Dictionary string columns: an object array where every row points at one shared str per
+///   distinct value (numpy take), so no Python string is created per row.
+/// - List columns: Python lists, inserted at the front (as before).
+/// Same frame (columns, order, dtypes) as the old polars path.
+fn build_pandas_df<'py>(py: Python<'py>, columns: &[(String, &VarVec)]) -> PyResult<Py<PyAny>> {
+    let pyarrow = py.import("pyarrow")?;
+    let numpy = py.import("numpy")?;
+    let mut arrow_arrays: Vec<Py<PyAny>> = vec![];
+    let mut arrow_names: Vec<String> = vec![];
+    // (position among the arrow + dict columns, name, column)
+    let mut dict_cols: Vec<(usize, String, Py<PyAny>)> = vec![];
+    let mut list_cols: Vec<(String, Py<PyAny>)> = vec![];
+    for (name, data) in columns {
+        let arr: Option<Box<dyn Array>> = match data {
+            VarVec::F32(v) => Some(Box::new(Float32Array::from(v))),
+            VarVec::I32(v) => Some(Box::new(Int32Array::from(v))),
+            VarVec::U64(v) => Some(Box::new(UInt64Array::from(v))),
+            VarVec::U32(v) => Some(Box::new(UInt32Array::from(v))),
+            VarVec::Bool(v) => Some(Box::new(BooleanArray::from(v))),
+            VarVec::String(v) => {
+                let s = Series::new(name, v).rechunk();
+                Some(s.to_arrow(0, false))
+            }
+            VarVec::StrDict(d) => {
+                let pos = arrow_names.len() + dict_cols.len();
+                // Null rows point at a trailing None.
+                let n = d.values.len() as u32;
+                let keys: Vec<u32> = d.codes.iter().map(|&c| if c >= n { n } else { c }).collect();
+                let keys_np = to_py_array(py, &pyarrow, Box::new(UInt32Array::from_vec(keys)))?
+                    .call_method0(py, "to_numpy")?;
+                let mut values: Vec<Option<&str>> = d.values.iter().map(|v| Some(v.as_str())).collect();
+                values.push(None);
+                let kwargs = [("dtype", "object")].into_py_dict(py)?;
+                let objs = numpy.call_method("array", (values,), Some(&kwargs))?;
+                let col = objs.get_item(keys_np)?;
+                dict_cols.push((pos, name.clone(), col.unbind()));
+                None
+            }
+            VarVec::StringVec(v) => {
+                list_cols.push((name.clone(), v.into_py_any(py)?));
+                None
+            }
+            VarVec::U64Vec(v) => {
+                list_cols.push((name.clone(), v.into_py_any(py)?));
+                None
+            }
+            VarVec::XYZVec(v) => {
+                list_cols.push((name.clone(), v.into_py_any(py)?));
+                None
+            }
+            VarVec::U32Vec(v) => {
+                list_cols.push((name.clone(), v.into_py_any(py)?));
+                None
+            }
+            VarVec::List(v) => {
+                list_cols.push((name.clone(), list_col_to_py(v, py)?));
+                None
+            }
+            VarVec::Bytes(v) => {
+                list_cols.push((name.clone(), v.into_py_any(py)?));
+                None
+            }
+            _ => None,
+        };
+        if let Some(arr) = arr {
+            arrow_arrays.push(to_py_array(py, &pyarrow, arr)?);
+            arrow_names.push(name.clone());
+        }
+    }
+    let kwargs = [("names", arrow_names.into_py_any(py)?)].into_py_dict(py)?;
+    let table = pyarrow.getattr("Table")?.call_method("from_arrays", (arrow_arrays,), Some(&kwargs))?;
+    let df = table.call_method0("to_pandas")?;
+    for (pos, name, col) in dict_cols {
+        df.call_method1("insert", (pos, name, col))?;
+    }
+    for (name, col) in list_cols {
+        df.call_method1("insert", (0, name, col))?;
+    }
+    df.into_py_any(py)
+}
+
 #[pyclass]
 struct DemoParser {
     mmap: Mmap,

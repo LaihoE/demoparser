@@ -1259,6 +1259,7 @@ mod tests {
         let voxel_id = output.prop_controller.name_to_id["m_VoxelFrameData"];
         let types = match &output.df[&GRENADE_TYPE_ID].data {
             Some(VarVec::String(t)) => t.clone(),
+            Some(VarVec::StrDict(d)) => d.iter().map(|t| t.map(|t| t.to_string())).collect::<Vec<_>>(),
             other => panic!("grenade_type column: {:?}", other),
         };
         let fires = match &output.df[&fire_id].data {

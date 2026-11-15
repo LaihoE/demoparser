@@ -1,6 +1,7 @@
 use crate::first_pass::prop_controller::PropInfo;
 use crate::second_pass::collect_data::ProjectileRecord;
 use crate::second_pass::parser_settings::{EconItem, PlayerEndMetaData};
+use ahash::AHashMap;
 use ahash::HashMap;
 use itertools::Itertools;
 use memmap2::Mmap;
@@ -78,6 +79,65 @@ pub enum VarVec {
     UserCmdSubtickMoves(Vec<Vec<UserCmdSubtickMove>>),
     List(Vec<Vec<Variant>>),
     Bytes(Vec<Vec<u8>>),
+    /// Dictionary-encoded strings: few distinct values repeated over many rows (names, types).
+    StrDict(StrDict),
+}
+
+/// String column stored as codes into a table of distinct values. `push_str` doesn't allocate
+/// once a value has been seen.
+#[derive(Debug, Clone, Default)]
+pub struct StrDict {
+    /// Index into `values`, or `StrDict::NONE`.
+    pub codes: Vec<u32>,
+    pub values: Vec<String>,
+    index: AHashMap<String, u32>,
+}
+
+impl PartialEq for StrDict {
+    fn eq(&self, other: &Self) -> bool {
+        self.codes.len() == other.codes.len() && self.iter().eq(other.iter())
+    }
+}
+
+impl StrDict {
+    pub const NONE: u32 = u32::MAX;
+    #[inline]
+    pub fn code_of(&mut self, s: &str) -> u32 {
+        if let Some(&c) = self.index.get(s) {
+            return c;
+        }
+        let c = self.values.len() as u32;
+        self.values.push(s.to_string());
+        self.index.insert(s.to_string(), c);
+        c
+    }
+    #[inline]
+    pub fn push_str(&mut self, s: &str) {
+        let c = self.code_of(s);
+        self.codes.push(c);
+    }
+    #[inline]
+    pub fn push_none(&mut self) {
+        self.codes.push(StrDict::NONE);
+    }
+    pub fn get(&self, row: usize) -> Option<&str> {
+        self.values.get(self.codes[row] as usize).map(|s| s.as_str())
+    }
+    pub fn iter(&self) -> impl Iterator<Item = Option<&str>> + '_ {
+        self.codes.iter().map(|&c| self.values.get(c as usize).map(|s| s.as_str()))
+    }
+    /// Append `other`, remapping its codes into this table.
+    pub fn append(&mut self, other: &StrDict) {
+        let remap: Vec<u32> = other.values.iter().map(|v| self.code_of(v)).collect();
+        self.codes.extend(other.codes.iter().map(|&c| if c == StrDict::NONE { c } else { remap[c as usize] }));
+    }
+    pub fn slice_to_new(&self, rows: &[usize]) -> StrDict {
+        StrDict {
+            codes: rows.iter().map(|&r| self.codes[r]).collect(),
+            values: self.values.clone(),
+            index: self.index.clone(),
+        }
+    }
 }
 
 impl VarVec {
@@ -131,6 +191,7 @@ impl PropColumn {
             Some(VarVec::UserCmdSubtickMoves(b)) => VarVec::UserCmdSubtickMoves(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
             Some(VarVec::List(b)) => VarVec::List(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
             Some(VarVec::Bytes(b)) => VarVec::Bytes(indicies.iter().map(|x| b[*x].to_owned()).collect_vec()),
+            Some(VarVec::StrDict(b)) => VarVec::StrDict(b.slice_to_new(indicies)),
             None => {
                 return Some(PropColumn {
                     data: None,
@@ -161,6 +222,7 @@ impl PropColumn {
             Some(VarVec::UserCmdSubtickMoves(b)) => b.len(),
             Some(VarVec::List(b)) => b.len(),
             Some(VarVec::Bytes(b)) => b.len(),
+            Some(VarVec::StrDict(b)) => b.codes.len(),
             None => self.num_nones,
         }
     }
@@ -342,7 +404,20 @@ impl PropColumn {
                 }
                 _ => {}
             },
+            Some(VarVec::StrDict(v)) => match &other.data {
+                Some(VarVec::StrDict(v_other)) => v.append(v_other),
+                None => {
+                    for _ in 0..other.num_nones {
+                        v.push_none();
+                    }
+                }
+                _ => {}
+            },
             None => match &other.data {
+                Some(VarVec::StrDict(_inner)) => {
+                    self.resolve_vec_type(PropColumn::get_type(&other.data));
+                    self.extend_from(other);
+                }
                 Some(VarVec::Bool(_inner)) => {
                     self.resolve_vec_type(PropColumn::get_type(&other.data));
                     self.extend_from(other);
@@ -432,6 +507,7 @@ impl PropColumn {
             Some(VarVec::UserCmdSubtickMoves(_)) => Some(13),
             Some(VarVec::List(_)) => Some(14),
             Some(VarVec::Bytes(_)) => Some(15),
+            Some(VarVec::StrDict(_)) => Some(16),
 
             None => None,
         }
@@ -457,10 +533,24 @@ impl PropColumn {
             Some(13) => self.data = Some(VarVec::UserCmdSubtickMoves(vec![])),
             Some(14) => self.data = Some(VarVec::List(vec![])),
             Some(15) => self.data = Some(VarVec::Bytes(vec![])),
+            Some(16) => self.data = Some(VarVec::StrDict(StrDict::default())),
             _ => {}
         }
         for _ in 0..self.num_nones {
             self.push(None);
+        }
+    }
+    /// Empty dictionary-encoded string column.
+    pub fn new_str_dict() -> Self {
+        PropColumn { data: Some(VarVec::StrDict(StrDict::default())), num_nones: 0 }
+    }
+    /// Push a string without allocating (dictionary column), or as a String otherwise.
+    #[inline(always)]
+    pub fn push_str(&mut self, s: Option<&str>) {
+        match (&mut self.data, s) {
+            (Some(VarVec::StrDict(d)), Some(s)) => d.push_str(s),
+            (Some(VarVec::StrDict(d)), None) => d.push_none(),
+            (_, s) => self.push(s.map(|s| Variant::String(s.to_string()))),
         }
     }
     #[inline(always)]
@@ -497,6 +587,7 @@ impl VarVec {
             },
             Some(Variant::String(p)) => match self {
                 VarVec::String(f) => f.push(Some(p)),
+                VarVec::StrDict(d) => d.push_str(&p),
                 _ => {}
             },
             Some(Variant::U32(p)) => match self {
@@ -572,6 +663,7 @@ impl VarVec {
             VarVec::UserCmdSubtickMoves(f) => f.push(vec![]),
             VarVec::List(f) => f.push(vec![]),
             VarVec::Bytes(f) => f.push(vec![]),
+            VarVec::StrDict(d) => d.push_none(),
         }
     }
 }
@@ -789,6 +881,10 @@ pub fn soa_to_aos(soa: OutputSerdeHelperStruct) -> Vec<std::collections::HashMap
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
                         _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
                     },
+                    Some(VarVec::StrDict(d)) => match (idx < d.codes.len()).then(|| d.get(idx)).flatten() {
+                        Some(f) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
+                        _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
+                    },
                     Some(VarVec::U64(val)) => match val.get(idx) {
                         Some(Some(f)) => hm.insert(prop_info.prop_friendly_name.clone(), Some(Variant::String(f.to_string()))),
                         _ => hm.insert(prop_info.prop_friendly_name.clone(), None),
@@ -868,6 +964,10 @@ impl Serialize for OutputSerdeHelperStruct {
                     }
                     Some(VarVec::String(val)) => {
                         map.serialize_entry(&prop_info.prop_friendly_name, val)?;
+                    }
+                    Some(VarVec::StrDict(d)) => {
+                        let as_vec: Vec<Option<&str>> = d.iter().collect();
+                        map.serialize_entry(&prop_info.prop_friendly_name, &as_vec)?;
                     }
                     Some(VarVec::U64(val)) => {
                         let as_str: Vec<Option<String>> = val
