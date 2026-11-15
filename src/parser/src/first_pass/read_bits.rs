@@ -1,9 +1,13 @@
-use bitter::BitReader;
-use bitter::LittleEndianReader;
 use std::fmt;
 
+/// LSB-first bit reader over a byte slice.
+///
+/// `bits` caches up to 64 bits starting at bit position `pos`; `bits_left` says how many of them
+/// are valid. The position is a plain bit index, so skipping is O(1) (`skip`).
 pub struct Bitreader<'a> {
-    pub reader: LittleEndianReader<'a>,
+    data: &'a [u8],
+    /// Bit position (in `data`) of the lowest bit in `bits`.
+    pos: usize,
     pub bits_left: u32,
     pub bits: u64,
     pub total_bits_left: u32,
@@ -31,36 +35,80 @@ pub fn read_varint(bytes: &[u8], ptr: &mut usize) -> Result<u32, DemoParserError
 
 impl<'a> Bitreader<'a> {
     pub fn new(bytes: &'a [u8]) -> Bitreader<'a> {
-        let b = Bitreader {
-            reader: LittleEndianReader::new(bytes),
+        Bitreader {
+            data: bytes,
+            pos: 0,
             bits: 0,
             bits_left: 0,
             total_bits_left: 0,
-        };
-        b
+        }
     }
     #[inline(always)]
     pub fn consume(&mut self, n: u32) {
-        self.bits_left -= n;
+        self.bits_left = self.bits_left.wrapping_sub(n);
         self.bits >>= n;
-        self.reader.consume(n);
+        self.pos += n as usize;
     }
     #[inline(always)]
     pub fn peek(&mut self, n: u32) -> u64 {
         self.bits & ((1 << n) - 1)
     }
+    /// Reload the cache so it starts at `pos`. Leaves at least 57 valid bits unless the end of
+    /// the data is near; past the end the cache is zero-padded.
     #[inline(always)]
     pub fn refill(&mut self) {
-        self.reader.refill_lookahead();
-        let refilled = self.reader.lookahead_bits();
-        if refilled > 0 {
-            self.bits = self.reader.peek(refilled);
+        let byte = self.pos >> 3;
+        let shift = (self.pos & 7) as u32;
+        if byte + 8 <= self.data.len() {
+            // SAFETY: bounds checked above; read_unaligned has no alignment requirement.
+            let raw = unsafe { (self.data.as_ptr().add(byte) as *const u64).read_unaligned() };
+            self.bits = u64::from_le(raw) >> shift;
+            self.bits_left = 64 - shift;
+        } else {
+            self.refill_tail(byte, shift);
         }
-        self.bits_left = refilled;
+    }
+    #[cold]
+    #[inline(never)]
+    fn refill_tail(&mut self, byte: usize, shift: u32) {
+        let mut buf = [0u8; 8];
+        if byte < self.data.len() {
+            let rest = &self.data[byte..];
+            buf[..rest.len()].copy_from_slice(rest);
+        }
+        self.bits = u64::from_le_bytes(buf) >> shift;
+        let remaining = (self.data.len() * 8).saturating_sub(self.pos);
+        self.bits_left = remaining.min((64 - shift) as usize) as u32;
+    }
+    /// Skip `n` bits in O(1).
+    #[inline(always)]
+    pub fn skip(&mut self, n: u32) {
+        if n <= self.bits_left {
+            self.consume(n);
+        } else {
+            self.pos += n as usize;
+            self.refill();
+        }
+    }
+    /// Current bit position in the data.
+    #[inline(always)]
+    pub fn bit_pos(&self) -> usize {
+        self.pos
     }
     #[inline(always)]
     pub fn bits_remaining(&mut self) -> Option<usize> {
-        Some(self.reader.bits_remaining()?)
+        Some((self.data.len() * 8).saturating_sub(self.pos))
+    }
+    /// Skip a varint (max 5 bytes, like `read_varint`) with one peek: the length is given by the
+    /// first byte whose continuation bit (bit 7) is clear.
+    #[inline(always)]
+    pub fn skip_varint(&mut self) {
+        if self.bits_left < 40 {
+            self.refill();
+        }
+        let stops = !self.bits & 0x80_8080_8080;
+        let len = if stops == 0 { 40 } else { stops.trailing_zeros() + 1 };
+        self.consume(len);
     }
     #[inline(always)]
     pub fn read_nbits(&mut self, n: u32) -> Result<u32, DemoParserError> {
@@ -137,39 +185,35 @@ impl<'a> Bitreader<'a> {
     }
     pub fn read_n_bytes(&mut self, n: usize) -> Result<Vec<u8>, DemoParserError> {
         let mut bytes = vec![0_u8; n];
-        match self.reader.read_bytes(&mut bytes) {
-            true => {
-                self.refill();
-                Ok(bytes)
-            }
-            false => Err(DemoParserError::FailedByteRead(
-                format!(
-                    "Failed to read message/command. bytes left in stream: {}, requested bytes: {}",
-                    self.reader.bits_remaining().unwrap_or(0).checked_div(8).unwrap_or(0),
-                    n,
-                )
-                .to_string(),
-            )),
-        }
+        self.read_n_bytes_mut(n, &mut bytes)?;
+        Ok(bytes)
     }
     pub fn read_n_bytes_mut(&mut self, n: usize, buf: &mut [u8]) -> Result<(), DemoParserError> {
         if buf.len() < n {
             return Err(DemoParserError::MalformedMessage);
         }
-        match self.reader.read_bytes(&mut buf[..n]) {
-            true => {
-                self.refill();
-                Ok(())
-            }
-            false => Err(DemoParserError::FailedByteRead(
-                format!(
-                    "Failed to read message/command. bytes left in stream: {}, requested bytes: {}",
-                    self.reader.bits_remaining().unwrap_or(0).checked_div(8).unwrap_or(0),
-                    n,
-                )
-                .to_string(),
-            )),
+        let remaining = self.bits_remaining().unwrap_or(0);
+        if n.checked_mul(8).map_or(true, |bits| bits > remaining) {
+            return Err(DemoParserError::FailedByteRead(format!(
+                "Failed to read message/command. bytes left in stream: {}, requested bytes: {}",
+                remaining / 8,
+                n,
+            )));
         }
+        let byte = self.pos >> 3;
+        let shift = (self.pos & 7) as u32;
+        if shift == 0 {
+            buf[..n].copy_from_slice(&self.data[byte..byte + n]);
+        } else {
+            // Unaligned: n*8 bits remain past `pos`, so data[byte + n] exists.
+            let src = &self.data[byte..byte + n + 1];
+            for (i, dst) in buf[..n].iter_mut().enumerate() {
+                *dst = (src[i] >> shift) | (src[i + 1] << (8 - shift));
+            }
+        }
+        self.pos += n * 8;
+        self.refill();
+        Ok(())
     }
     pub fn read_ubit_var_fp(&mut self) -> Result<u32, DemoParserError> {
         if self.read_boolean()? {

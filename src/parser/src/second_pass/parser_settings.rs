@@ -71,6 +71,13 @@ pub struct SecondPassParser<'a> {
     pub net_tick: u32,
     pub parse_inventory: bool,
     pub paths: Vec<FieldPath>,
+    /// Needed-props mode: per class, the last field path any needed prop can live at
+    /// (None inside = class has no needed fields). Outer None = not computed yet.
+    pub class_bounds: Vec<Option<Option<crate::second_pass::entities::PathBound>>>,
+    /// Prop ids that must be decoded for the requested output; see entities::compute_needed.
+    pub needed_ids: crate::second_pass::entities::NeededSet,
+    /// Needed-props mode on (off in debug / list_props mode).
+    pub needed_mode: bool,
     pub ptr: usize,
     pub parse_all_packets: bool,
     pub ge_list: &'a AHashMap<i32, DescriptorT>,
@@ -223,6 +230,9 @@ impl<'a> SecondPassParser<'a> {
             order_by_steamid: first_pass_output.order_by_steamid,
             df_per_player: AHashMap::default(),
             voice_data: vec![],
+            class_bounds: vec![],
+            needed_ids: crate::second_pass::entities::compute_needed(&first_pass_output.prop_controller, &first_pass_output.settings),
+            needed_mode: !debug && !first_pass_output.list_props,
             paths: vec![
                 FieldPath {
                     last: 0,
@@ -339,6 +349,65 @@ pub struct SpecialIDs {
     pub stamina: Option<u32>,
     pub initial_velocity: Option<u32>,
 }
+
+impl SpecialIDs {
+    /// Every prop id the parser reads internally (bookkeeping, custom props, events).
+    pub fn all(&self) -> Vec<u32> {
+        [
+            self.teamnum,
+            self.player_name,
+            self.steamid,
+            self.player_pawn,
+            self.player_team_pointer,
+            self.weapon_owner_pointer,
+            self.team_team_num,
+            self.cell_x_player,
+            self.cell_y_player,
+            self.cell_z_player,
+            self.cell_x_offset_player,
+            self.cell_y_offset_player,
+            self.cell_z_offset_player,
+            self.active_weapon,
+            self.item_def,
+            self.m_vec_x_grenade,
+            self.m_vec_y_grenade,
+            self.m_vec_z_grenade,
+            self.m_cell_x_grenade,
+            self.m_cell_y_grenade,
+            self.m_cell_z_grenade,
+            self.grenade_owner_id,
+            self.buttons,
+            self.eye_angles,
+            self.orig_own_low,
+            self.orig_own_high,
+            self.life_state,
+            self.h_owner_entity,
+            self.weapon_prev_owner,
+            self.agent_skin_idx,
+            self.total_rounds_played,
+            self.round_win_reason,
+            self.round_start_count,
+            self.round_end_count,
+            self.match_end_count,
+            self.is_incendiary_grenade,
+            self.sellback_entry_def_idx,
+            self.sellback_entry_n_cost,
+            self.sellback_entry_prev_armor,
+            self.sellback_entry_prev_helmet,
+            self.sellback_entry_h_item,
+            self.weapon_purchase_count,
+            self.in_buy_zone,
+            self.custom_name,
+            self.is_airborn,
+            self.stamina,
+            self.initial_velocity,
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
 impl SpecialIDs {
     pub fn new() -> Self {
         SpecialIDs {
