@@ -134,7 +134,9 @@ pub fn compute_needed(pc: &PropController, settings: &ParserInputs) -> NeededSet
                     ids.extend([WEAPON_PAINT_SEED, WEAPON_FLOAT]);
                 }
                 INVENTORY_ID | INVENTORY_AS_IDS_ID | INVENTORY_AS_IDS_BITMASK => {
+                    // Inventory is empty unless the player is alive (find_is_alive).
                     add(&mut ids, &weapon);
+                    add(&mut ids, &[sp.life_state]);
                     ranges.push(my_weapons);
                     ranges.extend(ammo);
                 }
@@ -155,6 +157,7 @@ pub fn compute_needed(pc: &PropController, settings: &ParserInputs) -> NeededSet
     }
     if pc.wanted_player_props.iter().any(|n| n == "inventory") {
         add(&mut ids, &weapon);
+        add(&mut ids, &[sp.life_state]);
         ranges.push(my_weapons);
         ranges.extend(ammo);
     }
