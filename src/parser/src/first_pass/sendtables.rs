@@ -467,6 +467,25 @@ pub fn find_field<'b>(fp: &FieldPath, ser: &'b Serializer) -> Result<&'b Field, 
         _ => return Err(DemoParserError::IllegalPathOp),
     }
 }
+/// Like `find_field`, but also says whether the field's parent is an Array or Vector. If so, the
+/// last path index is just an element index: every sibling path with the same prefix resolves to
+/// this same field (get_inner ignores the index for Array/Vector).
+#[inline(always)]
+pub fn find_field_with_parent<'b>(fp: &FieldPath, ser: &'b Serializer) -> Result<(&'b Field, bool), DemoParserError> {
+    if fp.last > 5 {
+        return Err(DemoParserError::IllegalPathOp);
+    }
+    let mut f = match ser.fields.get(fp.path[0] as usize) {
+        Some(entry) => entry,
+        None => return Err(DemoParserError::IllegalPathOp),
+    };
+    let mut parent_is_container = false;
+    for i in 1..=fp.last as usize {
+        parent_is_container = matches!(f, Field::Array(_) | Field::Vector(_));
+        f = f.get_inner(fp.path[i] as usize)?;
+    }
+    Ok((f, parent_is_container))
+}
 pub fn get_decoder_from_field(field: &Field) -> Result<Decoder, DemoParserError> {
     let decoder = match field {
         Field::Value(inner) => inner.decoder,

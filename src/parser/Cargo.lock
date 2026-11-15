@@ -43,12 +43,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
-name = "bitter"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef3a13b71496a92e8c00ebe576b260655b56935cd5118d5a8949788b651b5e07"
-
-[[package]]
 name = "bytes"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -248,7 +242,6 @@ version = "0.1.1"
 dependencies = [
  "ahash",
  "bit_reverse",
- "bitter",
  "bytes",
  "csgoproto",
  "derive_more",
