@@ -168,6 +168,7 @@ pub fn parse_voice(path_or_buf: Either<String, Buffer>) -> napi::Result<Vec<Voic
     fallback_bytes: None,
     parse_grenades: false,
     parse_weapons: false,
+    vector_props_as_lists: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -208,6 +209,7 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
     fallback_bytes: None,
     parse_grenades: false,
     parse_weapons: false,
+    vector_props_as_lists: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -220,12 +222,15 @@ pub fn list_game_events(path_or_buf: Either<String, Buffer>) -> napi::Result<Val
   Ok(s)
 }
 /// extra: lets you add new fields to grenades. Use list_updated_fields for a full list.
+/// Array/vector fields (e.g. m_firePositions of the fire, m_VoxelFrameData of a smoke) come back whole, as lists.
 /// grenades: lets you disable non-projectile grenades. This can have a big difference on memory/speed.
+/// ticks: restricts the output to these ticks (sample big fields like m_VoxelFrameData instead of every tick).
 #[napi]
 pub fn parse_grenades(
   path_or_buf: Either<String, Buffer>,
   extra: Option<Vec<String>>,
   grenades: Option<bool>,
+  ticks: Option<Vec<i32>>,
 ) -> napi::Result<Value> {
   let bytes = resolve_byte_type(path_or_buf)?;
   let huf = create_huffman_lookup_table();
@@ -247,7 +252,7 @@ pub fn parse_grenades(
     wanted_events: vec![],
     wanted_prop_states: AHashMap::default(),
     parse_ents: true,
-    wanted_ticks: vec![],
+    wanted_ticks: ticks.unwrap_or_default(),
     parse_projectiles: true,
     only_header: true,
     list_props: false,
@@ -257,6 +262,7 @@ pub fn parse_grenades(
     fallback_bytes: None,
     parse_grenades: grenades,
     parse_weapons: false,
+    vector_props_as_lists: true,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -325,6 +331,7 @@ pub fn parse_weapons(
     fallback_bytes: None,
     parse_grenades: false,
     parse_weapons: true,
+    vector_props_as_lists: true,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -375,6 +382,7 @@ pub fn parse_header(path_or_buf: Either<String, Buffer>) -> napi::Result<Value> 
     fallback_bytes: None,
     parse_grenades: false,
     parse_weapons: false,
+    vector_props_as_lists: false,
   };
   let mut parser = FirstPassParser::new(&settings);
   let output = match bytes {
@@ -458,6 +466,7 @@ pub fn parse_event(
     fallback_bytes: game_event_list_bytes,
     parse_grenades: false,
     parse_weapons: false,
+    vector_props_as_lists: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -531,6 +540,7 @@ pub fn parse_events(
     fallback_bytes: game_event_list_bytes,
     parse_grenades: false,
     parse_weapons: false,
+    vector_props_as_lists: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -612,6 +622,7 @@ pub fn parse_ticks(
     fallback_bytes: None,
     parse_grenades: false,
     parse_weapons: false,
+    vector_props_as_lists: false,
   };
 
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
@@ -688,6 +699,7 @@ pub fn parse_player_info(path_or_buf: Either<String, Buffer>) -> napi::Result<Va
     fallback_bytes: None,
     parse_grenades: false,
     parse_weapons: false,
+    vector_props_as_lists: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -721,6 +733,7 @@ pub fn parse_player_skins(path_or_buf: Either<String, Buffer>) -> napi::Result<V
     fallback_bytes: None,
     parse_grenades: false,
     parse_weapons: false,
+    vector_props_as_lists: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;
@@ -753,6 +766,7 @@ pub fn list_updated_fields(path_or_buf: Either<String, Buffer>) -> napi::Result<
     fallback_bytes: None,
     parse_grenades: false,
     parse_weapons: false,
+    vector_props_as_lists: false,
   };
   let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
   let output = parse_demo(bytes, &mut parser)?;

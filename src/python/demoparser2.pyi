@@ -34,7 +34,11 @@ class DemoParser:
     def list_updated_fields(self) -> List[str]: ...
     def list_game_events(self) -> List[str]: ...
     def parse_grenades(
-        self, *, extra: Optional[Sequence[str]] = None, grenades: bool = True
+        self,
+        *,
+        extra: Optional[Sequence[str]] = None,
+        grenades: bool = True,
+        ticks: Optional[Sequence[int]] = None,
     ) -> pd.DataFrame: ...
     def parse_weapons(
         self, *, extra: Optional[Sequence[str]] = None, ticks: Optional[Sequence[int]] = None

@@ -35,6 +35,10 @@ pub struct ParserInputs<'a> {
     pub parse_projectiles: bool,
     pub parse_grenades: bool,
     pub parse_weapons: bool,
+    /// Array/vector props the user asked for come back whole (Variant::List / Bytes) instead
+    /// of the last written element. parse_grenades/parse_weapons only: parse_ticks keeps
+    /// scalars ("total_ammo_left" is m_pReserveAmmo[0]).
+    pub vector_props_as_lists: bool,
     pub only_header: bool,
     pub only_convars: bool,
     pub huffman_lookup_table: &'a Vec<(u8, u8)>,
@@ -74,6 +78,10 @@ pub struct FirstPassParser<'a> {
     pub parse_projectiles: bool,
     pub parse_grenades: bool,
     pub parse_weapons: bool,
+    /// Array/vector props the user asked for come back whole (Variant::List / Bytes) instead
+    /// of the last written element. parse_grenades/parse_weapons only: parse_ticks keeps
+    /// scalars ("total_ammo_left" is m_pReserveAmmo[0]).
+    pub vector_props_as_lists: bool,
     pub name_to_id: AHashMap<String, u32>,
     pub id: u32,
     pub wanted_prop_ids: Vec<u32>,
@@ -121,6 +129,7 @@ impl<'a> FirstPassParser<'a> {
                 &vec!["None".to_string()],
                 inputs.parse_projectiles,
                 inputs.parse_weapons,
+                inputs.vector_props_as_lists,
             ),
             cls_by_id: None,
             player_md: vec![],
@@ -142,6 +151,7 @@ impl<'a> FirstPassParser<'a> {
             parse_projectiles: inputs.parse_projectiles,
             parse_grenades: inputs.parse_grenades,
             parse_weapons: inputs.parse_weapons,
+            vector_props_as_lists: inputs.vector_props_as_lists,
             wanted_player_props: inputs.wanted_player_props.clone(),
             wanted_events: inputs.wanted_events.clone(),
             wanted_players: AHashSet::from_iter(inputs.wanted_players.iter().cloned()),
