@@ -255,21 +255,18 @@ impl DemoParser {
             fallback_bytes: None,
         };
 
-        let mut timer = StepTimer::new();
         let mut parser = Parser::new(settings, parser::parse_demo::ParsingMode::Normal);
         let output = match parser.parse_demo(&self.mmap) {
             Ok(output) => output,
             Err(e) => return Err(Exception::new_err(format!("{e}"))),
         };
-        timer.step("parse_demo");
         let mut columns: Vec<(String, &VarVec)> = vec![];
         for prop_info in &output.prop_controller.prop_infos {
             if let Some(Some(data)) = output.df.get(&prop_info.id).map(|c| c.data.as_ref()) {
                 columns.push((prop_info.prop_friendly_name.clone(), data));
             }
         }
-        let df = build_pandas_df(py, &columns, &mut timer)?;
-        timer.report("parse_grenades");
+        let df = build_pandas_df(py, &columns)?;
         Ok(df)
     }
 
@@ -1031,7 +1028,7 @@ pub fn arr_to_py(array: Box<dyn Array>) -> PyResult<Py<PyAny>> {
 ///   distinct value (numpy take), so no Python string is created per row.
 /// - List columns: Python lists, inserted at the front (as before).
 /// Same frame (columns, order, dtypes) as the old polars path.
-fn build_pandas_df<'py>(py: Python<'py>, columns: &[(String, &VarVec)], timer: &mut StepTimer) -> PyResult<Py<PyAny>> {
+fn build_pandas_df<'py>(py: Python<'py>, columns: &[(String, &VarVec)]) -> PyResult<Py<PyAny>> {
     let pyarrow = py.import("pyarrow")?;
     let numpy = py.import("numpy")?;
     let mut arrow_arrays: Vec<Py<PyAny>> = vec![];
@@ -1088,44 +1085,16 @@ fn build_pandas_df<'py>(py: Python<'py>, columns: &[(String, &VarVec)], timer: &
             arrow_names.push(name.clone());
         }
     }
-    timer.step("build arrays");
     let kwargs = [("names", arrow_names.into_py_any(py)?)].into_py_dict(py)?;
     let table = pyarrow.getattr("Table")?.call_method("from_arrays", (arrow_arrays,), Some(&kwargs))?;
     let df = table.call_method0("to_pandas")?;
-    timer.step("to_pandas");
     for (pos, name, col) in dict_cols {
         df.call_method1("insert", (pos, name, col))?;
     }
     for (name, col) in list_cols {
         df.call_method1("insert", (0, name, col))?;
     }
-    timer.step("insert cols");
     df.into_py_any(py)
-}
-
-/// DP_TIMING=1: print how long each step of building the python output takes.
-struct StepTimer {
-    on: bool,
-    last: std::time::Instant,
-    steps: Vec<(&'static str, f64)>,
-}
-impl StepTimer {
-    fn new() -> Self {
-        StepTimer { on: std::env::var("DP_TIMING").is_ok(), last: std::time::Instant::now(), steps: vec![] }
-    }
-    fn step(&mut self, name: &'static str) {
-        if self.on {
-            let now = std::time::Instant::now();
-            self.steps.push((name, (now - self.last).as_secs_f64() * 1000.0));
-            self.last = now;
-        }
-    }
-    fn report(&self, func: &str) {
-        if self.on {
-            let parts: Vec<String> = self.steps.iter().map(|(n, t)| format!("{n} {t:.1}")).collect();
-            eprintln!("[timing] {func}: {} ms", parts.join(" | "));
-        }
-    }
 }
 
 #[pyclass]
