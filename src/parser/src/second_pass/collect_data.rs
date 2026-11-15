@@ -284,31 +284,50 @@ impl<'a> SecondPassParser<'a> {
         }
     }
 
-    fn find_grenade_type(&self, entity_id: &i32) -> Option<String> {
+    fn find_grenade_type(&self, entity_id: &i32) -> Option<&str> {
         if let Some(Some(ent)) = self.entities.get(*entity_id as usize) {
             if let Some(cls) = self.cls_by_id.get(ent.cls_id as usize) {
-                return Some(cls.name.to_string());
+                return Some(cls.name.as_str());
             }
         }
         None
     }
+    fn find_thrower_name_ref(&self, entity_id: &i32) -> Result<&str, PropCollectionError> {
+        let owner_entid = self.find_owner_entid(entity_id)?;
+        let metadata = self.find_player_metadata(owner_entid as i32)?;
+        match &metadata.name {
+            Some(s) => Ok(s.as_str()),
+            None => Err(PropCollectionError::PlayerMetaDataNameNone),
+        }
+    }
 
     pub fn collect_projectiles(&mut self) {
+        if self.projectiles.is_empty() {
+            return;
+        }
+        // Taken out so the lookups below can borrow names from self while pushing.
+        let mut output = std::mem::take(&mut self.output);
+        const FIXED: [u32; 8] = [STEAMID_ID, NAME_ID, TICK_ID, GRENADE_TYPE_ID, ENTITY_ID_ID, GRENADE_X, GRENADE_Y, GRENADE_Z];
+        let extra: Vec<u32> = self.prop_controller.prop_infos.iter().map(|p| p.id).filter(|id| !FIXED.contains(id)).collect();
         for projectile_entid in &self.projectiles {
-            let grenade_type = match self.find_grenade_type(projectile_entid) {              
-                Some(t) => {if !t.contains("Projectile") && !self.parse_grenades{continue}else{t}},
-                None => continue,
-            };
-            let steamid = match self.find_thrower_steamid(projectile_entid) {
-                Ok(u) => u,
+            let (grenade_type, is_projectile) = match self.entities.get(*projectile_entid as usize) {
+                Some(Some(ent)) => match self.cls_by_id.get(ent.cls_id as usize) {
+                    // The class name check is cached per class.
+                    Some(cls) => (cls.name.as_str(), self.class_is_projectile(ent.cls_id as usize, &cls.name)),
+                    None => continue,
+                },
                 _ => continue,
             };
-            let name = match self.find_thrower_name(projectile_entid) {
-                Ok(x) => x,
-                _ => continue,
-            };
+            if !is_projectile && !self.parse_grenades {
+                continue;
+            }
+            let Ok(owner_entid) = self.find_owner_entid(projectile_entid) else { continue };
+            let Ok(metadata) = self.find_player_metadata(owner_entid as i32) else { continue };
+            let Some(name) = metadata.name.as_deref() else { continue };
+            // Watch out
+            let steamid = metadata.steamid.unwrap_or(0);
             // Projectiles are the only ones with coordinates others map to 0.0, map them to None as it is clearer.
-            let (x, y, z) = if grenade_type.contains("Project") {
+            let (x, y, z) = if is_projectile {
                 let x = self.collect_cell_coordinate_grenade(CoordinateAxis::X, projectile_entid).ok();
                 let y = self.collect_cell_coordinate_grenade(CoordinateAxis::Y, projectile_entid).ok();
                 let z = self.collect_cell_coordinate_grenade(CoordinateAxis::Z, projectile_entid).ok();
@@ -316,49 +335,31 @@ impl<'a> SecondPassParser<'a> {
             } else {
                 (None, None, None)
             };
-
-            // Insert these always
-            let pairs = vec![
-                (GRENADE_TYPE_ID, Some(Variant::String(grenade_type))),
-                (STEAMID_ID, Some(Variant::U64(steamid))),
-                (NAME_ID, Some(Variant::String(name))),
-                (TICK_ID, Some(Variant::I32(self.tick))),
-                (ENTITY_ID_ID, Some(Variant::I32(*projectile_entid))),
-                (GRENADE_X, x),
-                (GRENADE_Y, y),
-                (GRENADE_Z, z),
-            ];
-            for pair in pairs {
-                self.output.entry(pair.0).or_insert_with(|| PropColumn::new()).push(pair.1);
-            }
-
-            for prop_info in &self.prop_controller.prop_infos {
-                // Do these above, props in this loop are from the weapon entity.
-                if prop_info.id == STEAMID_ID
-                    || prop_info.id == NAME_ID
-                    || prop_info.id == TICK_ID
-                    || prop_info.id == GRENADE_TYPE_ID
-                    || prop_info.id == ENTITY_ID_ID
-                    || prop_info.id == GRENADE_X
-                    || prop_info.id == GRENADE_Y
-                    || prop_info.id == GRENADE_Z
-                {
-                    continue;
-                }
-                let prop = match self.get_prop_from_ent(&prop_info.id, &projectile_entid) {
-                    Ok(p) => Some(p),
-                    _ => None,
-                };
-                match prop {
-                    Some(prop) => {
-                        self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(Some(prop));
-                    }
-                    None => {
-                        self.output.entry(prop_info.id).or_insert_with(|| PropColumn::new()).push(None);
-                    }
-                }
+            // Names and types repeat over many rows: dictionary columns, no allocation per row.
+            output.entry(GRENADE_TYPE_ID).or_insert_with(PropColumn::new_str_dict).push_str(Some(grenade_type));
+            output.entry(NAME_ID).or_insert_with(PropColumn::new_str_dict).push_str(Some(name));
+            output.entry(STEAMID_ID).or_insert_with(PropColumn::new).push(Some(Variant::U64(steamid)));
+            output.entry(TICK_ID).or_insert_with(PropColumn::new).push(Some(Variant::I32(self.tick)));
+            output.entry(ENTITY_ID_ID).or_insert_with(PropColumn::new).push(Some(Variant::I32(*projectile_entid)));
+            output.entry(GRENADE_X).or_insert_with(PropColumn::new).push(x);
+            output.entry(GRENADE_Y).or_insert_with(PropColumn::new).push(y);
+            output.entry(GRENADE_Z).or_insert_with(PropColumn::new).push(z);
+            // Extra requested props, from the grenade entity.
+            for id in &extra {
+                let prop = self.get_prop_from_ent(id, projectile_entid).ok();
+                output.entry(*id).or_insert_with(PropColumn::new).push(prop);
             }
         }
+        self.output = output;
+    }
+
+    /// Whether the class is a thrown projectile (name contains "Projectile"); cached per class.
+    fn class_is_projectile(&self, cls_id: usize, name: &str) -> bool {
+        let mut cache = self.projectile_class_cache.borrow_mut();
+        if cache.len() <= cls_id {
+            cache.resize(cls_id + 1, None);
+        }
+        *cache[cls_id].get_or_insert_with(|| name.contains("Projectile"))
     }
 
     /// Weapons lying on the ground this tick: dropped on death, thrown with the drop key

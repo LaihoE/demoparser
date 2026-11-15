@@ -69,6 +69,8 @@ pub struct SecondPassParser<'a> {
     pub needed_ids: crate::second_pass::entities::NeededSet,
     /// Needed-props mode on (off in debug / list_props mode).
     pub needed_mode: bool,
+    /// Per class: name contains Projectile (collect_projectiles).
+    pub projectile_class_cache: std::cell::RefCell<Vec<Option<bool>>>,
     pub ptr: usize,
     pub parse_all_packets: bool,
     pub ge_list: &'a AHashMap<i32, DescriptorT>,
@@ -224,6 +226,7 @@ impl<'a> SecondPassParser<'a> {
             class_bounds: vec![],
             needed_ids: crate::second_pass::entities::compute_needed(&first_pass_output.prop_controller, &first_pass_output.settings),
             needed_mode: !debug && !first_pass_output.list_props,
+            projectile_class_cache: std::cell::RefCell::new(vec![]),
             paths: vec![
                 FieldPath {
                     last: 0,
