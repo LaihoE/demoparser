@@ -1,4 +1,3 @@
-use crate::first_pass::prop_controller::ITEM_PURCHASE_DEF_IDX;
 use crate::first_pass::prop_controller::is_grenade_or_weapon;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
@@ -89,7 +88,7 @@ pub fn compute_needed(pc: &PropController, settings: &ParserInputs) -> NeededSet
     let sp = &pc.special_ids;
     let mut ids: AHashSet<u32> = AHashSet::default();
     let mut ranges: Vec<(u32, u32)> = vec![];
-    let mut add = |ids: &mut AHashSet<u32>, v: &[Option<u32>]| ids.extend(v.iter().flatten());
+    let add = |ids: &mut AHashSet<u32>, v: &[Option<u32>]| ids.extend(v.iter().flatten());
 
     // Requested props (normal field ids) and prop-state filters.
     ids.extend(pc.prop_infos.iter().map(|p| p.id));

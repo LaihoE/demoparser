@@ -1162,6 +1162,7 @@ fn create_data() -> (DemoOutput, PropController, BTreeMap<String, Vec<GameEvent>
 }
 
 #[cfg(test)]
+#[allow(non_upper_case_globals)]
 mod tests {
     use crate::e2e_test::create_data;
     use crate::first_pass::parser_settings::ParserInputs;
