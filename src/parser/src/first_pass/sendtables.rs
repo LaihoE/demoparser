@@ -594,7 +594,7 @@ fn create_field(
     _sid: &String,
     fd: &mut ConstructorField,
     serializers: &AHashMap<String, Serializer>,
-    qf_mapper: &mut QfMapper,
+    _qf_mapper: &mut QfMapper,
 ) -> Result<Field, DemoParserError> {
     let element_type = match fd.category {
         FieldCategory::Array => fd.field_type.element_type.clone(),

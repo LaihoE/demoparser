@@ -88,7 +88,7 @@ impl<'a> FirstPassParser<'a> {
         self.parse_header(bytes)?;
         Ok(self.header.clone())
     }
-    pub fn parse_demo(&mut self, demo_bytes: &'a [u8], exit_early: bool) -> Result<FirstPassOutput, DemoParserError> {
+    pub fn parse_demo(&mut self, demo_bytes: &'a [u8], exit_early: bool) -> Result<FirstPassOutput<'_>, DemoParserError> {
         self.handle_short_header(demo_bytes.len(), &demo_bytes[..HEADER_ENDS_AT_BYTE])?;
         let mut reuseable_buffer = vec![0_u8; 100_000];
         // Loop that goes trough the entire file
@@ -204,7 +204,7 @@ impl<'a> FirstPassParser<'a> {
         }
         Ok(())
     }
-    pub fn create_first_pass_output(&self) -> Result<FirstPassOutput, DemoParserError> {
+    pub fn create_first_pass_output(&self) -> Result<FirstPassOutput<'_>, DemoParserError> {
         let cls_by_id = match &self.cls_by_id {
             Some(c) => c,
             None => return Err(DemoParserError::ClassMapperNotFoundFirstPass),
@@ -332,7 +332,7 @@ impl<'a> FirstPassParser<'a> {
         self.header.insert("addons".to_string(), header.addons().to_string());
         Ok(())
     }
-    fn handle_short_header(&mut self, file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
+    fn handle_short_header(&mut self, _file_len: usize, bytes: &[u8]) -> Result<(), DemoParserError> {
         if bytes.len() < 16 {
             return Err(DemoParserError::OutOfBytesError);
         }
@@ -350,7 +350,7 @@ impl<'a> FirstPassParser<'a> {
         };
         // hmmmm not sure where the 18 comes from if the header is only 16?
         // can be used to check that file ends early
-        let file_length_expected = match bytes[8..12].try_into() {
+        let _file_length_expected = match bytes[8..12].try_into() {
             Err(_) => return Err(DemoParserError::OutOfBytesError),
             Ok(arr) => u32::from_le_bytes(arr) + 18,
         };

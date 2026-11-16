@@ -1,4 +1,3 @@
-use crate::first_pass::frameparser::{FrameParser, StartEndOffset, StartEndType};
 use crate::first_pass::parser::FirstPassOutput;
 use crate::first_pass::parser_settings::check_multithreadability;
 use crate::first_pass::parser_settings::{FirstPassParser, ParserInputs};
@@ -17,9 +16,6 @@ use itertools::Itertools;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::ParallelIterator;
-use std::sync::mpsc::{channel, Receiver};
-use std::thread;
-use std::time::Duration;
 
 pub const HEADER_ENDS_AT_BYTE: usize = 16;
 
@@ -146,87 +142,6 @@ impl<'a> Parser<'a> {
         Parser::add_item_purchase_sell_column(&mut outputs.game_events);
         Parser::remove_item_sold_events(&mut outputs.game_events);
         if prof { eprintln!("[prof] post-proc: {:.3}s", t.elapsed().as_secs_f64()); }
-        Ok(outputs)
-    }
-    fn second_pass_threaded_with_channels(
-        &self,
-        outer_bytes: &[u8],
-        first_pass_output: FirstPassOutput,
-        receiver: Receiver<StartEndOffset>,
-    ) -> Result<DemoOutput, DemoParserError> {
-        thread::scope(|s| {
-            let mut handles = vec![];
-            let mut channel_threading_was_ok = true;
-            loop {
-                if let Ok(start_end_offset) = receiver.recv_timeout(Duration::from_secs(3)) {
-                    match start_end_offset.msg_type {
-                        StartEndType::EndOfMessages => break,
-                        StartEndType::OK => {}
-                        StartEndType::MultithreadingWasNotOk => {
-                            channel_threading_was_ok = false;
-                            break;
-                        }
-                    }
-                    let my_first_out = first_pass_output.clone();
-                    handles.push(s.spawn(move || {
-                        let mut parser = SecondPassParser::new(my_first_out, start_end_offset.start, false, Some(start_end_offset))?;
-                        parser.start(outer_bytes)?;
-                        Ok(parser.create_output())
-                    }));
-                } else {
-                    channel_threading_was_ok = false;
-                    break;
-                }
-            }
-            // Fallback if channels failed to find all fullpackets. Should be rare.
-            if !channel_threading_was_ok {
-                let mut first_pass_parser = FirstPassParser::new(&self.input);
-                let first_pass_output = first_pass_parser.parse_demo(outer_bytes, false)?;
-                return self.second_pass_multi_threaded_no_channels(outer_bytes, first_pass_output);
-            }
-            // check for errors
-            let mut ok = vec![];
-            for result in handles {
-                match result.join() {
-                    Err(_e) => return Err(DemoParserError::MalformedMessage),
-                    Ok(r) => {
-                        ok.push(r?);
-                    }
-                };
-            }
-            let mut outputs = self.combine_outputs(&mut ok, first_pass_output);
-            if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
-                outputs.df = new_df;
-            }
-            Parser::add_item_purchase_sell_column(&mut outputs.game_events);
-            Parser::remove_item_sold_events(&mut outputs.game_events);
-            return Ok(outputs);
-        })
-    }
-    fn second_pass_multi_threaded_no_channels(&self, outer_bytes: &[u8], first_pass_output: FirstPassOutput) -> Result<DemoOutput, DemoParserError> {
-        let second_pass_outputs: Vec<Result<SecondPassOutput, DemoParserError>> = first_pass_output
-            .fullpacket_offsets
-            .par_iter()
-            .map(|offset| {
-                let mut parser = SecondPassParser::new(first_pass_output.clone(), *offset, false, None)?;
-                parser.start(outer_bytes)?;
-                Ok(parser.create_output())
-            })
-            .collect();
-        // check for errors
-        let mut ok = vec![];
-        for result in second_pass_outputs {
-            match result {
-                Err(e) => return Err(e),
-                Ok(r) => ok.push(r),
-            };
-        }
-        let mut outputs = self.combine_outputs(&mut ok, first_pass_output);
-        if let Some(new_df) = self.rm_unwanted_ticks(&mut outputs.df) {
-            outputs.df = new_df;
-        }
-        Parser::add_item_purchase_sell_column(&mut outputs.game_events);
-        Parser::remove_item_sold_events(&mut outputs.game_events);
         Ok(outputs)
     }
     fn remove_item_sold_events(events: &mut Vec<GameEvent>) {

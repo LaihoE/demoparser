@@ -11,7 +11,6 @@ use crate::second_pass::entities::Entity;
 use crate::second_pass::entities::EntityType;
 use crate::second_pass::parser_settings::SecondPassParser;
 use crate::second_pass::variants::PropColumn;
-use crate::second_pass::variants::VarVec;
 use csgoproto::maps::AGENTSMAP;
 use csgoproto::maps::PAINTKITS;
 use csgoproto::maps::STICKER_ID_TO_NAME;
@@ -830,76 +829,6 @@ impl<'a> SecondPassParser<'a> {
     ) -> Result<Variant, PropCollectionError> {
         self.collect_velocity_axis(player, axis)
     }
-    fn cached_velocity_indicies<'b>(
-        &self,
-        player: &PlayerMetaData,
-        indicies_cache: &'b mut Option<Vec<usize>>,
-    ) -> Result<&'b [usize], PropCollectionError> {
-        if indicies_cache.is_none() {
-            let steamid = player.steamid.ok_or(PropCollectionError::PlayerNotFound)?;
-            *indicies_cache = Some(self.find_wanted_indicies(self.output.get(&STEAMID_ID), steamid));
-        }
-        Ok(indicies_cache.as_deref().unwrap_or(&[]))
-    }
-    fn find_most_recent_coordinate_idx(&self, optv: Option<&PropColumn>, wanted_steamid: u64) -> Option<usize> {
-        if let Some(v) = optv {
-            if let Some(VarVec::U64(steamid_vec)) = &v.data {
-                for idx in (0..steamid_vec.len()).rev() {
-                    if steamid_vec[idx] == Some(wanted_steamid) {
-                        return Some(idx);
-                    }
-                }
-            }
-        }
-        None
-    }
-    fn find_last_coordinate_idx(&self, optv: Option<&PropColumn>, wanted_steamid: u64, cur_idx: Option<usize>) -> Option<usize> {
-        let cur_idx = cur_idx?;
-        if let VarVec::U64(steamid_vec) = optv?.data.as_ref()? {
-            // iterate backwards until steamid is our wanted player and > 1sec ago
-            for idx in (0..steamid_vec.len()).rev() {
-                let sid = steamid_vec[idx];
-                if sid == Some(wanted_steamid) && idx != cur_idx {
-                    return Some(idx);
-                }
-            }
-        }
-        None
-    }
-    fn find_wanted_indicies(&self, optv: Option<&PropColumn>, wanted_steamid: u64) -> Vec<usize> {
-        let idx1 = self.find_most_recent_coordinate_idx(optv, wanted_steamid);
-        let idx2 = self.find_last_coordinate_idx(optv, wanted_steamid, idx1);
-        if let (Some(idx1), Some(idx2)) = (idx1, idx2) {
-            return vec![idx1, idx2];
-        }
-        vec![]
-    }
-
-    fn velocity_from_indicies(&self, indicies: &[usize], axis: CoordinateAxis) -> Result<Variant, PropCollectionError> {
-        let col = match axis {
-            CoordinateAxis::X => self.output.get(&PLAYER_X_ID),
-            CoordinateAxis::Y => self.output.get(&PLAYER_Y_ID),
-            CoordinateAxis::Z => self.output.get(&PLAYER_Z_ID),
-        };
-        if let Some(c) = col {
-            if let Some((Some(v1), Some(v2))) = self.index_coordinates_from_propcol(c, indicies) {
-                return Ok(Variant::F32((v1 * 64.0) - (v2 * 64.0)));
-            }
-        }
-        return Err(PropCollectionError::VelocityNotFound);
-    }
-    fn index_coordinates_from_propcol(&self, propcol: &PropColumn, indicies: &[usize]) -> Option<(Option<f32>, Option<f32>)> {
-        if indicies.len() != 2 {
-            return None;
-        }
-        if let Some(VarVec::F32(steamid_vec)) = &propcol.data {
-            let first = steamid_vec[indicies[0]];
-            let second = steamid_vec[indicies[1]];
-            return Some((first, second));
-        }
-        None
-    }
-
     pub fn find_is_alive(&self, entity_id: &i32) -> Result<Variant, PropCollectionError> {
         match self.prop_controller.special_ids.life_state {
             Some(id) => match self.get_prop_from_ent(&id, entity_id) {
