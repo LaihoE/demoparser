@@ -109,6 +109,8 @@ pub fn compute_needed(pc: &PropController, settings: &ParserInputs) -> NeededSet
 
     if pc.needs_velocity || pc.event_with_velocity {
         add(&mut ids, &cells_player);
+        // VelocitySample::push compares the pawn lifetime start so velocity never spans a respawn.
+        add(&mut ids, &[sp.pawn_lifetime_start]);
     }
     for p in pc.prop_infos.iter() {
         match p.prop_type {
