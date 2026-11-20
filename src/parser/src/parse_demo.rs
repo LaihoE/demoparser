@@ -19,6 +19,24 @@ use rayon::prelude::ParallelIterator;
 
 pub const HEADER_ENDS_AT_BYTE: usize = 16;
 
+/// The demo's frames, without the SpawnGroups and FileInfo frames the recorder appends
+/// after them. Header bytes 12..16 hold the offset of that trailer. When a recording is
+/// cut off mid-frame, the trailer follows the partial frame directly, and reading on into
+/// it misreads its bytes as a frame header (UnknownDemoCmd). The parser reads nothing
+/// from the trailer, so the frames end at its offset. An offset of 0 (no trailer written)
+/// or one outside the file leaves the bytes as they are.
+pub fn frame_bytes(demo_bytes: &[u8]) -> &[u8] {
+    let Some(offset) = demo_bytes.get(12..HEADER_ENDS_AT_BYTE) else {
+        return demo_bytes;
+    };
+    let trailer_at = u32::from_le_bytes(offset.try_into().unwrap()) as usize;
+    if trailer_at > HEADER_ENDS_AT_BYTE && trailer_at < demo_bytes.len() {
+        &demo_bytes[..trailer_at]
+    } else {
+        demo_bytes
+    }
+}
+
 #[derive(Debug)]
 pub struct DemoOutput {
     pub df: AHashMap<u32, PropColumn>,
@@ -60,6 +78,7 @@ impl<'a> Parser<'a> {
         }
     }
     pub fn parse_demo(&mut self, demo_bytes: &[u8]) -> Result<DemoOutput, DemoParserError> {
+        let demo_bytes = frame_bytes(demo_bytes);
         let _prof = std::env::var("CS2_PROF").is_ok();
         let _t = std::time::Instant::now();
         let mut first_pass_parser = FirstPassParser::new(&self.input);
@@ -415,5 +434,67 @@ impl SellBackHelper {
             }
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod cut_recording_tests {
+    use super::*;
+    use crate::second_pass::parser_settings::create_huffman_lookup_table;
+
+    fn round_ends(demo_bytes: &[u8]) -> Result<usize, DemoParserError> {
+        let huf = create_huffman_lookup_table();
+        let settings = ParserInputs {
+            wanted_players: vec![],
+            real_name_to_og_name: AHashMap::default(),
+            wanted_player_props: vec![],
+            wanted_events: vec!["round_end".to_string()],
+            wanted_other_props: vec![],
+            parse_ents: true,
+            wanted_ticks: vec![],
+            parse_projectiles: false,
+            parse_grenades: false,
+            parse_weapons: false,
+            vector_props_as_lists: false,
+            only_header: false,
+            list_props: false,
+            only_convars: false,
+            huffman_lookup_table: &huf,
+            order_by_steamid: false,
+            wanted_prop_states: AHashMap::default(),
+            fallback_bytes: None,
+        };
+        let output = Parser::new(settings, ParsingMode::Normal).parse_demo(demo_bytes)?;
+        Ok(output.game_events.iter().filter(|e| e.name == "round_end").count())
+    }
+
+    /// A recording cut off mid-frame: the server wrote one byte of the next Packet frame
+    /// (its command, 7), then the SpawnGroups and FileInfo frames, and the header points
+    /// at them. Built from test_demo.dem: that byte goes where its Stop frame was, and the
+    /// trailer has the frame headers of a real demo cut this way (HLTV match 2396491, map
+    /// 2), payloads zeroed. Read on past the byte, SpawnGroups' size (c6 0c) is taken for
+    /// a command: UnknownDemoCmd(1542).
+    #[test]
+    fn trailer_after_a_cut_frame_ends_the_demo() {
+        let full = std::fs::read("test_demo.dem").unwrap();
+        let spawngroups_at = u32::from_le_bytes(full[12..16].try_into().unwrap()) as usize;
+        // The Stop frame right before SpawnGroups: command 0, a 3-byte tick, size 0.
+        let stop_at = spawngroups_at - 5;
+        assert_eq!((full[stop_at], full[spawngroups_at - 1]), (0, 0));
+
+        let mut cut = full[..stop_at].to_vec();
+        cut.push(7);
+        let trailer_at = cut.len();
+        cut.extend_from_slice(&[0x4f, 0x00, 0xc6, 0x0c]); // SpawnGroups, compressed, tick 0, 1606 bytes
+        cut.extend_from_slice(&[0; 1606]);
+        let fileinfo_at = cut.len();
+        cut.extend_from_slice(&[0x02, 0x00, 0x0d]); // FileInfo, tick 0, 13 bytes
+        cut.extend_from_slice(&[0; 13]);
+        cut[8..12].copy_from_slice(&(fileinfo_at as u32).to_le_bytes());
+        cut[12..16].copy_from_slice(&(trailer_at as u32).to_le_bytes());
+
+        let expected = round_ends(&full).unwrap();
+        assert!(expected > 0);
+        assert_eq!(round_ends(&cut).unwrap(), expected);
     }
 }

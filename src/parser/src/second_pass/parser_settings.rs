@@ -384,6 +384,7 @@ impl SpecialIDs {
             self.orig_own_low,
             self.orig_own_high,
             self.life_state,
+            self.pawn_lifetime_start,
             self.h_owner_entity,
             self.weapon_prev_owner,
             self.agent_skin_idx,
