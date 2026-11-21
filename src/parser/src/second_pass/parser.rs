@@ -7,7 +7,7 @@ use crate::first_pass::prop_controller::*;
 use crate::first_pass::read_bits::read_varint;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
-use crate::first_pass::stringtables::parse_userinfo;
+use crate::first_pass::stringtables::apply_full_packet_string_tables;
 use crate::maps::demo_cmd_type_from_int;
 use crate::second_pass::collect_data::ProjectileRecord;
 use crate::second_pass::entities::Entity;
@@ -426,7 +426,6 @@ impl<'a> SecondPassParser<'a> {
     }
 
     pub fn parse_full_packet(&mut self, bytes: &[u8], should_parse_entities: bool, buf: &mut Vec<u8>) -> Result<(), DemoParserError> {
-        self.string_tables = vec![];
         let full_packet = match CDemoFullPacket::decode(bytes) {
             Err(_e) => return Err(DemoParserError::MalformedMessage),
             Ok(p) => p,
@@ -441,24 +440,8 @@ impl<'a> SecondPassParser<'a> {
     }
 
     pub fn parse_full_packet_stringtables(&mut self, full_packet: &CDemoFullPacket) {
-        if let Some(string_table) = &full_packet.string_table {
-            for item in &string_table.tables {
-                if item.table_name == Some("instancebaseline".to_string()) {
-                    for i in &item.items {
-                        let k = i.str().parse::<u32>().unwrap_or(u32::MAX);
-                        self.baselines.insert(k, i.data().to_vec());
-                    }
-                }
-                if item.table_name == Some("userinfo".to_string()) {
-                    for i in &item.items {
-                        if let Ok(player) = parse_userinfo(&i.data()) {
-                            if player.steamid != 0 {
-                                self.stringtable_players.insert(player.userid, player);
-                            }
-                        }
-                    }
-                }
-            }
+        if let Some(snapshot) = &full_packet.string_table {
+            apply_full_packet_string_tables(snapshot, &mut self.string_tables, &mut self.baselines, &mut self.stringtable_players);
         }
     }
     fn clear_stringtables(&mut self) -> Result<(), DemoParserError> {
