@@ -704,6 +704,7 @@ impl ConstructorField {
                     "CNetworkedQuantizedFloat" => self.find_float_decoder(qf_map),
                     "CStrongHandle" => self.find_uint_decoder(),
                     "CEntityHandle" => self.find_uint_decoder(),
+                    "ResourceId_t" => self.find_uint_decoder(),
                     _ => {
                         let name = if let Some(generic_type) = &self.field_type.generic_type {
                             generic_type.base_type.as_str()
@@ -855,4 +856,42 @@ pub struct FieldType {
     pub pointer: bool,
     pub count: Option<i32>,
     pub element_type: Option<Box<FieldType>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn decoder_for(var_type: &str, encoder: &str) -> Decoder {
+        let mut field_type_map = AHashMap::default();
+        let field = ConstructorField {
+            field_enum_type: None,
+            bitcount: 0,
+            var_name: "m_primaryGraphId".to_string(),
+            var_type: var_type.to_string(),
+            send_node: "".to_string(),
+            serializer_name: None,
+            encoder: encoder.to_string(),
+            encode_flags: 0,
+            low_value: 0.0,
+            high_value: 0.0,
+            field_type: find_field_type(var_type, &mut field_type_map).unwrap(),
+            serializer: None,
+            decoder: BaseDecoder,
+            base_decoder: None,
+            child_decoder: None,
+            category: FieldCategory::Value,
+        };
+        let mut qf_map = QfMapper { idx: 0, map: AHashMap::default() };
+        field.find_decoder(&mut qf_map)
+    }
+
+    /// ResourceId_t is a 64-bit resource hash (CDynamicProp's m_primaryGraphId). Read as a
+    /// 32-bit varint (at most 5 bytes), a hash above 35 bits leaves its last bytes to be read
+    /// as the next fields, and the entity stream goes out of step (EntityNotFound).
+    #[test]
+    fn resource_id_is_decoded_as_64_bit() {
+        assert_eq!(decoder_for("ResourceId_t", ""), Unsigned64Decoder);
+        assert_eq!(decoder_for("ResourceId_t", "fixed64"), Fixed64Decoder);
+    }
 }
