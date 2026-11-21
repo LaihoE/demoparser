@@ -169,7 +169,6 @@ impl<'a> FirstPassParser<'a> {
         }
         // Related to prop collection
         prop_controller.set_custom_propinfos();
-        prop_controller.path_to_name = AHashMap::default();
         Ok(serializers)
     }
     fn generate_serializer(

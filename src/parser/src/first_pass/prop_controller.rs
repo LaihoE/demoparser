@@ -115,7 +115,6 @@ pub struct PropController {
     pub wanted_other_props: Vec<String>,
     pub event_with_velocity: bool,
     pub needs_velocity: bool,
-    pub path_to_name: AHashMap<[i32; 7], String>,
     pub wanted_prop_states: AHashMap<String, Variant>,
     pub wanted_prop_state_infos: Vec<WantedPropStateInfo>,
     pub parse_projectiles: bool,
@@ -169,7 +168,6 @@ impl PropController {
             wanted_other_props,
             real_name_to_og_name,
             event_with_velocity: !wanted_events.is_empty() && needs_velocty,
-            path_to_name: AHashMap::default(),
             needs_velocity: needs_velocty,
             wanted_prop_states,
             wanted_prop_state_infos: vec![],
@@ -393,18 +391,23 @@ impl PropController {
         });
     }
     pub fn find_prop_name_paths(&mut self, ser: &mut Serializer) {
-        self.traverse_fields(&mut ser.fields, ser.name.clone(), vec![])
+        // Every prop name starts with the class (root serializer) name, and that first segment
+        // alone decides whether the props are weapon/grenade props: work it out once per class.
+        let grenade_or_weapon = is_grenade_or_weapon(&ser.name);
+        // One name buffer for the whole traversal: segments are pushed and truncated instead of
+        // building a new String per field.
+        let mut name = ser.name.clone();
+        self.traverse_fields(&mut ser.fields, &mut name, 0, grenade_or_weapon)
     }
     fn set_id(&mut self, weap_prop: &str, f: &mut ValueField, is_grenade_or_weapon: bool) {
         match self.name_to_id.get(weap_prop) {
             // If we already have an id for prop of same name then use that id.
             // Mainly for weapon props. For example CAK47.m_iClip1 and CWeaponSCAR20.m_iClip1
             // are the "same" prop. (they have same path and we want to refer to it with one id not ~20)
-            Some(id) => {
-                f.prop_id = *id as u32;
-                self.id_to_name.insert(*id, weap_prop.to_string());
-                self.set_special_ids(&weap_prop, is_grenade_or_weapon, *id);
-                return;
+            // id_to_name[id] already holds this name: ids are only handed out in the None arm.
+            Some(&id) => {
+                f.prop_id = id;
+                self.set_special_ids(weap_prop, is_grenade_or_weapon, id);
             }
             None => {
                 self.name_to_id.insert(weap_prop.to_string(), self.id);
@@ -415,16 +418,8 @@ impl PropController {
         }
     }
 
-    fn insert_propinfo(&mut self, prop_name: &str, f: &mut ValueField) {
-        let split_at_dot: Vec<&str> = prop_name.split(".").collect();
-
-        let grenade_or_weapon = is_grenade_or_weapon(&prop_name);
-        let prop_name = split_weapon_prefix_from_prop_name(&prop_name);
-
-        let prop_name = match grenade_or_weapon {
-            true => split_at_dot[1..].join("."),
-            false => prop_name.to_string(),
-        };
+    /// `prop_name` is the name with the class prefix already stripped for weapon/grenade props.
+    fn insert_propinfo(&mut self, prop_name: &str, grenade_or_weapon: bool, f: &mut ValueField) {
         let mut prefix_type = match prop_name.split(".").next() {
             Some("CCSGameRulesProxy") => Some(PropType::Rules),
             Some("CCSTeam") => Some(PropType::Team),
@@ -487,23 +482,19 @@ impl PropController {
             }
         }
     }
-    pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField, path: Vec<i32>) {
-        f.full_name = full_name.to_string();
+    /// `grenade_or_weapon` is `is_grenade_or_weapon(full_name)`, computed once per class.
+    pub fn handle_prop(&mut self, full_name: &str, f: &mut ValueField, grenade_or_weapon: bool) {
+        f.full_name.clear();
+        f.full_name.push_str(full_name);
 
-        let prop_name = split_weapon_prefix_from_prop_name(full_name);
+        // Weapon and grenade props drop the class prefix: CAK47.m_iClip1 => m_iClip1
+        let prop_name = if grenade_or_weapon { strip_class_prefix(full_name) } else { full_name };
 
-        let mut a = [0, 0, 0, 0, 0, 0, 0];
-        for (idx, v) in path.iter().enumerate() {
-            a[idx] = *v;
-        }
-        self.path_to_name.insert(a, prop_name.to_string());
-        let grenade_or_weapon = is_grenade_or_weapon(full_name);
-
-        let prop_already_exists = self.name_to_id.contains_key(&(prop_name).to_string());
-        self.set_id(&prop_name, f, grenade_or_weapon);
+        let prop_already_exists = self.name_to_id.contains_key(prop_name);
+        self.set_id(prop_name, f, grenade_or_weapon);
 
         if !prop_already_exists {
-            self.insert_propinfo(&full_name, f);
+            self.insert_propinfo(prop_name, grenade_or_weapon, f);
         }
         f.should_parse = true;
         // Elements of an array/vector share one prop id and overwrite each other, so by
@@ -512,34 +503,21 @@ impl PropController {
         let id_before_overrides = f.prop_id;
         f.collect_vec = self.vector_props_as_lists
             && f.vec_depth.is_some()
-            && (self.wanted_other_props.contains(&prop_name) || self.wanted_player_props.contains(&prop_name));
+            && (self.wanted_other_props.iter().any(|p| p == prop_name) || self.wanted_player_props.iter().any(|p| p == prop_name));
 
-        if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" {
-            f.prop_id = MY_WEAPONS_OFFSET as u32;
-        }
-        if full_name == "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.WeaponPurchaseCount_t.m_nCount" {
-            f.prop_id = ITEM_PURCHASE_COUNT as u32;
-        }
-        if full_name == "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_unDefIdx" {
-            f.prop_id = ITEM_PURCHASE_DEF_IDX as u32;
-        }
-        if full_name == "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_nCost" {
-            f.prop_id = ITEM_PURCHASE_COST as u32;
-        }
-        if full_name == "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.WeaponPurchaseCount_t.m_nItemDefIndex" {
-            f.prop_id = ITEM_PURCHASE_NEW_DEF_IDX as u32;
-        }
-        if full_name == "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_hItem" {
-            f.prop_id = ITEM_PURCHASE_HANDLE as u32;
-        }
-        if !full_name.starts_with("CCSPlayerPawn") && prop_name.contains("CEconItemAttribute.m_iRawValue32") {
-            f.prop_id = WEAPON_SKIN_ID as u32;
-        }
-        if full_name.starts_with("CCSPlayerPawn") && prop_name.contains("CEconItemAttribute.m_iRawValue32") {
-            f.prop_id = GLOVE_PAINT_ID as u32;
-        }
-        if full_name == "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo"{
-            f.prop_id = GRENADE_AMMO_ID;
+        match full_name {
+            "CCSPlayerPawn.CCSPlayer_WeaponServices.m_hMyWeapons" => f.prop_id = MY_WEAPONS_OFFSET,
+            "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.WeaponPurchaseCount_t.m_nCount" => f.prop_id = ITEM_PURCHASE_COUNT,
+            "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_unDefIdx" => f.prop_id = ITEM_PURCHASE_DEF_IDX,
+            "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_nCost" => f.prop_id = ITEM_PURCHASE_COST,
+            "CCSPlayerPawn.CCSPlayer_ActionTrackingServices.WeaponPurchaseCount_t.m_nItemDefIndex" => f.prop_id = ITEM_PURCHASE_NEW_DEF_IDX,
+            "CCSPlayerPawn.CCSPlayer_BuyServices.SellbackPurchaseEntry_t.m_hItem" => f.prop_id = ITEM_PURCHASE_HANDLE,
+            "CCSPlayerPawn.CCSPlayer_WeaponServices.m_iAmmo" => f.prop_id = GRENADE_AMMO_ID,
+            _ => {
+                if prop_name.contains("CEconItemAttribute.m_iRawValue32") {
+                    f.prop_id = if full_name.starts_with("CCSPlayerPawn") { GLOVE_PAINT_ID } else { WEAPON_SKIN_ID };
+                }
+            }
         }
         if f.prop_id != id_before_overrides {
             f.collect_vec = false;
@@ -598,51 +576,58 @@ impl PropController {
             };
         }
     }
-    fn traverse_fields(&mut self, fields: &mut [Field], ser_name: String, path_og: Vec<i32>) {
-        for (idx, f) in fields.iter_mut().enumerate() {
-            let mut path = path_og.clone();
-            path.push(idx as i32);
+    /// Walks the fields of a serializer. `name` holds the dotted name of the serializer being
+    /// walked and is restored before returning; `depth` is the length of the field path to it.
+    fn traverse_fields(&mut self, fields: &mut [Field], name: &mut String, depth: usize, grenade_or_weapon: bool) {
+        let name_len = name.len();
+        // Field path of the current field: the parent's path plus its index.
+        let path_len = depth + 1;
+        for f in fields.iter_mut() {
             match f {
                 Field::Value(x) => {
-                    let full_name = ser_name.clone() + "." + &x.name;
-                    self.handle_prop(&full_name, x, path);
+                    push_segment(name, &x.name);
+                    self.handle_prop(name, x, grenade_or_weapon);
                 }
-                Field::Serializer(ser) => self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name, path.clone()),
-                Field::Pointer(ser) => self.traverse_fields(&mut ser.serializer.fields, ser_name.clone() + "." + &ser.serializer.name, path.clone()),
+                Field::Serializer(ser) => {
+                    push_segment(name, &ser.serializer.name);
+                    self.traverse_fields(&mut ser.serializer.fields, name, path_len, grenade_or_weapon);
+                }
+                Field::Pointer(ser) => {
+                    push_segment(name, &ser.serializer.name);
+                    self.traverse_fields(&mut ser.serializer.fields, name, path_len, grenade_or_weapon);
+                }
                 Field::Array(ser) => {
                     let is_bytes = ser.element_base == "uint8";
-                    match &mut ser.field_enum.as_mut() {
-                        Field::Value(v) => {
-                            // Element index sits right after the array field in the path
-                            v.vec_depth = Some(path.len() as u8);
-                            v.vec_bytes = is_bytes;
-                            self.handle_prop(&(ser_name.clone() + "." + &v.name), v, path);
-                        }
-                        _ => {}
+                    if let Field::Value(v) = ser.field_enum.as_mut() {
+                        // Element index sits right after the array field in the path
+                        v.vec_depth = Some(path_len as u8);
+                        v.vec_bytes = is_bytes;
+                        push_segment(name, &v.name);
+                        self.handle_prop(name, v, grenade_or_weapon);
                     }
                 }
                 Field::Vector(x) => {
                     let is_bytes = x.element_base == "uint8";
-                    let vec_path = path.clone();
                     if let Ok(inner) = f.get_inner_mut(0) {
                         match inner {
                             Field::Serializer(s) => {
-                                for (inner_idx, f) in &mut s.serializer.fields.iter_mut().enumerate() {
-                                    match f {
-                                        Field::Value(v) => {
-                                            let mut myp = vec_path.clone();
-                                            myp.push(inner_idx as i32);
-                                            self.handle_prop(&(ser_name.clone() + "." + &v.name), v, myp);
-                                        }
-                                        _ => {}
+                                for f in s.serializer.fields.iter_mut() {
+                                    if let Field::Value(v) = f {
+                                        push_segment(name, &v.name);
+                                        self.handle_prop(name, v, grenade_or_weapon);
+                                        name.truncate(name_len);
                                     }
                                 }
-                                self.traverse_fields(&mut s.serializer.fields, ser_name.clone() + "." + &s.serializer.name, path_og.clone())
+                                // Same fields again, named through the inner serializer and
+                                // with the parent's path (not including this vector's index).
+                                push_segment(name, &s.serializer.name);
+                                self.traverse_fields(&mut s.serializer.fields, name, depth, grenade_or_weapon);
                             }
                             Field::Value(x) => {
-                                x.vec_depth = Some(path.len() as u8);
+                                x.vec_depth = Some(path_len as u8);
                                 x.vec_bytes = is_bytes;
-                                self.handle_prop(&(ser_name.clone() + "." + &x.name), x, path.clone());
+                                push_segment(name, &x.name);
+                                self.handle_prop(name, x, grenade_or_weapon);
                             }
                             _ => {}
                         }
@@ -650,33 +635,47 @@ impl PropController {
                 }
                 _ => {}
             }
+            name.truncate(name_len);
         }
     }
 }
 
+fn push_segment(name: &mut String, segment: &str) {
+    name.push('.');
+    name.push_str(segment);
+}
+
+/// Name without its first dotted segment (the class): CAK47.m_iClip1 => m_iClip1.
+/// A name without a dot gives "".
+fn strip_class_prefix(full_name: &str) -> &str {
+    match full_name.find('.') {
+        Some(i) => &full_name[i + 1..],
+        None => "",
+    }
+}
+
 pub fn split_weapon_prefix_from_prop_name(full_name: &str) -> String {
-    let split_at_dot: Vec<&str> = full_name.split(".").collect();
-    let grenade_or_weapon = is_grenade_or_weapon(full_name);
     // Strip first part of name from grenades and weapons.
     // if weapon prop: CAK47.m_iClip1 => m_iClip1
     // if grenade: CSmokeGrenadeProjectile.CBodyComponentBaseAnimGraph.m_cellX => CBodyComponentBaseAnimGraph.m_cellX
-    match grenade_or_weapon {
-        true => split_at_dot[1..].join("."),
-        false => full_name.to_string(),
+    if is_grenade_or_weapon(full_name) {
+        strip_class_prefix(full_name).to_string()
+    } else {
+        full_name.to_string()
     }
 }
 
 pub fn is_grenade_or_weapon(full_name: &str) -> bool {
-    let split_at_dot: Vec<&str> = full_name.split(".").collect();
-    let is_weapon_prop = (split_at_dot[0].contains("Weapon") || split_at_dot[0].contains("AK")) && !split_at_dot[0].contains("Player")
-        || split_at_dot[0].contains("Knife")
-        || split_at_dot[0].contains("CDEagle")
-        || split_at_dot[0].contains("C4")
-        || split_at_dot[0].contains("Molo")
-        || split_at_dot[0].contains("Inc")
-        || split_at_dot[0].contains("Infer");
+    let class = full_name.split('.').next().unwrap_or("");
+    let is_weapon_prop = (class.contains("Weapon") || class.contains("AK")) && !class.contains("Player")
+        || class.contains("Knife")
+        || class.contains("CDEagle")
+        || class.contains("C4")
+        || class.contains("Molo")
+        || class.contains("Inc")
+        || class.contains("Infer");
 
-    let is_projectile_prop = (split_at_dot[0].contains("Projectile") || split_at_dot[0].contains("Grenade") || split_at_dot[0].contains("Flash"))
-        && !split_at_dot[0].contains("Player");
+    let is_projectile_prop =
+        (class.contains("Projectile") || class.contains("Grenade") || class.contains("Flash")) && !class.contains("Player");
     is_weapon_prop || is_projectile_prop
 }

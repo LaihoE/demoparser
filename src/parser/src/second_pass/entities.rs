@@ -1,4 +1,6 @@
+use crate::first_pass::parser_settings::ParserInputs;
 use crate::first_pass::prop_controller::is_grenade_or_weapon;
+use crate::first_pass::prop_controller::PropController;
 use crate::first_pass::read_bits::Bitreader;
 use crate::first_pass::read_bits::DemoParserError;
 use crate::first_pass::sendtables::find_field;
@@ -8,8 +10,6 @@ use crate::first_pass::sendtables::get_propinfo;
 use crate::first_pass::sendtables::Field;
 use crate::first_pass::sendtables::FieldInfo;
 use crate::first_pass::sendtables::Serializer;
-use crate::first_pass::parser_settings::ParserInputs;
-use crate::first_pass::prop_controller::PropController;
 use crate::second_pass::collect_data::PropType;
 use crate::second_pass::game_events::GameEventInfo;
 use crate::second_pass::other_netmessages::Class;
@@ -96,10 +96,26 @@ pub fn compute_needed(pc: &PropController, settings: &ParserInputs) -> NeededSet
     // Core bookkeeping, always: player identity/linking on controllers, team entities, round and
     // match counters on the rules entity, weapon/grenade owner handles. None of it is on pawns.
     add(&mut ids, &[sp.teamnum, sp.player_name, sp.steamid, sp.player_pawn, sp.team_team_num]);
-    add(&mut ids, &[sp.total_rounds_played, sp.round_win_reason, sp.round_start_count, sp.round_end_count, sp.match_end_count]);
+    add(
+        &mut ids,
+        &[
+            sp.total_rounds_played,
+            sp.round_win_reason,
+            sp.round_start_count,
+            sp.round_end_count,
+            sp.match_end_count,
+        ],
+    );
     add(&mut ids, &[sp.h_owner_entity, sp.grenade_owner_id]);
 
-    let cells_player = [sp.cell_x_player, sp.cell_y_player, sp.cell_z_player, sp.cell_x_offset_player, sp.cell_y_offset_player, sp.cell_z_offset_player];
+    let cells_player = [
+        sp.cell_x_player,
+        sp.cell_y_player,
+        sp.cell_z_player,
+        sp.cell_x_offset_player,
+        sp.cell_y_offset_player,
+        sp.cell_z_offset_player,
+    ];
     let weapon = [sp.active_weapon, sp.item_def];
     let my_weapons = (MY_WEAPONS_OFFSET, MY_WEAPONS_OFFSET + FLATTENED_VEC_MAX_LEN);
     let ammo = [(GRENADE_AMMO_ID, GRENADE_AMMO_ID + 1), (FLASHBANG_AMMO_ID, FLASHBANG_AMMO_ID + 1)];
@@ -163,7 +179,18 @@ pub fn compute_needed(pc: &PropController, settings: &ParserInputs) -> NeededSet
         ranges.extend(ammo);
     }
     if settings.parse_projectiles || settings.parse_grenades {
-        add(&mut ids, &[sp.m_vec_x_grenade, sp.m_vec_y_grenade, sp.m_vec_z_grenade, sp.m_cell_x_grenade, sp.m_cell_y_grenade, sp.m_cell_z_grenade, sp.is_incendiary_grenade]);
+        add(
+            &mut ids,
+            &[
+                sp.m_vec_x_grenade,
+                sp.m_vec_y_grenade,
+                sp.m_vec_z_grenade,
+                sp.m_cell_x_grenade,
+                sp.m_cell_y_grenade,
+                sp.m_cell_z_grenade,
+                sp.is_incendiary_grenade,
+            ],
+        );
     }
     if settings.parse_weapons {
         add(&mut ids, &weapon);
@@ -171,11 +198,29 @@ pub fn compute_needed(pc: &PropController, settings: &ParserInputs) -> NeededSet
     }
     let wants_event = |name: &str| settings.wanted_events.first().map_or(false, |e| e == "all") || settings.wanted_events.iter().any(|e| e == name);
     if wants_event("item_purchase") || wants_event("item_sold") {
-        add(&mut ids, &[sp.in_buy_zone, sp.custom_name, sp.sellback_entry_def_idx, sp.sellback_entry_n_cost, sp.sellback_entry_prev_armor, sp.sellback_entry_prev_helmet, sp.sellback_entry_h_item, sp.weapon_purchase_count]);
+        add(
+            &mut ids,
+            &[
+                sp.in_buy_zone,
+                sp.custom_name,
+                sp.sellback_entry_def_idx,
+                sp.sellback_entry_n_cost,
+                sp.sellback_entry_prev_armor,
+                sp.sellback_entry_prev_helmet,
+                sp.sellback_entry_h_item,
+                sp.weapon_purchase_count,
+            ],
+        );
         add(&mut ids, &weapon);
         // The purchase event reports the bought weapon's skin, paint seed, float and stickers.
         ranges.push(weapon_skin);
-        for base in [ITEM_PURCHASE_COUNT, ITEM_PURCHASE_DEF_IDX, ITEM_PURCHASE_COST, ITEM_PURCHASE_HANDLE, ITEM_PURCHASE_NEW_DEF_IDX] {
+        for base in [
+            ITEM_PURCHASE_COUNT,
+            ITEM_PURCHASE_DEF_IDX,
+            ITEM_PURCHASE_COST,
+            ITEM_PURCHASE_HANDLE,
+            ITEM_PURCHASE_NEW_DEF_IDX,
+        ] {
             ranges.push((base, base + FLATTENED_VEC_MAX_LEN));
         }
     }
@@ -726,7 +771,16 @@ impl<'a> SecondPassParser<'a> {
             }
             // Custom events
             if !is_baseline {
-                SecondPassParser::listen_for_events(entity, &result, field, field_info, &self.prop_controller, &self.prop_controller.special_ids, is_fullpacket, events_to_emit);
+                SecondPassParser::listen_for_events(
+                    entity,
+                    &result,
+                    field,
+                    field_info,
+                    &self.prop_controller,
+                    &self.prop_controller.special_ids,
+                    is_fullpacket,
+                    events_to_emit,
+                );
             }
             // Debug
             if self.is_debug_mode {
@@ -783,7 +837,11 @@ impl<'a> SecondPassParser<'a> {
                 _ => {
                     entity.props.insert(
                         fi.prop_id,
-                        if fi.vec_bytes { Variant::Bytes(Vec::with_capacity(n)) } else { Variant::List(Vec::with_capacity(n)) },
+                        if fi.vec_bytes {
+                            Variant::Bytes(Vec::with_capacity(n))
+                        } else {
+                            Variant::List(Vec::with_capacity(n))
+                        },
                     );
                 }
             }
