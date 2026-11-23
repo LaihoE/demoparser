@@ -276,7 +276,7 @@ impl<'a> SecondPassParser<'a> {
                 svc_ClearAllStringTables => self.clear_stringtables(),
                 svc_VoiceData => self.parse_voice_data(msg_bytes),
                 GE_Source1LegacyGameEvent => self.parse_game_event(msg_bytes, &mut wrong_order_events),
-                svc_UserCmds => self.parse_user_cmd(msg_bytes),
+                svc_UserCmds => self.parse_user_cmd(msg_bytes, is_fullpacket),
                 GE_FireBulletsId => self.create_custom_event_fire_bullets(msg_bytes),
                 GE_PlayerBulletHitId => self.create_custom_event_player_bullet_hit(msg_bytes),
                 _ => Ok(()),
@@ -288,7 +288,7 @@ impl<'a> SecondPassParser<'a> {
         }
         Ok(())
     }
-    pub fn parse_user_cmd(&mut self, bytes: &[u8]) -> Result<(), DemoParserError> {
+    pub fn parse_user_cmd(&mut self, bytes: &[u8], is_fullpacket: bool) -> Result<(), DemoParserError> {
         // We simply inject the values into the entities as if they came from packet_ents like any other val.
 
         // This method is quite expensive so early exit it if not needed.
@@ -302,7 +302,8 @@ impl<'a> SecondPassParser<'a> {
         };
         for cmd in msg.commands {
             let player_slot = cmd.player_slot();
-            if player_slot < 0 {
+            // A fullpacket carries the live commands, tv_delay ahead of the replayed ones the next deltas build on.
+            if player_slot < 0 || is_fullpacket && self.usercmd_baselines.contains_key(&player_slot) {
                 continue;
             }
             let data = cmd.data.as_ref().filter(|data| !data.is_empty());

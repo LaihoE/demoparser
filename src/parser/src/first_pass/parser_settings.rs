@@ -10,6 +10,7 @@ use crate::second_pass::decoder::QfMapper;
 use crate::second_pass::other_netmessages::Class;
 use crate::second_pass::parser_settings::PlayerEndMetaData;
 use crate::second_pass::parser_settings::SpecialIDs;
+use crate::second_pass::parser_settings::contains_usercmd_prop;
 use crate::second_pass::variants::Variant;
 use ahash::AHashMap;
 use ahash::AHashSet;
@@ -169,6 +170,10 @@ impl<'a> FirstPassParser<'a> {
     }
 }
 pub fn check_multithreadability(player_props: &[String]) -> bool {
+    // Usercmds are deltas against the player's previous one; a chunk could only start from its fullpacket's, which are tv_delay ahead.
+    if contains_usercmd_prop(player_props) {
+        return false;
+    }
     for name in player_props {
         if NON_MULTITHREADABLE_PROPS.contains(name) {
             return false;

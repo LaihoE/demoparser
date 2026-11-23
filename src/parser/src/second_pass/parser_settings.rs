@@ -477,6 +477,6 @@ pub fn create_huffman_lookup_table() -> Vec<(u8, u8)> {
     return huf2;
 }
 
-fn contains_usercmd_prop(names: &[String]) -> bool {
+pub(crate) fn contains_usercmd_prop(names: &[String]) -> bool {
     names.iter().any(|name| name.contains("usercmd") || BUTTONMAP.get(name.as_str()).is_some())
 }
