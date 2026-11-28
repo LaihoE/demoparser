@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest import TestCase
 from typing import Union
 
@@ -18,6 +19,7 @@ class SignatureTest(TestCase):
     def test_demoparser_creation(self):
         DemoParser(demo_path)
         DemoParser(demo_path=demo_path)
+        DemoParser(Path(demo_path))
 
 
     def test_parse_header_signature(self):

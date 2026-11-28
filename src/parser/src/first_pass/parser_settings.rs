@@ -21,6 +21,7 @@ use memmap2::Mmap;
 use memmap2::MmapOptions;
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::path::Path;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -207,7 +208,7 @@ pub fn rm_map_user_friendly_names(map: &AHashMap<String, Variant>) -> Result<AHa
     Ok(real_names_map)
 }
 
-pub fn create_mmap(path: String) -> Result<Mmap, DemoParserError> {
+pub fn create_mmap(path: impl AsRef<Path>) -> Result<Mmap, DemoParserError> {
     let file = match File::open(path) {
         Err(e) => return Err(DemoParserError::FileNotFound(format!("{}", e))),
         Ok(f) => f,

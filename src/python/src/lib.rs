@@ -33,6 +33,7 @@ use pyo3::IntoPyObjectExt;
 use pyo3::{intern, Python};
 use pyo3::{PyAny, PyResult};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use pyo3::create_exception;
@@ -110,11 +111,9 @@ impl<'py> FromPyObject<'_, 'py> for WantedPropState {
 #[pymethods]
 impl DemoParser {
     #[new]
-    pub fn py_new(demo_path: String) -> PyResult<Self> {
-        let mmap = match create_mmap(demo_path.clone()) {
-            Ok(mmap) => mmap,
-            Err(e) => return Err(Exception::new_err(format!("{e}. File name: {demo_path}"))),
-        };
+    pub fn py_new(demo_path: PathBuf) -> PyResult<Self> {
+        let mmap = create_mmap(&demo_path)
+            .map_err(|e| Exception::new_err(format!("{e}. File name: {}", demo_path.display())))?;
         let huf = create_huffman_lookup_table();
         Ok(Self { mmap, huf })
     }
